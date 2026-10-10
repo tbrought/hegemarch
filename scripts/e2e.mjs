@@ -606,15 +606,25 @@ try {
     const d = document.querySelector('.dialog');
     if (!d) return false;
     const r = d.getBoundingClientRect();
-    return r.top >= 0 && r.bottom <= window.innerHeight && /REPLACE YOUR SAVED RUN/.test(d.textContent) && window.__app.screen === 'setup';
+    return r.top >= 0 && r.bottom <= window.innerHeight && /START A NEW RUN\?/.test(d.textContent) && window.__app.screen === 'setup';
   }));
   check('and the page behind it has not moved', Math.abs((await scrollTop()) - down) < 40);
+  check('the question has two answers, and the marked one is the launch that was asked for', await ev(() => {
+    const b = [...document.querySelectorAll('.dialog button')];
+    return b.length === 2 && b[0].dataset.sa === 'confirm-new' && b[0].classList.contains('primary') && b[1].dataset.sa === 'confirm-cancel' && !b[1].classList.contains('primary');
+  }));
+  check('continuing the saved run is not one of them', (await page.$('.dialog [data-sa="continue"]')) === null);
+  check('it says that the saved run keeps its Legacy, and how much', /ends here/.test(await page.textContent('.dialog')) && /keeps the Legacy it has earned: ◆\d+/.test(await page.textContent('.dialog')), (await page.textContent('.dialog')).replace(/\s+/g, ' '));
   await page.keyboard.press('Escape');
   await wait(150);
   check('Esc cancels: still on the setup page, the save untouched', (await page.$('.dialog')) === null && (await ev(() => !!localStorage.getItem('hegemarch.run.v1') || Object.keys(localStorage).some((k) => /run/.test(k)))));
   await page.click('[data-sa="launch"]');
   await wait(150);
-  await page.click('.dialog [data-sa="continue"]');
+  await page.click('.dialog [data-sa="confirm-cancel"]');
+  await wait(150);
+  check('GO BACK closes the question: the setup as it was chosen, the save untouched', (await page.$('.dialog')) === null && (await ev(() => window.__app.screen === 'setup' && !!localStorage.getItem('hegemarch.run.v1') && !!document.querySelector('[data-sa="size:small"].active'))));
+  // The saved run is still one click away, at the top of the page.
+  await page.click('.notice.wide [data-sa="continue"]');
   await page.waitForFunction(() => window.__app?.screen === 'game', null, { timeout: 30000 });
   await page.setViewportSize({ width: 1366, height: 768 });
   await wait(300);
@@ -633,6 +643,42 @@ try {
   await page.screenshot({ path: '.shots/e2e-results.png' });
   await page.click('[data-sa="results-again"]');
   check('after a run, setup skips the First Night card', (await page.$('[data-sa="launch"]')) !== null);
+
+  // ---- A new run over a saved one: the saved run ends as an abandoned one, and is paid its Legacy ----
+  await page.click('[data-sa="launch"]');
+  await page.waitForFunction(() => window.__app?.screen === 'game', null, { timeout: 60000 });
+  await wait(500);
+  await ev(() => {
+    const a = window.__app;
+    const g = a.session.game;
+    a.session.modal = null;
+    for (let i = 0; i < 20 * 90; i++) g.step();
+    // (Save and quit, as the pause menu does.)
+    a.autosave();
+    a.teardownSession();
+    a.showMenu();
+    void a.attract.start();
+  });
+  await wait(300);
+  const tally = () => ev(() => {
+    const p = JSON.parse(localStorage.getItem('hegemarch.profile.v1'));
+    return { legacy: p.legacy, runs: p.runs, last: p.history[0], saved: !!localStorage.getItem('hegemarch.run.v1') };
+  });
+  const was = await tally();
+  await page.click('[data-sa="setup"]');
+  await page.click('[data-sa="launch"]');
+  await wait(200);
+  const promised = Number(/◆(\d+)/.exec(await page.textContent('.dialog'))?.[1] ?? -1);
+  await page.screenshot({ path: '.shots/e2e-new-run-question.png' });
+  await page.click('.dialog [data-sa="confirm-new"]');
+  await page.waitForFunction(() => window.__app?.screen === 'game', null, { timeout: 60000 });
+  await wait(300);
+  const now = await tally();
+  const toast = await ev(() => window.__app.session.toast?.text ?? '');
+  check('START NEW RUN starts the new run', was.saved && (await ev(() => window.__app.session.game.time < 5)));
+  check('the run it replaced is paid the Legacy the question promised', promised > 0 && now.legacy === was.legacy + promised, `${was.legacy} + ${promised} -> ${now.legacy}`);
+  check('and is entered in the Chronicle as a run that ended', now.runs === was.runs + 1 && now.last.won === false && now.last.legacy === promised, JSON.stringify(now.last));
+  check('the new run says so', toast === `Your last run ended: +${promised} Legacy.`, toast);
 } catch (e) {
   failures++;
   console.error('FAILED:', e);

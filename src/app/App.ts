@@ -95,6 +95,8 @@ export class App {
   private confirmReset = false;
   /** One line about the saved run (house, sector, time played), read when the setup screen opens. */
   private savedRun = '';
+  /** The Legacy the saved run earns if a new run ends it now (null: it cannot be read), worked out when the question is asked. */
+  private savedLegacy: number | null = null;
   /** The day (UTC) the title screen was drawn for: when it turns, the daily run is a new one. */
   private menuDay = '';
 
@@ -268,9 +270,41 @@ export class App {
     };
   }
 
+  /**
+   * The saved run, ended as an abandoned one: the game, and the Legacy it earns. Nothing is stored.
+   * Null if there is no saved run, or it cannot be read.
+   */
+  private endedSavedRun(): { game: Game; legacy: number } | null {
+    const data = loadRun();
+    if (!data) return null;
+    try {
+      const g = Game.load(data);
+      g.ascended = false;
+      g.declareWinner(-1, 'defeat', 'You left this run for a new one.');
+      return { game: g, legacy: computeLegacy(g).total };
+    } catch {
+      return null;
+    }
+  }
+
+  /**
+   * A new run takes the place of the saved one. The saved run ends as an abandoned run would: it is
+   * paid its Legacy and entered in the Chronicle, so that nothing but the run itself is lost. Returns
+   * the Legacy paid (null if there was no saved run, or it could not be read).
+   */
+  private retireSavedRun(): number | null {
+    const ended = this.endedSavedRun();
+    clearRun();
+    if (!ended) return null;
+    const c = ended.game.config;
+    applyRunToProfile(this.profile, ended.game, ended.legacy);
+    if (c.daily && c.seed === dailySeed()) this.profile.lastDaily = todayKey();
+    saveProfile(this.profile);
+    return ended.legacy;
+  }
+
   private async startRun(config: GameConfig) {
     this.teardownSession();
-    clearRun();
     this.attract.stop();
     const token = ++this.prepToken;
     this.screen = 'loading';
@@ -284,10 +318,13 @@ export class App {
       this.showMenu();
       return;
     }
+    // (Only now that the new run exists does the saved one end.)
+    const paid = this.retireSavedRun();
     this.renderLoading(0.8);
     await new Promise((r) => setTimeout(r, 30));
     if (token !== this.prepToken) return;
     this.beginSession(g);
+    if (paid !== null) this.session?.showToast(`Your last run ended: +${paid} Legacy.`, '#ffd23f', 9);
   }
 
   private async continueRun() {
@@ -590,6 +627,7 @@ export class App {
         break;
       case 'launch':
         if (hasRun()) {
+          this.savedLegacy = this.endedSavedRun()?.legacy ?? null;
           st.confirm = 'launch';
           this.showSetup();
           break;
@@ -844,19 +882,21 @@ export class App {
     if (!saved) st.confirm = '';
     // A run is already in progress: say so at the top, before any choices are made...
     const savedNote = saved
-      ? `<div class="px-box notice wide"><span>You have a run in progress${this.savedRun ? `: <b>${esc(this.savedRun)}</b>` : ''}. Starting a new run replaces it.</span>
+      ? `<div class="px-box notice wide"><span>You have a run in progress${this.savedRun ? `: <b>${esc(this.savedRun)}</b>` : ''}. Launching a new run ends it; it keeps the Legacy it has earned.</span>
           <button class="small" data-sa="continue">CONTINUE IT</button></div>`
       : '';
     // ...and ask in a pop-up over the page when a new run is launched (never as a line below the fold).
+    // The question has two answers, and the marked one is what the player just asked for. (Continuing the
+    // saved run is not one of them: the title screen and the notice above have offered that already, and
+    // here it only undid a launch by a stray click.) The saved run ends as an abandoned one, Legacy paid.
     const dialog = st.confirm
       ? `<div class="dialog-back"><div class="px-box dialog" role="dialog" aria-modal="true">
-          <h2>REPLACE YOUR SAVED RUN?</h2>
-          <p>You have a run in progress${this.savedRun ? `:<br><b>${esc(this.savedRun)}</b>` : '.'}</p>
-          <p>Starting a new run replaces it for good. A replaced run earns no Legacy.</p>
+          <h2>START A NEW RUN?</h2>
+          <p>Your saved run ends here${this.savedRun ? `:<br><b>${esc(this.savedRun)}</b>` : '.'}</p>
+          ${this.savedLegacy !== null ? `<p>It keeps the Legacy it has earned: <span class="gold">◆${this.savedLegacy}</span>.</p>` : ''}
           <div class="dialog-actions">
-            <button class="danger" data-sa="confirm-new">START NEW RUN</button>
-            <button class="primary" data-sa="continue">CONTINUE SAVED RUN</button>
-            <button data-sa="confirm-cancel">CANCEL</button>
+            <button class="primary" data-sa="confirm-new">START NEW RUN</button>
+            <button data-sa="confirm-cancel">GO BACK</button>
           </div>
         </div></div>`
       : '';
@@ -893,7 +933,7 @@ export class App {
       ${savedNote}
       ${ages ? `<div class="px-box ages-head"><canvas class="mode-art" data-art="ages" aria-hidden="true"></canvas>
         <div class="ages-names">${ERAS.map((e) => `<span>${e.short}</span>`).join('')}</div></div>` : ''}
-      ${ages && !p.tutorialDone ? '<div class="px-box notice wide"><span>New to Hegemarch? An Ages run is the long game. The guided First Night, on the title screen, teaches the basics in a few minutes.</span></div>' : ''}
+      ${ages && !p.tutorialDone ? '<div class="px-box notice wide"><span>New to Hegemarch? An Ages run is the long game. The guided First Night (a Classic run with GUIDE ticked) teaches the basics in a few minutes.</span></div>' : ''}
       <div class="heirs">${heirs}</div>
       ${daily ? '' : `<div class="opts">
         <div class="opt px-box"><h4>${ages ? 'SIZE' : 'SECTOR'}</h4><div class="row">${sizes.map(([k, n, d]) => `<button class="small ${st.size === k ? 'active' : ''}" data-sa="size:${k}" data-tip="${esc(d)}">${n}</button>`).join('')}</div>

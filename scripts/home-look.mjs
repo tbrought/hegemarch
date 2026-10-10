@@ -98,6 +98,8 @@ try {
   // An Ages run in progress, in the Iron Age.
   await page.click('[data-sa="ages"]');
   await page.click('[data-sa="launch"]');
+  await wait(300);
+  await shot('new-run-question');
   await page.click('[data-sa="confirm-new"]');
   await page.waitForFunction(() => window.__app?.screen === 'game', null, { timeout: 60000 });
   await wait(800);

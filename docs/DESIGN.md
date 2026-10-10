@@ -233,9 +233,14 @@ Measured with `npm run simulate` and `npm run balance:passive`. Speeds are ½×,
   escorts) flying out over drifting stars, each ship bobbing to its own beat. Under the pointer
   the fleet speeds up; the chosen house surges ahead, flies on fast, and its Ark sends out a ring
   every few seconds. The tooltip lists the starting fleet.
-- **Menus never hide an answer below the fold.** Launching a new run while one is saved asks in a
-  pop-up centred over the page (START NEW RUN, CONTINUE SAVED RUN, CANCEL; Esc cancels), and the
-  setup page says at its top that a run is in progress. Menu pages that redraw on a click (setup,
+- **Menus never hide an answer below the fold, and a question's marked answer is what the player
+  just asked for.** Launching a new run while one is saved asks in a pop-up centred over the page,
+  START A NEW RUN?, with two answers: START NEW RUN (marked) and GO BACK (also Esc). Continuing the
+  saved run is not offered there: the title screen's banner and the notice at the top of the setup
+  page (CONTINUE IT) offer it already, and in the pop-up it only undid a launch by a stray click.
+  The saved run is not thrown away. It ends as an abandoned run: it is paid its Legacy (the pop-up
+  says how much) and entered in the Chronicle (`App.retireSavedRun`), and the new run opens with a
+  line saying so. Nothing but the run itself is lost. Menu pages that redraw on a click (setup,
   Hall of Heirs, settings) keep their scroll position (`App.put`).
 - **Auto-pause** (setting) for anomalies (when a ship you sent reaches one), visitors, the first
   raid and a Hearth under siege.
