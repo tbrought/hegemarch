@@ -1,0 +1,37 @@
+{
+  "name": "hegemarch",
+  "private": true,
+  "version": "1.0.6",
+  "description": "Hegemarch: an 8-bit real-time space strategy roguelite. Light up a dark sector, world by world.",
+  "type": "module",
+  "scripts": {
+    "dev": "vite --open",
+    "start": "vite --open",
+    "build": "tsc --noEmit && vite build && node scripts/inline-build.mjs",
+    "package": "npm run build && node scripts/package.mjs",
+    "preview": "vite preview --open",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "simulate": "tsx scripts/simulate.ts",
+    "balance:passive": "tsx scripts/passive.ts",
+    "test:e2e": "node scripts/e2e.mjs",
+    "test:shots": "node scripts/shot.mjs",
+    "test:perf": "node scripts/perf.mjs",
+    "test:dist": "node scripts/smoke-dist.mjs",
+    "test:gallery": "node scripts/gallery.mjs",
+    "test:tutorial": "node scripts/tutorial.mjs",
+    "test:audio": "node scripts/audio.mjs",
+    "test:menus": "node scripts/menus.mjs",
+    "test:layouts": "node scripts/layouts.mjs",
+    "test:uifuzz": "node scripts/uifuzz.mjs",
+    "test:fuzz": "tsx scripts/fuzz.ts"
+  },
+  "devDependencies": {
+    "@types/node": "^24.19.1",
+    "playwright-core": "^1.64.0",
+    "tsx": "^4.23.15",
+    "typescript": "^7.0.2",
+    "vite": "^8.3.3",
+    "vitest": "^5.0.3"
+  }
+}

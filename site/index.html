@@ -1,0 +1,221 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Hegemarch</title>
+    <meta name="description" content="An 8-bit real-time space strategy roguelite. Light up a dark sector, world by world, and be crowned the next Hegemarch. Free to play in your browser." />
+    <link rel="canonical" href="https://hegemarch.com/" />
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Hegemarch" />
+    <meta property="og:description" content="An 8-bit real-time space strategy roguelite. Light up a dark sector, world by world. Free to play in your browser." />
+    <meta property="og:url" content="https://hegemarch.com/" />
+    <meta property="og:image" content="https://hegemarch.com/screenshot.png" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <link rel="icon" href="favicon.ico" sizes="32x32" />
+    <link rel="icon" href="favicon.svg" type="image/svg+xml" />
+    <link rel="apple-touch-icon" href="apple-touch-icon.png" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Pixelify+Sans:wght@400;600&family=Press+Start+2P&display=swap" />
+    <style>
+      /* The game's own palette and type (src/styles.css). */
+      :root {
+        --void: #0b0a1a;
+        --night: #1b1838;
+        --indigo: #2f2a5c;
+        --slate: #4b4f8a;
+        --dusk: #7f86c4;
+        --mist: #c8cbe6;
+        --bone: #fff4e0;
+        --gold: #ffd23f;
+        --ember: #ff8a1f;
+        --red: #e0402f;
+        --wine: #8c1d40;
+        --teal: #2fd5a6;
+        --display: 'Press Start 2P', 'Courier New', monospace;
+        --body: 'Pixelify Sans', 'Trebuchet MS', system-ui, sans-serif;
+        --px: 3px;
+        color-scheme: dark;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        background: var(--void);
+        color: var(--mist);
+        font-family: var(--body);
+        font-size: 19px;
+        line-height: 1.5;
+        -webkit-font-smoothing: none;
+        background-image: radial-gradient(1px 1px at 12% 18%, var(--dusk) 50%, transparent 51%), radial-gradient(1px 1px at 72% 9%, var(--mist) 50%, transparent 51%),
+          radial-gradient(1px 1px at 88% 42%, var(--dusk) 50%, transparent 51%), radial-gradient(1px 1px at 31% 63%, var(--slate) 50%, transparent 51%),
+          radial-gradient(1px 1px at 55% 88%, var(--dusk) 50%, transparent 51%), radial-gradient(1px 1px at 6% 84%, var(--mist) 50%, transparent 51%);
+      }
+      main {
+        width: min(900px, 100%);
+        margin: 0 auto;
+        padding: 48px 16px 40px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 26px;
+      }
+      .logo {
+        font-family: var(--display);
+        font-size: clamp(28px, 8vw, 64px);
+        letter-spacing: 0.06em;
+        color: var(--gold);
+        text-shadow:
+          4px 4px 0 var(--ember),
+          8px 8px 0 var(--wine);
+        margin: 0;
+        line-height: 1.1;
+        text-align: center;
+      }
+      .tagline {
+        margin: -10px 0 0;
+        font-size: 22px;
+        color: var(--dusk);
+        text-align: center;
+      }
+      .lead {
+        margin: 0;
+        max-width: 62ch;
+        text-align: center;
+        color: var(--mist);
+      }
+      .actions {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: center;
+        gap: 18px;
+      }
+      .btn {
+        display: inline-block;
+        font-family: var(--display);
+        font-size: 14px;
+        letter-spacing: 0.04em;
+        color: var(--bone);
+        background: var(--night);
+        text-decoration: none;
+        padding: 16px 20px 15px;
+        margin: var(--px);
+        box-shadow:
+          0 calc(var(--px) * -1) 0 0 var(--slate),
+          0 var(--px) 0 0 var(--slate),
+          calc(var(--px) * -1) 0 0 0 var(--slate),
+          var(--px) 0 0 0 var(--slate),
+          inset 0 calc(var(--px) * -1) 0 0 var(--indigo);
+      }
+      .btn:hover {
+        background: var(--indigo);
+      }
+      .btn:active {
+        transform: translateY(2px);
+      }
+      .btn:focus-visible {
+        outline: 2px dashed var(--gold);
+        outline-offset: 6px;
+      }
+      .btn.primary {
+        color: var(--gold);
+        background: var(--wine);
+        box-shadow:
+          0 calc(var(--px) * -1) 0 0 var(--gold),
+          0 var(--px) 0 0 var(--gold),
+          calc(var(--px) * -1) 0 0 0 var(--gold),
+          var(--px) 0 0 0 var(--gold),
+          inset 0 calc(var(--px) * -1) 0 0 var(--night);
+      }
+      .btn.primary:hover {
+        background: var(--red);
+        color: var(--bone);
+      }
+      .btn small {
+        display: block;
+        margin-top: 8px;
+        font-family: var(--body);
+        font-size: 15px;
+        letter-spacing: 0;
+        color: var(--mist);
+      }
+      .note {
+        margin: -6px 0 0;
+        font-size: 16px;
+        color: var(--dusk);
+        text-align: center;
+        max-width: 62ch;
+      }
+      .shot {
+        width: 100%;
+        max-width: 100%;
+        height: auto;
+        aspect-ratio: 16 / 9;
+        object-fit: cover;
+        image-rendering: pixelated;
+        box-shadow:
+          0 calc(var(--px) * -1) 0 0 var(--slate),
+          0 var(--px) 0 0 var(--slate),
+          calc(var(--px) * -1) 0 0 0 var(--slate),
+          var(--px) 0 0 0 var(--slate);
+        background: var(--night);
+      }
+      .features {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+        gap: 18px;
+        width: 100%;
+        margin: 0;
+        padding: 0;
+        list-style: none;
+      }
+      .features li {
+        background: var(--night);
+        padding: 14px 16px;
+        box-shadow: inset 0 var(--px) 0 0 var(--indigo);
+        min-width: 0;
+      }
+      .features b {
+        display: block;
+        font-family: var(--display);
+        font-size: 11px;
+        letter-spacing: 0.04em;
+        color: var(--gold);
+        margin-bottom: 8px;
+        font-weight: normal;
+      }
+      footer {
+        font-size: 15px;
+        color: var(--slate);
+        text-align: center;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1 class="logo">HEGEMARCH</h1>
+      <p class="tagline">Light up a dark sector, world by world.</p>
+      <p class="lead">
+        An 8-bit real-time space strategy roguelite. Kindle dark worlds, raise a fleet, choose Boons that bend the rules, and follow one of
+        three Destinies to the crown. Every run is a new sector, with new rivals and new Boons.
+      </p>
+      <div class="actions">
+        <a class="btn primary" href="play/">PLAY IN BROWSER<small>Free, nothing to install</small></a>
+        <a class="btn" href="hegemarch.zip" download>DOWNLOAD<small>Windows · macOS · Linux</small></a>
+      </div>
+      <p class="note">
+        Best on a computer with a mouse and keyboard. The download is a single file: unzip it and open <b>hegemarch.html</b> in any modern
+        browser, even offline. Your progress is saved in the browser you play in.
+      </p>
+      <img class="shot" src="screenshot.png" alt="A Hegemarch sector: glowing worlds joined by starlanes, with fleets in each house's color." width="1280" height="720" />
+      <ul class="features">
+        <li><b>REAL-TIME FLEETS</b>Strikers beat Breakers, Breakers beat Guardians and worlds, Guardians beat Strikers. Pause any time.</li>
+        <li><b>A RUN IS A NEW SECTOR</b>Omens, rival houses, anomalies and about 60 Boons, Pacts and Blueprints make each run different.</li>
+        <li><b>LEARN IN MINUTES</b>The First Night guides your first run step by step, and anything on screen explains itself when you point at it.</li>
+      </ul>
+      <footer>Hegemarch v{{VERSION}}</footer>
+    </main>
+  </body>
+</html>

@@ -1,0 +1,785 @@
+/* Hegemarch: DOM menus in the Ember-16 palette. The game itself is a pixel canvas. */
+:root {
+  color-scheme: dark;
+  --void: #0b0a1a;
+  --night: #1b1838;
+  --indigo: #2f2a5c;
+  --slate: #4b4f8a;
+  --dusk: #7f86c4;
+  --mist: #c8cbe6;
+  --bone: #fff4e0;
+  --gold: #ffd23f;
+  --ember: #ff8a1f;
+  --red: #e0402f;
+  --wine: #8c1d40;
+  --sea: #1f8a70;
+  --teal: #2fd5a6;
+  --sky: #3fa7ff;
+  --violet: #b05cff;
+  --pink: #ff6fb5;
+  --display: 'Press Start 2P', 'Courier New', monospace;
+  --body: 'Pixelify Sans', 'Trebuchet MS', system-ui, sans-serif;
+  --px: 3px;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  height: 100%;
+  overflow: hidden;
+  background: var(--void);
+  color: var(--bone);
+  font-family: var(--body);
+  font-size: 18px;
+  -webkit-font-smoothing: none;
+  font-variant-ligatures: none;
+  font-feature-settings: 'liga' 0, 'calt' 0;
+  user-select: none;
+}
+
+#game {
+  position: fixed;
+  left: 0;
+  top: 0;
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+  display: block;
+  touch-action: none;
+  outline: none;
+}
+
+#ui {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+}
+
+#ui > * {
+  pointer-events: auto;
+}
+
+/* ------------------------------------------------------------------ screens */
+
+.screen {
+  position: absolute;
+  inset: 0;
+  overflow: auto;
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  padding: 28px 16px 40px;
+  /* A flat darkening over the live sector behind the menus (a dither pattern here lets the map's
+     pixels show through between letters). */
+  background: rgba(11, 10, 26, 0.6);
+}
+
+.screen.crt::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  background: repeating-linear-gradient(to bottom, rgba(11, 10, 26, 0) 0 2px, rgba(11, 10, 26, 0.25) 2px 4px);
+}
+
+.screen.menu {
+  align-items: center;
+  flex-direction: column;
+  justify-content: center;
+  gap: 18px;
+}
+
+.page {
+  width: min(980px, 100%);
+}
+
+.logo {
+  font-family: var(--display);
+  font-size: clamp(30px, 7vw, 72px);
+  letter-spacing: 0.06em;
+  color: var(--gold);
+  text-shadow:
+    4px 4px 0 var(--ember),
+    8px 8px 0 var(--wine),
+    -2px -2px 0 var(--void);
+  text-align: center;
+  line-height: 1.1;
+}
+
+.tagline {
+  font-family: var(--body);
+  font-size: 20px;
+  color: var(--dusk);
+  text-align: center;
+  margin-top: -2px;
+}
+
+.menu-buttons {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: min(340px, 100%);
+  margin-top: 8px;
+}
+
+.menu-foot {
+  color: var(--slate);
+  font-size: 15px;
+  text-align: center;
+  line-height: 1.5;
+}
+
+h1 {
+  font-family: var(--display);
+  font-size: 22px;
+  color: var(--gold);
+  text-shadow: 3px 3px 0 var(--wine);
+  margin: 6px 0 14px;
+  letter-spacing: 0.05em;
+}
+
+h2 {
+  font-family: var(--display);
+  font-size: 13px;
+  color: var(--ember);
+  margin: 22px 0 10px;
+  letter-spacing: 0.05em;
+}
+
+.lead {
+  color: var(--mist);
+  font-size: 18px;
+  margin-bottom: 16px;
+  line-height: 1.4;
+}
+
+.dim {
+  color: var(--dusk);
+}
+
+.gold {
+  color: var(--gold);
+}
+
+.good {
+  color: var(--teal);
+}
+
+.bad {
+  color: var(--red);
+}
+
+/* ------------------------------------------------------------------ pixel boxes and buttons */
+
+.px-box {
+  background: var(--night);
+  box-shadow:
+    0 calc(var(--px) * -1) 0 0 var(--slate),
+    0 var(--px) 0 0 var(--slate),
+    calc(var(--px) * -1) 0 0 0 var(--slate),
+    var(--px) 0 0 0 var(--slate),
+    inset 0 var(--px) 0 0 var(--indigo);
+  padding: 14px 16px;
+  margin: var(--px);
+}
+
+button,
+.btn {
+  font-family: var(--display);
+  font-size: 12px;
+  letter-spacing: 0.04em;
+  color: var(--bone);
+  background: var(--night);
+  border: none;
+  padding: 12px 14px 11px;
+  margin: var(--px);
+  cursor: pointer;
+  box-shadow:
+    0 calc(var(--px) * -1) 0 0 var(--slate),
+    0 var(--px) 0 0 var(--slate),
+    calc(var(--px) * -1) 0 0 0 var(--slate),
+    var(--px) 0 0 0 var(--slate),
+    inset 0 calc(var(--px) * -1) 0 0 var(--indigo);
+  text-align: center;
+}
+
+button:hover {
+  background: var(--indigo);
+  box-shadow:
+    0 calc(var(--px) * -1) 0 0 var(--dusk),
+    0 var(--px) 0 0 var(--dusk),
+    calc(var(--px) * -1) 0 0 0 var(--dusk),
+    var(--px) 0 0 0 var(--dusk),
+    inset 0 calc(var(--px) * -1) 0 0 var(--night);
+}
+
+button:active {
+  transform: translateY(2px);
+}
+
+button:focus-visible {
+  outline: 2px dashed var(--gold);
+  outline-offset: 6px;
+}
+
+button.primary {
+  color: var(--gold);
+  background: var(--wine);
+  box-shadow:
+    0 calc(var(--px) * -1) 0 0 var(--gold),
+    0 var(--px) 0 0 var(--gold),
+    calc(var(--px) * -1) 0 0 0 var(--gold),
+    var(--px) 0 0 0 var(--gold),
+    inset 0 calc(var(--px) * -1) 0 0 var(--night);
+}
+
+button.primary:hover {
+  background: var(--red);
+  color: var(--bone);
+}
+
+button.active {
+  color: var(--gold);
+  background: var(--indigo);
+  box-shadow:
+    0 calc(var(--px) * -1) 0 0 var(--gold),
+    0 var(--px) 0 0 var(--gold),
+    calc(var(--px) * -1) 0 0 0 var(--gold),
+    var(--px) 0 0 0 var(--gold);
+}
+
+button.disabled,
+button:disabled {
+  color: var(--slate);
+  background: var(--night);
+  cursor: not-allowed;
+  box-shadow:
+    0 calc(var(--px) * -1) 0 0 var(--indigo),
+    0 var(--px) 0 0 var(--indigo),
+    calc(var(--px) * -1) 0 0 0 var(--indigo),
+    var(--px) 0 0 0 var(--indigo);
+}
+
+button.danger {
+  color: var(--red);
+}
+
+button.small {
+  font-size: 10px;
+  padding: 8px 10px 7px;
+}
+
+.row {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.foot-actions {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 24px;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+/* ------------------------------------------------------------------ setup */
+
+.heirs {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 14px;
+}
+
+.heir {
+  position: relative;
+  cursor: pointer;
+  padding: 12px 14px 14px;
+}
+
+/* The house's banner: its Hearth and starting fleet, drawn by the game (see app/houseArt.ts). */
+.heir-art {
+  display: block;
+  width: 100%;
+  height: 72px;
+  margin-bottom: 12px;
+  background: var(--void);
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+  box-shadow: 0 0 0 var(--px) var(--indigo);
+}
+
+.heir:hover .heir-art,
+.heir.sel .heir-art,
+.heir-art.chosen {
+  box-shadow: 0 0 0 var(--px) var(--hc);
+}
+
+.heir .hn {
+  font-family: var(--display);
+  font-size: 12px;
+  color: var(--hc);
+  margin-bottom: 6px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.heir .swatch {
+  width: 12px;
+  height: 12px;
+  background: var(--hc);
+  box-shadow: 3px 3px 0 var(--void);
+  flex: none;
+}
+
+.heir .ht {
+  color: var(--dusk);
+  font-size: 15px;
+}
+
+.heir .hd {
+  color: var(--mist);
+  font-size: 16px;
+  margin: 6px 0;
+  line-height: 1.3;
+}
+
+.heir ul {
+  margin: 0;
+  padding-left: 18px;
+  color: var(--bone);
+  font-size: 15px;
+  line-height: 1.35;
+}
+
+.heir.sel {
+  background: var(--indigo);
+  box-shadow:
+    0 -3px 0 0 var(--hc),
+    0 3px 0 0 var(--hc),
+    -3px 0 0 0 var(--hc),
+    3px 0 0 0 var(--hc);
+}
+
+/* Locked houses fade their contents, not the card: a see-through card lets the map behind it
+   show through the text. */
+.heir.locked > * {
+  opacity: 0.55;
+}
+
+.heir.locked {
+  cursor: not-allowed;
+}
+
+.opts {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 16px;
+  margin-top: 18px;
+}
+
+.opt h4 {
+  font-family: var(--display);
+  font-size: 10px;
+  color: var(--ember);
+  margin: 0 0 8px;
+}
+
+.opt .help {
+  color: var(--dusk);
+  font-size: 15px;
+  margin-top: 6px;
+}
+
+input[type='text'] {
+  font-family: var(--body);
+  font-size: 17px;
+  color: var(--bone);
+  background: var(--void);
+  border: none;
+  padding: 9px 10px;
+  margin: 3px;
+  width: 170px;
+  box-shadow:
+    0 -3px 0 0 var(--slate),
+    0 3px 0 0 var(--slate),
+    -3px 0 0 0 var(--slate),
+    3px 0 0 0 var(--slate);
+}
+
+input[type='range'] {
+  width: 100%;
+  accent-color: var(--gold);
+}
+
+.check {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  cursor: pointer;
+  color: var(--mist);
+  font-size: 17px;
+}
+
+.check .box {
+  width: 16px;
+  height: 16px;
+  background: var(--void);
+  box-shadow:
+    0 -3px 0 0 var(--slate),
+    0 3px 0 0 var(--slate),
+    -3px 0 0 0 var(--slate),
+    3px 0 0 0 var(--slate);
+  flex: none;
+  margin: 3px;
+}
+
+.check.on .box {
+  background: var(--gold);
+}
+
+.first-night {
+  text-align: center;
+  padding: 22px 24px 26px;
+}
+
+.first-night .big {
+  font-size: 20px;
+  color: var(--mist);
+  line-height: 1.45;
+  margin: 8px auto 18px;
+  max-width: 560px;
+}
+
+/* ------------------------------------------------------------------ hall, results */
+
+.perks {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 12px;
+}
+
+.perk {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+}
+
+.perk .pn {
+  font-family: var(--display);
+  font-size: 10px;
+  color: var(--gold);
+  margin-bottom: 4px;
+}
+
+.perk .pd {
+  color: var(--mist);
+  font-size: 15px;
+  line-height: 1.3;
+}
+
+.legacy-badge {
+  font-family: var(--display);
+  font-size: 13px;
+  color: var(--gold);
+}
+
+table.history,
+table.stats {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 15px;
+}
+
+table.history th {
+  font-family: var(--display);
+  font-size: 9px;
+  color: var(--ember);
+  text-align: left;
+  padding: 4px 6px;
+}
+
+table.history td,
+table.stats td {
+  padding: 4px 6px;
+  border-top: 2px solid var(--indigo);
+  color: var(--mist);
+}
+
+table.stats td:last-child {
+  text-align: right;
+  color: var(--bone);
+}
+
+table.stats tr.total td {
+  color: var(--gold);
+  font-family: var(--display);
+  font-size: 11px;
+  padding-top: 8px;
+}
+
+.results .cols {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 16px;
+}
+
+.results h3 {
+  font-family: var(--display);
+  font-size: 11px;
+  color: var(--ember);
+  margin: 0 0 10px;
+}
+
+.results .reason {
+  text-align: center;
+  color: var(--mist);
+  font-size: 19px;
+  margin: -4px 0 20px;
+}
+
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 8px;
+}
+
+.chip {
+  font-size: 15px;
+  color: var(--rc);
+  background: var(--void);
+  padding: 3px 8px;
+  box-shadow: 0 0 0 2px var(--rc);
+  margin: 2px;
+}
+
+/* ------------------------------------------------------------------ loading */
+
+.loading {
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.bar {
+  width: min(360px, 80vw);
+  height: 12px;
+  background: var(--void);
+  box-shadow:
+    0 -3px 0 0 var(--slate),
+    0 3px 0 0 var(--slate),
+    -3px 0 0 0 var(--slate),
+    3px 0 0 0 var(--slate);
+}
+
+.bar i {
+  display: block;
+  height: 100%;
+  background: repeating-linear-gradient(90deg, var(--gold) 0 6px, var(--ember) 6px 9px);
+}
+
+.howto p {
+  color: var(--mist);
+  line-height: 1.45;
+  font-size: 17px;
+  margin: 0 0 12px;
+}
+
+.howto b {
+  color: var(--gold);
+  font-weight: 600;
+}
+
+.kv {
+  display: grid;
+  grid-template-columns: 150px 1fr;
+  gap: 14px 16px;
+  align-items: center;
+}
+
+@media (max-width: 560px) {
+  .screen {
+    padding: 18px 16px 30px;
+  }
+  .kv {
+    grid-template-columns: 1fr;
+  }
+  h1 {
+    font-size: 17px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  button:active {
+    transform: none;
+  }
+}
+
+/* Effect text: gains, drawbacks and game keywords (same colors as in the game). */
+.rt-gain {
+  color: var(--teal);
+}
+
+.rt-loss {
+  color: var(--red);
+}
+
+.rt-kw {
+  color: var(--gold);
+}
+
+/* Glossary terms in menu text: hover for an explanation. */
+.gl {
+  text-decoration: underline dotted;
+  text-decoration-thickness: 2px;
+  text-underline-offset: 3px;
+  cursor: help;
+}
+
+[data-tip] {
+  cursor: help;
+}
+
+button[data-tip],
+.heir[data-tip] {
+  cursor: pointer;
+}
+
+/* The floating tooltip for menus (game-style pixel box). */
+.gtip {
+  position: fixed;
+  z-index: 50;
+  max-width: 300px;
+  pointer-events: none;
+  background: var(--void);
+  color: var(--mist);
+  font-family: var(--body);
+  font-size: 15px;
+  line-height: 1.35;
+  padding: 8px 10px;
+  box-shadow:
+    0 -3px 0 0 var(--dusk),
+    0 3px 0 0 var(--dusk),
+    -3px 0 0 0 var(--dusk),
+    3px 0 0 0 var(--dusk);
+}
+
+.gtip b {
+  display: block;
+  color: var(--gold);
+  font-family: var(--display);
+  font-size: 10px;
+  font-weight: normal;
+  letter-spacing: 0.04em;
+  margin-bottom: 6px;
+}
+
+/* A one-time message on the title screen (for example, a save that could not be continued). */
+.notice {
+  max-width: 520px;
+  color: var(--ember);
+  font-size: 16px;
+  line-height: 1.4;
+  text-align: center;
+}
+
+/* The map's fleet badge, for the menu's How to Play. */
+.fleet-badge {
+  display: inline-block;
+  font-family: var(--display);
+  font-size: 9px;
+  color: var(--gold);
+  background: var(--night);
+  padding: 2px 4px 1px 13px;
+  margin: 0 2px;
+  box-shadow: 0 0 0 2px var(--gold);
+  position: relative;
+  vertical-align: 1px;
+}
+
+.fleet-badge::before {
+  content: '';
+  position: absolute;
+  left: 4px;
+  top: 50%;
+  transform: translateY(-50%);
+  border-left: 5px solid var(--gold);
+  border-top: 4px solid transparent;
+  border-bottom: 4px solid transparent;
+}
+
+/* A notice across the top of a page (a run already in progress), with its action beside it. */
+.notice.wide {
+  max-width: none;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  flex-wrap: wrap;
+  text-align: left;
+  margin-bottom: 16px;
+  box-shadow:
+    0 calc(var(--px) * -1) 0 0 var(--ember),
+    0 var(--px) 0 0 var(--ember),
+    calc(var(--px) * -1) 0 0 0 var(--ember),
+    var(--px) 0 0 0 var(--ember);
+}
+
+.notice.wide b {
+  color: var(--bone);
+  font-weight: normal;
+}
+
+/* A question that needs an answer before anything else: centred over the page, wherever it is scrolled. */
+.dialog-back {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  background: rgba(11, 10, 26, 0.78);
+  z-index: 20;
+}
+
+.dialog {
+  width: min(520px, 100%);
+  text-align: center;
+  box-shadow:
+    0 calc(var(--px) * -1) 0 0 var(--ember),
+    0 var(--px) 0 0 var(--ember),
+    calc(var(--px) * -1) 0 0 0 var(--ember),
+    var(--px) 0 0 0 var(--ember);
+}
+
+.dialog h2 {
+  margin-top: 4px;
+}
+
+.dialog p {
+  color: var(--mist);
+  line-height: 1.45;
+  margin: 10px 0;
+}
+
+.dialog b {
+  color: var(--bone);
+  font-weight: normal;
+}
+
+.dialog-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 12px;
+  margin-top: 18px;
+}

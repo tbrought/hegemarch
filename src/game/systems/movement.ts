@@ -1,0 +1,370 @@
+import type { Game } from '../Game';
+import { ECON } from '../data/worlds';
+import { UNITS } from '../data/units';
+import { mul } from '../mods';
+import type { Unit, UnitDef } from '../types';
+import { clamp, dist, turnToward } from '../util';
+
+/** Deterministic per-unit pseudo random in [0,1). */
+function uhash(id: number, salt: number): number {
+  let h = (id * 374761393 + salt * 668265263) >>> 0;
+  h = Math.imul(h ^ (h >>> 13), 1274126177) >>> 0;
+  return ((h ^ (h >>> 16)) >>> 0) / 4294967296;
+}
+
+export function targetPos(g: Game, u: Unit): { x: number; y: number; r: number } | null {
+  if (u.target > 0) {
+    const t = g.units.get(u.target);
+    if (!t || t.dead || t.node !== u.node) return null;
+    return { x: t.x, y: t.y, r: UNITS[t.type].radius };
+  }
+  if (u.target < 0) {
+    const n = g.nodes[-u.target - 1];
+    if (!n || n.id !== u.node) return null;
+    return { x: n.x, y: n.y, r: n.r };
+  }
+  return null;
+}
+
+export function movementTick(g: Game, dt: number) {
+  for (const u of g.unitList) {
+    if (u.dead) continue;
+    const def = UNITS[u.type];
+    if (u.lane) {
+      transit(g, u, dt);
+      continue;
+    }
+    if (def.isStatic) {
+      const tp = targetPos(g, u);
+      if (tp) u.a = turnToward(u.a, Math.atan2(tp.y - u.y, tp.x - u.x), def.turn * dt);
+      else u.a += dt * 0.05;
+      continue;
+    }
+    if (u.stun > 0) {
+      u.vx *= 0.92;
+      u.vy *= 0.92;
+      u.x += u.vx * dt;
+      u.y += u.vy * dt;
+      continue;
+    }
+    if (u.type === 'fighter') {
+      fighterMove(g, u, def, dt);
+      continue;
+    }
+    u.wellTime += dt;
+    if (u.order === 'explore' && u.path.length === 0 && u.charge < 0) pickExploreTarget(g, u);
+    if (u.path.length > 0) {
+      if (u.charge < 0) u.charge = g.jumpChargeOf(u);
+      else if (u.snare <= 0) {
+        u.charge -= dt;
+        if (u.charge <= 0) {
+          startJump(g, u);
+          continue;
+        }
+      }
+    }
+    if (u.type === 'seed' && u.order === 'kindle') kindleStep(g, u, dt);
+    steer(g, u, def, dt);
+  }
+  separation(g);
+}
+
+function startJump(g: Game, u: Unit) {
+  const to = u.path.shift()!;
+  const from = u.node;
+  const fromN = g.nodes[from];
+  const toN = g.nodes[to];
+  const back = Math.atan2(fromN.y - toN.y, fromN.x - toN.x);
+  const ea = back + (uhash(u.id, 1) - 0.5) * 0.8;
+  const er = toN.well * (0.6 + uhash(u.id, 2) * 0.2);
+  const ex = toN.x + Math.cos(ea) * er;
+  const ey = toN.y + Math.sin(ea) * er;
+  const len = dist(u.x, u.y, ex, ey);
+  const dur = Math.max(1, len / g.laneSpeedOf(u));
+  if (g.fxEnabled) g.fx.push({ k: 'jumpOut', x: u.x, y: u.y, a: Math.atan2(ey - u.y, ex - u.x), node: from, color: g.factions[u.owner].color });
+  u.lane = { from, to, t: 0, dur, sx: u.x, sy: u.y, ex, ey };
+  u.node = -1;
+  u.charge = -1;
+  u.target = 0;
+  u.kindle = 0;
+  u.a = Math.atan2(ey - u.y, ex - u.x);
+  const jd = g.factions[u.owner].mods.flags.jumpDamage ?? 0;
+  if (jd > 0) {
+    u.hp -= u.maxHp * jd;
+    if (u.hp <= 1) u.hp = 1;
+  }
+  // Recall fighters
+  if (u.launched > 0) {
+    for (const o of g.unitList) {
+      if (o.parent === u.id && !o.dead) {
+        o.dead = true;
+        u.fighters++;
+      }
+    }
+    u.launched = 0;
+  }
+}
+
+function transit(g: Game, u: Unit, dt: number) {
+  const L = u.lane!;
+  L.t += dt / L.dur;
+  const t = Math.min(1, L.t);
+  const k = t < 0.5 ? 2 * t * t : 1 - 2 * (1 - t) * (1 - t);
+  u.x = L.sx + (L.ex - L.sx) * k;
+  u.y = L.sy + (L.ey - L.sy) * k;
+  u.a = Math.atan2(L.ey - L.sy, L.ex - L.sx);
+  if (L.t >= 1) arrive(g, u);
+}
+
+function arrive(g: Game, u: Unit) {
+  const L = u.lane!;
+  const n = g.nodes[L.to];
+  u.node = L.to;
+  u.lane = null;
+  u.x = L.ex;
+  u.y = L.ey;
+  const a = Math.atan2(L.ey - L.sy, L.ex - L.sx);
+  const s = g.speedOf(u);
+  u.vx = Math.cos(a) * s * 0.6;
+  u.vy = Math.sin(a) * s * 0.6;
+  u.arrivedAt = g.time;
+  u.wellTime = 0;
+  g.buckets[u.node].push(u);
+  if (g.fxEnabled) g.fx.push({ k: 'jumpIn', x: u.x, y: u.y, a, node: u.node, color: g.factions[u.owner].color });
+  if (u.path.length === 0) {
+    // An explicit point only counts at the world it was given for (not after a stop or a new order).
+    if (!isNaN(u.ox) && Math.hypot(u.ox - n.x, u.oy - n.y) < n.r + 900) {
+      u.ax = u.ox;
+      u.ay = u.oy;
+    } else {
+      const j = (uhash(u.id, 3) - 0.5) * 90;
+      const j2 = (uhash(u.id, 4) - 0.5) * 90;
+      u.ax = n.x + (L.ex - n.x) * 0.55 + j;
+      u.ay = n.y + (L.ey - n.y) * 0.55 + j2;
+    }
+    if (u.order === 'move' || u.order === 'retreat') u.order = 'idle';
+  } else {
+    u.ax = u.x;
+    u.ay = u.y;
+  }
+}
+
+function canChase(u: Unit, def: UnitDef): boolean {
+  if (u.path.length > 0) return false;
+  if (def.role === 'seed' || def.role === 'scout') return false;
+  return u.order === 'idle' || u.order === 'attack';
+}
+
+function prefRange(g: Game, u: Unit, def: UnitDef): number {
+  if (def.role === 'carrier') return 420;
+  return g.maxRangeOf(u) * 0.75;
+}
+
+function steer(g: Game, u: Unit, def: UnitDef, dt: number) {
+  const spd = g.speedOf(u);
+  let dvx = 0;
+  let dvy = 0;
+  let faceA: number | null = null;
+  const tp = targetPos(g, u);
+  if (u.path.length > 0) {
+    const nx = g.nodes[u.path[0]];
+    faceA = Math.atan2(nx.y - u.y, nx.x - u.x);
+  } else if (tp && canChase(u, def)) {
+    const dx = tp.x - u.x;
+    const dy = tp.y - u.y;
+    const d = Math.hypot(dx, dy) || 1;
+    const pref = prefRange(g, u, def) + tp.r;
+    if (d > pref) {
+      dvx = (dx / d) * spd;
+      dvy = (dy / d) * spd;
+    } else {
+      const s = u.id % 2 ? 1 : -1;
+      const radial = clamp((d - pref * 0.8) / pref, -1, 1) * spd * 0.6;
+      dvx = (-dy / d) * s * spd * 0.42 + (dx / d) * radial;
+      dvy = (dx / d) * s * spd * 0.42 + (dy / d) * radial;
+    }
+    faceA = Math.atan2(dy, dx);
+  } else {
+    const dx = u.ax - u.x;
+    const dy = u.ay - u.y;
+    const d = Math.hypot(dx, dy);
+    if (d > 6) {
+      const s = Math.min(spd, d * 1.1);
+      dvx = (dx / d) * s;
+      dvy = (dy / d) * s;
+    }
+    if (tp) faceA = Math.atan2(tp.y - u.y, tp.x - u.x);
+  }
+  const accel = spd * (def.radius < 12 ? 2.2 : 1.3) * dt;
+  let ax = dvx - u.vx;
+  let ay = dvy - u.vy;
+  const al = Math.hypot(ax, ay);
+  if (al > accel) {
+    ax *= accel / al;
+    ay *= accel / al;
+  }
+  u.vx += ax;
+  u.vy += ay;
+  u.x += u.vx * dt;
+  u.y += u.vy * dt;
+  const sp = Math.hypot(u.vx, u.vy);
+  const want = sp > spd * 0.3 ? Math.atan2(u.vy, u.vx) : (faceA ?? u.a);
+  u.a = turnToward(u.a, want, def.turn * dt);
+}
+
+function fighterMove(g: Game, u: Unit, def: UnitDef, dt: number) {
+  const parent = u.parent > 0 ? g.units.get(u.parent) : undefined;
+  if (u.parent > 0 && (!parent || parent.dead || parent.lane || parent.node !== u.node)) {
+    // Carrier left or died: fighters return to the hangar instantly (or are lost).
+    u.dead = true;
+    if (parent && !parent.dead) {
+      parent.fighters++;
+      parent.launched = Math.max(0, parent.launched - 1);
+    }
+    return;
+  }
+  const spd = g.speedOf(u);
+  const tp = targetPos(g, u);
+  let tx: number;
+  let ty: number;
+  if (tp) {
+    // Strafing runs: aim at a point that circles the target.
+    const ang = g.time * 1.6 + (u.id % 7);
+    tx = tp.x + Math.cos(ang) * (tp.r + 45);
+    ty = tp.y + Math.sin(ang) * (tp.r + 45);
+  } else if (parent) {
+    tx = parent.x;
+    ty = parent.y;
+    if (dist(u.x, u.y, tx, ty) < UNITS[parent.type].radius + 8) {
+      u.dead = true;
+      parent.fighters++;
+      parent.launched = Math.max(0, parent.launched - 1);
+      return;
+    }
+  } else {
+    tx = u.ax;
+    ty = u.ay;
+  }
+  const dx = tx - u.x;
+  const dy = ty - u.y;
+  const want = Math.atan2(dy, dx);
+  u.a = turnToward(u.a, want, def.turn * dt);
+  u.vx = Math.cos(u.a) * spd;
+  u.vy = Math.sin(u.a) * spd;
+  u.x += u.vx * dt;
+  u.y += u.vy * dt;
+}
+
+function separation(g: Game) {
+  for (let nid = 0; nid < g.buckets.length; nid++) {
+    const b = g.buckets[nid];
+    const n = b.length;
+    if (n < 2) continue;
+    if (n > 90 && (g.tick + nid) % 2 === 1) continue;
+    for (let i = 0; i < n; i++) {
+      const a = b[i];
+      if (a.dead || a.lane || a.type === 'fighter') continue;
+      const ra = UNITS[a.type].radius;
+      const sa = !!UNITS[a.type].isStatic;
+      for (let j = i + 1; j < n; j++) {
+        const c = b[j];
+        if (c.dead || c.lane || c.type === 'fighter') continue;
+        const sc = !!UNITS[c.type].isStatic;
+        if (sa && sc) continue;
+        const rr = (ra + UNITS[c.type].radius) * 1.1 + 4;
+        const dx = c.x - a.x;
+        const dy = c.y - a.y;
+        const d2 = dx * dx + dy * dy;
+        if (d2 >= rr * rr) continue;
+        const d = Math.sqrt(d2) || 0.01;
+        const push = (rr - d) * 0.5;
+        const ux = d2 > 0 ? dx / d : 1;
+        const uy = d2 > 0 ? dy / d : 0;
+        if (sa) {
+          c.x += ux * push * 2;
+          c.y += uy * push * 2;
+        } else if (sc) {
+          a.x -= ux * push * 2;
+          a.y -= uy * push * 2;
+        } else {
+          a.x -= ux * push;
+          a.y -= uy * push;
+          c.x += ux * push;
+          c.y += uy * push;
+        }
+      }
+    }
+    // Keep ships out of planet/star bodies.
+    const node = g.nodes[nid];
+    for (const u of b) {
+      if (u.dead || u.lane || UNITS[u.type].isStatic) continue;
+      const minR = node.r + UNITS[u.type].radius + 6;
+      const dx = u.x - node.x;
+      const dy = u.y - node.y;
+      const d2 = dx * dx + dy * dy;
+      if (d2 < minR * minR) {
+        const d = Math.sqrt(d2) || 1;
+        u.x = node.x + (dx / d) * minR;
+        u.y = node.y + (dy / d) * minR;
+      }
+    }
+  }
+}
+
+function kindleStep(g: Game, u: Unit, dt: number) {
+  const tid = u.orderTarget;
+  if (u.node !== tid || u.path.length) return;
+  const n = g.nodes[tid];
+  if (n.owner !== -1 || n.kind !== 'planet') {
+    u.order = 'idle';
+    u.kindle = 0;
+    g.notify(u.owner, `Kindling ${n.name} stopped: the world is no longer dark.`, 'info', tid);
+    return;
+  }
+  const a = Math.atan2(u.y - n.y, u.x - n.x);
+  u.ax = n.x + Math.cos(a) * (n.r + 70);
+  u.ay = n.y + Math.sin(a) * (n.r + 70);
+  if (g.hasHostiles(tid, u.owner)) {
+    if (u.kindle >= 0 && u.wellTime > 2) {
+      u.kindle = -1;
+      g.notify(u.owner, `Your seed ship waits at ${n.name}: its defenders must be cleared first.`, 'info', tid);
+    }
+    return;
+  }
+  if (u.kindle < 0) u.kindle = 0;
+  if (dist(u.x, u.y, n.x, n.y) > n.r + 160) return;
+  const f = g.factions[u.owner];
+  u.kindle += dt * mul(f.mods.kindleSpeed);
+  if (u.kindle >= ECON.kindleTime) {
+    u.dead = true;
+    u.hp = 0;
+    g.kindleWorld(n, u.owner);
+  }
+}
+
+function pickExploreTarget(g: Game, u: Unit) {
+  const f = g.factions[u.owner];
+  const from = u.node;
+  let best = -1;
+  let bd = Infinity;
+  for (const n of g.nodes) {
+    if (f.explored[n.id] || n.id === from) continue;
+    let d = g.pathLen(from, n.id);
+    if (!isFinite(d)) continue;
+    for (const o of g.unitList) if (o !== u && !o.dead && o.owner === u.owner && o.order === 'explore' && o.dest === n.id) d += 6000;
+    if (d < bd) {
+      bd = d;
+      best = n.id;
+    }
+  }
+  if (best < 0) {
+    u.order = 'idle';
+    if (!f.warned.scouted) {
+      f.warned.scouted = g.time;
+      g.notify(u.owner, 'Scouting complete: the whole sector has been charted.', 'info');
+    }
+    return;
+  }
+  u.dest = best;
+  u.path = g.pathTo(from, best);
+}
