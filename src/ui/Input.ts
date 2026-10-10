@@ -310,6 +310,9 @@ export class Input {
       case 'KeyR':
         this.hud.actions.retreat();
         break;
+      case 'KeyA':
+        if (this.s.game.cradle) this.hud.actions.advance();
+        break;
       case 'KeyE':
         this.hud.actions.explore();
         break;

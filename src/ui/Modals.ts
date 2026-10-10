@@ -1,6 +1,7 @@
 import type { Modal } from '../app/Session';
 import { ABILITY_BY_ID } from '../game/data/abilities';
 import { AMBITION_BY_ID } from '../game/data/ambitions';
+import { ERAS, LAST_CRADLE_ERA } from '../game/data/eras';
 import { CARD_BY_ID, CAT_LABEL, type CardCat } from '../game/data/cards';
 import { EVENT_BY_ID } from '../game/data/events';
 import { HEIR_BY_ID } from '../game/data/heirs';
@@ -146,6 +147,8 @@ export class Modals {
         return this.nightDone(g);
       case 'omens':
         return this.omens(g);
+      case 'cradle':
+        return this.cradleCard(g);
       case 'log':
         return this.logView(g);
       case 'confirm':
@@ -276,7 +279,7 @@ export class Modals {
     const w = n * cw + (n - 1) * 4 + 16;
     const h = ch + 52;
     const { x, y } = this.frame(g, w, h, p.pendingDrafts > 1 ? `CHOOSE A BOON (${p.pendingDrafts} WAITING)` : 'CHOOSE A BOON');
-    textCenter(g, 'Your Lore has gathered. Pick one to keep for this run.', x + w / 2, y + 16, PAL.dusk, 'tiny');
+    textCenter(g, this.g.cradle ? 'Every new age brings one. Pick one: your house keeps it, here and among the stars.' : 'Your Lore has gathered. Pick one to keep for this run.', x + w / 2, y + 16, PAL.dusk, 'tiny');
     const cx0 = x + 8;
     const cy = y + 25;
     if (this.dealt !== offer) {
@@ -520,7 +523,7 @@ export class Modals {
     const { x, y } = this.frame(g, w, h, this.statusTab === 'boons' ? 'YOUR BOONS' : 'STATUS');
     this.closeButton(g, x, y, w);
     const early = !this.s.reveal().destinies && this.s.guided;
-    const tabs: [StatusTab, string][] = early ? [['boons', 'BOONS']] : [['destinies', 'DESTINIES'], ['boons', 'BOONS'], ['rivals', 'RIVALS'], ['run', 'THIS RUN']];
+    const tabs: [StatusTab, string][] = early ? [['boons', 'BOONS']] : [['destinies', this.g.cradle ? 'THE CLIMB' : 'DESTINIES'], ['boons', 'BOONS'], ['rivals', 'RIVALS'], ['run', 'THIS RUN']];
     if (early) this.statusTab = 'boons';
     let tx = x + 6;
     for (const [id, label] of tabs) {
@@ -534,6 +537,10 @@ export class Modals {
     const p = this.g.player;
     switch (this.statusTab) {
       case 'destinies': {
+        if (this.g.cradle) {
+          this.agesTab(g, cx, cy, cw, y + h - 5);
+          break;
+        }
         let ly = cy;
         for (const v of this.g.victories) {
           const d = VICTORIES[v];
@@ -1007,6 +1014,79 @@ export class Modals {
     this.ui.button(g, 'nd-keep', x + w / 2 + 3, y + h - 17, bw, 13, 'KEEP PLAYING', () => this.close(), {
       tip: 'Play this run on: it is a whole game, and every Destiny is still open.',
     });
+  }
+
+  // ---------------------------------------------------------------------
+  // The card at the start of an Ages run
+  // ---------------------------------------------------------------------
+
+  private cradleCard(g: Ctx) {
+    const W = this.hud.W;
+    const w = Math.min(W - 16, 320);
+    const inner = w - 30;
+    const p = this.g.player;
+    const points: [string, string, string][] = [
+      ['lore', 'CLIMB', `Your Lore is saved for the next age. When the bar at the top is full, press ADVANCE (or A): the ${ERAS[1].name} begins.`],
+      ['boon', 'EVERY AGE', 'A new age brings stronger units, new things to build, and one Boon to choose. You keep those Boons for the whole run.'],
+      ['ascension', 'THE ARK', `After the ${ERAS[LAST_CRADLE_ERA].name} you build your Ark. It carries your house to the stars, and there the crown is decided.`],
+      ['conquest', 'YOUR RIVALS', 'They climb too. An Ark that leaves before yours is ahead of you out there. A Hearth you put out here never troubles you again.'],
+    ];
+    const blocks = points.map(([, , t]) => wrap(t, inner, 'main'));
+    const lead = wrap(`Every house begins here, as a tribe of the Stone Age, all on one planet. You lead the ${p.name}.`, w - 20, 'main');
+    const h = 20 + lead.length * 10 + 6 + blocks.reduce((a, b) => a + 12 + b.length * 10 + 4, 0) + 20;
+    const { x, y } = this.frame(g, w, h, 'THE CRADLE', PAL.gold);
+    let ly = y + 17;
+    for (const l of lead) {
+      text(g, l, x + 10, ly, PAL.bone);
+      ly += 10;
+    }
+    ly += 6;
+    points.forEach(([ic, title], i) => {
+      icon(g, ic, x + 10, ly + 1);
+      text(g, title, x + 21, ly + 1, PAL.gold, 'tiny');
+      ly += 10;
+      for (const l of blocks[i]) {
+        text(g, l, x + 21, ly, PAL.mist);
+        ly += 10;
+      }
+      ly += 6;
+    });
+    this.ui.button(g, 'cradle-begin', x + w / 2 - 34, y + h - 17, 68, 13, 'BEGIN', () => this.close(), { primary: true });
+  }
+
+  /** The status screen's first tab on the cradle: where every house stands on the climb. */
+  private agesTab(g: Ctx, cx: number, cy: number, cw: number, bottom: number) {
+    const game = this.g;
+    let ly = cy;
+    for (const f of game.empires()) {
+      const gone = f.launchedAt >= 0;
+      const dead = !f.alive && !gone;
+      rect(g, cx, ly + 1, 5, 5, dead ? PAL.slate : f.color);
+      text(g, (f.isPlayer ? `${f.name} (you)` : f.name).toUpperCase(), cx + 9, ly, dead ? PAL.slate : f.color);
+      const fate = gone ? `LEFT FOR THE STARS AT ${fmtTime(f.launchedAt)}` : dead ? 'ITS HEARTH HAS GONE DARK' : ERAS[f.era].name.toUpperCase() + (f.advance && f.era >= LAST_CRADLE_ERA ? ' · BUILDING ITS ARK' : '');
+      text(g, fate, cx + cw - textWidth(fate, 'tiny'), ly + 1, gone ? PAL.gold : dead ? PAL.slate : PAL.mist, 'tiny');
+      for (let k = 0; k <= LAST_CRADLE_ERA; k++) rect(g, cx + 9 + k * 14, ly + 10, 12, 2, dead ? PAL.indigo : gone || f.era > k ? (gone ? PAL.gold : f.color) : PAL.indigo);
+      ly += 17;
+    }
+    rect(g, cx, ly, cw, 1, PAL.indigo);
+    ly += 5;
+    const p = game.player;
+    const era = ERAS[Math.min(p.era, LAST_CRADLE_ERA)];
+    const lines = [
+      p.era >= LAST_CRADLE_ERA
+        ? `Your next step is the Ark: ${era.lore} Lore, ${era.cost} Embers and ${era.time} seconds at your Hearth. When it is done, your house leaves for the stars.`
+        : `Your next age is the ${ERAS[p.era + 1].name}: ${era.lore} Lore, ${era.cost} Embers and ${era.time} seconds at your Hearth. ${ERAS[p.era + 1].brings}`,
+      'Put out every rival Hearth before any Ark rises, and the crown is yours at once. Otherwise it is decided among the stars: a house whose Ark has left is gone ahead, not beaten.',
+      'A unit keeps the age it was raised in. Rest it 20 seconds in one of your lands and it is re-armed.',
+    ];
+    for (const t of lines) {
+      for (const l of wrap(t, cw, 'main')) {
+        if (ly > bottom - 10) return;
+        text(g, l, cx, ly, PAL.dusk);
+        ly += 10;
+      }
+      ly += 3;
+    }
   }
 
   // ---------------------------------------------------------------------

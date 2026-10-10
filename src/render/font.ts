@@ -237,10 +237,25 @@ export function charWidth(ch: string, font: FontId = 'main'): number {
   return gl ? gl.w + 1 : f.space + 1;
 }
 
+/**
+ * A vocabulary: in some places the same things go by other names (the cradle world of an Ages run calls
+ * worlds "lands"). While one is set, every text that is measured, wrapped or drawn passes through it first.
+ */
+let vocabulary: ((s: string) => string) | null = null;
+
+export function setVocabulary(f: ((s: string) => string) | null) {
+  vocabulary = f;
+}
+
+/** A text in the words of the current vocabulary. */
+export function say(s: string): string {
+  return vocabulary ? vocabulary(s) : s;
+}
+
 /** Width in pixels of a single line of text (no trailing gap). */
 export function textWidth(s: string, font: FontId = 'main'): number {
   let w = 0;
-  for (const ch of s) w += charWidth(ch, font);
+  for (const ch of say(s)) w += charWidth(ch, font);
   return Math.max(0, w - 1);
 }
 
@@ -254,6 +269,7 @@ export function capHeight(font: FontId = 'main'): number {
 
 /** Draw one line of text with its top-left at (x, y). Returns the x after the last glyph. */
 export function text(g: Ctx, s: string, x: number, y: number, color: string, font: FontId = 'main'): number {
+  s = say(s);
   const f = fonts()[font];
   const atlas = tinted(f, color);
   let cx = Math.round(x);
@@ -323,6 +339,7 @@ export function textRight(g: Ctx, s: string, rx: number, y: number, color: strin
 
 /** Word-wrap text into lines no wider than maxW. Honors explicit newlines. */
 export function wrap(s: string, maxW: number, font: FontId = 'main'): string[] {
+  s = say(s);
   const out: string[] = [];
   for (const para of s.split('\n')) {
     const words = para.split(' ');
@@ -364,6 +381,7 @@ export function paragraph(g: Ctx, s: string, x: number, y: number, maxW: number,
 
 /** Shorten text with an ellipsis so it fits. */
 export function fit(s: string, maxW: number, font: FontId = 'main'): string {
+  s = say(s);
   if (textWidth(s, font) <= maxW) return s;
   let t = s;
   while (t.length > 1 && textWidth(t + '…', font) > maxW) t = t.slice(0, -1);

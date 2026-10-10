@@ -338,9 +338,8 @@ A second way to play, beside the classic run: every house begins as a tribe in t
 one **cradle world**, and climbs age by age to the stars. It is a longer game (about an hour or
 more): the cradle first, then the classic game among the stars with what was won on the cradle.
 
-> Status while it is being built: the rules of the cradle are in the simulation and tested
-> (`tests/ages.test.ts`, `npm run simulate:ages`). Still to come: the cradle on screen, the passage to
-> the stars, the menus, and the teaching.
+> Status while it is being built: the cradle is playable from the menu (AGES RUN), with its rules, its
+> look and its controls. Still to come: the passage to the stars, saving across it, results, and balance.
 
 ### The cradle
 
@@ -371,6 +370,26 @@ more): the cradle first, then the classic game among the stars with what was won
   Hearth before any Ark rises and the run is won on the spot (Conquest). Otherwise it is decided
   among the stars.
 - No Corsairs, no Hollow, no anomalies and no omens on the cradle: those belong to the stars.
+
+### The cradle on screen
+
+- **The land.** One dark continent in a dark sea (`render/ground.ts`), painted once per run so that
+  every land and every path is on dry ground. As among the stars, a land is grey until a house holds
+  it; then its settlement stands in the house's color on a patch of lit ground. Settlements are built
+  of the buildings of their house's age (huts and a great fire, mud brick and a ziggurat, stone and a
+  keep, chimneys and a palace, factories and a tower), more of them at higher levels.
+- **The troops.** Each age has its own pictures for the three lines, the scout and the Firebearer
+  (`TROOPS` in `render/sprites.ts`). They are drawn from the side and mirrored to face left or right,
+  never turned; their legs, wheels or tracks move only while they do.
+- **The words.** The cradle is the same game seen small, so its HUD is the same HUD with other words:
+  everything it draws passes through a vocabulary (`ui/vocab.ts`: world to land, ship to unit, starlane
+  to path, hangar to supply, and each unit line to its name in the player's age). Lines written for
+  the cradle say what they mean directly.
+- **The climb.** The top bar shows the Lore of the age; when it is full, a button there (and on the
+  Hearth's card, and the A key) gives the order to advance, with what it costs and brings. The corner
+  where the Destinies sit among the stars shows the race instead: every house and the ages it has
+  reached. A card explains the cradle when the run begins, and tips explain each first (the Lore
+  gathered, a new age, the first siege unit, a rival's Ark).
 
 ### The stars
 

@@ -4,10 +4,11 @@ import type { GNode, Unit } from '../game/types';
 import { Camera } from './Camera';
 import { Effects } from './Effects';
 import { fit, text, textCenter, textOutline, textWidth } from './font';
+import { buildGround, drawHolding, drawSettlement, type Ground } from './ground';
 import { PAL, light, shade } from './palette';
 import { clipSeg, dither, frame, line, rect, ring, type Ctx } from './pixel';
 import type { Screen } from './Screen';
-import { dirIndex, drawShip, icon, isStructureArt, shipSprite, silhouette, spriteSize } from './sprites';
+import { drawShip, facing, icon, isTroopArt, shipSprite, silhouette, spriteSize } from './sprites';
 import { ANOMALY_RAMP, DARK_RAMP, drawWorldBlend, forgetWorlds, MAW_DORMANT_RAMP, MAW_RAMP, quantRadius, starSprite, swirlSprite, worldColor, worldSprite } from './worlds';
 
 export interface ViewState {
@@ -53,6 +54,8 @@ export class Renderer {
   private lit = new Map<number, number>();
   private time = 0;
   private game: Game | null = null;
+  /** The land and sea of the cradle world (Ages runs); null among the stars. */
+  private ground: Ground | null = null;
   /** Offsets for the current frame (screen shake). */
   private ox = 0;
   private oy = 0;
@@ -94,6 +97,7 @@ export class Renderer {
     this.lit.clear();
     this.fx.clear();
     forgetWorlds();
+    this.ground = g.cradle ? buildGround(g) : null;
     this.fx.nodePos = (id) => {
       const n = this.game?.nodes[id];
       return n ? { x: n.x, y: n.y, r: n.r } : null;
@@ -137,8 +141,11 @@ export class Renderer {
     const ownerShown = (n: GNode) => (vis(n.id) ? n.owner : p.seenOwner[n.id]);
 
     rect(ctx, 0, 0, W, H, PAL.void);
-    this.drawStars(ctx);
-    this.drawSystemHalos(ctx, g, explored);
+    if (this.ground) this.drawGround(ctx, this.ground);
+    else {
+      this.drawStars(ctx);
+      this.drawSystemHalos(ctx, g, explored);
+    }
     this.drawLanes(ctx, g, explored, vis, view);
     for (const n of g.nodes) {
       if (!explored(n.id)) continue;
@@ -154,6 +161,14 @@ export class Renderer {
     if (!backdrop) this.drawLabels(ctx, g, explored, vis, ownerShown, view);
     this.drawMarkers(ctx, view, dt);
     if (box) frame(ctx, box.x, box.y, box.w + 1, box.h + 1, PAL.gold);
+  }
+
+  /** The cradle's land and sea: the part of its picture that the camera sees, scaled to the screen. */
+  private drawGround(ctx: Ctx, G: Ground) {
+    const v = this.cam.view();
+    const kx = G.canvas.width / G.w;
+    const ky = G.canvas.height / G.h;
+    ctx.drawImage(G.canvas, (v.x0 - G.x0) * kx, (v.y0 - G.y0) * ky, (v.x1 - v.x0) * kx, (v.y1 - v.y0) * ky, this.ox, this.oy, this.cam.w, this.cam.h);
   }
 
   private drawStars(ctx: Ctx) {
@@ -252,6 +267,8 @@ export class Renderer {
       const key = Math.min(l.a, l.b) + '-' + Math.max(l.a, l.b);
       const seen = vis(l.a) || vis(l.b);
       let c: string = seen ? (interstellar ? PAL.slate : PAL.indigo) : PAL.night;
+      // (On the cradle's dark ground a path has to be brighter than a starlane on the void.)
+      if (this.ground) c = seen ? PAL.dusk : PAL.slate;
       if (z < STRATEGIC_ZOOM && interstellar) c = seen ? PAL.dusk : PAL.slate;
       if (busy.has(key)) {
         line(ctx, seg[0], seg[1], seg[2], seg[3], PAL.indigo, 1);
@@ -273,7 +290,7 @@ export class Renderer {
     const t = this.time;
 
     // Gravity well edge (where ships gather) for visible worlds at closer zoom.
-    if (visible && z >= 0.05 && n.kind !== 'star') ring(ctx, x, y, wellR, PAL.night, 4);
+    if (visible && z >= 0.05 && n.kind !== 'star') ring(ctx, x, y, wellR, this.ground ? PAL.indigo : PAL.night, 4);
 
     if (n.kind === 'star') {
       const s = starSprite(r, n.starColor);
@@ -288,7 +305,7 @@ export class Renderer {
       if (l !== target) l = target > l ? Math.min(1, l + dt / 1.3) : Math.max(0, l - dt / 1.0);
       this.lit.set(n.id, l);
       if (r <= 2) {
-        ctx.fillStyle = l > 0.5 ? worldColor(n, true) : PAL.slate;
+        ctx.fillStyle = l > 0.5 ? (this.ground && owner >= 0 ? g.factions[owner].color : worldColor(n, true)) : PAL.slate;
         ctx.fillRect(x - 1, y - 1, 3, 3);
         if (r === 2) {
           ctx.fillRect(x - 2, y, 1, 1);
@@ -296,6 +313,11 @@ export class Renderer {
           ctx.fillRect(x, y - 2, 1, 1);
           ctx.fillRect(x, y + 2, 1, 1);
         }
+      } else if (this.ground) {
+        // A land of the cradle: its settlement, on ground lit in its house's color.
+        const f = owner >= 0 ? g.factions[owner] : null;
+        if (f && visible) drawHolding(ctx, x, y, Math.round(r * 2.4 + 5), f.color);
+        drawSettlement(ctx, n, x, y, r, { era: f ? f.era : -1, color: f ? f.color : PAL.slate, level: n.level, hearth: n.capitalOf >= 0, lit: l, t });
       } else {
         const qr = quantRadius(r);
         drawWorldBlend(ctx, n, r, x - qr, y - qr, l);
@@ -449,10 +471,13 @@ export class Renderer {
           continue;
         }
         const a = u.pa + angleLerp(u.pa, u.a) * alpha;
+        const dir = facing(u.type, u.era, a);
+        // (A troop's legs move only while it does.)
+        const step = isTroopArt(u.type, u.era) ? (Math.abs(u.x - u.px) + Math.abs(u.y - u.py) > 0.02 ? Math.floor(this.time * 7 + u.id * 0.37) % 2 === 0 : true) : flick;
         const sel = view.selected.has(u.id);
         const hov = view.hoverUnit === u.id;
         if (sel || hov) {
-          const s = silhouette(u.type, sel ? PAL.bone : PAL.dusk, isStructureArt(u.type) ? 0 : dirIndex(a));
+          const s = silhouette(u.type, sel ? PAL.bone : PAL.dusk, dir, u.era);
           const sx = x - (s.width >> 1);
           const sy = y - (s.height >> 1);
           ctx.drawImage(s, sx - 1, sy);
@@ -461,14 +486,14 @@ export class Renderer {
           ctx.drawImage(s, sx, sy + 1);
         }
         {
-          const sh = silhouette(u.type, PAL.void, isStructureArt(u.type) ? 0 : dirIndex(a));
+          const sh = silhouette(u.type, PAL.void, dir, u.era);
           ctx.drawImage(sh, x - (sh.width >> 1) + 1, y - (sh.height >> 1) + 1);
         }
         const hurt = u.lastHit < 0.08;
         if (hurt && u.sh <= 0) {
-          const s = silhouette(u.type, PAL.bone, isStructureArt(u.type) ? 0 : dirIndex(a));
+          const s = silhouette(u.type, PAL.bone, dir, u.era);
           ctx.drawImage(s, x - (s.width >> 1), y - (s.height >> 1));
-        } else drawShip(ctx, u.type, color, x, y, a, flick);
+        } else drawShip(ctx, u.type, color, x, y, a, step, u.era);
         if (u.stun > 0 && flick) {
           ctx.fillStyle = PAL.sky;
           ctx.fillRect(x, y - 4, 1, 1);
@@ -477,7 +502,7 @@ export class Renderer {
         const hpf = u.hp / Math.max(1, u.maxHp);
         const shf = u.maxSh > 0 ? u.sh / u.maxSh : 0;
         if ((sel || hov || hpf < 0.999 || (u.maxSh > 0 && shf < 0.999)) && z >= 0.12 && !u.lane) {
-          const { w, h } = spriteSize(u.type);
+          const { w, h } = spriteSize(u.type, u.era);
           const bw = Math.max(5, Math.min(18, w + 1));
           const bx = x - (bw >> 1);
           const by = y - Math.ceil(Math.max(w, h) / 2) - 3;
@@ -573,7 +598,7 @@ export class Renderer {
       if (!near) label = fit(label, 60, 'tiny');
       textOutline(ctx, label, x - Math.round(textWidth(label, 'tiny') / 2), y, c, PAL.void, 'tiny');
       if (near && n.kind === 'planet' && vis(n.id)) {
-        const sub = owner >= 0 ? `${'I'.repeat(n.level)}${n.capitalOf >= 0 ? ' HEARTH' : n.role ? ' ' + n.role.toUpperCase() : ''}` : `${n.size} WORLD`;
+        const sub = owner >= 0 ? `${'I'.repeat(n.level)}${n.capitalOf >= 0 ? ' HEARTH' : n.role ? ' ' + n.role.toUpperCase() : ''}` : this.ground ? 'WILD LAND' : `${n.size} WORLD`;
         textOutline(ctx, sub, x - Math.round(textWidth(sub, 'tiny') / 2), y + 6, owner >= 0 ? shade(c) === PAL.indigo ? PAL.dusk : light(shade(c)) : PAL.slate, PAL.void, 'tiny');
       }
     }
@@ -606,7 +631,7 @@ export class Renderer {
       if (u.node >= 0 ? !vis(u.node) : u.owner !== g.playerId) continue;
       const x = this.sx(u.x);
       const y = this.sy(u.y);
-      const { w, h } = spriteSize(u.type);
+      const { w, h } = spriteSize(u.type, u.era);
       const r = Math.max(4, Math.max(w, h) / 2 + 1);
       const d = Math.hypot(x - sx, y - sy);
       if (d <= r && d < bd) {
@@ -653,8 +678,8 @@ export class Renderer {
   }
 
   /** Sprite helper for UI thumbnails. */
-  shipThumb(type: Unit['type'], color: string): HTMLCanvasElement {
-    return shipSprite(type, color, 0);
+  shipThumb(type: Unit['type'], color: string, era?: number): HTMLCanvasElement {
+    return shipSprite(type, color, 0, false, era);
   }
 }
 

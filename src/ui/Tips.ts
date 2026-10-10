@@ -2,6 +2,7 @@
  * "Firsts": a short card the first time something new happens (once per profile). Every tip can be
  * read again in How to Play (H).
  */
+import { ERAS, LAST_CRADLE_ERA, SPACE } from '../game/data/eras';
 import type { Note } from '../game/types';
 import { IC, text, textWidth, wrap } from '../render/font';
 import { PAL } from '../render/palette';
@@ -21,6 +22,13 @@ export const TIPS: Record<string, string> = {
   boonReady: 'Your Lore is full: press B, or the BOON button at the top, to choose a Boon.',
   fleet: `Ships gather in fleets. The badge beside a world (like ${IC.fleet}) counts your ships there: click it to select them, then click a world to send them.`,
   lostWorld: 'You lost a world. Take it back with Breakers, or protect your others with Bastions and a Starbase.',
+  // Ages runs, on the cradle.
+  ageReady: 'The Lore of your age is gathered. Press the button at the top (or A) to begin the next age. It takes Embers too, and a little time at your Hearth.',
+  ageNew: 'A new age! Your Forges raise its units from now on. Units keep the age they were raised in: rest an older one 20 seconds in a land you hold, and it is re-armed for free.',
+  ageSiege: 'Bronze brings the Ram, the first siege unit. Until now no wall could be broken; now lands can be taken, and yours too. A Bastion guards a land.',
+  ageArk: 'One step is left: your Ark. When it is done, your house leaves for the stars with its Boons, and the run goes on there.',
+  ageRival: 'A rival is building its Ark. When it is done, that house is gone to the stars with a head start on you. An attack on its Hearth stops the work.',
+  ageGone: 'An Ark has left. That house is ahead of you among the stars now. The lands it held here lie dark: kindle them, and climb faster.',
 };
 
 /** Seconds a tip stays up (counted only while it can be read). */
@@ -63,6 +71,12 @@ export class Tips {
     else if (/is kindled/.test(t)) this.show('role');
     else if (/Lore is full/.test(t)) this.show('boonReady');
     else if (/has fallen to|devoured by the Hollow/.test(t)) this.show('lostWorld');
+    else if (/^The .* Age begins!/.test(t)) {
+      const era = this.s.game.player.era;
+      this.show(era === 1 ? 'ageSiege' : era >= LAST_CRADLE_ERA ? 'ageArk' : 'ageNew');
+      if (era === 1) this.show('ageNew');
+    } else if (/has begun building its Ark/.test(t)) this.show('ageRival');
+    else if (/has left for the stars/.test(t)) this.show('ageGone');
   }
 
   onBoon(blueprint: boolean) {
@@ -74,6 +88,7 @@ export class Tips {
     const p = g.player;
     if (p.hangarCap > 0 && p.hangarUsed >= p.hangarCap - 2 && p.stats.shipsBuilt > 3) this.show('hangar');
     if (p.stats.shipsBuilt === 1 && !this.s.guided) this.show('fleet');
+    if (g.cradle && g.tick % 20 === 0 && p.era < SPACE && !p.advance && p.lore >= ERAS[p.era].lore) this.show('ageReady');
     // Anomalies wait for a ship to be sent: say so once one is on the map (not in the first minute).
     if (g.time > 60 && g.tick % 20 === 0 && !this.s.profile.seenTips.includes('anomalySeen') && g.nodes.some((n) => n.anomaly && p.explored[n.id])) this.show('anomalySeen');
     if (this.current) {

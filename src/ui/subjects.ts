@@ -13,7 +13,7 @@ import type { Faction, UnitType } from '../game/types';
 import { PAL } from '../render/palette';
 import type { Ctx } from '../render/pixel';
 import { plainText } from '../render/rich';
-import { ICONS, isStructureArt, pixelCanvas, shipSprite, spriteSize } from '../render/sprites';
+import { ICONS, isStructureArt, isTroopArt, pixelCanvas, shipSprite, spriteSize } from '../render/sprites';
 
 interface SubjectDef {
   /** What the tooltip calls it. */
@@ -251,7 +251,7 @@ function cell(id: string, look: Look): { w: number; h: number; k: number } | nul
   if (s.ship) {
     const { w, h } = spriteSize(s.ship);
     // A turning ship needs room for its widest view (at 45 degrees).
-    const side = look.turn && !isStructureArt(s.ship) ? Math.ceil((w + h) / Math.SQRT2) : 0;
+    const side = look.turn && !isStructureArt(s.ship) && !isTroopArt(s.ship) ? Math.ceil((w + h) / Math.SQRT2) : 0;
     return { w: side || w, h: side || h, k: look.scale };
   }
   if (!s.icon) return null;

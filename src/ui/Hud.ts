@@ -2,18 +2,19 @@ import type { Session } from '../app/Session';
 import { SPEEDS } from '../app/Session';
 import { ABILITY_BY_ID } from '../game/data/abilities';
 import { CARD_BY_ID } from '../game/data/cards';
+import { ERAS, LAST_CRADLE_ERA, LINE_SHORT, SPACE } from '../game/data/eras';
 import { RELIC_BY_ID } from '../game/data/relics';
 import { isWarship, UNITS } from '../game/data/units';
 import { ASCENSION_BOONS, DOMINATION_SHARE, GATE_CHARGE, relicsRequired, treasuryTarget, VICTORIES } from '../game/data/victories';
 import { ECON, PLANETS, ROLES, ROLE_ORDER } from '../game/data/worlds';
 import type { Faction, GNode, Note, Unit, UnitType, VictoryId } from '../game/types';
 import { roman } from '../game/util';
-import { bigText, fit, IC, paragraph, text, textCenter, textOutline, textRight, textWidth, wrap } from '../render/font';
+import { bigText, fit, IC, paragraph, setVocabulary, text, textCenter, textOutline, textRight, textWidth, wrap } from '../render/font';
 import { PAL, shade, UI } from '../render/palette';
 import { bar, box, frame, rect, ring, type Ctx } from '../render/pixel';
 import { drawRich, hasMarkup, richLines, richWidth } from '../render/rich';
 import { fmtTime, SPRITE_ZOOM } from '../render/Renderer';
-import { fleetBadge, icon, setInlineBadgeColor, setInlineBadgeLabel, shipSprite } from '../render/sprites';
+import { fleetBadge, icon, setArtEra, setInlineBadgeColor, setInlineBadgeLabel, shipSprite } from '../render/sprites';
 import { worldColor, worldSprite } from '../render/worlds';
 import { Actions } from './Actions';
 import { boonColor, boonTile, groupBoons, relicTile, TILE } from './boons';
@@ -23,6 +24,7 @@ import { Tips } from './Tips';
 import { Tutorial } from './Tutorial';
 import { gloss, GLOSS_BY_ID, termsIn } from './glossary';
 import { dimScreen, Ui, type TipOpts } from './Ui';
+import { cradleVocabulary, unitCount, unitDesc, unitName } from './vocab';
 
 interface LogLine {
   id: number;
@@ -187,6 +189,18 @@ export class Hud {
   // =====================================================================
 
   draw(dt: number) {
+    // On the cradle of an Ages run everything is said in the cradle's words (ui/vocab.ts).
+    setVocabulary(this.g.cradle ? cradleVocabulary(this.g.player.era) : null);
+    setArtEra(this.g.cradle ? Math.min(this.g.player.era, LAST_CRADLE_ERA) : SPACE);
+    try {
+      this.drawAll(dt);
+    } finally {
+      setVocabulary(null);
+      setArtEra(SPACE);
+    }
+  }
+
+  private drawAll(dt: number) {
     const g = this.s.screen.g;
     this.ui.begin(dt);
     this.ui.explainTerms = this.s.profile.settings.explainTerms !== false;
@@ -198,7 +212,7 @@ export class Hud {
     if (R.map) this.drawMinimap();
     this.drawTopBar(R);
     this.drawBanner();
-    if (R.destinies) this.drawDestinies();
+    if (R.destinies) this.g.cradle ? this.drawAges() : this.drawDestinies();
     if (R.lore) this.drawTray();
     if (R.map) this.drawAttackArrows();
     this.drawIndicators();
@@ -309,7 +323,8 @@ export class Hud {
     this.ui.hit('embers', 1, 0, x + 1, 13, undefined, () => `Embers: your only currency. You earn ${fmtRate(p.income)} every second from your worlds. Spend them on ships, kindling and world upgrades.`);
     x += 8;
     // Lore
-    if (R.lore) {
+    if (R.lore && this.g.cradle) x = this.drawAge(x);
+    else if (R.lore) {
       icon(g, 'lore', x, 3);
       x += 7;
       const cost = this.g.boonCostOf(p);
@@ -490,6 +505,105 @@ export class Hud {
       });
       x += cw + 2;
     }
+  }
+
+  // ---------------------------------------------------------------------
+  // Ages (the cradle of an Ages run)
+  // ---------------------------------------------------------------------
+
+  /** What the step to the next age takes and brings (for its buttons). */
+  private advanceTip(): string {
+    const p = this.g.player;
+    const era = ERAS[p.era];
+    const why = this.g.checkAdvance(p.id);
+    const needs = `It takes [${era.lore} Lore] (you have ${Math.floor(p.lore)}), [${era.cost} Embers] and ${era.time} seconds at your Hearth. The work stops while the Hearth is under attack.`;
+    const no = why ? ` [!${why}.]` : '';
+    if (p.era >= LAST_CRADLE_ERA) return `Build your Ark. When it is done it leaves for the stars with your house, and the run goes on there. ${needs}${no} (A)`;
+    return `Begin the ${ERAS[p.era + 1].name}. ${ERAS[p.era + 1].brings} ${needs}${no} (A)`;
+  }
+
+  /** The top bar on the cradle: the Lore of the age, and the step to the next one. Returns the x after it. */
+  private drawAge(x: number): number {
+    const g = this.s.screen.g;
+    const game = this.g;
+    const p = game.player;
+    icon(g, 'lore', x, 3);
+    x += 7;
+    if (p.pendingDrafts > 0) {
+      const label = p.pendingDrafts > 1 ? `BOON ×${p.pendingDrafts}` : 'BOON';
+      this.ui.button(g, 'boon', x, 1, textWidth(label, 'tiny') + 12, 11, label, () => this.modals.open({ kind: 'draft' }), {
+        primary: true, pulse: true, font: 'tiny', tip: 'A Boon is ready: every new age brings one. Choose one of a few upgrades for your house. (B)',
+      });
+      x += textWidth(label, 'tiny') + 15;
+    }
+    if (p.era >= SPACE) return x;
+    const era = ERAS[p.era];
+    const last = p.era >= LAST_CRADLE_ERA;
+    if (p.advance) {
+      // The step is under way.
+      const k = p.advance.t / p.advance.total;
+      const held = p.capital >= 0 && game.nodes[p.capital].lastHit < 5;
+      const c = held ? PAL.red : PAL.teal;
+      bar(g, x + 1, 5, 36, 3, k, c, PAL.indigo, PAL.indigo);
+      const ex = text(g, `${last ? 'THE ARK' : ERAS[p.era + 1].short + ' AGE'} ${pct(k)}`, x + 41, 4, c, 'tiny');
+      this.ui.hit('age', x - 8, 0, ex - x + 10, 13, undefined, () =>
+        held
+          ? 'The work stands still while your Hearth is under attack. Drive the attackers off.'
+          : `${last ? 'Your Ark' : `The ${ERAS[p.era + 1].name}`}: ${Math.ceil(p.advance!.total - p.advance!.t)} seconds to go. An attack on your Hearth stops the work.`);
+      return ex + 6;
+    }
+    if (p.lore < era.lore) {
+      bar(g, x + 1, 5, 36, 3, p.lore / era.lore, PAL.violet, PAL.indigo, PAL.indigo);
+      const ex = text(g, era.short + ' AGE', x + 41, 4, PAL.dusk, 'tiny');
+      this.ui.hit('age', x - 8, 0, ex - x + 10, 13, undefined, () =>
+        `${era.name}. Lore: ${Math.floor(p.lore)} / ${era.lore} (+${p.loreRate.toFixed(2)}/s). On the cradle your Lore is saved for the next age: when the bar is full, ${last ? 'you can build your Ark' : `you can begin the ${ERAS[p.era + 1].name}`}. Observatories make Lore faster.`);
+      return ex + 6;
+    }
+    // The Lore of the age is gathered: the step is an order, never automatic.
+    const why = game.checkAdvance(p.id);
+    const label = last ? 'BUILD THE ARK' : `TO THE ${ERAS[p.era + 1].short} AGE`;
+    const cost = `${IC.ember}${era.cost}`;
+    const bw = textWidth(label, 'tiny') + textWidth(cost, 'tiny') + 16;
+    this.ui.button(g, 'advance', x, 1, bw, 11, label, () => this.actions.advance(), {
+      primary: !why, pulse: !why, disabled: !!why, right: cost, font: 'tiny', tip: this.advanceTip(),
+    });
+    return x + bw + 4;
+  }
+
+  /** The race up the ages: every house and the age it has reached, in the corner where the Destinies sit among the stars. */
+  private drawAges() {
+    const g = this.s.screen.g;
+    const game = this.g;
+    const houses = game.empires();
+    const rowH = 8;
+    const w = 34;
+    const h = houses.length * rowH + 3;
+    const x = this.W - 3 - w;
+    const y = 16;
+    const hot = this.ui.isHot('ages');
+    box(g, x, y, w, h, PAL.night, hot ? PAL.dusk : PAL.indigo);
+    const blink = Math.floor(this.ui.time * 3) % 2 === 0;
+    houses.forEach((f, i) => {
+      const ry = y + 2 + i * rowH;
+      const gone = f.launchedAt >= 0;
+      const dead = !f.alive && !gone;
+      rect(g, x + 3, ry + 1, 5, 5, dead ? PAL.slate : f.color);
+      if (f.isPlayer) frame(g, x + 2, ry, 7, 7, PAL.bone);
+      for (let k = 0; k < LAST_CRADLE_ERA + 1; k++) {
+        // One pip per age reached after the Stone Age, and the last for the Ark.
+        const reached = gone || f.era > k;
+        const rising = !gone && !dead && !!f.advance && f.era === k && (f.isPlayer || k === LAST_CRADLE_ERA);
+        const c = dead ? PAL.indigo : reached ? (gone ? PAL.gold : f.color) : rising && blink ? shade(f.color) : PAL.indigo;
+        rect(g, x + 11 + k * 4, ry + 1, 3, 5, c);
+      }
+      if (dead) rect(g, x + 2, ry + 3, w - 5, 1, PAL.slate);
+    });
+    this.ui.hit('ages', x, y, w, h, () => this.modals.open({ kind: 'status' }), () =>
+      'The climb: ' +
+      houses
+        .map((f) => `${f.isPlayer ? 'you' : f.name}: ${f.launchedAt >= 0 ? 'gone to the stars' : !f.alive ? 'Hearth dark' : ERAS[f.era].name + (f.advance && f.era >= LAST_CRADLE_ERA ? ', building its Ark' : '')}`)
+        .join(' · ') +
+      '. Click for details.');
   }
 
   // ---------------------------------------------------------------------
@@ -761,9 +875,10 @@ export class Hud {
   }
 
   fleetSummary(units: Unit[]): string {
-    const counts = new Map<UnitType, number>();
-    for (const u of units) counts.set(u.type, (counts.get(u.type) ?? 0) + 1);
-    return [...counts.entries()].map(([t, c]) => `${c} ${UNITS[t].name}${c > 1 ? 's' : ''}`).join(', ') || 'no ships';
+    // (By type and by age: on the cradle a Warrior and a Spearman are the same line, an age apart.)
+    const counts = new Map<string, number>();
+    for (const u of units) counts.set(`${u.type}|${u.era}`, (counts.get(`${u.type}|${u.era}`) ?? 0) + 1);
+    return [...counts.entries()].map(([k, c]) => unitCount(c, k.split('|')[0] as UnitType, Number(k.split('|')[1]))).join(', ') || 'no ships';
   }
 
   // ---------------------------------------------------------------------
@@ -1143,7 +1258,7 @@ export class Hud {
             this.ui.add({
               id, x: bx, y, w: bw, h: 14, onClick: () => this.actions.build(n.id, t), disabled: blocked,
               tipTitle: `${def.name} · ${cost} Embers · ${def.hangar} hangar`,
-              tip: `${GLOSS_BY_ID[t]?.text ?? def.short}${why ? ` [!${why}.]` : ' Shift-click: queue five.'}`,
+              tip: `${game.cradle ? `${unitDesc(t, p.era)} ${LINE_SHORT[t] ?? ''}` : (GLOSS_BY_ID[t]?.text ?? def.short)}${why ? ` [!${why}.]` : ' Shift-click: queue five.'}`,
             });
             bx += bw + 2;
           }
@@ -1184,12 +1299,29 @@ export class Hud {
     if (hearth && (p.hangarUsed >= p.hangarCap * 0.7 || (p.bays ?? 0) > 0) && game.checkBay(p.id) !== 'No room for more bays') {
       extras.push({ id: 'bay', label: `HANGAR BAY +5 ${game.bayCost(p)}`, act: () => this.actions.bay(), tip: `Build a Hangar Bay at your Hearth: room for 5 more hangar space. Each bay costs more than the last.`, dis: game.checkBay(p.id) });
     }
-    if (hearth && game.checkArk(p.id) !== 'Your Ark still flies') {
+    if (hearth && game.cradle && p.era < SPACE && !p.advance) {
+      const last = p.era >= LAST_CRADLE_ERA;
+      extras.push({ id: 'advance-card', label: `${last ? 'BUILD THE ARK' : `TO THE ${ERAS[p.era + 1].short} AGE`} ${ERAS[p.era].cost}`, act: () => this.actions.advance(), tip: this.advanceTip(), dis: game.checkAdvance(p.id) });
+    }
+    if (hearth && !game.cradle && game.checkArk(p.id) !== 'Your Ark still flies') {
       extras.push({ id: 'ark', label: `REBUILD ARK ${game.shipCost(p, 'ark')}`, act: () => this.actions.ark(), tip: 'Rebuild your Ark. It keeps its levels and abilities.', dis: game.checkArk(p.id) });
     }
     if (hearth && game.victories.includes('ascension') && !p.gate) {
       const why = game.checkGate(p.id, n.id);
       extras.push({ id: 'gate', label: `STARFIRE GATE ${game.shipCost(p, 'gate')}`, act: () => this.actions.gate(n.id), tip: `Raise the Starfire Gate. Protect it for ${GATE_CHARGE / 60} minutes to win by Ascension.`, dis: why });
+    }
+    if (hearth && p.advance) {
+      const adv = p.advance;
+      const last = p.era >= LAST_CRADLE_ERA;
+      rows.push(this.gap(2));
+      rows.push({
+        h: 12,
+        draw: (x, y, w) => {
+          const held = n.lastHit < 5;
+          text(gx, held ? 'THE WORK STANDS STILL: UNDER ATTACK' : last ? 'YOUR ARK IS RISING' : `THE ${ERAS[p.era + 1].short} AGE IS COMING`, x, y, held ? PAL.red : PAL.teal, 'tiny');
+          bar(gx, x, y + 8, Math.min(w, 120), 2, adv.t / adv.total, held ? PAL.red : PAL.teal, PAL.indigo);
+        },
+      });
     }
     if (extras.length) {
       rows.push(this.gap(2));
@@ -1269,8 +1401,11 @@ export class Hud {
     if (units.length === 1) {
       const u = units[0];
       const def = UNITS[u.type];
-      rows.push(this.header(def.name.toUpperCase() + (u.level > 1 ? ` · LEVEL ${u.level}` : ''), p.color, null, where));
-      rows.push(this.para(def.desc, PAL.mist, 200, { terms: termsIn(def.desc, { exclude: def.name }) }));
+      const desc = unitDesc(u.type, u.era);
+      rows.push(this.header(unitName(u.type, u.era).toUpperCase() + (u.level > 1 ? ` · LEVEL ${u.level}` : ''), p.color, null, where));
+      rows.push(this.para(desc, PAL.mist, 200, { terms: termsIn(desc, { exclude: def.name }) }));
+      // An older unit: say how it is brought up to the house's age.
+      if (game.cradle && u.era < p.era) rows.push(this.line(`OF THE ${ERAS[u.era].short} AGE: REST IT IN ONE OF YOUR LANDS TO RE-ARM IT`, PAL.ember, 'tiny', { tip: `Units keep the age they were raised in. This one is weaker than a new ${unitName(u.type, p.era)}. Let it rest 20 seconds in a land you hold, out of any fight, and it is re-armed for free.` }));
       if (u.abil.length) {
         rows.push(this.line('ABILITIES: ' + u.abil.map((a) => ABILITY_BY_ID[a.id]?.name ?? a.id).join(', ').toUpperCase(), PAL.violet, 'tiny', {
           tip: u.abil.map((a) => `{${ABILITY_BY_ID[a.id]?.name ?? a.id}}: ${ABILITY_BY_ID[a.id]?.desc ?? ''}`).join('\n'),
@@ -1360,7 +1495,7 @@ export class Hud {
     const rows: CardRow[] = [];
     rows.push(this.header(f.name.toUpperCase(), f.color, null, `${units.length} ${units.length === 1 ? 'SHIP' : 'SHIPS'}`));
     rows.push(this.para(this.fleetSummary(units) + '.', PAL.mist, 200));
-    if (units.length === 1) rows.push(this.para(UNITS[units[0].type].desc, PAL.dusk, 200, { terms: termsIn(UNITS[units[0].type].desc, { exclude: UNITS[units[0].type].name }) }));
+    if (units.length === 1) rows.push(this.para(unitDesc(units[0].type, units[0].era), PAL.dusk, 200, { terms: termsIn(unitDesc(units[0].type, units[0].era), { exclude: UNITS[units[0].type].name }) }));
     rows.push(this.line('SELECT YOUR FLEET, THEN RIGHT-CLICK THEM TO ATTACK', PAL.dusk));
     return rows;
   }

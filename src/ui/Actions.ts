@@ -1,4 +1,5 @@
 import type { Session } from '../app/Session';
+import { ERAS, LAST_CRADLE_ERA } from '../game/data/eras';
 import { UNITS } from '../game/data/units';
 import type { Unit, UnitType, WorldRole } from '../game/types';
 import { PAL } from '../render/palette';
@@ -47,6 +48,22 @@ export class Actions {
     const world = this.g.nodeAt(off.target);
     const again = off.u.order === 'kindle';
     if (!again) this.s.showToast(`Kindling${world ? ' of ' + world.name : ''} is called off. The seed ship waits for orders: its next KINDLE is free.`, PAL.gold, 5);
+  }
+
+  /** Ages: take the step to the next age (from the last age of the cradle: build the Ark). */
+  advance(): boolean {
+    const p = this.g.player;
+    const why = this.g.checkAdvance(this.pid);
+    if (why) {
+      this.fail(why === 'Not enough Lore' ? `Not enough Lore yet: ${Math.floor(p.lore)} of ${ERAS[p.era]?.lore ?? 0}.` : why);
+      return false;
+    }
+    const last = p.era >= LAST_CRADLE_ERA;
+    const era = ERAS[p.era];
+    this.g.cmdAdvance(this.pid);
+    this.s.sfx.play('boon', 0.5);
+    if (!last) this.s.showToast(`The ${ERAS[p.era + 1].name} is coming: ${era.time} seconds of work at your Hearth.`, PAL.gold, 4);
+    return true;
   }
 
   /** Queue a ship (Shift: five, or as many as fit). */

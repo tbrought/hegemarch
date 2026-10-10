@@ -20,8 +20,9 @@ export interface CardDef {
   /** Granted only by events, never offered in drafts. */
   hidden?: boolean;
   /**
-   * Offered only on the cradle world of an Ages run (and nowhere else). These Boons speak of "units" and
-   * "lands and worlds", because the house keeps them when it leaves for the stars.
+   * Offered only on the cradle world of an Ages run (and nowhere else). These Boons speak of "units" and of
+   * "everything you hold", because the house keeps them when it leaves for the stars: a text must read
+   * right in both places (and "world" would not: on the cradle it is shown as "land").
    */
   cradle?: boolean;
   /** What the Boon affects, as picture ids (ui/subjects.ts), when its modifiers and text would show it wrong. */
@@ -296,7 +297,7 @@ export const CARDS: CardDef[] = [
     },
   },
   { id: 'granaries', name: 'Granaries', rarity: 'common', cat: 'growth', max: 2, cradle: true, desc: 'Room for [4 more] units.', icons: ['hangar'], mods: (m) => (m.hangar += 4) },
-  { id: 'stonewrights', name: 'Stonewrights', rarity: 'common', cat: 'ward', max: 2, cradle: true, desc: 'Your lands and worlds are [25% tougher].', icons: ['world', 'shield'], mods: (m) => (m.worldHp += 0.25) },
+  { id: 'stonewrights', name: 'Stonewrights', rarity: 'common', cat: 'ward', max: 2, cradle: true, desc: 'Everything you hold is [25% tougher].', icons: ['world', 'shield'], mods: (m) => (m.worldHp += 0.25) },
   { id: 'drillYards', name: 'Drill Yards', rarity: 'rare', cat: 'war', max: 2, cradle: true, desc: 'Your units strike [10% faster].', icons: ['fleet'], mods: (m) => (m.rof += 0.1) },
   {
     id: 'bloodOath', name: 'Blood Oath', rarity: 'rare', cat: 'war', max: 1, cradle: true, desc: 'Your units deal [15% more damage]. They [!lose 8% hull].', icons: ['fleet'],
@@ -315,7 +316,7 @@ export const CARDS: CardDef[] = [
   { id: 'stoneCircles', name: 'Stone Circles', rarity: 'rare', cat: 'lore', max: 2, cradle: true, desc: 'Observatories make [30% more Lore].', icons: ['observatory'], mods: (m) => (m.role.observatory += 0.3) },
   { id: 'deepQuarries', name: 'Deep Quarries', rarity: 'rare', cat: 'wealth', max: 2, cradle: true, desc: 'Mines pay [30% more] of their bonus Embers.', icons: ['mine'], mods: (m) => (m.role.mine += 0.3) },
   {
-    id: 'watchfires', name: 'Watchfires', rarity: 'rare', cat: 'ward', max: 1, cradle: true, desc: 'Every land and world you hold [fights back] with a small gun, and all their guns deal [20% more damage].', icons: ['world', 'target'],
+    id: 'watchfires', name: 'Watchfires', rarity: 'rare', cat: 'ward', max: 1, cradle: true, desc: 'Everything you hold [fights back] with a small gun, and all its guns deal [20% more damage].', icons: ['world', 'target'],
     mods: (m) => {
       flag(m, 'allGuns', 1);
       m.worldGun += 0.2;

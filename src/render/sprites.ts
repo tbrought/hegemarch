@@ -2,6 +2,7 @@
  * Pixel-art sprites. Ships point right and are rotated into 16 directions (supersampled nearest
  * neighbour, so small hulls stay crisp). Structures are drawn upright. Icons are multi-colored.
  */
+import { SPACE } from '../game/data/eras';
 import type { UnitType } from '../game/types';
 import { capHeight, IC, registerIcons, text, textWidth, type FontId } from './font';
 import { PAL, shade } from './palette';
@@ -46,13 +47,89 @@ const STRUCTURES: Partial<Record<UnitType, string[]>> = {
 
 export const isStructureArt = (t: UnitType) => t in STRUCTURES;
 
-function art(t: UnitType): string[] {
-  return SHIPS[t] ?? STRUCTURES[t] ?? ['x'];
+/**
+ * Units of the cradle's ages (Ages runs), one table per age from the Stone Age on. They are drawn from
+ * the side, facing right, and are mirrored to face left: never turned. Extra letters: l and r are the
+ * two legs (or wheels, or tracks) of a walk, shown in turn; m is steel grey, o is dark wood.
+ */
+const FIREBEARERS = ['..e..', '.we..', 'xxm..', '.x...', 'ldr..'];
+const BEAST = ['.....xx', 'xxxxxxw', 'xxxxxx.', 'ld..dr.'];
+const TROOPS: Partial<Record<UnitType, string[]>>[] = [
+  {
+    // Stone Age
+    scout: ['.w.', 'xx.', '.x.', 'ldr'],
+    seed: FIREBEARERS,
+    striker: ['.w....', 'xxmmmw', '.x....', '.x....', 'ldr...'],
+    guardian: ['.w..o.', 'xxx.o.', 'xxxdo.', 'xxxd..', '.xx...', 'ldr...'],
+    breaker: ['.w.m.', 'xx.m.', '.xx..', '.x...', 'ldr..'],
+    militia: BEAST,
+  },
+  {
+    // Bronze Age
+    scout: ['.w.', 'xx.', '.x.', 'ldr'],
+    seed: FIREBEARERS,
+    striker: ['.w...xx.', 'xx..xxx.', 'xxddxxx.', 'm.m.ldr.'],
+    guardian: ['.w..m.', 'xxd.m.', 'xxd.m.', 'xxd.m.', '.x..m.', 'ldr.m.'],
+    breaker: ['.xxxxxx..', 'xxxxxxx..', 'oooooooww', 'xxxxxxx..', '.m...m...'],
+    militia: BEAST,
+  },
+  {
+    // Iron Age
+    scout: ['..w...', '..x.xx', 'xxxxx.', 'ld.dr.'],
+    seed: FIREBEARERS,
+    striker: ['..w....', '..x.mmw', '.xxxxxx', 'xxxxxx.', 'ld..dr.'],
+    guardian: ['.m....', 'xdd.m.', 'xdw.m.', 'xdd.m.', '.x....', 'ldr...'],
+    breaker: ['......m.', '.....m..', '....m...', 'xxxmxxx.', 'xxxxxxx.', 'm.....m.'],
+    militia: BEAST,
+  },
+  {
+    // Powder Age
+    scout: ['..w...', '..x.xx', 'xxxxx.', 'ld.dr.'],
+    seed: FIREBEARERS,
+    striker: ['..d....', '..xmmm.', '.xxxxxx', 'xxxxxx.', 'ld..dr.'],
+    guardian: ['.d....', '.w..m.', 'xxxm..', 'xxm...', '.x....', 'ldr...'],
+    breaker: ['..mmmmmw', '.xxmxx..', 'xxmdmx..', '..mmm...'],
+    militia: BEAST,
+  },
+  {
+    // Machine Age
+    scout: ['mmmmm.', '.x.x..', 'xxxxxe', '.x....'],
+    seed: FIREBEARERS,
+    striker: ['..xxx...', '.xxxxmmw', 'xxxxxxx.', 'xdxxxdx.', '.m...m..'],
+    guardian: ['..xxxx...', '..xdxmmmw', 'xxxxxxxx.', 'xxxxxxxxx', 'lrlrlrlr.'],
+    breaker: ['......mw.', '.....mm..', 'xxxxmm...', 'xxxxxx...', 'm...m....'],
+    militia: BEAST,
+  },
+];
+
+/**
+ * The age units are drawn in when a caller names none. The HUD of an Ages run sets it to the player's age
+ * while it draws (build buttons, Boon cards, lists), so that its pictures are of that age; everywhere else
+ * it is the Space Age.
+ */
+let artEra = SPACE;
+
+export function setArtEra(era: number) {
+  artEra = era;
 }
 
-export function spriteSize(t: UnitType): { w: number; h: number } {
-  const a = art(t);
+/** Is this unit, raised in this age, drawn as a troop of the cradle (from the side, mirrored) and not as a ship? */
+export const isTroopArt = (t: UnitType, era = artEra) => !!TROOPS[era]?.[t];
+
+/** The rows of a unit's picture (exported for the tests, which check that every picture is a clean rectangle). */
+export function art(t: UnitType, era = artEra): string[] {
+  return TROOPS[era]?.[t] ?? SHIPS[t] ?? STRUCTURES[t] ?? ['x'];
+}
+
+export function spriteSize(t: UnitType, era = artEra): { w: number; h: number } {
+  const a = art(t, era);
   return { w: a[0].length, h: a.length };
+}
+
+/** The view of a unit heading at angle `a`: ships turn through 16 headings, troops face left or right, structures stand. */
+export function facing(t: UnitType, era: number, a: number): number {
+  if (isTroopArt(t, era)) return Math.cos(a) < 0 ? 8 : 0;
+  return STRUCTURES[t] ? 0 : dirIndex(a);
 }
 
 function paint(ch: string, color: string, flick: boolean): string | null {
@@ -67,6 +144,14 @@ function paint(ch: string, color: string, flick: boolean): string | null {
       return flick ? PAL.gold : PAL.ember;
     case 'k':
       return PAL.void;
+    case 'l':
+      return flick ? shade(color) : null;
+    case 'r':
+      return flick ? null : shade(color);
+    case 'm':
+      return PAL.mist;
+    case 'o':
+      return PAL.wine;
     default:
       return null;
   }
@@ -141,12 +226,14 @@ export function dirIndex(a: number): number {
   return ((Math.round(t) % 16) + 16) % 16;
 }
 
-function rotated(t: UnitType, dir: number): string[] {
-  const key = t + '|' + dir;
+function rotated(t: UnitType, dir: number, era = artEra): string[] {
+  const key = t + '|' + dir + '|' + era;
   let r = rotCache.get(key);
   if (r) return r;
-  const base = art(t);
-  if (STRUCTURES[t] || dir === 0) r = base;
+  const base = art(t, era);
+  const troop = isTroopArt(t, era);
+  if (troop) r = dir > 4 && dir < 12 ? base.map((row) => [...row].reverse().join('')) : base;
+  else if (STRUCTURES[t] || dir === 0) r = base;
   else if (dir === 8) r = base.map((row) => [...row].reverse().join(''));
   else r = rotateArt(base, (dir / 16) * Math.PI * 2);
   rotCache.set(key, r);
@@ -154,11 +241,11 @@ function rotated(t: UnitType, dir: number): string[] {
 }
 
 /** A tinted sprite canvas for a unit type, facing one of 16 directions. */
-export function shipSprite(t: UnitType, color: string, dir: number, flick = false): HTMLCanvasElement {
-  const key = t + '|' + color + '|' + dir + '|' + (flick ? 1 : 0);
+export function shipSprite(t: UnitType, color: string, dir: number, flick = false, era = artEra): HTMLCanvasElement {
+  const key = t + '|' + color + '|' + dir + '|' + (flick ? 1 : 0) + '|' + era;
   let c = spriteCache.get(key);
   if (c) return c;
-  const rows = rotated(t, dir);
+  const rows = rotated(t, dir, era);
   c = makeCanvas(rows[0].length, rows.length);
   const g = ctx2d(c);
   for (let y = 0; y < rows.length; y++) {
@@ -174,11 +261,11 @@ export function shipSprite(t: UnitType, color: string, dir: number, flick = fals
 }
 
 /** A solid silhouette (for selection outlines and hit flashes). */
-export function silhouette(t: UnitType, color: string, dir: number): HTMLCanvasElement {
-  const key = 'sil|' + t + '|' + color + '|' + dir;
+export function silhouette(t: UnitType, color: string, dir: number, era = artEra): HTMLCanvasElement {
+  const key = 'sil|' + t + '|' + color + '|' + dir + '|' + era;
   let c = spriteCache.get(key);
   if (c) return c;
-  const rows = rotated(t, dir);
+  const rows = rotated(t, dir, era);
   c = makeCanvas(rows[0].length, rows.length);
   const g = ctx2d(c);
   g.fillStyle = color;
@@ -187,8 +274,8 @@ export function silhouette(t: UnitType, color: string, dir: number): HTMLCanvasE
   return c;
 }
 
-export function drawShip(g: Ctx, t: UnitType, color: string, x: number, y: number, a: number, flick = false) {
-  const s = shipSprite(t, color, STRUCTURES[t] ? 0 : dirIndex(a), flick);
+export function drawShip(g: Ctx, t: UnitType, color: string, x: number, y: number, a: number, flick = false, era = artEra) {
+  const s = shipSprite(t, color, facing(t, era, a), flick, era);
   g.drawImage(s, Math.round(x - s.width / 2), Math.round(y - s.height / 2));
 }
 

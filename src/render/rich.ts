@@ -5,7 +5,7 @@
  *   {text}   a keyword, forced
  * Game terms (ship types, roles, Embers, Hearth…) are recognised automatically and drawn as keywords.
  */
-import { lineHeight, text, textWidth, type FontId } from './font';
+import { lineHeight, text, textWidth, type FontId, say } from './font';
 import { PAL } from './palette';
 import type { Ctx } from './pixel';
 
@@ -43,6 +43,7 @@ export const hasMarkup = (s: string): boolean => /[[{]/.test(s);
 
 /** Split marked-up text into styled runs. */
 export function parseRich(s: string): Run[] {
+  s = say(s);
   const out: Run[] = [];
   const pushBody = (t: string) => {
     if (!t) return;

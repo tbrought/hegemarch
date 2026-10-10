@@ -19,6 +19,7 @@ export type Modal =
   | { kind: 'destinies' }
   | { kind: 'nightDone' }
   | { kind: 'omens' }
+  | { kind: 'cradle' }
   | { kind: 'log' }
   | { kind: 'confirm'; text: string; yes: string; onYes: () => void };
 

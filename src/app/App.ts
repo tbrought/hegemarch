@@ -84,8 +84,8 @@ export class App {
   /** A one-time message on the title screen. */
   private menuNotice = '';
   /** `confirm`: the launch that waits for an answer about the saved run it would replace ('' = none). */
-  private setup: { heir: string; size: MapSize; difficulty: Difficulty; seed: string; daily: boolean; confirm: '' | 'launch' | 'first-night'; guided: boolean; custom: boolean } = {
-    heir: 'concord', size: 'medium', difficulty: 1, seed: '', daily: false, confirm: '', guided: true, custom: false,
+  private setup: { heir: string; size: MapSize; difficulty: Difficulty; seed: string; daily: boolean; ages: boolean; confirm: '' | 'launch' | 'first-night'; guided: boolean; custom: boolean } = {
+    heir: 'concord', size: 'medium', difficulty: 1, seed: '', daily: false, ages: false, confirm: '', guided: true, custom: false,
   };
   private confirmReset = false;
   /** One line about the saved run (house, sector, time played), read when the setup screen opens. */
@@ -232,7 +232,9 @@ export class App {
       unlockLegendary: this.profile.unlockLegendary,
       unlockPacts: this.profile.unlockPacts,
       daily: st.daily,
-      tutorial: st.guided && !st.daily,
+      tutorial: st.guided && !st.daily && !st.ages,
+      // An Ages run begins on the cradle world.
+      ...(st.ages ? { mode: 'ages' as const, stage: 'cradle' as const } : {}),
     };
   }
 
@@ -333,7 +335,7 @@ export class App {
       this.renderer.cam.zoom = 0.07;
     }
     if (g.config.tutorial && !g.ui.tut) this.hud.tutorial.start();
-    else if (!g.config.tutorial && g.time < 1) s.modal = { kind: 'omens' };
+    else if (!g.config.tutorial && g.time < 1) s.modal = { kind: g.cradle ? 'cradle' : 'omens' };
     this.music.play('night');
     this.canvas.focus();
   }
@@ -444,12 +446,21 @@ export class App {
         break;
       case 'setup':
         st.daily = false;
+        st.ages = false;
+        st.confirm = '';
+        this.savedRun = this.describeSavedRun();
+        this.showSetup();
+        break;
+      case 'ages':
+        st.daily = false;
+        st.ages = true;
         st.confirm = '';
         this.savedRun = this.describeSavedRun();
         this.showSetup();
         break;
       case 'daily':
         st.daily = true;
+        st.ages = false;
         st.confirm = '';
         st.custom = true;
         this.savedRun = this.describeSavedRun();
@@ -623,6 +634,7 @@ export class App {
       <div class="menu-buttons">
         ${saved ? '<button class="primary" data-sa="continue">CONTINUE</button>' : ''}
         <button class="${saved ? '' : 'primary'}" data-sa="setup">NEW RUN</button>
+        <button data-sa="ages" data-tip="A longer game. Every house starts in the Stone Age on one world, and climbs age by age to the stars.">AGES RUN</button>
         <button data-sa="daily" data-tip="The same sector for every player today: medium, Normal, with [Legacy ×1.25].">DAILY RUN${dailyDone ? ' ✓' : ''}</button>
         <button data-sa="hall" data-tip="Spend Legacy, earned by every run, on new houses, perks and unlocks.">HALL OF HEIRS · <span class="gold">◆${p.legacy}</span></button>
         <button data-sa="howto">HOW TO PLAY</button>
@@ -651,7 +663,7 @@ export class App {
     if (!d) return '';
     try {
       const size = d.config.size[0].toUpperCase() + d.config.size.slice(1);
-      const kind = d.config.daily ? ' · daily run' : d.config.tutorial ? ' · the First Night' : '';
+      const kind = d.config.mode === 'ages' ? (d.config.stage === 'stars' ? ' · Ages run, among the stars' : ' · Ages run, on the cradle') : d.config.daily ? ' · daily run' : d.config.tutorial ? ' · the First Night' : '';
       return `${HEIR_BY_ID[d.config.heir]?.name ?? 'Your house'} · ${size} sector · ${DIFFICULTY_NAMES[d.config.difficulty]} · ${fmtTime(d.time)} played${kind}`;
     } catch {
       return 'a saved run';
@@ -682,7 +694,7 @@ export class App {
         </div></div>`
       : '';
     // A simpler first-run setup: one big choice.
-    if (!p.tutorialDone && p.runs === 0 && !st.custom && !st.daily) {
+    if (!p.tutorialDone && p.runs === 0 && !st.custom && !st.daily && !st.ages) {
       this.put('setup', `<div class="screen${this.crt()}"><div class="page" style="max-width:760px">
         ${savedNote}
         <div class="px-box first-night" style="--hc:${HEIR_BY_ID.concord.color}">
@@ -705,27 +717,34 @@ export class App {
         <ul>${h.bonuses.map((b) => `<li>${glossHtml(b)}</li>`).join('')}</ul>
       </div>`;
     }).join('');
-    const sizes: [MapSize, string, string][] = [
-      ['small', 'SMALL', '3 houses · about 25 worlds · 25 to 40 minutes'],
-      ['medium', 'MEDIUM', '4 houses · about 40 worlds · 35 to 50 minutes'],
-      ['large', 'LARGE', '6 houses · about 60 worlds · 45 to 70 minutes'],
-    ];
+    const ages = st.ages;
+    const sizes: [MapSize, string, string][] = ages
+      ? [
+          ['small', 'SMALL', '3 houses on the cradle · about 50 to 70 minutes in all'],
+          ['medium', 'MEDIUM', '4 houses on the cradle · about 60 to 85 minutes in all'],
+          ['large', 'LARGE', '6 houses on the cradle · about 75 to 110 minutes in all'],
+        ]
+      : [
+          ['small', 'SMALL', '3 houses · about 25 worlds · 25 to 40 minutes'],
+          ['medium', 'MEDIUM', '4 houses · about 40 worlds · 35 to 50 minutes'],
+          ['large', 'LARGE', '6 houses · about 60 worlds · 45 to 70 minutes'],
+        ];
     const diffHelp = ['Rivals earn less and attack late. Good for learning.', 'A fair fight.', 'Richer, faster, bolder rivals.', 'Merciless.'];
     const daily = st.daily;
     this.put('setup', `<div class="screen${this.crt()}"><div class="page">
-      <h1>${daily ? 'DAILY RUN' : 'NEW RUN'}</h1>
-      <div class="lead">${daily ? `Today's sector is the same for everyone: medium, Normal, seed ${dailySeed()}. Legacy ×1.25.` : 'Choose a house to bid for the crown of Hegemarch. The sector, your rivals, your Destinies and your Boons are new every run.'}</div>
+      <h1>${daily ? 'DAILY RUN' : ages ? 'AGES RUN' : 'NEW RUN'}</h1>
+      <div class="lead">${daily ? `Today's sector is the same for everyone: medium, Normal, seed ${dailySeed()}. Legacy ×1.25.` : ages ? 'A longer game. Every house begins as a tribe in the Stone Age, all on one cradle world. Climb through the ages, build your Ark, and carry what you have won to the stars, where the crown is decided.' : 'Choose a house to bid for the crown of Hegemarch. The sector, your rivals, your Destinies and your Boons are new every run.'}</div>
       ${savedNote}
       <div class="heirs">${heirs}</div>
       ${daily ? '' : `<div class="opts">
-        <div class="opt px-box"><h4>SECTOR</h4><div class="row">${sizes.map(([k, n, d]) => `<button class="small ${st.size === k ? 'active' : ''}" data-sa="size:${k}" data-tip="${esc(d)}">${n}</button>`).join('')}</div>
+        <div class="opt px-box"><h4>${ages ? 'SIZE' : 'SECTOR'}</h4><div class="row">${sizes.map(([k, n, d]) => `<button class="small ${st.size === k ? 'active' : ''}" data-sa="size:${k}" data-tip="${esc(d)}">${n}</button>`).join('')}</div>
           <div class="help">${sizes.find((x) => x[0] === st.size)![2]}</div></div>
         <div class="opt px-box"><h4>DIFFICULTY</h4><div class="row">${DIFFICULTY_NAMES.map((n, i) => `<button class="small ${st.difficulty === i ? 'active' : ''} ${i > p.maxDifficulty ? 'disabled' : ''}" data-sa="diff:${i}" data-tip="${esc(i > p.maxDifficulty ? `Locked: win a run on ${DIFFICULTY_NAMES[i - 1]} to unlock it.` : diffHelp[i])}">${n.toUpperCase()}${i > p.maxDifficulty ? ' ×' : ''}</button>`).join('')}</div>
           <div class="help">${diffHelp[st.difficulty]}${p.maxDifficulty < 3 ? ' Win to unlock the next one.' : ''}</div></div>
         <div class="opt px-box"><h4>SEED</h4><div class="row"><input type="text" id="seed-input" placeholder="random" value="${esc(st.seed)}"><button class="small" data-sa="reseed" data-tip="Pick a random seed. The same seed always builds the same sector.">ROLL</button></div>
           <div class="help">Share a seed to replay the same sector.</div></div>
-        <div class="opt px-box"><h4>GUIDE</h4><div class="check ${st.guided ? 'on' : ''}" data-sa="guided"><span class="box"></span>Guided First Night</div>
-          <div class="help">Shows the first few moves step by step and reveals the screen as you go.</div></div>
+        ${ages ? '' : `<div class="opt px-box"><h4>GUIDE</h4><div class="check ${st.guided ? 'on' : ''}" data-sa="guided"><span class="box"></span>Guided First Night</div>
+          <div class="help">Shows the first few moves step by step and reveals the screen as you go.</div></div>`}
       </div>`}
       <div class="foot-actions"><button data-sa="menu">BACK</button>
         <button class="primary" data-sa="launch" style="font-size:14px;padding:14px 22px">LAUNCH</button></div>

@@ -81,7 +81,7 @@ function startJump(g: Game, u: Unit) {
   const ey = toN.y + Math.sin(ea) * er;
   const len = dist(u.x, u.y, ex, ey);
   const dur = Math.max(1, len / g.laneSpeedOf(u));
-  if (g.fxEnabled) g.fx.push({ k: 'jumpOut', x: u.x, y: u.y, a: Math.atan2(ey - u.y, ex - u.x), node: from, color: g.factions[u.owner].color });
+  if (g.fxEnabled && !g.cradle) g.fx.push({ k: 'jumpOut', x: u.x, y: u.y, a: Math.atan2(ey - u.y, ex - u.x), node: from, color: g.factions[u.owner].color });
   u.lane = { from, to, t: 0, dur, sx: u.x, sy: u.y, ex, ey };
   u.node = -1;
   u.charge = -1;
@@ -130,7 +130,7 @@ function arrive(g: Game, u: Unit) {
   u.arrivedAt = g.time;
   u.wellTime = 0;
   g.buckets[u.node].push(u);
-  if (g.fxEnabled) g.fx.push({ k: 'jumpIn', x: u.x, y: u.y, a, node: u.node, color: g.factions[u.owner].color });
+  if (g.fxEnabled && !g.cradle) g.fx.push({ k: 'jumpIn', x: u.x, y: u.y, a, node: u.node, color: g.factions[u.owner].color });
   if (u.path.length === 0) {
     // An explicit point only counts at the world it was given for (not after a stop or a new order).
     if (!isNaN(u.ox) && Math.hypot(u.ox - n.x, u.oy - n.y) < n.r + 900) {
