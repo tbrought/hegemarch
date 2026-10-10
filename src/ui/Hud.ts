@@ -200,6 +200,11 @@ export class Hud {
     }
   }
 
+  /** A text as the HUD shows it right now: in the cradle's words while the run is on the cradle. */
+  words(s: string): string {
+    return this.g.cradle ? cradleVocabulary(this.g.player.era)(s) : s;
+  }
+
   private drawAll(dt: number) {
     const g = this.s.screen.g;
     this.ui.begin(dt);

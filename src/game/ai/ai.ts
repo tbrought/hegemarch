@@ -387,7 +387,7 @@ function targetValid(g: Game, f: Faction, nodeId: number): boolean {
   const n = g.nodes[nodeId];
   if (n.kind === 'planet') {
     if (n.owner === f.id) return false;
-    if (n.owner >= 0) return g.factions[n.owner].kind === 'empire';
+    if (n.owner >= 0) return g.factions[n.owner].kind === 'empire' && g.hostile(n.owner, f.id);
     return g.hasHostiles(n.id, f.id);
   }
   if (n.kind === 'relic') return !!n.relic;
@@ -418,7 +418,10 @@ function chooseTarget(g: Game, f: Faction, armyPower: number, from: number): { n
     let value = 0;
     let def = g.hostilePowerAt(n.id, f.id);
     if (n.kind === 'planet' && n.owner >= 0 && n.owner !== f.id) {
-      if (g.factions[n.owner].kind !== 'empire') continue;
+      const owner = g.factions[n.owner];
+      if (owner.kind !== 'empire' || !g.hostile(n.owner, f.id)) continue;
+      // (Ages: a house newly arrived among the stars is left alone for a while, unless it struck first.)
+      if (g.time < owner.graceUntil && f.ai!.grudge !== n.owner) continue;
       value = 10 + SIZE_VALUE[n.size] * 3 + n.level * 2 + (n.capitalOf >= 0 ? 25 : 0);
       value *= rivalThreat(g, n.owner);
       if (n.owner === f.ai!.grudge && g.time - f.ai!.grudgeAt < 600) value *= 2.5;

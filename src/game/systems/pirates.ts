@@ -63,10 +63,10 @@ export function plunder(g: Game, n: GNode, victim: number) {
 function launchRaid(g: Game) {
   const P = g.pirates;
   P.nextRaid = g.time + Math.max(200, 330 - P.raidCount * 10) * g.rng.float(0.85, 1.15);
-  const empires = g.aliveEmpires();
+  const empires = g.aliveEmpires().filter((f) => !g.asleep(f.id));
   if (!empires.length) return;
   let victim: Faction | undefined;
-  if (P.marked >= 0 && g.factions[P.marked]?.alive) {
+  if (P.marked >= 0 && g.factions[P.marked]?.alive && !g.asleep(P.marked)) {
     victim = g.factions[P.marked];
     P.marked = -1;
   } else {

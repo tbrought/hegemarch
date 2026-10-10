@@ -338,8 +338,8 @@ A second way to play, beside the classic run: every house begins as a tribe in t
 one **cradle world**, and climbs age by age to the stars. It is a longer game (about an hour or
 more): the cradle first, then the classic game among the stars with what was won on the cradle.
 
-> Status while it is being built: the cradle is playable from the menu (AGES RUN), with its rules, its
-> look and its controls. Still to come: the passage to the stars, saving across it, results, and balance.
+> Status while it is being built: playable from the menu (AGES RUN) to the end of the run. Still to
+> come: balance from simulated runs, and playtesting.
 
 ### The cradle
 
@@ -393,10 +393,22 @@ more): the cradle first, then the classic game among the stars with what was won
 
 ### The stars
 
-The classic game, begun from the cradle: the player's Hearth is the cradle world, the rivals are the
-houses that left it alive, each on a world of its own. A house that left before the player has been
-playing for that long already; a house that had not left yet arrives later. Boons of the cradle are
-kept, and Lore makes Boons again.
+When the player's Ark is done, a card says what goes with it and where every rival stands, and its
+button takes the run on (`game/ages.ts`, `App.toStars`). What follows is the classic game, built from
+how the cradle went:
+
+- **The houses** are the player's and every rival that left the cradle alive or is still climbing
+  there. A house whose Hearth was put out on the cradle does not follow.
+- **Arrivals.** A rival whose Ark left earlier has been out there that long (at most 5 to 11 minutes,
+  by difficulty): the sector is played forward without the player until the player arrives. A rival
+  still on the cradle follows when its own climb would have ended (at most 12 minutes later). Until a
+  house arrives it holds its Hearth and nothing more: it earns nothing, does nothing, and nothing can
+  hurt or fight it (`Faction.asleepUntil`, `Game.asleep`). For some minutes after a house arrives its
+  rivals leave it alone unless it strikes first (`graceUntil`).
+- **What is kept.** Every house keeps the Boons of its ages, and brings half its Embers (up to 2,000)
+  and 50 for each land it held. The player's Hearth is as high as it stood on the cradle, and the
+  lands held pay a few ships more at the start (one for every two, up to four). Lore makes Boons again.
+- The run's results count both stages, and an Ages run that reached the stars earns 30% more Legacy.
 
 ### How it sits in the code
 

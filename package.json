@@ -26,6 +26,7 @@
     "test:audio": "node scripts/audio.mjs",
     "test:menus": "node scripts/menus.mjs",
     "test:site": "node scripts/site.mjs",
+    "test:ages": "node scripts/ages.mjs",
     "test:layouts": "node scripts/layouts.mjs",
     "test:uifuzz": "node scripts/uifuzz.mjs",
     "test:fuzz": "tsx scripts/fuzz.ts"

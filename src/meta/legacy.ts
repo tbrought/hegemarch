@@ -44,10 +44,12 @@ export function computeLegacy(g: Game): LegacyReport {
   if (p.stats.rivalsEliminated) lines.push([`Rival Hearths put out (${p.stats.rivalsEliminated})`, p.stats.rivalsEliminated * 15]);
   if (p.stats.strongholdDestroyed) lines.push(['Corsair Stronghold destroyed', 25]);
   if (p.stats.maxRelics) lines.push([`Relics held (${p.stats.maxRelics})`, p.stats.maxRelics * 10]);
+  if (g.config.ages) lines.push(['The Ark reached the stars', 20]);
   if (won) lines.push(['VICTORY', 60]);
   const amb = AMBITION_BY_ID[g.ambition];
   const ambitionDone = !!amb && amb.check(g, p, won);
-  const mult = LEGACY_MUL[g.config.difficulty] * (g.config.daily ? 1.25 : 1);
+  // (An Ages run that reached the stars is two games long.)
+  const mult = LEGACY_MUL[g.config.difficulty] * (g.config.daily ? 1.25 : 1) * (g.config.ages ? 1.3 : 1);
   let sum = lines.reduce((a, [, v]) => a + v, 0) * mult;
   if (ambitionDone && amb) {
     lines.push([`Ambition: ${amb.name}`, amb.reward]);
@@ -66,7 +68,7 @@ export function applyRunToProfile(prof: Profile, g: Game, legacy: number): strin
   if (o.playerWon) {
     prof.wins++;
     prof.winsByHeir[g.config.heir] = (prof.winsByHeir[g.config.heir] ?? 0) + 1;
-    if (prof.bestTime === null || o.time < prof.bestTime) prof.bestTime = o.time;
+    if (g.config.mode !== 'ages' && (prof.bestTime === null || o.time < prof.bestTime)) prof.bestTime = o.time;
     const next = Math.min(3, g.config.difficulty + 1);
     if (g.config.difficulty >= 1 && next > prof.maxDifficulty) {
       prof.maxDifficulty = next;

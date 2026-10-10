@@ -40,7 +40,7 @@ export function productionTick(g: Game, dt: number) {
   for (const n of g.nodes) {
     if (n.owner < 0 || n.kind !== 'planet') continue;
     const f = g.factions[n.owner];
-    if (f.kind !== 'empire') continue;
+    if (f.kind !== 'empire' || g.asleep(f.id)) continue;
     const m = f.mods;
 
     if (n.shipQ.length) {

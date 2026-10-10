@@ -1,6 +1,7 @@
 import type { Modal } from '../app/Session';
 import { ABILITY_BY_ID } from '../game/data/abilities';
 import { AMBITION_BY_ID } from '../game/data/ambitions';
+import { describePassage } from '../game/ages';
 import { ERAS, LAST_CRADLE_ERA } from '../game/data/eras';
 import { CARD_BY_ID, CAT_LABEL, type CardCat } from '../game/data/cards';
 import { EVENT_BY_ID } from '../game/data/events';
@@ -12,7 +13,7 @@ import { VICTORIES } from '../game/data/victories';
 import type { UnitType } from '../game/types';
 import { DIFFICULTY_NAMES } from '../game/constants';
 import { modDelta, modLines, statSources, type StatDelta } from '../game/modstats';
-import { fit, IC, lineHeight, text, textCenter, textWidth, wrap } from '../render/font';
+import { fit, IC, lineHeight, setVocabulary, text, textCenter, textWidth, wrap } from '../render/font';
 import { PAL, shade } from '../render/palette';
 import { bar, box, rect, type Ctx } from '../render/pixel';
 import { drawRich, richLines } from '../render/rich';
@@ -99,7 +100,7 @@ export class Modals {
   /** Clicking the dimmed area outside closes informational modals. */
   closable(): boolean {
     const k = this.s.modal?.kind;
-    return k === 'status' || k === 'help' || k === 'log' || k === 'settings' || k === 'menu' || k === 'omens';
+    return k === 'status' || k === 'help' || k === 'log' || k === 'settings' || k === 'menu' || k === 'omens' || k === 'cradle';
   }
 
   /** Keyboard shortcuts inside modals. Returns true when handled. */
@@ -149,6 +150,8 @@ export class Modals {
         return this.omens(g);
       case 'cradle':
         return this.cradleCard(g);
+      case 'ascend':
+        return this.ascendCard(g);
       case 'log':
         return this.logView(g);
       case 'confirm':
@@ -595,7 +598,7 @@ export class Modals {
           const worlds = this.g.worldsOf(f.id).length;
           rect(g, cx, ly + 1, 6, 6, f.color);
           text(g, `${f.name}${f.isPlayer ? ' (YOU)' : ''}`, cx + 10, ly, f.alive ? PAL.bone : PAL.slate);
-          const status = f.alive ? `${worlds} WORLDS · ${f.boons} BOONS` : `OUT AT ${fmtTime(f.eliminatedAt)}`;
+          const status = !f.alive ? (f.launchedAt >= 0 && this.g.cradle ? `LEFT FOR THE STARS AT ${fmtTime(f.launchedAt)}` : `OUT AT ${fmtTime(f.eliminatedAt)}`) : this.g.asleep(f.id) ? `STILL ON ITS WAY · ARRIVES IN ${fmtTime(f.asleepUntil - this.g.time)}` : `${worlds} WORLDS · ${f.boons} BOONS`;
           text(g, status, cx + cw - textWidth(status, 'tiny'), ly + 1, f.alive ? PAL.mist : PAL.slate, 'tiny');
           ly += 10;
           const notes: string[] = [];
@@ -1052,6 +1055,53 @@ export class Modals {
       ly += 6;
     });
     this.ui.button(g, 'cradle-begin', x + w / 2 - 34, y + h - 17, 68, 13, 'BEGIN', () => this.close(), { primary: true });
+  }
+
+  // ---------------------------------------------------------------------
+  // The card as the player's Ark leaves the cradle (Ages runs)
+  // ---------------------------------------------------------------------
+
+  private ascendCard(g: Ctx) {
+    // (This card speaks of what lies ahead, in the words of the stars.)
+    setVocabulary(null);
+    const W = this.hud.W;
+    const w = Math.min(W - 16, 330);
+    const pass = describePassage(this.g);
+    const lead = wrap(`After ${fmtTime(pass.cradleTime)} on the cradle, your Ark leaves for the stars. The crown of Hegemarch is decided out there.`, w - 20, 'main');
+    const carry = wrap(
+      `${pass.boons} ${pass.boons === 1 ? 'Boon' : 'Boons'} of your ages, ${fmt(pass.embers)} Embers${pass.ships ? `, and ${pass.ships} more ${pass.ships === 1 ? 'ship' : 'ships'} for the ${pass.lands} lands you held` : ''}. Your Lore makes Boons again.`,
+      w - 31, 'main');
+    const rows = pass.rivals.map((r) => ({
+      r,
+      line:
+        r.fate === 'ahead' ? `left ${fmtTime(r.seconds)} before you: it is ahead` : r.fate === 'fallen' ? 'its Hearth is dark: it will not follow' : `still in the ${ERAS[Math.min(r.era, LAST_CRADLE_ERA)].name}: it follows in about ${Math.max(1, Math.round(r.seconds / 60))} min`,
+    }));
+    const h = 20 + lead.length * 10 + 8 + 10 + carry.length * 10 + 8 + 10 + rows.length * 11 + 24;
+    const { x, y } = this.frame(g, w, h, 'YOUR ARK RISES', PAL.gold);
+    let ly = y + 17;
+    for (const l of lead) {
+      text(g, l, x + 10, ly, PAL.bone);
+      ly += 10;
+    }
+    ly += 8;
+    icon(g, 'boon', x + 10, ly);
+    text(g, 'YOU TAKE WITH YOU', x + 21, ly + 1, PAL.gold, 'tiny');
+    ly += 10;
+    for (const l of carry) {
+      text(g, l, x + 21, ly, PAL.mist);
+      ly += 10;
+    }
+    ly += 8;
+    icon(g, 'conquest', x + 10, ly);
+    text(g, 'YOUR RIVALS', x + 21, ly + 1, PAL.gold, 'tiny');
+    ly += 10;
+    for (const { r, line } of rows) {
+      rect(g, x + 21, ly + 1, 5, 5, r.fate === 'fallen' ? PAL.slate : r.color);
+      const ex = text(g, r.name, x + 30, ly, r.fate === 'fallen' ? PAL.slate : r.color);
+      text(g, fit(line, x + w - 10 - ex - 6, 'tiny'), ex + 6, ly + 1, r.fate === 'ahead' ? PAL.ember : PAL.dusk, 'tiny');
+      ly += 11;
+    }
+    this.ui.button(g, 'ascend-go', x + w / 2 - 46, y + h - 18, 92, 14, 'TO THE STARS', () => this.s.hooks.ascend?.(), { primary: true, pulse: true });
   }
 
   /** The status screen's first tab on the cradle: where every house stands on the climb. */

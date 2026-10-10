@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { Game } from '../src/game/Game';
+import { ascend, describePassage } from '../src/game/ages';
 import { TICK } from '../src/game/constants';
 import { CARDS, CARD_BY_ID } from '../src/game/data/cards';
 import { ERAS, LAST_CRADLE_ERA, SPACE } from '../src/game/data/eras';
@@ -299,5 +300,134 @@ describe('the cradle played by the AI', () => {
     }
     expect(snap(c)).toBe(snap(a));
     expect(a.empires().some((f) => f.era >= 1)).toBe(true);
+  });
+});
+
+describe('from the cradle to the stars', () => {
+  /** A cradle whose player has just seen the Ark leave; `prepare` sets the rivals up first. */
+  function leave(prepare: (g: Game, rivals: ReturnType<Game['empires']>) => void, opts: Partial<GameConfig> = {}): Game {
+    const g = cradle({ size: 'medium', ...opts });
+    const rivals = g.empires().filter((f) => !f.isPlayer);
+    // (Far enough in that an Ark can have left a few minutes ago.)
+    run(g, 320);
+    prepare(g, rivals);
+    const p = g.player;
+    p.era = LAST_CRADLE_ERA;
+    p.advance = { t: ERAS[LAST_CRADLE_ERA].time - 0.01, total: ERAS[LAST_CRADLE_ERA].time, lore: 0, cost: 0 };
+    run(g, 2);
+    expect(g.ascended).toBe(true);
+    return g;
+  }
+
+  it('the houses out there are the player and every rival that did not fall', () => {
+    const c = leave((g, r) => {
+      g.eliminate(r[0].id, r[1].id);
+      r[1].launchedAt = g.time - 200;
+      r[1].alive = false;
+    });
+    const rivals = c.empires().filter((f) => !f.isPlayer);
+    const pass = describePassage(c);
+    expect(pass.rivals.map((r) => r.fate)).toEqual(['fallen', 'ahead', 'behind']);
+    const s = ascend(c)!;
+    expect(s.cradle).toBe(false);
+    expect(s.config.stage).toBe('stars');
+    expect(s.empires().map((f) => f.heir)).toEqual([c.player.heir, rivals[1].heir, rivals[2].heir]);
+    for (const f of s.empires()) {
+      expect(f.era).toBe(SPACE);
+      expect(f.capital).toBeGreaterThanOrEqual(0);
+      expect(s.units.get(f.ark)?.type).toBe('ark');
+    }
+    for (const u of s.unitList) expect(u.era).toBe(SPACE);
+    expect(s.pirates.alive).toBe(true);
+    expect(s.victories.length).toBe(3);
+  });
+
+  it('a house keeps the Boons of its ages, and the player is paid for the lands held', () => {
+    const c = leave((g) => {
+      const p = g.player;
+      g.cmdChooseCard(p.id, g.ensureOffer(p)![0]);
+      for (const n of g.nodes.filter((x) => x.owner === -1 && !x.tag.startsWith('militia')).slice(0, 4)) g.kindleWorld(n, p.id);
+      p.embers = 1000;
+    });
+    const old = c.player;
+    const pass = describePassage(c);
+    expect(pass.lands).toBe(5);
+    expect(pass.ships).toBe(2);
+    expect(pass.boons).toBe(old.cards.length);
+    const plain = Game.create({ ...c.config, stage: 'stars', houses: 4, seed: 1 });
+    const s = ascend(c)!;
+    const me = s.player;
+    for (const id of old.cards) expect(me.cards).toContain(id);
+    expect(me.embers).toBeGreaterThan(plain.player.embers + 500);
+    expect(s.unitsOf(me.id).length).toBe(plain.unitsOf(plain.player.id).length + 2);
+    expect(s.computeMods(me)).toEqual(s.computeMods({ ...me, cards: [...old.cards] } as typeof me));
+    // Lore makes Boons again out there, and the cradle's own Boons are never offered.
+    for (const id of s.generateOffer(me)) expect(CARD_BY_ID[id].cradle).toBeFalsy();
+  });
+
+  it('a rival that left earlier has been playing for that long; one still climbing arrives later', () => {
+    const c = leave((g, r) => {
+      r[0].launchedAt = g.time - 200;
+      r[0].alive = false;
+      r[1].era = LAST_CRADLE_ERA;
+      r[1].lore = ERAS[LAST_CRADLE_ERA].lore;
+    });
+    const s = ascend(c)!;
+    const arrival = s.config.ages!.arrival;
+    expect(arrival).toBeCloseTo(200, 0);
+    const [me, ahead, behind] = s.empires();
+    expect(ahead.asleepUntil).toBe(0);
+    expect(me.asleepUntil).toBeCloseTo(arrival, 5);
+    expect(behind.asleepUntil).toBeGreaterThan(arrival + 60);
+    // Until it arrives a house earns nothing, does nothing, and cannot be hurt or fought.
+    const hearth = s.nodes[behind.capital];
+    const hp = hearth.hp;
+    const embers = behind.embers;
+    s.fxEnabled = false;
+    while (s.time < arrival) s.step();
+    expect(ahead.stats.shipsBuilt + ahead.stats.worldsKindled).toBeGreaterThan(0);
+    expect(behind.embers).toBe(embers);
+    expect(s.asleep(behind.id)).toBe(true);
+    expect(s.hostile(ahead.id, behind.id)).toBe(false);
+    // (Its walls rise with the clock like every Hearth's; a blow changes nothing.)
+    expect(hearth.hp).toBeGreaterThanOrEqual(hp);
+    const before = hearth.hp;
+    s.damagePlanet(hearth, 99999, 'siege', ahead.id);
+    expect(hearth.hp).toBe(before);
+    for (const u of s.unitsOf(behind.id)) expect(u.order).toBe('idle');
+    // The player arrives now, untouched, and the last house when its time comes.
+    expect(s.nodes[me.capital].hp).toBe(s.nodes[me.capital].maxHp);
+    while (s.time < arrival + 2) s.step();
+    expect(s.asleep(me.id)).toBe(false);
+    expect(me.embers).toBeGreaterThan(0);
+    while (s.time < behind.asleepUntil + 2 && s.time < 3000) s.step();
+    expect(s.asleep(behind.id)).toBe(false);
+    expect(s.hostile(ahead.id, behind.id)).toBe(true);
+    expect(behind.embers).toBeGreaterThan(embers);
+  });
+
+  it('a game among the stars saved mid-way continues exactly, sleepers and all', () => {
+    const c = leave((g, r) => {
+      r[0].launchedAt = g.time - 120;
+      r[0].alive = false;
+    }, { autoplay: false });
+    const a = ascend(c)!;
+    a.fxEnabled = false;
+    for (let i = 0; i < 100 * 20; i++) a.step();
+    const snap = (g: Game) => JSON.stringify(g.serialize());
+    const b = Game.load(JSON.parse(snap(a)));
+    b.fxEnabled = false;
+    for (let i = 0; i < 400 * 20; i++) {
+      a.step();
+      b.step();
+    }
+    expect(snap(b)).toBe(snap(a));
+  });
+
+  it('with no rival left to follow, there is no game among the stars to play', () => {
+    const c = leave((g, r) => {
+      for (const f of r) g.eliminate(f.id, -1);
+    });
+    expect(ascend(c)).toBeNull();
   });
 });

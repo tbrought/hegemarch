@@ -20,6 +20,7 @@ export type Modal =
   | { kind: 'nightDone' }
   | { kind: 'omens' }
   | { kind: 'cradle' }
+  | { kind: 'ascend' }
   | { kind: 'log' }
   | { kind: 'confirm'; text: string; yes: string; onYes: () => void };
 
@@ -28,6 +29,8 @@ export interface SessionHooks {
   showResults?(): void;
   quit(save: boolean): void;
   abandon(): void;
+  /** Ages: the player's Ark has left the cradle; take the run on to the stars. */
+  ascend?(): void;
   saveProfile(): void;
   applySettings(): void;
 }

@@ -2,9 +2,11 @@ import { Music, type SongId } from '../audio/Music';
 import { playBattleSounds } from '../audio/battleSounds';
 import { Sfx } from '../audio/Sfx';
 import { Game } from '../game/Game';
+import { ascend } from '../game/ages';
 import { DIFFICULTY_NAMES, TICK } from '../game/constants';
 import { AMBITION_BY_ID } from '../game/data/ambitions';
 import { CARD_BY_ID, PACT_COLOR, RARITY_COLOR } from '../game/data/cards';
+import { ERAS, LAST_CRADLE_ERA } from '../game/data/eras';
 import { HEIRS, HEIR_BY_ID } from '../game/data/heirs';
 import { RELIC_BY_ID } from '../game/data/relics';
 import { TRAIT_BY_ID } from '../game/data/traits';
@@ -19,6 +21,7 @@ import { drawHouseBanners, startingFleet } from './houseArt';
 import { Screen } from '../render/Screen';
 import { groupBoons } from '../ui/boons';
 import { installDomTips } from '../ui/domtips';
+import { cradleVocabulary } from '../ui/vocab';
 import { esc, fmt } from '../ui/format';
 import { glossHtml } from '../ui/glossary';
 import { Hud } from '../ui/Hud';
@@ -169,6 +172,8 @@ export class App {
     this.processFx(g, s.visible, playing);
     this.renderer.fx.update(s.halted && !g.outcome ? 0 : dt * (g.outcome ? 1 : s.speed));
     this.renderer.render(g, alpha, dt, s.view, !playing);
+    // Ages: the player's Ark has left the cradle. A card says what goes with it; its button takes the run on.
+    if (playing && g.ascended && !g.outcome && s.modal?.kind !== 'ascend') s.modal = { kind: 'ascend' };
     if (playing && this.hud) {
       try {
         this.hud.update(dt);
@@ -310,9 +315,11 @@ export class App {
         void this.attract.start();
       },
       abandon: () => {
+        g.ascended = false;
         g.declareWinner(-1, 'defeat', 'You abandoned the run.');
         this.endRun();
       },
+      ascend: () => void this.toStars(g),
       saveProfile: () => saveProfile(this.profile),
       applySettings: () => this.applySettings(),
       showResults: () => {
@@ -335,9 +342,53 @@ export class App {
       this.renderer.cam.zoom = 0.07;
     }
     if (g.config.tutorial && !g.ui.tut) this.hud.tutorial.start();
-    else if (!g.config.tutorial && g.time < 1) s.modal = { kind: g.cradle ? 'cradle' : 'omens' };
+    else if (g.cradle && g.time < 1) s.modal = { kind: 'cradle' };
+    else if (!g.cradle && !g.config.tutorial && (g.time < 1 || (g.config.ages && !g.ui.arrived))) {
+      // (An Ages run arrives among the stars some minutes into that game: its omens are shown then.)
+      s.modal = { kind: 'omens' };
+      g.ui.arrived = 1;
+    }
     this.music.play('night');
     this.canvas.focus();
+  }
+
+  /**
+   * Ages: the player's Ark has left the cradle. Build the game among the stars from it, play that game
+   * forward to the moment the player arrives (rivals whose Arks left earlier have had that long), and go on.
+   */
+  private async toStars(cradle: Game) {
+    this.teardownSession();
+    const token = ++this.prepToken;
+    this.screen = 'loading';
+    this.renderLoading(0.05, 'Your Ark crosses the dark…');
+    await new Promise((r) => setTimeout(r, 60));
+    let g: Game | null;
+    try {
+      g = ascend(cradle);
+    } catch (e) {
+      console.error(e);
+      g = null;
+    }
+    if (token !== this.prepToken) return;
+    if (!g) {
+      // No rival is left to meet out there: the crown is already won.
+      cradle.ascended = false;
+      cradle.declareWinner(cradle.playerId, 'conquest', 'No rival house was left to follow you to the stars.');
+      this.beginSession(cradle);
+      return;
+    }
+    const arrival = g.config.ages?.arrival ?? 0;
+    g.fxEnabled = false;
+    while (g.time < arrival && !g.outcome) {
+      for (let i = 0; i < 400 && g.time < arrival && !g.outcome; i++) g.step();
+      this.renderLoading(0.05 + 0.9 * Math.min(1, g.time / Math.max(1, arrival)));
+      await new Promise((r) => setTimeout(r, 0));
+      if (token !== this.prepToken) return;
+    }
+    g.fx.length = 0;
+    g.fxEnabled = true;
+    this.beginSession(g);
+    saveRun(g.serialize());
   }
 
   private teardownSession() {
@@ -365,6 +416,8 @@ export class App {
     g.outcomeHandled = true;
     const o = g.outcome!;
     const report = computeLegacy(g);
+    // (A run that ended on the cradle is told in the cradle's words: lands, units.)
+    if (g.cradle) for (const l of report.lines) l[0] = cradleVocabulary(LAST_CRADLE_ERA + 1)(l[0]);
     const unlocked = applyRunToProfile(this.profile, g, report.total);
     if (g.config.daily) this.profile.lastDaily = todayKey();
     if (g.config.tutorial) this.profile.tutorialDone = true;
@@ -385,8 +438,9 @@ export class App {
         : winner && o.victory !== 'defeat'
           ? `${winner.name} is crowned Hegemarch by ${vname(o.victory)}. ${o.reason}`
           : o.reason,
-      stats: [
-        ['Run time', fmtTime(o.time)],
+      stats: (
+        [
+        ['Run time', fmtTime(o.time + (g.config.ages?.cradleTime ?? 0))],
         ['Most worlds held', String(p.stats.maxWorlds)],
         ['Worlds kindled', String(p.stats.worldsKindled)],
         ['Worlds captured', String(p.stats.worldsCaptured)],
@@ -397,7 +451,14 @@ export class App {
         ['Anomalies resolved', String(p.stats.eventsResolved)],
         ['Embers earned', fmt(p.stats.embersEarned)],
         ['Omens', g.traits.map((t) => TRAIT_BY_ID[t]?.name ?? t).join(', ')],
-      ],
+        // An Ages run: how long the cradle took (or, if the run ended there, how far the climb came).
+        ...(g.config.ages ? [['Time on the cradle', fmtTime(g.config.ages.cradleTime)], ['Lands held when the Ark left', String(g.config.ages.lands)]] : []),
+        ...(g.cradle ? [['Age reached', ERAS[Math.min(p.era, LAST_CRADLE_ERA)].name]] : []),
+        ] as [string, string][]
+      )
+        .filter(([, v]) => v !== '')
+        // (A run that ended on the cradle is told in the cradle's words: lands, units.)
+        .map(([k, v]) => [g.cradle ? cradleVocabulary(LAST_CRADLE_ERA + 1)(k) : k, v] as [string, string]),
       cards: [...p.cards],
       relics: [...p.relics],
       heir: p.heir,
@@ -819,7 +880,7 @@ export class App {
     </div></div>`);
   }
 
-  private renderLoading(p: number) {
+  private renderLoading(p: number, line?: string) {
     if (this.screen !== 'loading') return;
     const existing = this.ui.querySelector('#load-bar') as HTMLElement | null;
     if (existing) {
@@ -828,7 +889,7 @@ export class App {
     }
     const lines = ['Charting the starlanes…', 'Waking the old stars…', 'Counting the heirs who came before…', 'Listening for the Hollow…', 'Dusting off the Hegemarch’s empty throne…'];
     this.ui.innerHTML = `<div class="screen loading${this.crt()}"><div class="logo" style="font-size:28px">HEGEMARCH</div>
-      <div class="tagline">${lines[Math.floor(Math.random() * lines.length)]}</div>
+      <div class="tagline">${line ?? lines[Math.floor(Math.random() * lines.length)]}</div>
       <div class="bar"><i id="load-bar" style="width:${Math.round(p * 100)}%"></i></div></div>`;
   }
 

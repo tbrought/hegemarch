@@ -25,7 +25,7 @@ export function economyTick(g: Game, dt: number) {
   for (const n of g.nodes) {
     if (n.kind !== 'planet' || n.owner < 0) continue;
     const f = g.factions[n.owner];
-    if (f.kind !== 'empire') continue;
+    if (f.kind !== 'empire' || g.asleep(f.id)) continue;
     worlds[f.id]++;
     if (n.glow < 1) n.glow = Math.min(1, n.glow + ((1 - ECON.glowStart) / ECON.glowTime) * mul(f.mods.glowRate) * dt);
     if (n.retool > 0) {
@@ -37,7 +37,7 @@ export function economyTick(g: Game, dt: number) {
   }
 
   for (const f of g.factions) {
-    if (f.kind !== 'empire' || !f.alive) continue;
+    if (f.kind !== 'empire' || !f.alive || g.asleep(f.id)) continue;
     const fm = f.mods;
     const boom = f.boomT > 0 ? 1.4 : 1;
     f.income = embers[f.id] * mul(fm.embers) * boom * f.incomeMul;

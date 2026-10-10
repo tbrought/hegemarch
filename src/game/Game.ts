@@ -123,6 +123,8 @@ export class Game {
   worldCount = 0;
   /** Set once the client has shown the end of the run. */
   outcomeHandled = false;
+  /** Ages, among the stars: how many houses have not arrived yet (see `asleep`). */
+  private sleepers = 0;
   /** Ages, cradle stage: the player's Ark has left for the stars. The game stands still; the client takes the run on. */
   ascended = false;
 
@@ -156,7 +158,7 @@ export class Game {
       g.ambition = '';
       g.traits = [];
     }
-    const nEmp = EMPIRES_BY_SIZE[config.size];
+    const nEmp = config.houses ?? EMPIRES_BY_SIZE[config.size];
     const map = cradle ? generateCradle(rng.fork(), { houses: nEmp }) : generateMap(rng.fork(), { size: config.size, empires: nEmp, crisis: g.victories.includes('crisis') });
     g.nodes = map.nodes;
     g.lanes = map.lanes;
@@ -238,7 +240,7 @@ export class Game {
         if (!f.isPlayer) sc.order = 'explore';
       }
       f.pendingDrafts = 1; // The origin Boon
-      if (heir.start.epicCard) g.grantRandomCard(f, ['epic'], (c) => !c.pact && c.cat !== 'blueprint');
+      if (heir.start.epicCard && config.stage !== 'stars') g.grantRandomCard(f, ['epic'], (c) => !c.pact && c.cat !== 'blueprint');
     }
 
     // ---- Neutral content ----
@@ -320,6 +322,8 @@ export class Game {
       f.era ??= SPACE;
       f.advance ??= null;
       f.launchedAt ??= -1;
+      f.asleepUntil ??= 0;
+      f.graceUntil ??= 0;
       if (f.ai) {
         f.ai.grudge ??= -1;
         f.ai.grudgeAt ??= -999;
@@ -355,6 +359,7 @@ export class Game {
     g.promptId = data.promptId;
     g.ui = data.ui ?? {};
     g.ascended = data.ascended ?? false;
+    g.countSleepers();
     g.derive();
     for (const f of g.factions) g.recomputeMods(f);
     // Hangar use is recounted every half second in play; keep the saved count so a loaded game
@@ -428,7 +433,7 @@ export class Game {
       },
       ai: null, ark: -1, arkLevel: 1, arkXp: 0, arkAbil: [], incomeMul: 1, holdTimer: 0, treasuryTimer: 0, relicTimer: 0, gate: null,
       boomT: 0, echoT: 0, interestT: 0, stormT: 0, bpPity: 0, eliminatedAt: -1, warned: {}, score: 0,
-      era: SPACE, advance: null, launchedAt: -1,
+      era: SPACE, advance: null, launchedAt: -1, asleepUntil: 0, graceUntil: 0,
     };
   }
 
@@ -476,7 +481,30 @@ export class Game {
   }
 
   hostile(a: number, b: number): boolean {
-    return a !== b && a >= 0 && b >= 0;
+    if (a === b || a < 0 || b < 0) return false;
+    // (Ages: a house that has not arrived among the stars yet fights no one, and no one fights it.)
+    return this.sleepers === 0 || (!this.asleep(a) && !this.asleep(b));
+  }
+
+  /** Ages, among the stars: has this house not arrived from the cradle yet? */
+  asleep(fid: number): boolean {
+    return this.sleepers > 0 && this.time < this.factions[fid].asleepUntil;
+  }
+
+  /** Count the houses still on their way (after setting `asleepUntil`, or loading). */
+  countSleepers() {
+    this.sleepers = this.factions.filter((f) => f.asleepUntil > 0).length;
+  }
+
+  /** A house arrives among the stars. */
+  private wake(f: Faction) {
+    f.asleepUntil = 0;
+    this.countSleepers();
+    if (!f.alive) return;
+    if (!f.isPlayer) {
+      for (const u of this.unitsOf(f.id)) if (UNITS[u.type].role === 'scout') u.order = 'explore';
+      this.notify(-1, `The Ark of ${f.name} has reached the stars.`, 'alert', this.player.explored[f.capital] ? f.capital : undefined);
+    }
   }
 
   worldsOf(fid: number): GNode[] {
@@ -913,7 +941,7 @@ export class Game {
 
   /** Apply weapon damage to a unit, with type multipliers, shields, armor and on-hit effects. */
   damageUnit(t: Unit, amount: number, type: DmgType, byFaction: number, src: Unit | null) {
-    if (t.dead) return;
+    if (t.dead || this.asleep(t.owner)) return;
     const def = UNITS[t.type];
     let dmg = amount * DMG_TABLE[type][def.armorClass];
     if (this.hasBuff(t, 'aegis')) dmg *= 0.7;
@@ -951,7 +979,7 @@ export class Game {
   }
 
   damagePlanet(n: GNode, amount: number, type: DmgType, byFaction: number) {
-    if (n.owner < 0 || n.kind !== 'planet') return;
+    if (n.owner < 0 || n.kind !== 'planet' || this.asleep(n.owner)) return;
     let dmg = amount * DMG_TABLE[type].planet;
     if (dmg <= 0) return;
     const owner = this.factions[n.owner];
@@ -2058,7 +2086,8 @@ export class Game {
       crisisTick(this, dt);
       eventsTick(this, dt);
     }
-    for (const f of this.factions) if (f.ai && f.alive) aiTick(this, f, dt);
+    if (this.sleepers > 0 && this.tick % 20 === 0) for (const f of this.factions) if (f.asleepUntil > 0 && this.time >= f.asleepUntil) this.wake(f);
+    for (const f of this.factions) if (f.ai && f.alive && !this.asleep(f.id)) aiTick(this, f, dt);
     if (this.tick % 20 === 0) victoryTick(this);
     this.flushDeferred();
     if (this.tick % 20 === 0 || this.unitList.length > 4000) this.cleanup();

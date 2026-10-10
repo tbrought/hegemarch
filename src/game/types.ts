@@ -370,6 +370,13 @@ export interface Faction {
   advance: null | { t: number; total: number; lore: number; cost: number };
   /** Ages: when this house's Ark left the cradle for the stars (-1 = it has not). */
   launchedAt: number;
+  /**
+   * Ages, among the stars: the game time at which this house arrives from the cradle (0 = it is here). Until
+   * then it holds its Hearth and does nothing, and nothing can touch it.
+   */
+  asleepUntil: number;
+  /** Ages, among the stars: until this time rival houses leave it alone, unless it strikes first. */
+  graceUntil: number;
 }
 
 export interface Prompt {
@@ -423,6 +430,10 @@ export interface GameConfig {
    */
   mode?: 'ages';
   stage?: 'cradle' | 'stars';
+  /** Ages, among the stars: how many houses there are (those that left the cradle alive), whatever the sector's size. */
+  houses?: number;
+  /** Ages, among the stars: what the cradle left behind (`arrival`: the game time at which the player arrives). */
+  ages?: { cradleTime: number; lands: number; arrival: number };
 }
 
 export interface Raid {
