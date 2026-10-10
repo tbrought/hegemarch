@@ -730,8 +730,8 @@ export class App {
         <div class="modes">
           <button class="mode sector" data-sa="setup" data-tip="Choose a house, a sector and a difficulty. 3 to 6 houses, 25 to 70 minutes. The sector, your rivals, your Destinies and your Boons are new every run.">
             <canvas class="mode-art" data-art="sector" aria-hidden="true"></canvas>
-            <span class="mode-name">SECTOR RUN</span>
-            <span class="mode-pitch">The classic. A dark sector, rival houses and one crown.</span>
+            <span class="mode-name">CLASSIC RUN</span>
+            <span class="mode-pitch">A dark sector, rival houses and one crown.</span>
             <span class="mode-meta">25 TO 70 MIN</span>
           </button>
           <button class="mode ages" data-sa="ages" data-tip="A longer game. Every house starts in the Stone Age on one world, and climbs age by age to the stars.">
@@ -805,7 +805,7 @@ export class App {
   }
 
   /**
-   * The saved run, for the title screen and the setup: its house, the kind of run ("Sector run"), and a
+   * The saved run, for the title screen and the setup: its house, the kind of run ("Classic run"), and a
    * line like "Medium · Normal · 7 worlds · 12:34 played". `era`: the age an Ages run has reached on its
    * cradle (-1 for any other run). Null if there is no saved run, or it cannot be read.
    */
@@ -818,7 +818,7 @@ export class App {
       const ages = c.mode === 'ages';
       const cradle = ages && c.stage !== 'stars';
       const era = cradle ? Math.max(0, Math.min(LAST_CRADLE_ERA, d.factions[d.playerId]?.era ?? 0)) : -1;
-      const kind = ages ? 'Ages run' : c.daily ? 'Daily run' : c.tutorial ? 'First Night' : 'Sector run';
+      const kind = ages ? 'Ages run' : c.daily ? 'Daily run' : c.tutorial ? 'First Night' : 'Classic run';
       const held = d.nodes.filter((n) => n.kind === 'planet' && n.owner === d.playerId).length;
       // (An Ages run: the time on the cradle, plus the time among the stars since the player arrived there.)
       const played = c.ages ? c.ages.cradleTime + Math.max(0, d.time - c.ages.arrival) : d.time;
@@ -830,7 +830,7 @@ export class App {
     }
   }
 
-  /** "Solar Concord · Sector run · Medium · Normal · 7 worlds · 12:34 played" for the saved run ('' if there is none). */
+  /** "Solar Concord · Classic run · Medium · Normal · 7 worlds · 12:34 played" for the saved run ('' if there is none). */
   private describeSavedRun(): string {
     if (!hasRun()) return '';
     const run = this.savedRunInfo();
@@ -888,7 +888,7 @@ export class App {
     const tab = (sa: string, name: string, on: boolean) => `<button class="small${on ? ' active' : ''}" data-sa="${sa}" role="tab" aria-selected="${on}">${name}</button>`;
     this.put('setup', `<div class="screen${this.crt()}"><div class="page">
       <h1>NEW RUN</h1>
-      <div class="mode-tabs" role="tablist">${tab('setup', 'SECTOR RUN', !daily && !ages)}${tab('ages', 'AGES RUN', ages)}${tab('daily', `DAILY RUN${p.lastDaily === todayKey() ? ' ✓' : ''}`, daily)}</div>
+      <div class="mode-tabs" role="tablist">${tab('setup', 'CLASSIC RUN', !daily && !ages)}${tab('ages', 'AGES RUN', ages)}${tab('daily', `DAILY RUN${p.lastDaily === todayKey() ? ' ✓' : ''}`, daily)}</div>
       <div class="lead">${daily ? `Today's sector is the same for everyone: medium, Normal, seed ${dailySeed()}. Legacy ×1.25.` : ages ? 'A longer game. Every house begins as a tribe in the Stone Age, all on one cradle world. Climb through the ages, build your Ark, and carry what you have won to the stars, where the crown is decided.' : 'Choose a house to bid for the crown of Hegemarch. The sector, your rivals, your Destinies and your Boons are new every run.'}</div>
       ${savedNote}
       ${ages ? `<div class="px-box ages-head"><canvas class="mode-art" data-art="ages" aria-hidden="true"></canvas>

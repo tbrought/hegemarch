@@ -120,7 +120,7 @@ try {
   check('the Ages run is marked as new until it has been looked at', (await page.textContent('.mode.ages .mode-flag')) === 'NEW');
   check('the daily run counts down to the next one', /^ENDS IN (\d+H )?\d+M$/.test(await page.textContent('[data-daily]')), await page.textContent('[data-daily]'));
   await page.click('[data-sa="setup"]');
-  check('SECTOR RUN opens its setup, with the houses', (await page.$$('.heir')).length === 6 && (await page.textContent('.mode-tabs .active')) === 'SECTOR RUN');
+  check('CLASSIC RUN opens its setup, with the houses', (await page.$$('.heir')).length === 6 && (await page.textContent('.mode-tabs .active')) === 'CLASSIC RUN');
   // The ways to play are tabs here: a change of mind costs one click.
   await page.click('.mode-tabs [data-sa="ages"]');
   check('the setup switches to an Ages run in place', (await page.textContent('.mode-tabs .active')) === 'AGES RUN' && (await page.$('.ages-head canvas.mode-art')) !== null && (await page.$('[data-sa="guided"]')) === null);
@@ -582,7 +582,7 @@ try {
   check('save and quit returns to the menu with CONTINUE', (await page.$('[data-sa="continue"]')) !== null);
   check('the run in progress is the banner of the title screen: what it is, and one word for the click', await ev(() => {
     const h = document.querySelector('.hero[data-sa="continue"]');
-    return !!h && /SECTOR RUN IN PROGRESS/.test(h.textContent) && /played/.test(h.querySelector('.hero-line').textContent) && h.querySelector('.hero-go').textContent === 'CONTINUE' && !!h.querySelector('canvas.heir-art');
+    return !!h && /CLASSIC RUN IN PROGRESS/.test(h.textContent) && /played/.test(h.querySelector('.hero-line').textContent) && h.querySelector('.hero-go').textContent === 'CONTINUE' && !!h.querySelector('canvas.heir-art');
   }), await ev(() => document.querySelector('.hero')?.textContent.replace(/\s+/g, ' ')));
   check('and the First Night is not offered over it', (await page.$('[data-sa="first-night"]')) === null);
 

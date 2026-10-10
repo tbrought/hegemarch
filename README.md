@@ -27,7 +27,7 @@ Requires Node 18+ (developed on Node 24). Any modern desktop browser works.
 
 ## Your first run
 
-The title screen offers three ways to play: a **Sector run** (the classic: 25 to 70 minutes), an
+The title screen offers three ways to play: a **Classic run** (25 to 70 minutes), an
 **Ages run** (the long game, see below) and the **Daily run** (today's sector, the same for every
 player). A run in progress is the banner at the top: CONTINUE.
 

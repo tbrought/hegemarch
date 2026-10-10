@@ -211,11 +211,11 @@ Measured with `npm run simulate` and `npm run balance:passive`. Speeds are ½×,
   clicks and orders still reach the map beneath. The full log (L) wraps every message, stamps it
   with its game time, scrolls, and jumps to the place on a click.
 - **The title screen puts first what the player most likely wants.** Its largest element is a
-  banner: the run in progress (the house's banner, "SECTOR RUN IN PROGRESS", the house, a line like
+  banner: the run in progress (the house's banner, "CLASSIC RUN IN PROGRESS", the house, a line like
   "Medium · Normal · 7 worlds · 12:34 played", and one word for the click: CONTINUE), or, for a
   player who has never played, the guided First Night (BEGIN). With neither, there is no banner and
   the cards under it grow. Under the banner the **ways to play** stand side by side as cards
-  (SECTOR RUN, AGES RUN, DAILY RUN): choosing a mode is the title screen itself, not a step after
+  (CLASSIC RUN, AGES RUN, DAILY RUN): choosing a mode is the title screen itself, not a step after
   it. Each card is one button with a living picture of what the mode is (`src/app/modeArt.ts`), its
   name in its own color, one line on what it is, and how long it takes. The pictures: a tiny sector
   that plays itself (a house lights the dark worlds, meets a rival, takes its Hearth and is crowned;
