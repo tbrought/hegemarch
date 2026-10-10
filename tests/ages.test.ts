@@ -380,6 +380,8 @@ describe('from the cradle to the stars', () => {
     expect(arrival).toBeCloseTo(200, 0);
     const [me, ahead, behind] = s.empires();
     expect(ahead.asleepUntil).toBe(0);
+    // The Corsairs keep their distance from the player's arrival, as from the start of a classic run.
+    expect(s.pirates.nextRaid).toBeGreaterThan(arrival + 500);
     expect(me.asleepUntil).toBeCloseTo(arrival, 5);
     expect(behind.asleepUntil).toBeGreaterThan(arrival + 60);
     // Until it arrives a house earns nothing, does nothing, and cannot be hurt or fought.

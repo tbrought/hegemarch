@@ -1106,7 +1106,12 @@ export class Hud {
       if (visible) rows.push(this.hpRow(n));
       const walls = n.capitalOf >= 0 && f.kind === 'empire' ? game.wallsOf(n) : 1;
       if (walls < 1) rows.push(this.line(`WALLS ${pct(walls)}: WEAKER NOW, FULL AT ${fmtTime(ECON.wallsTime)}`, PAL.ember, 'tiny', { terms: gloss('walls') }));
-      const why = f.kind === 'empire'
+      // (Ages: a house still on its way from the cradle holds its Hearth, and nothing can touch it until it arrives.)
+      const away = game.asleep(f.id);
+      if (away) rows.push(this.line(`ITS ARK HAS NOT ARRIVED: ${fmtTime(f.asleepUntil - game.time)} TO GO`, PAL.ember, 'tiny', { tip: `The ${f.name} are still on their way from the cradle. Until their Ark arrives nothing here can be hurt, and nothing here will fight.` }));
+      const why = away
+        ? 'Nothing can touch this Hearth until its house arrives.'
+        : f.kind === 'empire'
           ? n.capitalOf >= 0
             ? 'Take this Hearth and the whole house falls: its worlds swear to you. Bring Breakers.'
             : 'Breakers take worlds fastest. Clear its defenders first.'

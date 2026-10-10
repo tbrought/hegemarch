@@ -131,6 +131,10 @@ export function ascend(cradle: Game): Game | null {
   me.lore += Math.min(120, p.lore);
   const extra: UnitType[] = ['guardian', 'striker', 'guardian', 'striker'];
   for (let k = 0; k < carriedShips(cradle, p); k++) g.spawnUnit(extra[k], me.id, me.capital);
+  // The Corsairs' first raid and the Hollow's waking are counted from the player's arrival, as they are from
+  // the start of a classic run.
+  g.pirates.nextRaid += arrival;
+  if (g.crisis) g.crisis.awakenAt += arrival;
   g.countSleepers();
   return g;
 }
