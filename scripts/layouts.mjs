@@ -140,6 +140,68 @@ for (const [label, vw, vh, pixels] of [
   await wait(600);
   await shot('hearth-card');
   await onScreen('hearth card');
+
+  // ---- An Ages run: the cradle's cards and bars at their fullest (six houses, the longest labels) ----
+  await ev(() => window.__app.session.hooks.quit(false));
+  await wait(500);
+  await page.click('[data-sa="ages"]');
+  await page.click('[data-sa="heir:ashen"]');
+  await page.click('[data-sa="size:large"]');
+  await page.click('[data-sa="launch"]');
+  await page.waitForFunction(() => window.__app?.screen === 'game' && window.__app.session?.game.cradle, null, { timeout: 60000 });
+  await wait(800);
+  await shot('ages-cradle-card');
+  await onScreen('ages: the cradle card');
+  await ev(() => {
+    const s = window.__app.session;
+    s.profile.settings.autoPause = false;
+    s.modal = null;
+    window.__app.hud.modals.open({ kind: 'draft' });
+  });
+  await wait(900);
+  await shot('ages-draft');
+  await onScreen('ages: draft');
+  for (const kind of ['status', 'help', 'ascend']) {
+    await ev((k) => (window.__app.session.modal = k === 'status' ? { kind: k, tab: 'destinies' } : { kind: k }), kind);
+    await wait(300);
+    await shot('ages-' + kind);
+    await onScreen('ages: ' + kind);
+  }
+  // The top bar and the Hearth's card with everything on them: a Boon waiting, the order to advance, supply full.
+  for (const era of [0, 3, 4]) {
+    await ev((e) => {
+      const s = window.__app.session;
+      const g = s.game;
+      const p = g.player;
+      s.modal = null;
+      p.era = e;
+      g.recomputeMods(p);
+      p.lore = 5000;
+      p.embers = 99999;
+      p.pendingDrafts = 2;
+      p.hangarUsed = p.hangarCap;
+      s.selectNode(p.capital);
+      s.focusNode(p.capital, 0.2);
+    }, era);
+    await wait(500);
+    await shot('ages-bar-' + era);
+    await onScreen('ages: top bar and Hearth card, age ' + era);
+    const overlap = await ev(() => {
+      const ui = window.__app.hud.ui;
+      const a = ui.rectOf('advance');
+      const c = ui.rectOf('clock');
+      const h = ui.rectOf('hangar');
+      return { advance: a ? a.x + a.w : 0, hangar: h ? h.x + h.w : 0, clock: c ? c.x : 9999 };
+    });
+    if (Math.max(overlap.advance, overlap.hangar) > overlap.clock) problems.push(`[${label}] ages top bar, age ${era}: runs into the clock (${JSON.stringify(overlap)})`);
+  }
+  await ev(() => {
+    const s = window.__app.session;
+    s.game.player.advance = { t: 12, total: 40, lore: 0, cost: 0 };
+  });
+  await wait(300);
+  await shot('ages-advancing');
+  await onScreen('ages: advancing');
   await page.close();
 }
 console.log(problems.length ? 'PROBLEMS:\n' + problems.join('\n') : 'all regions on screen');

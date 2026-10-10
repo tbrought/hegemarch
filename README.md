@@ -90,6 +90,31 @@ terms do the same.
 | F · K · E · S · R · C | All warships · kindle selected world · send selected Scouts exploring (with none selected: pick your idle Scouts) · stop · retreat · look at your Hearth |
 | Ctrl+1–9 / 1–9 · Esc | Control groups · cancel, or open the menu |
 
+## Ages runs
+
+AGES RUN on the title screen starts a longer game (about an hour or more) in two parts.
+
+- **The cradle.** Every house begins as a tribe in the Stone Age, all on one planet: a map of lands
+  joined by paths. It plays like the game above seen small (kindle lands, give them roles, raise
+  units, take lands by siege), with one difference: **Lore climbs the ages** instead of making Boons.
+  When the Lore bar at the top is full, press the button beside it (or **A**): for a price in Embers
+  and some time at your Hearth, the next age begins. There are five: Stone, Bronze, Iron, Powder,
+  Machine.
+- **What an age brings.** Stronger units under new names and looks (a Striker is a Hunter, then a
+  Chariot, a Horseman, a Dragoon, an Armored Car), new things to build (siege units and Bastions
+  with bronze, higher levels later), stronger walls, and one Boon that your house keeps for good. A
+  unit keeps the age it was raised in; rest it 20 seconds in a land you hold and it is re-armed.
+- **The Ark.** The step out of the Machine Age is your Ark. When it is done, your house leaves for
+  the stars and the run goes on as the game above, with your Boons, half your Embers, and a few
+  ships more for the lands you held.
+- **The race.** Your rivals climb too (the corner of the screen shows how far). A rival whose Ark
+  leaves before yours has been playing among the stars for that long when you arrive; one you left
+  behind arrives later. A rival whose Hearth you put out on the cradle never follows, and putting
+  out every rival Hearth before any Ark rises wins the run on the spot.
+
+On Normal the first rival Ark leaves at about 22 to 30 minutes; a run takes 60 to 85 minutes on a
+medium sector.
+
 ## Releasing
 
 `npm run package` builds the game and the website, and writes everything to upload into `release/`:
@@ -114,6 +139,8 @@ npm run typecheck          # tsc --noEmit
 npm test                   # Vitest: rules, combat triangle, victories, determinism, save/load, AI soak runs
 npm run simulate -- 5 medium 1 60 [-v]   # headless AI-vs-AI games with pacing stats
 npm run balance:passive    # how long an idle player survives on each difficulty
+npm run simulate:ages -- 8 medium 1 70   # the cradle of Ages runs played by the AI: when each house
+                                         # reached each age, when its Ark left, how the wars went
 ```
 
 Browser tests drive the real game in headless Edge or Chrome through `playwright-core`. Start a
@@ -126,6 +153,7 @@ npm run test:gallery       # stages every panel (and hover states) for a visual 
 npm run test:tutorial      # the First Night end to end, plus its edge cases and the tip cards
 npm run test:audio         # a big battle on screen: the music stays exactly in tune, the mix never clips
 npm run test:menus         # screenshots of every menu screen over the live sector
+npm run test:ages          # an Ages run end to end: cradle, ages, Ark, the crossing, arrival, saves
 npm run test:layouts       # every dialog at the smallest and largest screens, biggest offers and texts
 npm run test:uifuzz        # minutes of random clicks, drags, keys and resizes through menus and runs
 npm run test:perf          # big battle frame-rate check
@@ -140,6 +168,7 @@ The simulation has its own fuzzer, which needs no browser:
 npm run test:fuzz -- 40 45            # 40 games of 45 minutes of random (and nonsense) commands,
                                       # checking invariants and that save/load changes nothing
 npm run test:fuzz -- 24 90 --ai       # the AI plays every house: reaches late wars and every victory
+npm run test:fuzz -- 12 55 --ages     # Ages runs: the cradle, the crossing, and on among the stars
 ```
 
 See [docs/DESIGN.md](docs/DESIGN.md) for the design and architecture.

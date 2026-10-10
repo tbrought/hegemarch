@@ -33,6 +33,8 @@ type HelpTab = 'basics' | 'controls' | 'tips';
 
 /** Tips in the order a run usually meets them. */
 const TIP_ORDER = ['role', 'fleet', 'boonReady', 'raid', 'anomalySeen', 'anomaly', 'blueprint', 'hangar', 'arkLevel', 'lostWorld', 'crisis'];
+/** Tips of the cradle of an Ages run (listed first there, last elsewhere). */
+const AGES_TIPS = ['ageReady', 'ageNew', 'ageSiege', 'ageRival', 'ageGone', 'ageArk'];
 
 export class Modals {
   private result: { promptId: number; text: string } | null = null;
@@ -895,7 +897,18 @@ export class Modals {
     const cw = w - 16;
     const seen = this.s.profile.seenTips;
     const paras: { text: string; color: string; star?: boolean }[] =
-      this.helpTab === 'basics'
+      this.helpTab === 'basics' && this.g.cradle
+        ? [
+            'THE CRADLE: every house begins here in the Stone Age, all on one planet. Climb through the ages, build your Ark, and carry what you have won to the stars, where the crown is decided.',
+            `AGES: your Lore is saved for the next age. When the bar at the top is full, press the button beside it (or A). The step costs Embers and takes time at your Hearth; an attack on the Hearth stops the work. There are five ages: ${ERAS.slice(0, LAST_CRADLE_ERA + 1).map((e) => e.name.replace(' Age', '')).join(', ')}.`,
+            'A NEW AGE brings stronger units, more to build (siege units and Bastions with bronze, higher levels later), and one Boon. A unit keeps the age it was raised in: rest it 20 seconds in a land you hold and it is re-armed.',
+            'KINDLE: click a grey land and press KINDLE. A firebearer walks out and lights it. Each land costs a bit more. Beasts hold the richest lands: drive them off first.',
+            'LANDS: each land earns Embers and has one role. MINE: more Embers. FORGE: raises units. OBSERVATORY: Lore, so a faster climb. BASTION: guns and repairs.',
+            'UNITS: swift units beat siege units, siege units beat sturdy units and walls, sturdy units beat swift ones. Their names change with the ages; the triangle does not.',
+            'THE ARK is the last step. When yours is done, your house leaves for the stars with its Boons and Embers. A rival whose Ark leaves first is ahead of you out there; a rival whose Hearth you put out here never follows.',
+            'Lose your Hearth and your house goes dark. Put out every rival Hearth before any Ark rises, and the crown is yours at once.',
+          ].map((t) => ({ text: t, color: PAL.mist }))
+        : this.helpTab === 'basics'
         ? [
             'The last Hegemarch fell, and the sector went dark. Light it up, one world at a time, and follow one of your three Destinies to the crown.',
             'KINDLE: click a grey world and press KINDLE. A seed ship flies out and lights it. Each world costs a bit more.',
@@ -919,7 +932,9 @@ export class Modals {
             ].map((t) => ({ text: t, color: PAL.mist }))
           : [
               { text: 'Each of these pops up once, the first time it matters. They are all here to read again.', color: PAL.dusk },
-              ...TIP_ORDER.map((id) => ({ text: TIPS[id], color: seen.includes(id) ? PAL.mist : PAL.dusk, star: true })),
+              ...(this.g.cradle ? [...AGES_TIPS, ...TIP_ORDER.filter((id) => ['role', 'fleet', 'hangar', 'lostWorld'].includes(id))] : this.g.config.mode === 'ages' ? TIP_ORDER : [...TIP_ORDER, ...AGES_TIPS]).map((id) => ({
+                text: TIPS[id], color: seen.includes(id) ? PAL.mist : PAL.dusk, star: true,
+              })),
             ];
     // Lay out, then draw inside a clipped area that scrolls with the wheel.
     const lh = lineHeight('main');
@@ -1025,7 +1040,7 @@ export class Modals {
 
   private cradleCard(g: Ctx) {
     const W = this.hud.W;
-    const w = Math.min(W - 16, 320);
+    const w = Math.min(W - 8, 340);
     const inner = w - 30;
     const p = this.g.player;
     const points: [string, string, string][] = [
@@ -1035,15 +1050,19 @@ export class Modals {
       ['conquest', 'YOUR RIVALS', 'They climb too. An Ark that leaves before yours is ahead of you out there. A Hearth you put out here never troubles you again.'],
     ];
     const blocks = points.map(([, , t]) => wrap(t, inner, 'main'));
-    const lead = wrap(`Every house begins here, as a tribe of the Stone Age, all on one planet. You lead the ${p.name}.`, w - 20, 'main');
-    const h = 20 + lead.length * 10 + 6 + blocks.reduce((a, b) => a + 12 + b.length * 10 + 4, 0) + 20;
+    // (On the smallest screens the opening line makes way for the four points.)
+    const room = this.hud.H - 8;
+    let lead = wrap(`Every house begins here, as a tribe of the Stone Age, all on one planet. You lead the ${p.name}.`, w - 20, 'main');
+    const size = () => 20 + (lead.length ? lead.length * 10 + 6 : 0) + blocks.reduce((a, b) => a + 12 + b.length * 10 + 4, 0) + 20;
+    if (size() > room) lead = [];
+    const h = size();
     const { x, y } = this.frame(g, w, h, 'THE CRADLE', PAL.gold);
     let ly = y + 17;
     for (const l of lead) {
       text(g, l, x + 10, ly, PAL.bone);
       ly += 10;
     }
-    ly += 6;
+    if (lead.length) ly += 6;
     points.forEach(([ic, title], i) => {
       icon(g, ic, x + 10, ly + 1);
       text(g, title, x + 21, ly + 1, PAL.gold, 'tiny');

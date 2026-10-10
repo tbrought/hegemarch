@@ -2,9 +2,10 @@
  * Fuzzing the simulation: random players send random commands (valid and nonsense alike) across
  * many seeds, sizes, houses and difficulties, while invariants are checked as the game runs and
  * save/load is checked to change nothing.
- *   npx tsx scripts/fuzz.ts [seeds=12] [minutes=45] [--seed=N] [-v]
+ *   npx tsx scripts/fuzz.ts [seeds=12] [minutes=45] [--seed=N] [--ai] [--ages] [-v]
  */
 import { Game } from '../src/game/Game';
+import { ascend } from '../src/game/ages';
 import { CARDS } from '../src/game/data/cards';
 import { EVENT_BY_ID } from '../src/game/data/events';
 import { HEIRS } from '../src/game/data/heirs';
@@ -21,6 +22,8 @@ const only = process.argv.find((a) => a.startsWith('--seed='));
 const verbose = process.argv.includes('-v');
 /** --ai: the AI plays every house (to reach late wars and victories); random commands are sprinkled in. */
 const aiMode = process.argv.includes('--ai');
+/** --ages: Ages runs. They start on the cradle; when the player's Ark leaves, the fuzzing goes on among the stars. */
+const agesMode = process.argv.includes('--ages');
 const TPS = 20;
 
 const SHIP_TYPES = Object.keys(UNITS) as UnitType[];
@@ -106,9 +109,23 @@ function randomCommand(g: Game, r: RNG, log: string[]) {
     for (let i = 0; i < n; i++) out.push(r.pick(units).id);
     return out;
   };
-  const k = r.int(0, 20);
+  const k = r.int(0, g.cradle ? 23 : 20);
   let what = '';
   switch (k) {
+    case 21:
+    case 22:
+      // Ages: take the step to the next age (given what it takes, some of the time, so that the whole climb is reached).
+      what = 'advance';
+      if (r.chance(0.6)) {
+        f.lore += 400;
+        f.embers += 400;
+      }
+      g.cmdAdvance(fid);
+      break;
+    case 23:
+      what = 'cancel advance';
+      if (r.chance(0.3)) g.cmdCancelAdvance(fid);
+      break;
     case 0:
     case 1: {
       const n = anyNode();
@@ -239,8 +256,8 @@ for (const seed of seeds) {
   const size = SIZES[seed % 3];
   const difficulty = (seed % 4) as Difficulty;
   const heir = HEIRS[seed % HEIRS.length].id;
-  const g = Game.create({
-    seed, size, difficulty, heir, daily: seed % 5 === 0,
+  let g = Game.create({
+    seed, size, difficulty, heir, daily: seed % 5 === 0 && !agesMode, ...(agesMode ? { mode: 'ages' as const, stage: 'cradle' as const } : {}),
     perks: { oldCoin: seed % 2, escort: 1, archivist: 1, luck: seed % 3, bastion: 1, secondBreath: seed % 2 },
     unlockLegendary: true, unlockPacts: true, autoplay: aiMode,
   });
@@ -249,10 +266,30 @@ for (const seed of seeds) {
   const ticks = MINUTES * 60 * TPS;
   let before = failures;
   let tick = 0;
+  /** Ages: when the player's Ark left the cradle (-1: it has not). */
+  let crossed = -1;
   try {
     for (; tick < ticks; tick++) {
       if (tick % (aiMode ? 60 : 8) === 0) randomCommand(g, r, log);
       g.step();
+      // Ages: the player's Ark has left the cradle. Go on among the stars (played forward to the player's arrival).
+      if (g.ascended) {
+        const fx = g.fxEnabled;
+        const stars = ascend(g);
+        if (!stars) break;
+        crossed = g.time;
+        g = stars;
+        g.fxEnabled = fx;
+        while (g.time < (g.config.ages?.arrival ?? 0) && !g.outcome) {
+          g.step();
+          if (g.fxEnabled) g.fx.length = 0;
+        }
+        const errs = check(g);
+        if (errs.length) {
+          fail(seed, tick, 'on arrival among the stars: ' + errs.slice(0, 4).join(' | '));
+          break;
+        }
+      }
       if (g.fxEnabled) g.fx.length = 0;
       if (tick % 100 === 0) {
         const errs = check(g);
@@ -292,7 +329,7 @@ for (const seed of seeds) {
   }
   const o = g.outcome;
   console.log(
-    `seed ${seed} ${size} d${difficulty} ${heir}: ${failures === before ? 'ok' : 'FAILED'} · ${(g.time / 60).toFixed(1)}m · ${o ? `${o.victory} by ${o.winner >= 0 ? g.factions[o.winner].name : '—'}` : 'no result'} · units ${g.unitList.filter((u) => !u.dead).length}`,
+    `seed ${seed} ${size} d${difficulty} ${heir}: ${failures === before ? 'ok' : 'FAILED'} · ${agesMode ? (crossed >= 0 ? `cradle ${(crossed / 60).toFixed(1)}m, then stars ` : `cradle, age ${g.player.era} `) : ''}${(g.time / 60).toFixed(1)}m · ${o ? `${o.victory} by ${o.winner >= 0 ? g.factions[o.winner].name : '—'}` : 'no result'} · units ${g.unitList.filter((u) => !u.dead).length}`,
   );
   before = failures;
 }

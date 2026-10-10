@@ -1975,7 +1975,7 @@ export class Game {
     f.pendingDrafts++;
     if (this.fxEnabled && f.capital >= 0) this.fx.push({ k: 'capture', node: f.capital, color: f.color });
     if (f.isPlayer) this.notify(f.id, `The ${era.name} begins! ${era.brings} A Boon of the new age awaits. (B)`, 'good', f.capital, true);
-    else this.notify(-1, `${f.name} has entered the ${era.name}.`, 'alert', f.capital);
+    else this.notify(-1, `${f.name} has entered the ${era.name}.`, 'info', this.player.explored[f.capital] ? f.capital : undefined);
   }
 
   /** A house's Ark leaves the cradle. The player's: the run goes on among the stars. A rival's: it is gone ahead. */

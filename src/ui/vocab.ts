@@ -22,6 +22,19 @@ const WORDS: [string, string][] = [
   ['ship', 'unit'],
   ['starlanes', 'paths'],
   ['starlane', 'path'],
+  // (Kinds of land, by the kinds of world they stand in for.)
+  ['garden worlds', 'green lands'],
+  ['garden world', 'green land'],
+  ['ocean worlds', 'coasts'],
+  ['ocean world', 'coast'],
+  ['desert worlds', 'dry lands'],
+  ['desert world', 'dry land'],
+  ['ice worlds', 'frozen lands'],
+  ['ice world', 'frozen land'],
+  ['volcanic worlds', 'fire lands'],
+  ['volcanic world', 'fire land'],
+  ['barren worlds', 'bare uplands'],
+  ['barren world', 'bare upland'],
   ['s world', 'small land'],
   ['m world', 'broad land'],
   ['l world', 'great land'],
@@ -32,6 +45,8 @@ const WORDS: [string, string][] = [
   ['sector', 'cradle'],
   ['an airless rock', 'a bare upland'],
   ['fly on', 'march on'],
+  ['flies to', 'walks to'],
+  ['flies out', 'walks out'],
 ];
 
 /** The unit lines whose names change with the age. */

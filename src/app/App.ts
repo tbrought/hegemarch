@@ -62,6 +62,7 @@ const HOWTO = `
 <p><b>Boons:</b> when your <b>Lore</b> fills, choose a Boon. Every run's choices are different.</p>
 <p><b>Danger:</b> any house may attack at any time. Corsairs raid from about ten minutes in, rivals attack from about twelve (on Hard and Brutal, warlike houses rush sooner), and the Hollow may wake. If your <b>Hearth</b> falls, your house goes dark.</p>
 <p><b>Rushing:</b> every Hearth's walls start at half strength and reach full strength at 12:00. Take a rival's Hearth and you win its worlds, half its hoard and a free Boon. Fail, and your rivals will make you pay.</p>
+<p><b>Ages runs</b> are a longer game. Every house starts in the Stone Age on one cradle world: gather Lore, advance through five ages (each brings stronger units and a Boon), then build your Ark and carry what you have won to the stars, where the run goes on as above.</p>
 <p><b>Controls:</b> click to select (a world, a ship, or the fleet badge <span class="fleet-badge">3</span> beside a world, which selects all your ships there), click a world to send selected ships (or right-click). Drag to select ships. Wheel to zoom, right-drag or arrow keys to move. Space pauses; E sends selected Scouts exploring; B for Boons, U for status, H for help. In a run, How to Play (H) lists every control and every tip.</p>`;
 
 export class App {
@@ -173,7 +174,10 @@ export class App {
     this.renderer.fx.update(s.halted && !g.outcome ? 0 : dt * (g.outcome ? 1 : s.speed));
     this.renderer.render(g, alpha, dt, s.view, !playing);
     // Ages: the player's Ark has left the cradle. A card says what goes with it; its button takes the run on.
-    if (playing && g.ascended && !g.outcome && s.modal?.kind !== 'ascend') s.modal = { kind: 'ascend' };
+    if (playing && g.ascended && !g.outcome && s.modal?.kind !== 'ascend') {
+      if (!s.modal) this.sfx.play('victory', 0.6);
+      s.modal = { kind: 'ascend' };
+    }
     if (playing && this.hud) {
       try {
         this.hud.update(dt);
@@ -440,7 +444,8 @@ export class App {
           : o.reason,
       stats: (
         [
-        ['Run time', fmtTime(o.time + (g.config.ages?.cradleTime ?? 0))],
+        // (An Ages run: the time on the cradle, plus the time among the stars since the player arrived there.)
+        ['Run time', fmtTime(g.config.ages ? g.config.ages.cradleTime + Math.max(0, o.time - g.config.ages.arrival) : o.time)],
         ['Most worlds held', String(p.stats.maxWorlds)],
         ['Worlds kindled', String(p.stats.worldsKindled)],
         ['Worlds captured', String(p.stats.worldsCaptured)],
@@ -796,6 +801,7 @@ export class App {
       <h1>${daily ? 'DAILY RUN' : ages ? 'AGES RUN' : 'NEW RUN'}</h1>
       <div class="lead">${daily ? `Today's sector is the same for everyone: medium, Normal, seed ${dailySeed()}. Legacy ×1.25.` : ages ? 'A longer game. Every house begins as a tribe in the Stone Age, all on one cradle world. Climb through the ages, build your Ark, and carry what you have won to the stars, where the crown is decided.' : 'Choose a house to bid for the crown of Hegemarch. The sector, your rivals, your Destinies and your Boons are new every run.'}</div>
       ${savedNote}
+      ${ages && !p.tutorialDone ? '<div class="px-box notice wide"><span>New to Hegemarch? An Ages run is the long game. The guided First Night (NEW RUN) teaches the basics in a few minutes.</span></div>' : ''}
       <div class="heirs">${heirs}</div>
       ${daily ? '' : `<div class="opts">
         <div class="opt px-box"><h4>${ages ? 'SIZE' : 'SECTOR'}</h4><div class="row">${sizes.map(([k, n, d]) => `<button class="small ${st.size === k ? 'active' : ''}" data-sa="size:${k}" data-tip="${esc(d)}">${n}</button>`).join('')}</div>

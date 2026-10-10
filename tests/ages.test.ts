@@ -6,7 +6,10 @@ import { CARDS, CARD_BY_ID } from '../src/game/data/cards';
 import { ERAS, LAST_CRADLE_ERA, SPACE } from '../src/game/data/eras';
 import { computePaths, generateCradle } from '../src/game/mapgen';
 import { REARM_TIME } from '../src/game/systems/production';
-import type { GameConfig } from '../src/game/types';
+import type { GameConfig, UnitType } from '../src/game/types';
+import { art, isTroopArt } from '../src/render/sprites';
+import { cradleVocabulary, unitCount, unitName } from '../src/ui/vocab';
+import { TIPS } from '../src/ui/Tips';
 
 /** An Ages run on its cradle world, with a human player unless `autoplay`. */
 function cradle(opts: Partial<GameConfig> = {}): Game {
@@ -429,5 +432,61 @@ describe('from the cradle to the stars', () => {
       for (const f of r) g.eliminate(f.id, -1);
     });
     expect(ascend(c)).toBeNull();
+  });
+});
+
+describe('the cradle on screen', () => {
+  const LINES: UnitType[] = ['scout', 'seed', 'striker', 'guardian', 'breaker', 'militia'];
+
+  it('every age has a picture and a name for every unit line', () => {
+    for (let era = 0; era <= LAST_CRADLE_ERA; era++) {
+      for (const t of LINES) {
+        expect(isTroopArt(t, era), `${ERAS[era].name}: ${t}`).toBe(true);
+        const rows = art(t, era);
+        expect(rows.length).toBeGreaterThanOrEqual(3);
+        for (const r of rows) expect(r.length, `${ERAS[era].name} ${t}: every row as wide as the first`).toBe(rows[0].length);
+        expect(rows.join('')).toMatch(/[xd]/);
+        expect(ERAS[era].units[t]?.name, `${ERAS[era].name}: a name for ${t}`).toBeTruthy();
+      }
+      for (const t of ERAS[era].roster) expect(LINES).toContain(t);
+    }
+    // Among the stars a Striker is the ship it always was.
+    expect(isTroopArt('striker', SPACE)).toBe(false);
+    expect(unitName('striker', SPACE)).toBe('Striker');
+    expect(unitName('striker', 0)).toBe('Hunter');
+    expect(unitCount(3, 'guardian', 1)).toBe('3 Spearmen');
+    expect(unitCount(1, 'breaker', 3)).toBe('1 Cannon');
+    expect(unitCount(2, 'striker', SPACE)).toBe('2 Strikers');
+  });
+
+  it('the cradle has its own words, in the way the text was written', () => {
+    const stone = cradleVocabulary(0);
+    expect(stone('Your Scout waits for orders. Click its fleet badge.')).toBe('Your Runner waits for orders. Click its army badge.');
+    expect(stone('Strikers beat Breakers, Breakers beat Guardians and worlds.')).toBe('Hunters beat Hurlers, Hurlers beat Warriors and lands.');
+    expect(stone('HANGAR FULL: HOLD MORE WORLDS OR RAISE THEIR LEVEL')).toBe('SUPPLY FULL: HOLD MORE LANDS OR RAISE THEIR LEVEL');
+    expect(stone('A seed ship is on its way')).toBe('A firebearer is on its way');
+    expect(stone('M WORLD · MINE')).toBe('BROAD LAND · MINE');
+    expect(stone('Ride starlanes 30% faster. Ships cost 10% less.')).toBe('Ride paths 30% faster. Units cost 10% less.');
+    expect(cradleVocabulary(2)('3 Strikers and a Scout')).toBe('3 Horsemen and a Rider');
+    expect(cradleVocabulary(4)('Guardians')).toBe('Tanks');
+    // Words inside other words are left alone.
+    expect(stone('Worldforge, flagship, friendship')).toBe('Worldforge, flagship, friendship');
+  });
+
+  it('saying a text twice changes nothing more, in any age', () => {
+    const texts = [...Object.values(TIPS), ...CARDS.filter((c) => c.cradle).map((c) => c.desc), 'Hangar: room for your ships. Every world you hold adds room.', 'Seed Ship · Striker ×3 · the whole sector'];
+    for (let era = 0; era <= SPACE; era++) {
+      const say = cradleVocabulary(era);
+      for (const t of texts) expect(say(say(t)), `${ERAS[era].name}: ${t.slice(0, 40)}`).toBe(say(t));
+    }
+  });
+
+  it('a Boon of the cradle reads right on the cradle and among the stars', () => {
+    const say = cradleVocabulary(2);
+    for (const c of CARDS.filter((x) => x.cradle)) {
+      expect(c.desc, `${c.name} must not speak of worlds, ships or lands`).not.toMatch(/\b(worlds?|ships?|lands?|starlanes?|hangar|fleets?)\b/i);
+      expect(say(c.desc), `${c.name} reads the same in the cradle's words`).toBe(c.desc);
+      expect(c.icons?.length, `${c.name} says what it affects`).toBeGreaterThan(0);
+    }
   });
 });

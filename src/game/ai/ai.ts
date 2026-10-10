@@ -1,7 +1,7 @@
 import type { Game } from '../Game';
 import { AI_ATTACK_RATIO, AI_FIRST_ATTACK, AI_RUSH, AI_THINK } from '../constants';
 import { CARD_BY_ID, type CardCat } from '../data/cards';
-import { ERAS } from '../data/eras';
+import { ERAS, LAST_CRADLE_ERA } from '../data/eras';
 import { isWarship, UNITS } from '../data/units';
 import { ASCENSION_BOONS, relicsRequired, treasuryTarget } from '../data/victories';
 import type { AIState, Faction, GNode, Rarity, Unit, UnitType, WorldRole, WorldSize } from '../types';
@@ -401,6 +401,8 @@ function rivalThreat(g: Game, owner: number): number {
   const r = g.factions[owner];
   if (!r || r.kind !== 'empire') return 1;
   if (r.gate || r.holdTimer > 0 || r.treasuryTimer > 0 || r.relicTimer > 0) return 3;
+  // (Ages: a house building its Ark is about to get away. Its rivals would rather it did not.)
+  if (r.advance && r.era >= LAST_CRADLE_ERA) return 2;
   if (g.victories.includes('treasury') && r.embers > treasuryTarget(g.config.size) * 0.7) return 2.5;
   if (g.victories.includes('relics') && r.relics.length >= relicsRequired(g.relicTotal) - 1) return 2.5;
   return 1;

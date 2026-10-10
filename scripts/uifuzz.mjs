@@ -1,10 +1,13 @@
 // Random play in the real UI: clicks on real buttons and on the map, drags, wheel, every hotkey,
 // window resizes and fast-forwards, through menus and runs. Fails on any page error, console
 // error, or a dialog that cannot be left.
-//   node scripts/uifuzz.mjs [seconds=240] [seed=1]     (needs a dev server on port 5173)
+//   node scripts/uifuzz.mjs [seconds=240] [seed=1] [--ages]     (needs a dev server on port 5173)
+// --ages: start in an Ages run, and feed it Lore and Embers so that the random play climbs the ages,
+// builds the Ark and crosses to the stars.
 import { chromium } from 'playwright-core';
 import fs from 'node:fs';
 
+const AGES = process.argv.includes('--ages');
 const SECONDS = Number(process.argv[2] ?? 240);
 let seed = Number(process.argv[3] ?? 1);
 const rand = () => {
@@ -25,7 +28,7 @@ page.on('console', (m) => m.type() === 'error' && !/fonts\.g|Failed to load reso
 page.on('pageerror', (e) => errors.push('[pageerror] ' + e.message + ' ' + (e.stack ?? '').split('\n').slice(1, 3).join(' ')));
 const wait = (ms) => page.waitForTimeout(ms);
 const ev = (fn, arg) => page.evaluate(fn, arg);
-const KEYS = ['Space', 'Escape', 'b', 'u', 'h', 'l', 'f', 'k', 'e', 's', 'r', 'c', 'm', '1', '2', '3', 'Equal', 'Minus', 'ArrowLeft', 'ArrowUp', 'Enter', 'Tab', 'F1'];
+const KEYS = ['Space', 'Escape', 'b', 'u', 'h', 'l', 'f', 'k', 'e', 'a', 's', 'r', 'c', 'm', '1', '2', '3', 'Equal', 'Minus', 'ArrowLeft', 'ArrowUp', 'Enter', 'Tab', 'F1'];
 const log = [];
 const note = (s) => {
   log.push(s);
@@ -125,7 +128,22 @@ try {
   await ev(() => localStorage.clear());
   await page.reload();
   await wait(2000);
+  if (AGES) {
+    await page.click('[data-sa="ages"]');
+    await page.click('[data-sa="launch"]');
+    await page.waitForFunction(() => window.__app?.screen === 'game', null, { timeout: 60000 });
+  }
   while ((Date.now() - t0) / 1000 < SECONDS) {
+    if (AGES && steps % 60 === 0) {
+      await ev(() => {
+        const g = window.__app?.session?.game;
+        if (!g?.cradle) return;
+        g.player.lore += 350;
+        g.player.embers += 350;
+        // (Now and then the order to advance is given for the random player, who seldom finds the button.)
+        if (Math.random() < 0.5) g.cmdAdvance(g.playerId);
+      });
+    }
     const screen = await ev(() => window.__app?.screen);
     if (screen === 'game') await gameStep();
     else if (screen === 'loading') await wait(200);
@@ -140,7 +158,7 @@ try {
         for (let i = 0; i < 4; i++) await page.keyboard.press('Escape');
         await wait(200);
         const still = await ev(() => window.__app.session.modal?.kind ?? '');
-        if (still === m && m !== 'draft' && m !== 'ability' && m !== 'destinies') {
+        if (still === m && m !== 'draft' && m !== 'ability' && m !== 'destinies' && m !== 'ascend') {
           errors.push(`stuck in the ${m} dialog`);
           break;
         }
@@ -155,6 +173,10 @@ try {
 }
 await page.screenshot({ path: '.shots/uifuzz-end.png' }).catch(() => {});
 console.log(`${steps} random actions in ${Math.round((Date.now() - t0) / 1000)}s`);
+if (AGES) console.log('ended ' + (await ev(() => {
+  const g = window.__app?.session?.game;
+  return g ? (g.cradle ? `on the cradle, age ${g.player.era}` : g.config.mode === 'ages' ? 'among the stars' : 'in a classic run') + ` at ${(g.time / 60).toFixed(1)}m` : `on the ${window.__app?.screen} screen`;
+}).catch(() => '?')));
 if (errors.length) {
   console.log('ERRORS:\n' + errors.slice(0, 8).join('\n'));
   console.log('last actions: ' + log.join(' · '));

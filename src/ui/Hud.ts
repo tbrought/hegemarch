@@ -12,6 +12,7 @@ import { roman } from '../game/util';
 import { bigText, fit, IC, paragraph, setVocabulary, text, textCenter, textOutline, textRight, textWidth, wrap } from '../render/font';
 import { PAL, shade, UI } from '../render/palette';
 import { bar, box, frame, rect, ring, type Ctx } from '../render/pixel';
+import { drawSettlement } from '../render/ground';
 import { drawRich, hasMarkup, richLines, richWidth } from '../render/rich';
 import { fmtTime, SPRITE_ZOOM } from '../render/Renderer';
 import { fleetBadge, icon, setArtEra, setInlineBadgeColor, setInlineBadgeLabel, shipSprite } from '../render/sprites';
@@ -1025,8 +1026,10 @@ export class Hud {
         let tx = x;
         if (n && n.kind === 'planet') {
           const lit = n.owner >= 0;
-          const spr = worldSprite(n, 5, lit);
-          g.drawImage(spr, x, y);
+          if (this.g.cradle) {
+            const f = lit ? this.g.factions[n.owner] : null;
+            drawSettlement(g, n, x + 5, y + 6, 5, { era: f ? f.era : -1, color: f ? f.color : PAL.slate, level: 1, hearth: n.capitalOf >= 0, lit: lit ? 1 : 0, t: this.ui.time });
+          } else g.drawImage(worldSprite(n, 5, lit), x, y);
           tx += 14;
         }
         const rw = right ? textWidth(right, 'tiny') + 4 : 0;
@@ -1120,10 +1123,16 @@ export class Hud {
     const guards = visible ? game.buckets[n.id].filter((u) => !u.dead && u.owner !== p.id && game.factions[u.owner].kind !== 'empire' && u.type !== 'fighter') : [];
     const seed = game.seedFor(p.id, n.id);
     if (guards.length) {
-      rows.push(this.line(`GUARDED BY ${guards.length} ${guards.length === 1 ? 'SHIP' : 'SHIPS'}: CLEAR THEM FIRST`, PAL.red, 'tiny', {
-        tip: `Old defenders guard ${n.name}. Send warships to destroy them; you cannot kindle it while they are here.`,
-        terms: gloss('sentinel'),
-      }));
+      if (game.cradle) {
+        rows.push(this.line(`HELD BY ${guards.length} ${guards.length === 1 ? 'BEAST' : 'BEASTS'}: DRIVE THEM OFF FIRST`, PAL.red, 'tiny', {
+          tip: `Beasts hold ${n.name}. Send your units to kill them; you cannot kindle it while they are here.`,
+        }));
+      } else {
+        rows.push(this.line(`GUARDED BY ${guards.length} ${guards.length === 1 ? 'SHIP' : 'SHIPS'}: CLEAR THEM FIRST`, PAL.red, 'tiny', {
+          tip: `Old defenders guard ${n.name}. Send warships to destroy them; you cannot kindle it while they are here.`,
+          terms: gloss('sentinel'),
+        }));
+      }
     }
     if (seed) rows.push(this.line(seed.node === n.id && seed.kindle > 0 ? `KINDLING… ${pct(seed.kindle / ECON.kindleTime)}` : 'A SEED SHIP IS ON ITS WAY', PAL.gold, 'tiny', { terms: gloss('seed', 'kindle', 'glow') }));
     if (!seed) {

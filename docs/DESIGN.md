@@ -334,12 +334,10 @@ the same game with or without rendering, and a saved run continues identically.
 
 ## 9. Ages mode
 
-A second way to play, beside the classic run: every house begins as a tribe in the Stone Age, all on
-one **cradle world**, and climbs age by age to the stars. It is a longer game (about an hour or
-more): the cradle first, then the classic game among the stars with what was won on the cradle.
-
-> Status while it is being built: playable from the menu (AGES RUN) to the end of the run. Still to
-> come: balance from simulated runs, and playtesting.
+A second way to play, beside the classic run (AGES RUN on the title screen): every house begins as a
+tribe in the Stone Age, all on one **cradle world**, and climbs age by age to the stars. It is a longer
+game (about an hour or more): the cradle first, then the classic game among the stars with what was
+won on the cradle.
 
 ### The cradle
 
@@ -415,4 +413,18 @@ how the cradle went:
 `GameConfig.mode: 'ages'` with `stage: 'cradle' | 'stars'`; `Game.cradle` is true on the cradle and
 gates every rule above. Houses have an `era` and units keep theirs; in a classic run both are always
 the Space Age, whose strength is exactly 1, so classic games are untouched (their simulated results
-are byte-for-byte what they were).
+are byte-for-byte what they were). The pieces: `game/data/eras.ts` (the ages), `generateCradle` in
+`game/mapgen.ts`, the cradle's Boons in `game/data/cards.ts`, `game/ages.ts` (the passage),
+`render/ground.ts` and `TROOPS` in `render/sprites.ts` (the look), `ui/vocab.ts` (the words).
+
+### Pace and testing
+
+`npm run simulate:ages` plays the cradle with AI houses only. On a medium cradle the first Ark leaves
+at about 30 minutes on Easy, 22 on Normal and 19 on Hard, and the middle one at 42, 32 and 27; wars
+between houses begin at about 16, 12 and 7 minutes. A player who puts everything into Lore can leave
+in about 21 minutes on Normal, at the price of a thin army.
+
+`tests/ages.test.ts` covers the rules (ages, gating, the Ark, re-arming, the cradle's map, the passage,
+arrivals, saves); `npm run test:ages` plays a whole run in a browser; `npm run test:fuzz -- 12 55 --ages`
+fuzzes both stages and the crossing; `test:layouts` checks the cradle's cards and bars at every
+screen size; `scripts/ages-look.mjs` takes screenshots of every age for a visual review.
