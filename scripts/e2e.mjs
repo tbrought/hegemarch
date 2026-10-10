@@ -586,11 +586,11 @@ try {
   }), await ev(() => document.querySelector('.hero')?.textContent.replace(/\s+/g, ' ')));
   check('and the First Night is not offered over it', (await page.$('[data-sa="first-night"]')) === null);
 
-  // ---- A new run while one is saved: told at the top, asked in a pop-up, and the page stays put ----
+  // ---- A new run while one is saved: asked in a pop-up on LAUNCH, and the page stays put ----
   await page.setViewportSize({ width: 1100, height: 600 }); // short enough that the setup page scrolls
   await page.click('[data-sa="setup"]');
   await wait(300);
-  check('the setup page says at the top that a run is in progress', ((await page.textContent('.notice.wide')) ?? '').includes('run in progress'));
+  check('the setup page carries no notice about the saved run (the pop-up on LAUNCH says it)', (await page.$('.notice')) === null && !/run in progress/i.test(await page.textContent('.page')));
   const scrollTop = () => ev(() => Math.round(document.querySelector('.screen').scrollTop));
   await ev(() => {
     const el = document.querySelector('.screen');
@@ -623,8 +623,9 @@ try {
   await page.click('.dialog [data-sa="confirm-cancel"]');
   await wait(150);
   check('GO BACK closes the question: the setup as it was chosen, the save untouched', (await page.$('.dialog')) === null && (await ev(() => window.__app.screen === 'setup' && !!localStorage.getItem('hegemarch.run.v1') && !!document.querySelector('[data-sa="size:small"].active'))));
-  // The saved run is still one click away, at the top of the page.
-  await page.click('.notice.wide [data-sa="continue"]');
+  // The saved run is where it always is: the banner of the title screen.
+  await page.click('[data-sa="menu"]');
+  await page.click('.hero[data-sa="continue"]');
   await page.waitForFunction(() => window.__app?.screen === 'game', null, { timeout: 30000 });
   await page.setViewportSize({ width: 1366, height: 768 });
   await wait(300);

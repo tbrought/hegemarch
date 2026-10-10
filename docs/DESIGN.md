@@ -236,8 +236,9 @@ Measured with `npm run simulate` and `npm run balance:passive`. Speeds are ½×,
 - **Menus never hide an answer below the fold, and a question's marked answer is what the player
   just asked for.** Launching a new run while one is saved asks in a pop-up centred over the page,
   START A NEW RUN?, with two answers: START NEW RUN (marked) and GO BACK (also Esc). Continuing the
-  saved run is not offered there: the title screen's banner and the notice at the top of the setup
-  page (CONTINUE IT) offer it already, and in the pop-up it only undid a launch by a stray click.
+  saved run is not offered there: the title screen's banner offers it already, and in the pop-up it
+  only undid a launch by a stray click. The setup page itself says nothing about the saved run (a
+  notice at its top was clutter above the fold; the pop-up says it at the moment it matters).
   The saved run is not thrown away. It ends as an abandoned run: it is paid its Legacy (the pop-up
   says how much) and entered in the Chronicle (`App.retireSavedRun`), and the new run opens with a
   line saying so. Nothing but the run itself is lost. Menu pages that redraw on a click (setup,

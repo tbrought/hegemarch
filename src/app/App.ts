@@ -880,15 +880,11 @@ export class App {
     const p = this.profile;
     const saved = hasRun();
     if (!saved) st.confirm = '';
-    // A run is already in progress: say so at the top, before any choices are made...
-    const savedNote = saved
-      ? `<div class="px-box notice wide"><span>You have a run in progress${this.savedRun ? `: <b>${esc(this.savedRun)}</b>` : ''}. Launching a new run ends it; it keeps the Legacy it has earned.</span>
-          <button class="small" data-sa="continue">CONTINUE IT</button></div>`
-      : '';
-    // ...and ask in a pop-up over the page when a new run is launched (never as a line below the fold).
+    // A run is already in progress: ask in a pop-up over the page when a new run is launched (never as a
+    // line below the fold, and not as a notice over the setup either: the pop-up says it when it matters).
     // The question has two answers, and the marked one is what the player just asked for. (Continuing the
-    // saved run is not one of them: the title screen and the notice above have offered that already, and
-    // here it only undid a launch by a stray click.) The saved run ends as an abandoned one, Legacy paid.
+    // saved run is not one of them: the title screen has offered that already, and here it only undid a
+    // launch by a stray click.) The saved run ends as an abandoned one, Legacy paid.
     const dialog = st.confirm
       ? `<div class="dialog-back"><div class="px-box dialog" role="dialog" aria-modal="true">
           <h2>START A NEW RUN?</h2>
@@ -930,7 +926,6 @@ export class App {
       <h1>NEW RUN</h1>
       <div class="mode-tabs" role="tablist">${tab('setup', 'CLASSIC RUN', !daily && !ages)}${tab('ages', 'AGES RUN', ages)}${tab('daily', `DAILY RUN${p.lastDaily === todayKey() ? ' ✓' : ''}`, daily)}</div>
       <div class="lead">${daily ? `Today's sector is the same for everyone: medium, Normal, seed ${dailySeed()}. Legacy ×1.25.` : ages ? 'A longer game. Every house begins as a tribe in the Stone Age, all on one cradle world. Climb through the ages, build your Ark, and carry what you have won to the stars, where the crown is decided.' : 'Choose a house to bid for the crown of Hegemarch. The sector, your rivals, your Destinies and your Boons are new every run.'}</div>
-      ${savedNote}
       ${ages ? `<div class="px-box ages-head"><canvas class="mode-art" data-art="ages" aria-hidden="true"></canvas>
         <div class="ages-names">${ERAS.map((e) => `<span>${e.short}</span>`).join('')}</div></div>` : ''}
       ${ages && !p.tutorialDone ? '<div class="px-box notice wide"><span>New to Hegemarch? An Ages run is the long game. The guided First Night (a Classic run with GUIDE ticked) teaches the basics in a few minutes.</span></div>' : ''}
