@@ -46,7 +46,7 @@ export function economyTick(g: Game, dt: number) {
     f.stats.embersEarned += f.income * dt;
     f.lore += f.loreRate * dt;
     let guard = 0;
-    while (f.lore >= g.boonCostOf(f) && guard++ < 5) {
+    while (!g.cradle && f.lore >= g.boonCostOf(f) && guard++ < 5) {
       f.lore -= g.boonCostOf(f);
       f.boons++;
       f.pendingDrafts++;

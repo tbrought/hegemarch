@@ -1,6 +1,7 @@
 import { ABILITY_BY_ID, LEARNABLE_ABILITIES } from './data/abilities';
 import { AMBITIONS } from './data/ambitions';
 import { BLUEPRINT_IDS, CARDS, CARD_BY_ID, RARITY_LUCK, RARITY_WEIGHT, type CardDef } from './data/cards';
+import { ERAS, LAST_CRADLE_ERA, SPACE } from './data/eras';
 import { EVENT_BY_ID, ANOMALY_EVENTS, OFFER_EVENTS } from './data/events';
 import { CRISIS_COLOR, GUARDIAN_COLOR, HEIRS, HEIR_BY_ID, PIRATE_COLOR } from './data/heirs';
 import { boonCost, ECON, PLANETS, ROLE_ORDER } from './data/worlds';
@@ -11,7 +12,7 @@ import { ASCENSION_BOONS, OPTIONAL_VICTORIES } from './data/victories';
 import {
   AI_INCOME, CRISIS_AWAKEN, CRISIS_OFFSET, JUMP_CHARGE, PHASE_SPEED, PIRATE_FIRST_RAID, QUEUE_MAX, SAVE_VERSION, TICK,
 } from './constants';
-import { computePaths, EMPIRES_BY_SIZE, generateMap, type SystemInfo } from './mapgen';
+import { computePaths, EMPIRES_BY_SIZE, generateCradle, generateMap, type SystemInfo } from './mapgen';
 import { baseMods, mul } from './mods';
 import { RNG } from './rng';
 import type {
@@ -67,6 +68,7 @@ export interface SaveData {
   noteId: number;
   promptId: number;
   ui: Record<string, number>;
+  ascended?: boolean;
 }
 
 /** A reason a command cannot be carried out, or null when it can. */
@@ -121,6 +123,13 @@ export class Game {
   worldCount = 0;
   /** Set once the client has shown the end of the run. */
   outcomeHandled = false;
+  /** Ages, cradle stage: the player's Ark has left for the stars. The game stands still; the client takes the run on. */
+  ascended = false;
+
+  /** An Ages run still on its cradle world: the houses climb through the ages, and the rules of the ages hold. */
+  get cradle(): boolean {
+    return this.config.mode === 'ages' && this.config.stage !== 'stars';
+  }
 
   // =====================================================================
   // Construction
@@ -140,8 +149,15 @@ export class Game {
       traitPool[0],
       traitPool.find((t, i) => i > 0 && !(t === 'turbulence' && traitPool[0] === 'currents') && !(t === 'currents' && traitPool[0] === 'turbulence'))!,
     ];
+    const cradle = g.cradle;
+    if (cradle) {
+      // The cradle has one Destiny (put out every rival Hearth) and no omens; those belong to the stars.
+      g.victories = ['conquest'];
+      g.ambition = '';
+      g.traits = [];
+    }
     const nEmp = EMPIRES_BY_SIZE[config.size];
-    const map = generateMap(rng.fork(), { size: config.size, empires: nEmp, crisis: g.victories.includes('crisis') });
+    const map = cradle ? generateCradle(rng.fork(), { houses: nEmp }) : generateMap(rng.fork(), { size: config.size, empires: nEmp, crisis: g.victories.includes('crisis') });
     g.nodes = map.nodes;
     g.lanes = map.lanes;
     g.systems = map.systems;
@@ -156,6 +172,7 @@ export class Game {
       const heir = HEIR_BY_ID[heirId] ?? HEIRS[0];
       const f = g.makeFaction(i, 'empire', heir.name, heir.color, heir.id);
       f.isPlayer = i === 0 && !config.autoplay;
+      if (cradle) f.era = 0;
       if (!f.isPlayer) {
         f.ai = makeAIState(g, f, heir.personalities);
         f.incomeMul = AI_INCOME[config.difficulty];
@@ -170,7 +187,8 @@ export class Game {
     g.pirateId = g.factions.length;
     g.factions.push(g.makeFaction(g.pirateId, 'pirate', 'Blackstar Corsairs', PIRATE_COLOR, ''));
     g.guardianId = g.factions.length;
-    g.factions.push(g.makeFaction(g.guardianId, 'guardian', 'Ancient Sentinels', GUARDIAN_COLOR, ''));
+    g.factions.push(g.makeFaction(g.guardianId, 'guardian', cradle ? 'Beasts of the Wild' : 'Ancient Sentinels', GUARDIAN_COLOR, ''));
+    if (cradle) g.factions[g.guardianId].era = 0;
     g.crisisId = g.factions.length;
     const crisisF = g.makeFaction(g.crisisId, 'crisis', 'The Hollow', CRISIS_COLOR, '');
     crisisF.alive = g.victories.includes('crisis');
@@ -209,10 +227,11 @@ export class Game {
         }
       }
       const cap = f.capital;
-      g.spawnUnit('ark', f.id, cap);
+      // On the cradle there is no Ark yet (it is the last thing a house builds there), and no siege units in the Stone Age.
+      if (!cradle) g.spawnUnit('ark', f.id, cap);
       for (let k = 0; k < heir.start.guardians + extraGuardians; k++) g.spawnUnit('guardian', f.id, cap);
       for (let k = 0; k < heir.start.strikers; k++) g.spawnUnit('striker', f.id, cap);
-      for (let k = 0; k < heir.start.breakers; k++) g.spawnUnit('breaker', f.id, cap);
+      for (let k = 0; k < heir.start.breakers; k++) g.spawnUnit(cradle ? 'striker' : 'breaker', f.id, cap);
       // Rival scouts set out at once; the player's wait at the Hearth for an order (EXPLORE).
       for (let k = 0; k < heir.start.scouts; k++) {
         const sc = g.spawnUnit('scout', f.id, cap);
@@ -258,14 +277,18 @@ export class Game {
     g.relicTotal = map.relicSites.length;
 
     // ---- Corsairs ----
-    const pb = g.nodes[map.pirateBase];
-    const sh = g.spawnUnit('stronghold', g.pirateId, pb.id, { x: pb.x, y: pb.y });
-    for (let k = 0; k < 3; k++) g.spawnUnit('raider', g.pirateId, pb.id);
-    for (let k = 0; k < 2; k++) g.spawnUnit('marauder', g.pirateId, pb.id);
-    g.pirates = {
-      base: pb.id, stronghold: sh.id, alive: true, raidCount: 0, raids: [], marked: -1,
-      nextRaid: PIRATE_FIRST_RAID[config.difficulty] + rng.float(0, 60),
-    };
+    if (map.pirateBase < 0) {
+      g.pirates = { base: -1, stronghold: -1, alive: false, raidCount: 0, raids: [], marked: -1, nextRaid: 1e12 };
+    } else {
+      const pb = g.nodes[map.pirateBase];
+      const sh = g.spawnUnit('stronghold', g.pirateId, pb.id, { x: pb.x, y: pb.y });
+      for (let k = 0; k < 3; k++) g.spawnUnit('raider', g.pirateId, pb.id);
+      for (let k = 0; k < 2; k++) g.spawnUnit('marauder', g.pirateId, pb.id);
+      g.pirates = {
+        base: pb.id, stronghold: sh.id, alive: true, raidCount: 0, raids: [], marked: -1,
+        nextRaid: PIRATE_FIRST_RAID[config.difficulty] + rng.float(0, 60),
+      };
+    }
 
     // ---- The Hollow ----
     if (g.victories.includes('crisis') && map.rift >= 0) {
@@ -294,6 +317,9 @@ export class Game {
     // Saves from earlier builds lack newer fields: give them their starting values.
     for (const f of g.factions) {
       f.bays ??= 0;
+      f.era ??= SPACE;
+      f.advance ??= null;
+      f.launchedAt ??= -1;
       if (f.ai) {
         f.ai.grudge ??= -1;
         f.ai.grudgeAt ??= -999;
@@ -304,6 +330,7 @@ export class Game {
       // JSON turns NaN ("no target point") into null; restore it.
       if (u.ox === null) u.ox = NaN;
       if (u.oy === null) u.oy = NaN;
+      u.era ??= SPACE;
       g.units.set(u.id, u);
     }
     g.projectiles = data.projectiles;
@@ -327,6 +354,7 @@ export class Game {
     g.noteId = data.noteId;
     g.promptId = data.promptId;
     g.ui = data.ui ?? {};
+    g.ascended = data.ascended ?? false;
     g.derive();
     for (const f of g.factions) g.recomputeMods(f);
     // Hangar use is recounted every half second in play; keep the saved count so a loaded game
@@ -373,6 +401,7 @@ export class Game {
       noteId: this.noteId,
       promptId: this.promptId,
       ui: this.ui,
+      ascended: this.ascended || undefined,
     };
   }
 
@@ -399,6 +428,7 @@ export class Game {
       },
       ai: null, ark: -1, arkLevel: 1, arkXp: 0, arkAbil: [], incomeMul: 1, holdTimer: 0, treasuryTimer: 0, relicTimer: 0, gate: null,
       boomT: 0, echoT: 0, interestT: 0, stormT: 0, bpPity: 0, eliminatedAt: -1, warned: {}, score: 0,
+      era: SPACE, advance: null, launchedAt: -1,
     };
   }
 
@@ -562,7 +592,7 @@ export class Game {
     else if (this.hasRole(n, 'bastion')) dmg = (30 + 14 * (n.level - 1)) * this.roleBonus(n, 'bastion');
     else if ((m.flags.allGuns ?? 0) > 0) dmg = 12 + 6 * (n.level - 1);
     if (dmg <= 0) return null;
-    dmg *= mul(m.worldGun + (cap ? m.hearthGun : 0));
+    dmg *= mul(m.worldGun + (cap ? m.hearthGun : 0)) * ERAS[f.era].power;
     return { dmg, cd: 1.0, range: n.well * 0.95 };
   }
 
@@ -572,7 +602,8 @@ export class Game {
     const cap = n.capitalOf >= 0;
     let base = cap ? ECON.hearthHp * (1 + ECON.hpPerLevel * (n.level - 2)) * this.wallsOf(n) : ECON.hp[n.size] * (1 + ECON.hpPerLevel * (n.level - 1));
     if (!cap && n.owner >= 0 && n.role === 'bastion') base *= 1 + ECON.bastionHp * this.roleBonus(n, 'bastion');
-    if (m) base *= mul(m.worldHp + (cap ? m.hearthHp : 0), 0.3);
+    // (Walls are as strong as the age of the house that holds them.)
+    if (m) base *= mul(m.worldHp + (cap ? m.hearthHp : 0), 0.3) * ERAS[this.factions[n.owner].era].power;
     const newMax = Math.round(base);
     if (newMax !== n.maxHp) {
       const frac = n.maxHp > 0 ? n.hp / n.maxHp : 1;
@@ -623,8 +654,9 @@ export class Game {
     const def = UNITS[u.type];
     const m = this.factions[u.owner].mods;
     const um = m.unit[u.type] ?? EMPTY_UM;
-    const maxHp = def.hull * mul(m.hull + (um.hull ?? 0), 0.2) * this.levelMul(u);
-    const maxSh = def.shield * mul(m.shield, 0);
+    const age = ERAS[u.era].power;
+    const maxHp = def.hull * mul(m.hull + (um.hull ?? 0), 0.2) * this.levelMul(u) * age;
+    const maxSh = def.shield * mul(m.shield, 0) * age;
     if (fresh) {
       u.hp = maxHp * hpFrac;
       u.sh = maxSh;
@@ -672,7 +704,7 @@ export class Game {
   }
 
   laneSpeedOf(u: Unit): number {
-    return PHASE_SPEED * mul(this.factions[u.owner].mods.laneSpeed, 0.3);
+    return PHASE_SPEED * mul(this.factions[u.owner].mods.laneSpeed, 0.3) * ERAS[u.era].laneSpeed;
   }
 
   rangeOf(u: Unit, w: WeaponDef): number {
@@ -705,7 +737,7 @@ export class Game {
       for (const o of this.buckets[u.node]) if (o.owner === u.owner && o !== u && UNITS[o.type].role !== 'fighter') allies++;
       bonus += Math.min(0.4, allies * hm);
     }
-    let k = mul(bonus, 0.1) * this.levelMul(u);
+    let k = mul(bonus, 0.1) * this.levelMul(u) * ERAS[u.era].power;
     if (this.hasBuff(u, 'feeble')) k *= 0.25;
     return k;
   }
@@ -714,7 +746,7 @@ export class Game {
     const def = UNITS[u.type];
     const frac = (u.hp + u.sh) / Math.max(1, u.maxHp + u.maxSh);
     const m = this.factions[u.owner].mods;
-    return def.power * (0.35 + 0.65 * frac) * (1 + (m.dmg + m.hull) * 0.5) * this.levelMul(u);
+    return def.power * (0.35 + 0.65 * frac) * (1 + (m.dmg + m.hull) * 0.5) * this.levelMul(u) * ERAS[u.era].power;
   }
 
   /** Combat power of a faction's units at a node. */
@@ -847,7 +879,7 @@ export class Game {
       xp: 0, level: 1, abil: [], pendingAbil: [], buffs: [], parent: opts.parent ?? 0,
       fighters: (def.fighters ?? 0) + (def.fighters ? f.mods.fighters : 0), launched: 0, fighterTimer: 0,
       kindle: 0, ox: NaN, oy: NaN, dead: false, born: this.time, stun: 0, snare: 0, wellTime: 0, arrivedAt: -99,
-      temp: opts.temp ?? 0,
+      temp: opts.temp ?? 0, era: f.era,
     };
     if (type === 'ark') {
       u.level = f.arkLevel;
@@ -1316,6 +1348,7 @@ export class Game {
     return CARDS.filter(
       (c) =>
         !c.hidden &&
+        !!c.cradle === this.cradle &&
         this.cardCount(f, c.id) < c.max &&
         (!c.requires || f.cards.includes(c.requires)) &&
         // An extra choice is worthless once the draft is already as big as it gets.
@@ -1681,6 +1714,7 @@ export class Game {
 
   /** Ships this house can build at a Forge right now (core ships plus drafted blueprints). */
   shipTypesFor(f: Faction): UnitType[] {
+    if (this.cradle) return [...ERAS[f.era].roster];
     const out: UnitType[] = ['striker', 'guardian', 'breaker'];
     if (this.hasCard(f, 'bpLancer')) out.push('lancer');
     if (this.hasCard(f, 'bpCarrier')) out.push('carrier');
@@ -1695,7 +1729,8 @@ export class Game {
     const def = UNITS[type];
     if (!def || !def.buildable) return 'Cannot be built';
     if (!f || !n || n.owner !== fid) return 'Not your world';
-    if (!this.isForge(n)) return 'Only Forges build ships';
+    if (!this.isForge(n)) return this.cradle ? 'Only Forges raise units' : 'Only Forges build ships';
+    if (this.cradle && !ERAS[f.era].roster.includes(type)) return 'Not in this age';
     if (n.retool > 0) return 'Retooling';
     if (def.blueprint && !this.hasCard(f, def.blueprint)) return 'Needs its Blueprint Boon';
     if (type === 'dreadnought' && this.dreadnoughtCount(fid) >= DREADNOUGHT_CAP) return `Limit ${DREADNOUGHT_CAP} Dreadnoughts`;
@@ -1720,6 +1755,7 @@ export class Game {
     const n = this.nodeAt(nodeId);
     if (!f || !n || n.owner !== fid) return 'Not your world';
     if (n.level >= 3) return 'Already level III';
+    if (n.level >= ERAS[f.era].maxLevel) return 'Needs a later age';
     if (n.buildQ.some((q) => q.kind === 'upgrade')) return 'Already rising';
     if (n.buildQ.length >= QUEUE_MAX) return 'Queue full';
     if (f.embers < (this.upgradeCost(f, n) ?? Infinity) - 1e-6) return 'Not enough Embers';
@@ -1741,6 +1777,7 @@ export class Game {
     if (!n || n.owner !== fid) return 'Not your world';
     if (!ROLE_ORDER.includes(role)) return 'Not a role';
     if (n.capitalOf >= 0) return 'Your Hearth already does everything';
+    if (!ERAS[this.factions[fid].era].roles.includes(role)) return 'Needs a later age';
     if (n.role === role) return 'Already its role';
     return null;
   }
@@ -1836,6 +1873,7 @@ export class Game {
 
   checkArk(fid: number): QueueCheck {
     const f = this.factions[fid];
+    if (this.cradle) return 'The Ark belongs to the Space Age';
     if (f.ark >= 0 && this.units.has(f.ark)) return 'Your Ark still flies';
     if (f.capital < 0) return 'No Hearth';
     const n = this.nodes[f.capital];
@@ -1852,6 +1890,91 @@ export class Game {
     f.embers -= cost;
     this.nodes[f.capital].shipQ.push({ kind: 'ark', id: 'ark', t: 0, total: UNITS.ark.buildTime, cost });
     return true;
+  }
+
+  // ---- Ages: the climb (cradle stage) ----
+
+  /** Why this house cannot take the step to the next age (or, from the last one, build its Ark), or null if it can. */
+  checkAdvance(fid: number): QueueCheck {
+    const f = this.factions[fid];
+    if (!this.cradle || !f || f.kind !== 'empire' || !f.alive) return 'Only on the cradle';
+    if (f.capital < 0) return 'No Hearth';
+    if (f.advance) return f.era === LAST_CRADLE_ERA ? 'The Ark is rising' : 'Already under way';
+    const era = ERAS[f.era];
+    if (f.lore < era.lore - 1e-6) return 'Not enough Lore';
+    if (f.embers < era.cost - 1e-6) return 'Not enough Embers';
+    return null;
+  }
+
+  /**
+   * Take the step to the next age: it spends the Lore gathered in this one and Embers, and takes time at the
+   * Hearth (which stands still while the Hearth is under attack). From the last age of the cradle the step is the Ark.
+   */
+  cmdAdvance(fid: number): boolean {
+    if (this.checkAdvance(fid)) return false;
+    const f = this.factions[fid];
+    const era = ERAS[f.era];
+    f.lore -= era.lore;
+    f.embers -= era.cost;
+    f.advance = { t: 0, total: era.time, lore: era.lore, cost: era.cost };
+    if (f.era === LAST_CRADLE_ERA) {
+      this.notify(-1, f.isPlayer ? 'Your Ark is rising at your Hearth. Guard it: the work stops while the Hearth is under attack.' : `${f.name} has begun building its Ark!`, f.isPlayer ? 'good' : 'alert', f.capital);
+    }
+    return true;
+  }
+
+  /** Call the step off: the Lore and the Embers come back. */
+  cmdCancelAdvance(fid: number): boolean {
+    const f = this.factions[fid];
+    if (!f?.advance) return false;
+    f.lore += f.advance.lore;
+    f.embers += f.advance.cost;
+    f.advance = null;
+    return true;
+  }
+
+  /** The step is done: a new age begins, or (from the last age of the cradle) the Ark leaves for the stars. */
+  completeAdvance(f: Faction) {
+    f.advance = null;
+    if (f.era >= LAST_CRADLE_ERA) {
+      this.launchArk(f);
+      return;
+    }
+    f.era++;
+    const era = ERAS[f.era];
+    // Walls and guns are as strong as the age: refresh them. Units keep the age they were raised in.
+    this.recomputeMods(f);
+    f.pendingDrafts++;
+    if (this.fxEnabled && f.capital >= 0) this.fx.push({ k: 'capture', node: f.capital, color: f.color });
+    if (f.isPlayer) this.notify(f.id, `The ${era.name} begins! ${era.brings} A Boon of the new age awaits. (B)`, 'good', f.capital, true);
+    else this.notify(-1, `${f.name} has entered the ${era.name}.`, 'alert', f.capital);
+  }
+
+  /** A house's Ark leaves the cradle. The player's: the run goes on among the stars. A rival's: it is gone ahead. */
+  private launchArk(f: Faction) {
+    f.launchedAt = this.time;
+    f.era = SPACE;
+    if (f.isPlayer) {
+      this.ascended = true;
+      return;
+    }
+    // Its people go with it: its lands fall dark, open to whoever kindles them next.
+    const lands = this.worldsOf(f.id).length;
+    f.alive = false;
+    for (const n of this.nodes) {
+      if (n.capitalOf === f.id) n.capitalOf = -1;
+      if (n.owner === f.id) this.darken(n);
+    }
+    for (const u of this.unitList) if (u.owner === f.id && !u.dead) this.deferred.push(() => this.removeUnit(u));
+    f.capital = -1;
+    this.notify(-1, `The Ark of ${f.name} has left for the stars. Its ${lands} lands lie dark: kindle them, and hurry after it.`, 'alert', undefined, true);
+  }
+
+  /** Take a unit off the map without a fight (no wreck, no spoils). */
+  private removeUnit(u: Unit) {
+    if (u.dead) return;
+    u.dead = true;
+    this.units.delete(u.id);
   }
 
   cmdCancel(fid: number, nodeId: number, queue: 'ship' | 'build', index: number): boolean {
@@ -1907,7 +2030,7 @@ export class Game {
   }
 
   step() {
-    if (this.outcome) return;
+    if (this.outcome || this.ascended) return;
     const dt = TICK;
     this.time += dt;
     this.tick++;
@@ -1929,9 +2052,12 @@ export class Game {
     projectileTick(this, dt);
     movementTick(this, dt);
     statusTick(this, dt);
-    piratesTick(this, dt);
-    crisisTick(this, dt);
-    eventsTick(this, dt);
+    // (Corsairs, the Hollow and the anomalies belong to the stars, not to the cradle.)
+    if (!this.cradle) {
+      piratesTick(this, dt);
+      crisisTick(this, dt);
+      eventsTick(this, dt);
+    }
     for (const f of this.factions) if (f.ai && f.alive) aiTick(this, f, dt);
     if (this.tick % 20 === 0) victoryTick(this);
     this.flushDeferred();

@@ -7,6 +7,7 @@ import type { Faction, VictoryId } from '../types';
 /** Runs once per simulated second. */
 export function victoryTick(g: Game) {
   if (g.outcome) return;
+  if (g.cradle) return cradleTick(g);
   const emp = g.aliveEmpires();
   const has = (v: VictoryId) => g.victories.includes(v);
 
@@ -67,6 +68,18 @@ export function victoryTick(g: Game) {
       }
     }
   }
+}
+
+/**
+ * The cradle of an Ages run. A house whose Ark has left is not beaten, only gone ahead, so the cradle is
+ * won outright only by putting out every rival Hearth before any Ark rises. Otherwise the run goes on
+ * among the stars.
+ */
+function cradleTick(g: Game) {
+  const here = g.aliveEmpires();
+  const gone = g.empires().some((f) => f.launchedAt >= 0);
+  if (here.length === 0) g.declareWinner(-1, 'defeat', gone ? 'Every house has left the cradle.' : 'Every Hearth has gone dark.');
+  else if (here.length === 1 && !gone) g.declareWinner(here[0].id, 'conquest', `${here[0].name} put out every rival Hearth before a single Ark could rise.`);
 }
 
 function win(g: Game, f: Faction, v: VictoryId, reason: string) {

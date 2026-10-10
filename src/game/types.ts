@@ -155,6 +155,10 @@ export interface Unit {
   /** Arrived from a lane jump recently (Phase Strike boon). */
   arrivedAt: number;
   temp: number;
+  /** The age this unit was raised in (data/eras.ts). Always the Space Age outside an Ages run's cradle. */
+  era: number;
+  /** Ages: seconds an older unit has rested in one of its house's lands, on its way to being re-armed. */
+  rearm?: number;
 }
 
 export interface QueueItem {
@@ -360,6 +364,12 @@ export interface Faction {
   /** Warning keys already announced (rival victory progress etc.). */
   warned: Record<string, number>;
   score: number;
+  /** The age this house has reached (data/eras.ts). Always the Space Age outside an Ages run's cradle. */
+  era: number;
+  /** Ages: the step to the next age (or, last of all, the Ark) being taken at the Hearth. */
+  advance: null | { t: number; total: number; lore: number; cost: number };
+  /** Ages: when this house's Ark left the cradle for the stars (-1 = it has not). */
+  launchedAt: number;
 }
 
 export interface Prompt {
@@ -407,6 +417,12 @@ export interface GameConfig {
   tutorial?: boolean;
   forcedVictories?: VictoryId[];
   aiHeirs?: string[];
+  /**
+   * An Ages run: every house begins in the Stone Age on one cradle world (`stage: 'cradle'`), and the
+   * run goes on among the stars once the player's Ark has left it (`stage: 'stars'`).
+   */
+  mode?: 'ages';
+  stage?: 'cradle' | 'stars';
 }
 
 export interface Raid {

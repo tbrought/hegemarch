@@ -331,3 +331,57 @@ the same game with or without rendering, and a saved run continues identically.
   news, the flight to a Hearth, sound, the crowning and the sector after it), the lighting of
   sections, the houses and their tour, the triangle, a whole Boon draft, then the page at laptop,
   tablet and phone widths, with reduced motion and with scripts off.
+
+## 9. Ages mode
+
+A second way to play, beside the classic run: every house begins as a tribe in the Stone Age, all on
+one **cradle world**, and climbs age by age to the stars. It is a longer game (about an hour or
+more): the cradle first, then the classic game among the stars with what was won on the cradle.
+
+> Status while it is being built: the rules of the cradle are in the simulation and tested
+> (`tests/ages.test.ts`, `npm run simulate:ages`). Still to come: the cradle on screen, the passage to
+> the stars, the menus, and the teaching.
+
+### The cradle
+
+- **One planet, a map of lands.** Nodes are lands joined by paths (`generateCradle`): each house has
+  its Hearth on the rim with three lands of its own, border lands lie between neighbours, and the
+  richest lands in the middle are held by beasts. Everything else is the classic game seen small:
+  lands are kindled by Firebearers (the seed ship), take roles, rise in level, and are taken by siege.
+- **Ages.** Stone, Bronze, Iron, Powder, Machine (`data/eras.ts`). A house's age decides:
+  - what a Forge can raise. Three lines of units keep the triangle in every age (swift beats siege,
+    siege beats sturdy, sturdy beats swift) under new names and looks: Hunter, Chariot, Horseman,
+    Dragoon, Armored Car (swift); Warrior, Spearman, Legionary, Musketeer, Tank (sturdy); Ram,
+    Catapult, Cannon, Howitzer (siege). The Stone Age has no siege unit, so no walls fall before bronze;
+  - how strong its units, walls and guns are (`power`, from 0.3 in the Stone Age to 1 in space), and how
+    fast its units travel the paths. A unit keeps the age it was raised in; an older unit that rests
+    20 seconds in one of its house's lands is re-armed for the house's age;
+  - which roles and levels its lands can have (Bastions and level II from the Bronze Age, level III
+    from the Iron Age).
+- **Lore climbs the ages.** On the cradle Lore is not turned into Boons: it is saved for the next age.
+  With the Lore of the age gathered, the player presses ADVANCE (an explicit order, never automatic):
+  it takes the Lore, a price in Embers, and time at the Hearth, and stands still while the Hearth is
+  under attack. Each new age brings one Boon, from a pool of its own (`cradle: true` in
+  `data/cards.ts`): Boons that speak of "units" and "lands and worlds", because the house keeps them.
+- **The Ark.** The step out of the Machine Age is the Ark. When the player's Ark is done it leaves,
+  and the run goes on among the stars. A rival's Ark that leaves first takes its house with it: its
+  lands fall dark, open to anyone, and it will have a head start among the stars. A house whose Ark
+  has left is gone ahead, not beaten.
+- **Winning and losing there.** Lose your Hearth and the run is over, as always. Put out every rival
+  Hearth before any Ark rises and the run is won on the spot (Conquest). Otherwise it is decided
+  among the stars.
+- No Corsairs, no Hollow, no anomalies and no omens on the cradle: those belong to the stars.
+
+### The stars
+
+The classic game, begun from the cradle: the player's Hearth is the cradle world, the rivals are the
+houses that left it alive, each on a world of its own. A house that left before the player has been
+playing for that long already; a house that had not left yet arrives later. Boons of the cradle are
+kept, and Lore makes Boons again.
+
+### How it sits in the code
+
+`GameConfig.mode: 'ages'` with `stage: 'cradle' | 'stars'`; `Game.cradle` is true on the cradle and
+gates every rule above. Houses have an `era` and units keep theirs; in a classic run both are always
+the Space Age, whose strength is exactly 1, so classic games are untouched (their simulated results
+are byte-for-byte what they were).

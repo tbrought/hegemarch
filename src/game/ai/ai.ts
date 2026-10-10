@@ -1,6 +1,7 @@
 import type { Game } from '../Game';
 import { AI_ATTACK_RATIO, AI_FIRST_ATTACK, AI_RUSH, AI_THINK } from '../constants';
 import { CARD_BY_ID, type CardCat } from '../data/cards';
+import { ERAS } from '../data/eras';
 import { isWarship, UNITS } from '../data/units';
 import { ASCENSION_BOONS, relicsRequired, treasuryTarget } from '../data/victories';
 import type { AIState, Faction, GNode, Rarity, Unit, UnitType, WorldRole, WorldSize } from '../types';
@@ -68,7 +69,8 @@ export function aiTick(g: Game, f: Faction, dt: number) {
 
   let guard = 0;
   while (f.pendingDrafts > 0 && guard++ < 6) if (!aiDraft(g, f)) break;
-  if (f.ark < 0 || !g.units.has(f.ark)) g.cmdRebuildArk(f.id);
+  if (g.cradle) g.cmdAdvance(f.id);
+  else if (f.ark < 0 || !g.units.has(f.ark)) g.cmdRebuildArk(f.id);
 
   const ctx = analyze(g, f);
   observeEnemies(g, f, ctx);
@@ -218,8 +220,10 @@ function economy(g: Game, f: Faction, ctx: Ctx) {
   const ai = f.ai!;
   const hoarding = ai.hoard && g.victories.includes('treasury') && f.embers > treasuryTarget(g.config.size) * 0.35;
   const threatened = ctx.threats.length > 0;
+  // On the cradle: once the Lore for the next age is gathered, save the Embers for it.
+  const saving = g.cradle && !f.advance && f.lore >= ERAS[f.era].lore && f.embers < ERAS[f.era].cost;
 
-  kindle(g, f, ctx);
+  if (!saving) kindle(g, f, ctx);
   roles(g, f, ctx);
 
   if (g.victories.includes('ascension') && f.boons >= ASCENSION_BOONS && !f.gate && f.capital >= 0) g.cmdQueueGate(f.id, f.capital);
@@ -227,9 +231,11 @@ function economy(g: Game, f: Faction, ctx: Ctx) {
   // Keep a standing fleet that grows with time (the Ark is not counted), invest the rest.
   const ark = g.units.get(f.ark);
   const fleet = ctx.armyPower - (ark ? g.unitPower(ark) : 0);
-  const desired = 8 + ctx.minutes * (ai.personality === 'warlord' ? 3 : ai.personality === 'turtle' ? 2.1 : 2.5);
-  if (threatened || fleet < desired) buildShips(g, f, ctx, 3);
-  if (!hoarding) upgrades(g, f, ctx);
+  // (Strength is counted in the units of the house's own age.)
+  const desired = (8 + ctx.minutes * (ai.personality === 'warlord' ? 3 : ai.personality === 'turtle' ? 2.1 : 2.5)) * ERAS[f.era].power;
+  if (saving ? threatened && fleet < desired * 0.5 : threatened || fleet < desired) buildShips(g, f, ctx, 3);
+  if (!hoarding && !saving) upgrades(g, f, ctx);
+  if (saving) return;
   if ((!hoarding && f.embers > 350 + ctx.minutes * 15) || threatened) buildShips(g, f, ctx, 2);
 }
 
@@ -491,7 +497,8 @@ function military(g: Game, f: Faction, ctx: Ctx) {
 
   const army = all.filter((u) => !assigned.has(u.id));
   const armyPower = power(g, army);
-  const minArmy = 12 + ctx.minutes * 1.5;
+  const age = ERAS[f.era].power;
+  const minArmy = (12 + ctx.minutes * 1.5) * age;
 
   switch (ai.mode) {
     case 'build': {
@@ -499,7 +506,7 @@ function military(g: Game, f: Faction, ctx: Ctx) {
       if (idle.length && ctx.staging >= 0) sendIfNeeded(g, f, idle, ctx.staging);
       // Before the first big attack, still clear guarded dark worlds nearby.
       const canAttack = g.time >= ai.firstAttackAt && g.time - ai.lastAttack > 45 && armyPower >= minArmy;
-      const canClear = g.time < ai.firstAttackAt && g.time > 240 && g.time - ai.lastAttack > 60 && armyPower >= 8;
+      const canClear = g.time < ai.firstAttackAt && g.time > 240 && g.time - ai.lastAttack > 60 && armyPower >= 8 * age;
       if (canAttack || canClear) {
         const t = chooseTarget(g, f, armyPower, ctx.staging >= 0 ? ctx.staging : f.capital);
         const ok = t && (canAttack || fairTarget(g, f, t.node));

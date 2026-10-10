@@ -16,4 +16,13 @@ export const ANOMALY_NAMES = [
 
 export const RELIC_SITE_NAMES = ['Vault of Aeons', 'Tomb of the First Fleet', 'The Silent Reliquary', 'Precursor Sanctum', 'Ossuary of Kings', 'The Ember Archive', 'Crypt of Tides', 'The Last Bastion'];
 
+/** Lands of the cradle world (Ages runs). */
+export const LAND_NAMES = [
+  'Ashford', 'Brightmoor', 'Cinder Vale', 'Dunmere', 'Emberfall', 'Fallowmere', 'Greywater', 'Harrowgate', 'Ironwood', 'Kestrel Down',
+  'Longbarrow', 'Marrowfen', 'Northreach', 'Oakhollow', 'Pinemarch', 'Quarry Hill', 'Redwater', 'Saltmarsh', 'Thornfield', 'Umberlea',
+  'Vintry', 'Westfold', 'Yarrowdale', 'Amberwick', 'Blackfen', 'Coldharbor', 'Deepdene', 'Eastmere', 'Foxcombe', 'Glassmere',
+  'Highmoor', 'Kingsmead', 'Lowcross', 'Mistvale', 'Nettlebank', 'Old Hythe', 'Ravenscar', 'Stonebridge', 'Tallowmere', 'Wolfden',
+  'Bramblecote', 'Copperlode', 'Driftwood Bay', 'Elderholt', 'Flintcombe', 'Goldenhay', 'Heronwick', 'Larkrise', 'Mossgiel', 'Whitecliff',
+];
+
 export const AI_RULER_TITLES = ['Archon', 'Matriarch', 'Tyrant', 'Regent', 'Pretender', 'Exarch', 'Warden', 'Usurper'];

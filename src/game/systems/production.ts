@@ -5,7 +5,38 @@ import { mul } from '../mods';
 import type { UnitType } from '../types';
 import { roman, TAU } from '../util';
 
+/** Seconds an older unit must rest in one of its house's lands to be re-armed for the house's age. */
+export const REARM_TIME = 20;
+
+/** Ages, on the cradle: houses take their steps through the ages, and older units at home are re-armed. */
+function agesTick(g: Game, dt: number) {
+  for (const f of g.factions) {
+    if (f.kind !== 'empire' || !f.alive || !f.advance || f.capital < 0) continue;
+    // The work stands still while the Hearth is under attack.
+    if (g.nodes[f.capital].lastHit < 5) continue;
+    f.advance.t += dt;
+    if (f.advance.t >= f.advance.total) g.completeAdvance(f);
+  }
+  if (g.tick % 20 !== 7) return;
+  for (const u of g.unitList) {
+    if (u.dead || u.node < 0) continue;
+    const f = g.factions[u.owner];
+    if (f.kind !== 'empire' || u.era >= f.era) continue;
+    if (g.nodes[u.node].owner !== u.owner || u.lastHit < 10) {
+      u.rearm = 0;
+      continue;
+    }
+    u.rearm = (u.rearm ?? 0) + 1;
+    if (u.rearm < REARM_TIME) continue;
+    u.era = f.era;
+    u.rearm = 0;
+    g.refreshUnitStats(u);
+    if (g.fxEnabled) g.fx.push({ k: 'ring', x: u.x, y: u.y, r: UNITS[u.type].radius * 2.5, color: f.color, node: u.node });
+  }
+}
+
 export function productionTick(g: Game, dt: number) {
+  if (g.cradle) agesTick(g, dt);
   for (const n of g.nodes) {
     if (n.owner < 0 || n.kind !== 'planet') continue;
     const f = g.factions[n.owner];

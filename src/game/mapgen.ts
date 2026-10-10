@@ -1,5 +1,5 @@
 import { ECON, PLANETS, sizeForRadius } from './data/worlds';
-import { ANOMALY_NAMES, RELIC_SITE_NAMES, STAR_COLORS, STAR_NAMES } from './data/names';
+import { ANOMALY_NAMES, LAND_NAMES, RELIC_SITE_NAMES, STAR_COLORS, STAR_NAMES } from './data/names';
 import { RNG } from './rng';
 import type { GNode, Lane, MapSize, NodeKind, PlanetType } from './types';
 import { dist, roman } from './util';
@@ -387,6 +387,145 @@ function tryGenerate(seed: number, opts: MapGenOptions): MapGenResult {
   }
 
   return { nodes, lanes, systems, homes, pirateBase, rift, relicSites, anomalies, minX, minY, maxX, maxY };
+}
+
+// ---------------------------------------------------------------------------
+// The cradle world (Ages runs)
+// ---------------------------------------------------------------------------
+
+/** Lands stand at least this far apart, so that their grounds never touch. */
+const LAND_SEP = 1180;
+
+/**
+ * The cradle world of an Ages run: one planet, laid out as a map of lands joined by paths. Every
+ * house has its Hearth on the rim with a few lands of its own around it. Between neighbours lie
+ * border lands, and in the middle the richest lands, held by beasts.
+ */
+export function generateCradle(seed: number, opts: { houses: number }): MapGenResult {
+  let lastErr: unknown;
+  for (let attempt = 0; attempt < 20; attempt++) {
+    try {
+      return tryCradle((seed + attempt * 7919) >>> 0, opts.houses);
+    } catch (e) {
+      lastErr = e;
+    }
+  }
+  throw lastErr;
+}
+
+function tryCradle(seed: number, houses: number): MapGenResult {
+  const rng = new RNG(seed ^ 0xc4ad1e);
+  const nodes: GNode[] = [];
+  const lanes: Lane[] = [];
+  const homes: number[] = [];
+  const names = rng.shuffle([...LAND_NAMES]);
+  const free = (x: number, y: number, sep = LAND_SEP) => nodes.every((n) => dist(x, y, n.x, n.y) >= sep);
+  const add = (x: number, y: number, type: PlanetType, beasts = 0): GNode => {
+    const n = blankNode(nodes.length, 'planet', 0, x, y, rng.fork());
+    setPlanetType(n, type, rng);
+    n.name = names[nodes.length % names.length];
+    if (beasts > 0) n.tag = 'militia:' + beasts;
+    nodes.push(n);
+    return n;
+  };
+
+  // Hearths on a wide ring (the screen is wider than it is tall).
+  const ring = Math.max(2500, (LAND_SEP * 2.6 * houses) / (2 * Math.PI) + 700);
+  const a0 = rng.float(0, Math.PI * 2);
+  const homePos: { x: number; y: number; a: number }[] = [];
+  for (let i = 0; i < houses; i++) {
+    const a = a0 + (i / houses) * Math.PI * 2 + rng.float(-0.12, 0.12);
+    const r = ring * rng.float(0.96, 1.06);
+    homePos.push({ x: Math.cos(a) * r * 1.25, y: Math.sin(a) * r * 0.85, a });
+  }
+  for (const h of homePos) {
+    const n = add(h.x, h.y, 'terran');
+    n.tag = 'home';
+    homes.push(n.id);
+  }
+  // Three lands of its own around each Hearth: nearer to it than to any other.
+  const OWN: PlanetType[] = ['desert', 'terran', 'ocean', 'barren', 'desert'];
+  for (let i = 0; i < houses; i++) {
+    const h = homePos[i];
+    let placed = 0;
+    for (let attempt = 0; attempt < 400 && placed < 3; attempt++) {
+      const a = rng.float(0, Math.PI * 2);
+      const r = rng.float(LAND_SEP + 40, LAND_SEP + 620 + attempt * 2);
+      const x = h.x + Math.cos(a) * r;
+      const y = h.y + Math.sin(a) * r * 0.9;
+      if (!free(x, y)) continue;
+      if (homePos.some((o, j) => j !== i && dist(x, y, o.x, o.y) < r + 500)) continue;
+      add(x, y, rng.pick(OWN));
+      placed++;
+    }
+    if (placed < 3) throw new Error('Failed to place a house\'s lands');
+  }
+  // A border land between each pair of neighbours.
+  const BORDER: PlanetType[] = ['volcanic', 'ice', 'barren', 'desert'];
+  for (let i = 0; i < houses; i++) {
+    const p = homePos[i];
+    const q = homePos[(i + 1) % houses];
+    for (let attempt = 0; attempt < 200; attempt++) {
+      const k = rng.float(0.4, 0.6);
+      const x = p.x + (q.x - p.x) * k + rng.float(-300, 300) * (1 + attempt / 60);
+      const y = p.y + (q.y - p.y) * k + rng.float(-300, 300) * (1 + attempt / 60);
+      if (!free(x, y)) continue;
+      add(x, y, rng.pick(BORDER), rng.chance(0.5) ? 1 : 0);
+      break;
+    }
+  }
+  // The middle: the richest lands, each held by beasts.
+  const MIDDLE: PlanetType[] = ['terran', 'ocean', 'desert', 'terran'];
+  const middle = houses + 2;
+  let placedMid = 0;
+  for (let attempt = 0; attempt < 900 && placedMid < middle; attempt++) {
+    const a = rng.float(0, Math.PI * 2);
+    const r = Math.sqrt(rng.float(0, 1)) * ring * (0.5 + attempt / 1800);
+    const x = Math.cos(a) * r * 1.25;
+    const y = Math.sin(a) * r * 0.85;
+    if (!free(x, y)) continue;
+    const n = add(x, y, rng.pick(MIDDLE), rng.int(1, 2));
+    n.r = Math.max(n.r, 76);
+    n.size = 'L';
+    n.well = Math.round(n.r + 380);
+    placedMid++;
+  }
+  if (placedMid < Math.min(3, middle)) throw new Error('Failed to place the middle lands');
+
+  // Paths: every land reaches every other, with a few loops, and no Hearth is a dead end.
+  const laneSet = new Set<string>();
+  const addLane = (a: number, b: number) => {
+    if (a === b) return;
+    const key = a < b ? `${a}-${b}` : `${b}-${a}`;
+    if (laneSet.has(key)) return;
+    laneSet.add(key);
+    lanes.push({ a, b, len: dist(nodes[a].x, nodes[a].y, nodes[b].x, nodes[b].y) });
+    nodes[a].lanes.push(b);
+    nodes[b].lanes.push(a);
+  };
+  for (const [i, j] of rngEdges(nodes)) addLane(i, j);
+  for (const [i, j] of gabrielEdges(nodes)) if (rng.chance(0.35)) addLane(i, j);
+  for (const h of homes) {
+    if (nodes[h].lanes.length >= 2) continue;
+    const near = nodes
+      .filter((n) => n.id !== h && !nodes[h].lanes.includes(n.id) && n.tag !== 'home')
+      .sort((p, q) => dist(p.x, p.y, nodes[h].x, nodes[h].y) - dist(q.x, q.y, nodes[h].x, nodes[h].y));
+    if (near[0]) addLane(h, near[0].id);
+  }
+  // No path may run from one Hearth straight to another: there is always a land between.
+  for (const l of lanes) if (nodes[l.a].tag === 'home' && nodes[l.b].tag === 'home') throw new Error('Two Hearths are neighbours');
+
+  let minX = Infinity;
+  let minY = Infinity;
+  let maxX = -Infinity;
+  let maxY = -Infinity;
+  for (const n of nodes) {
+    minX = Math.min(minX, n.x - n.well - 420);
+    minY = Math.min(minY, n.y - n.well - 420);
+    maxX = Math.max(maxX, n.x + n.well + 420);
+    maxY = Math.max(maxY, n.y + n.well + 420);
+  }
+  return { nodes, lanes, systems: [], homes, pirateBase: -1, rift: -1, relicSites: [], anomalies: [], minX, minY, maxX, maxY };
 }
 
 /** All-pairs shortest path (by lane length) with next-hop table. */
