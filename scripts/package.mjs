@@ -1,5 +1,5 @@
 // Release packaging: everything to upload, in release/ (run after the build; `npm run package` does both).
-//   release/site/                 the website: landing page, the game at /play/, the download at /hegemarch.zip
+//   release/site/                 the website: landing page (and its script), the game at /play/, the download at /hegemarch.zip
 //   release/itch/hegemarch-web.zip  itch.io, "played in the browser" (index.html at the top of the zip)
 //   release/itch/hegemarch.zip      itch.io, the download (the same file the website offers)
 import fs from 'node:fs';
@@ -9,7 +9,9 @@ import zlib from 'node:zlib';
 const pkg = JSON.parse(fs.readFileSync('package.json', 'utf8'));
 const version = pkg.version;
 const gameFile = path.join('dist', 'hegemarch.html');
-if (!fs.existsSync(gameFile)) throw new Error('package: run the build first (npm run package does)');
+// The landing page's script, built from src/site by `npm run build:site`.
+const siteScript = path.join('dist', 'site', 'site.js');
+if (!fs.existsSync(gameFile) || !fs.existsSync(siteScript)) throw new Error('package: run the builds first (npm run package does)');
 const game = fs.readFileSync(gameFile);
 
 const README = `Hegemarch v${version}
@@ -102,6 +104,7 @@ for (const f of fs.readdirSync('site')) {
   if (f === 'index.html') fs.writeFileSync(path.join(out, 'site', f), fs.readFileSync(from, 'utf8').replaceAll('{{VERSION}}', version));
   else fs.copyFileSync(from, path.join(out, 'site', f));
 }
+fs.copyFileSync(siteScript, path.join(out, 'site', 'site.js'));
 fs.writeFileSync(path.join(out, 'site', 'play', 'index.html'), game);
 const download = zip([
   ['hegemarch.html', game],

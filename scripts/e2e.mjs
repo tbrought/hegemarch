@@ -85,6 +85,17 @@ try {
   // ---- Menus ----
   check('title screen shows HEGEMARCH', (await page.textContent('.logo'))?.includes('HEGEMARCH'));
   check('no CONTINUE without a save', (await page.$('[data-sa="continue"]')) === null);
+  // The sector behind the menus plays itself; when a house is crowned there, one new sector follows.
+  await page.waitForFunction(() => window.__app.attract.game !== null, null, { timeout: 30000 });
+  await ev(() => {
+    const a = window.__app.attract;
+    window.__backdrop = a.game;
+    a.game.declareWinner(a.game.factions.find((f) => f.kind === 'empire' && f.alive).id, 'conquest', 'test');
+  });
+  await page.waitForFunction(() => window.__app.attract.game !== window.__backdrop, null, { timeout: 30000 });
+  await ev(() => (window.__backdrop = window.__app.attract.game));
+  await wait(1500);
+  check('a finished backdrop sector is replaced by one new sector', await ev(() => window.__app.attract.game === window.__backdrop && window.__app.attract.phase === 'live' && !window.__backdrop.outcome));
   await page.click('[data-sa="settings"]');
   await page.click('[data-sa="toggle:crt"]');
   check('settings toggle (CRT) persists', await ev(() => JSON.parse(localStorage.getItem('hegemarch.profile.v1')).settings.crt === true));

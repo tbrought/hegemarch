@@ -81,6 +81,16 @@ export function worldColor(n: GNode, lit: boolean): string {
 // ---------------------------------------------------------------------------
 
 const cache = new Map<string, HTMLCanvasElement>();
+
+/**
+ * Forget every world drawn so far. Worlds are remembered by their number, and each new sector numbers
+ * its worlds from zero again, so a new sector must not find the last one's pictures.
+ */
+export function forgetWorlds() {
+  cache.clear();
+  texCache.clear();
+}
+
 const MAX_CACHE = 600;
 
 function remember(key: string, c: HTMLCanvasElement) {

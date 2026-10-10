@@ -92,15 +92,20 @@ terms do the same.
 
 ## Releasing
 
-`npm run package` builds the game and writes everything to upload into `release/`:
+`npm run package` builds the game and the website, and writes everything to upload into `release/`:
 
 | Path | Where it goes |
 | --- | --- |
-| `release/site/` | The website: the landing page (`site/index.html`), the game at `/play/`, the download at `/hegemarch.zip` |
+| `release/site/` | The website: the landing page (`site/index.html`) and its script (`site.js`, built from `src/site/`), the game at `/play/`, the download at `/hegemarch.zip` |
 | `release/itch/hegemarch-web.zip` | itch.io, played in the browser |
 | `release/itch/hegemarch.zip` | itch.io, the download (the same file the website offers) |
 
 The version comes from `package.json`; it shows on the title screen and the landing page.
+
+The landing page is made from the game itself, not from pictures of it: it opens on a real sector
+played live by the AI houses, and its houses, ships, Boon draft and Destinies come from the game's
+own data and code, so they stay true when the game changes. Look at it before uploading with
+`npm run preview:site`, and check it with `npm run test:site`.
 
 ## Development
 
@@ -125,6 +130,8 @@ npm run test:layouts       # every dialog at the smallest and largest screens, b
 npm run test:uifuzz        # minutes of random clicks, drags, keys and resizes through menus and runs
 npm run test:perf          # big battle frame-rate check
 npm run test:dist          # smoke-tests dist/hegemarch.html from disk (after npm run build)
+npm run test:site          # the website in release/site, at four widths, with motion reduced and
+                           # scripts off (after npm run package; needs no dev server)
 ```
 
 The simulation has its own fuzzer, which needs no browser:

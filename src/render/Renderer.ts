@@ -8,7 +8,7 @@ import { PAL, light, shade } from './palette';
 import { clipSeg, dither, frame, line, rect, ring, type Ctx } from './pixel';
 import type { Screen } from './Screen';
 import { dirIndex, drawShip, icon, isStructureArt, shipSprite, silhouette, spriteSize } from './sprites';
-import { ANOMALY_RAMP, DARK_RAMP, drawWorldBlend, MAW_DORMANT_RAMP, MAW_RAMP, quantRadius, starSprite, swirlSprite, worldColor, worldSprite } from './worlds';
+import { ANOMALY_RAMP, DARK_RAMP, drawWorldBlend, forgetWorlds, MAW_DORMANT_RAMP, MAW_RAMP, quantRadius, starSprite, swirlSprite, worldColor, worldSprite } from './worlds';
 
 export interface ViewState {
   selected: Set<number>;
@@ -93,6 +93,7 @@ export class Renderer {
     this.cam.resize(this.screen.W, this.screen.H);
     this.lit.clear();
     this.fx.clear();
+    forgetWorlds();
     this.fx.nodePos = (id) => {
       const n = this.game?.nodes[id];
       return n ? { x: n.x, y: n.y, r: n.r } : null;

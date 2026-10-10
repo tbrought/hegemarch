@@ -1,5 +1,6 @@
 import { Music, type SongId } from '../audio/Music';
-import { Sfx, type SoundId } from '../audio/Sfx';
+import { playBattleSounds } from '../audio/battleSounds';
+import { Sfx } from '../audio/Sfx';
 import { Game } from '../game/Game';
 import { DIFFICULTY_NAMES, TICK } from '../game/constants';
 import { AMBITION_BY_ID } from '../game/data/ambitions';
@@ -12,7 +13,8 @@ import { dailySeed, hashString, randomSeed } from '../game/rng';
 import type { Difficulty, GameConfig, MapSize } from '../game/types';
 import { applyRunToProfile, computeLegacy, PERKS, UNLOCKS, type LegacyReport } from '../meta/legacy';
 import { clearRun, defaultProfile, hasRun, loadProfile, loadRun, saveProfile, saveRun, todayKey, type Profile } from '../meta/profile';
-import { emptyView, fmtTime, Renderer } from '../render/Renderer';
+import { fmtTime, Renderer } from '../render/Renderer';
+import { Attract } from './Attract';
 import { drawHouseBanners, startingFleet } from './houseArt';
 import { Screen } from '../render/Screen';
 import { groupBoons } from '../ui/boons';
@@ -71,9 +73,7 @@ export class App {
   private session: Session | null = null;
   private hud: Hud | null = null;
   private input: Input | null = null;
-  private attract: Game | null = null;
-  private attractT = 0;
-  private attractView = emptyView(true);
+  private attract: Attract;
   private prepToken = 0;
   private last = performance.now();
   private acc = 0;
@@ -98,6 +98,7 @@ export class App {
     this.screenObj = new Screen(this.canvas);
     this.screenObj.setPixelSize(this.profile.settings.pixelSize);
     this.renderer = new Renderer(this.screenObj);
+    this.attract = new Attract(this.renderer);
     this.sfx = new Sfx(this.profile.settings);
     this.music = new Music(this.sfx);
     this.setup.guided = !this.profile.tutorialDone;
@@ -122,7 +123,7 @@ export class App {
     });
     window.addEventListener('beforeunload', () => this.autosave());
     this.showMenu();
-    void this.startAttract();
+    void this.attract.start();
     requestAnimationFrame(this.loop);
     // Dev-only hook for automated browser tests.
     if (import.meta.env.DEV) (window as unknown as { __app: App }).__app = this;
@@ -137,8 +138,7 @@ export class App {
     this.last = now;
     try {
       if ((this.screen === 'game' || this.screen === 'results') && this.session) this.frameGame(dt);
-      else if (this.attract) this.frameAttract(dt);
-      else {
+      else if (!this.attract.frame(dt)) {
         const g = this.screenObj.g;
         g.fillStyle = '#0b0a1a';
         g.fillRect(0, 0, this.screenObj.W, this.screenObj.H);
@@ -205,122 +205,12 @@ export class App {
     if (this.music.playing !== want && (want === 'war' || this.warHeat <= 0.5)) this.music.play(want);
   }
 
-  private frameAttract(dt: number) {
-    const g = this.attract!;
-    this.acc += dt;
-    let steps = 0;
-    while (this.acc >= TICK && steps < 4) {
-      g.step();
-      this.acc -= TICK;
-      steps++;
-    }
-    if (steps >= 4) this.acc = 0;
-    if (g.outcome) {
-      void this.startAttract();
-      return;
-    }
-    this.attractT -= dt;
-    if (this.attractT <= 0) {
-      this.attractT = 16;
-      let best = g.nodes[g.rng.int(0, g.nodes.length - 1)];
-      let bc = -1;
-      for (const n of g.nodes) {
-        const c = g.buckets[n.id].length + (n.kind === 'planet' && n.owner >= 0 ? 3 : 0) + Math.random() * 8;
-        if (c > bc) {
-          bc = c;
-          best = n;
-        }
-      }
-      this.renderer.cam.focus(best.x, best.y, 0.1 + Math.random() * 0.12);
-    }
-    this.processFx(g, () => true, false);
-    this.renderer.fx.update(dt);
-    this.renderer.render(g, Math.min(1, this.acc / TICK), dt, this.attractView, true);
-  }
-
   private processFx(g: Game, visible: (n: number) => boolean, sound: boolean) {
     const cam = this.renderer.cam;
     const near = (x: number, y: number, pad: number) => cam.sees(x, y, pad);
     this.renderer.fx.ingest(g.fx, visible, near, cam.zoom);
-    if (sound && this.sfx.ctx) {
-      const R = Math.max(cam.w, cam.h) / 2 / cam.zoom;
-      const zoomGain = Math.max(0.15, Math.min(1, cam.zoom * 5));
-      for (const f of g.fx) {
-        if ('node' in f && f.node >= 0 && !visible(f.node)) continue;
-        let id: SoundId | null = null;
-        let base = 0.3;
-        let x = 0;
-        let y = 0;
-        switch (f.k) {
-          case 'beam':
-            id = 'laser';
-            base = 0.2;
-            x = f.x1;
-            y = f.y1;
-            break;
-          case 'shot':
-            id = f.kind === 'lance' ? 'lance' : f.kind === 'shell' ? 'shell' : 'bolt';
-            base = f.kind === 'shell' ? 0.45 : 0.22;
-            x = f.x;
-            y = f.y;
-            break;
-          case 'boom':
-            id = f.size >= 20 ? 'bigboom' : 'boom';
-            base = f.size >= 20 ? 0.9 : 0.45;
-            x = f.x;
-            y = f.y;
-            break;
-          case 'jumpOut':
-            id = 'jump';
-            base = 0.2;
-            x = f.x;
-            y = f.y;
-            break;
-          case 'capture':
-            id = 'capture';
-            base = 0.6;
-            x = g.nodes[f.node].x;
-            y = g.nodes[f.node].y;
-            break;
-          case 'ability':
-            id = 'ability';
-            base = 0.5;
-            x = f.x;
-            y = f.y;
-            break;
-          default:
-            break;
-        }
-        if (!id) continue;
-        const d = Math.hypot(x - cam.x, y - cam.y);
-        const att = Math.max(0, Math.min(1, 1.25 - d / R));
-        const vol = base * att * (id === 'capture' ? 1 : zoomGain);
-        if (vol > 0.02) this.sfx.play(id, vol, Math.max(-1, Math.min(1, ((x - cam.x) / R) * 0.6)));
-      }
-    }
+    if (sound) playBattleSounds(g.fx, g.nodes, cam, this.sfx, visible);
     g.fx.length = 0;
-  }
-
-  // =====================================================================
-  // Attract mode (a live sector behind the menus)
-  // =====================================================================
-
-  private async startAttract() {
-    const token = ++this.prepToken;
-    const heir = HEIRS[Math.floor(Math.random() * HEIRS.length)].id;
-    const g = Game.create({ seed: randomSeed(), size: 'small', difficulty: 2, heir, perks: {}, unlockLegendary: true, unlockPacts: true, autoplay: true });
-    g.fxEnabled = false;
-    for (let chunk = 0; chunk < 14; chunk++) {
-      for (let i = 0; i < 1200; i++) g.step();
-      await new Promise((r) => setTimeout(r, 0));
-      if (token !== this.prepToken) return;
-    }
-    g.fx.length = 0;
-    g.fxEnabled = true;
-    this.attract = g;
-    this.attractT = 0;
-    this.renderer.prepare(g);
-    this.renderer.cam.fitAll();
   }
 
   // =====================================================================
@@ -363,7 +253,7 @@ export class App {
   private async startRun(config: GameConfig) {
     this.teardownSession();
     clearRun();
-    this.attract = null;
+    this.attract.stop();
     const token = ++this.prepToken;
     this.screen = 'loading';
     this.renderLoading(0.2);
@@ -399,7 +289,7 @@ export class App {
       return;
     }
     this.teardownSession();
-    this.attract = null;
+    this.attract.stop();
     ++this.prepToken;
     this.beginSession(g);
     const s = this.session!;
@@ -415,7 +305,7 @@ export class App {
         if (save) this.autosave();
         this.teardownSession();
         this.showMenu();
-        void this.startAttract();
+        void this.attract.start();
       },
       abandon: () => {
         g.declareWinner(-1, 'defeat', 'You abandoned the run.');
@@ -701,7 +591,7 @@ export class App {
       case 'results-hall':
         this.teardownSession();
         this.showHall();
-        void this.startAttract();
+        void this.attract.start();
         this.music.play('title');
         break;
       case 'results-again':
@@ -709,7 +599,7 @@ export class App {
         st.daily = false;
         st.confirm = '';
         this.showSetup();
-        void this.startAttract();
+        void this.attract.start();
         this.music.play('title');
         break;
     }

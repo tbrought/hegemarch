@@ -22,11 +22,13 @@ export class Screen {
   pixelSize: PixelSize = 'auto';
   private listeners: (() => void)[] = [];
 
-  constructor(canvas: HTMLCanvasElement) {
+  /** `host`: an element the canvas fills (the website's opening picture); without one it fills the window. */
+  constructor(canvas: HTMLCanvasElement, private host: HTMLElement | null = null) {
     this.canvas = canvas;
     this.g = ctx2d(canvas);
     this.resize();
     window.addEventListener('resize', () => this.resize());
+    if (host && typeof ResizeObserver !== 'undefined') new ResizeObserver(() => this.resize()).observe(host);
   }
 
   onResize(fn: () => void) {
@@ -40,10 +42,13 @@ export class Screen {
 
   resize() {
     const dpr = window.devicePixelRatio || 1;
-    const devW = Math.max(1, Math.floor(window.innerWidth * dpr));
-    const devH = Math.max(1, Math.floor(window.innerHeight * dpr));
+    const devW = Math.max(1, Math.floor((this.host ? this.host.clientWidth : window.innerWidth) * dpr));
+    const devH = Math.max(1, Math.floor((this.host ? this.host.clientHeight : window.innerHeight) * dpr));
     const [bw, bh] = BASE[this.pixelSize];
-    const scale = Math.max(1, Math.floor(Math.min(devW / bw, devH / bh)));
+    let scale = Math.max(1, Math.floor(Math.min(devW / bw, devH / bh)));
+    // Inside a host, a game pixel is never smaller than two CSS pixels (on a phone's narrow screen
+    // the picture would otherwise shrink to specks).
+    if (this.host) scale = Math.max(scale, Math.round(2 * dpr));
     const W = Math.ceil(devW / scale);
     const H = Math.ceil(devH / scale);
     if (W !== this.canvas.width || H !== this.canvas.height) {

@@ -23,11 +23,10 @@ const shot = async (name) => {
 const busyBackdrop = () =>
   page.evaluate(() => {
     const app = window.__app;
-    const g = app.attract;
+    const g = app.attract.game;
     if (!g) return;
     const n = g.nodes.filter((x) => x.kind === 'planet' && x.owner >= 0)[0] ?? g.nodes[0];
-    app.attractT = 999;
-    app.renderer.cam.focus(n.x, n.y, 0.22);
+    app.attract.lookAt(n.x, n.y, 0.22, 999);
     app.renderer.cam.update(10);
   });
 

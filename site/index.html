@@ -18,6 +18,17 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Pixelify+Sans:wght@400;600&family=Press+Start+2P&display=swap" />
+    <script>
+      // With scripts on, the page's pictures move and its sections light up as they are scrolled to.
+      // (The pictures themselves are drawn by site.js, which is built from the game: see src/site.)
+      document.documentElement.classList.add('js');
+      // If that script never arrives, show the still picture after all.
+      setTimeout(function () {
+        var hero = document.getElementById('hero');
+        if (hero && !hero.classList.contains('on')) hero.classList.add('still');
+      }, 6000);
+    </script>
+    <script src="site.js?v={{VERSION}}" defer></script>
     <style>
       /* The game's own palette and type (src/styles.css). */
       :root {
@@ -33,6 +44,8 @@
         --red: #e0402f;
         --wine: #8c1d40;
         --teal: #2fd5a6;
+        /* The color of the house the visitor has chosen (Solar Concord's gold to begin with). */
+        --house: #ffd23f;
         --display: 'Press Start 2P', 'Courier New', monospace;
         --body: 'Pixelify Sans', 'Trebuchet MS', system-ui, sans-serif;
         --px: 3px;
@@ -41,65 +54,63 @@
       * {
         box-sizing: border-box;
       }
+      html {
+        scroll-behavior: smooth;
+      }
       body {
         margin: 0;
         background: var(--void);
         color: var(--mist);
         font-family: var(--body);
         font-size: 19px;
-        line-height: 1.5;
+        line-height: 1.45;
         -webkit-font-smoothing: none;
-        background-image: radial-gradient(1px 1px at 12% 18%, var(--dusk) 50%, transparent 51%), radial-gradient(1px 1px at 72% 9%, var(--mist) 50%, transparent 51%),
-          radial-gradient(1px 1px at 88% 42%, var(--dusk) 50%, transparent 51%), radial-gradient(1px 1px at 31% 63%, var(--slate) 50%, transparent 51%),
-          radial-gradient(1px 1px at 55% 88%, var(--dusk) 50%, transparent 51%), radial-gradient(1px 1px at 6% 84%, var(--mist) 50%, transparent 51%);
+        font-variant-ligatures: none;
+        overflow-x: hidden;
       }
-      main {
-        width: min(900px, 100%);
-        margin: 0 auto;
-        padding: 48px 16px 40px;
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        gap: 26px;
+      canvas {
+        image-rendering: pixelated;
+        image-rendering: crisp-edges;
+        display: block;
       }
-      .logo {
-        font-family: var(--display);
-        font-size: clamp(28px, 8vw, 64px);
-        letter-spacing: 0.06em;
-        color: var(--gold);
-        text-shadow:
-          4px 4px 0 var(--ember),
-          8px 8px 0 var(--wine);
+      [hidden] {
+        display: none !important;
+      }
+      /* Sections and pictures that only scripts can fill. */
+      html:not(.js) .needs-js,
+      html:not(.js) .pic {
+        display: none;
+      }
+      h1,
+      h2,
+      h3,
+      p,
+      ul,
+      ol {
         margin: 0;
-        line-height: 1.1;
-        text-align: center;
       }
-      .tagline {
-        margin: -10px 0 0;
-        font-size: 22px;
-        color: var(--dusk);
-        text-align: center;
+      ul,
+      ol {
+        padding: 0;
+        list-style: none;
       }
-      .lead {
-        margin: 0;
-        max-width: 62ch;
-        text-align: center;
-        color: var(--mist);
+      b {
+        font-weight: 600;
       }
-      .actions {
-        display: flex;
-        flex-wrap: wrap;
-        justify-content: center;
-        gap: 18px;
-      }
+
+      /* ------------------------------------------------------------ buttons */
       .btn {
         display: inline-block;
         font-family: var(--display);
         font-size: 14px;
         letter-spacing: 0.04em;
+        line-height: 1.3;
+        text-align: center;
         color: var(--bone);
         background: var(--night);
         text-decoration: none;
+        border: none;
+        cursor: pointer;
         padding: 16px 20px 15px;
         margin: var(--px);
         box-shadow:
@@ -115,9 +126,18 @@
       .btn:active {
         transform: translateY(2px);
       }
-      .btn:focus-visible {
+      .btn:focus-visible,
+      .heir:focus-visible,
+      .boon:focus-visible,
+      .chip:focus-visible,
+      .sound:focus-visible {
         outline: 2px dashed var(--gold);
-        outline-offset: 6px;
+        outline-offset: 5px;
+      }
+      .btn[disabled] {
+        color: var(--slate);
+        cursor: default;
+        background: var(--night);
       }
       .btn.primary {
         color: var(--gold);
@@ -133,6 +153,14 @@
         background: var(--red);
         color: var(--bone);
       }
+      .btn.big {
+        font-size: 20px;
+        padding: 20px 30px 18px;
+      }
+      .btn.small {
+        font-size: 11px;
+        padding: 11px 13px 10px;
+      }
       .btn small {
         display: block;
         margin-top: 8px;
@@ -141,81 +169,1091 @@
         letter-spacing: 0;
         color: var(--mist);
       }
-      .note {
-        margin: -6px 0 0;
-        font-size: 16px;
-        color: var(--dusk);
-        text-align: center;
-        max-width: 62ch;
+      .actions {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: center;
+        align-items: center;
+        gap: 14px 18px;
       }
-      .shot {
+
+      /* ------------------------------------------------------------ the opening: a live sector */
+      .hero {
+        position: relative;
+        height: clamp(600px, 100svh, 940px);
+        overflow: hidden;
+        display: flex;
+        flex-direction: column;
+        background: var(--void);
+      }
+      .hero .sector,
+      .hero .poster,
+      .hero-shade {
+        position: absolute;
+        left: 0;
+        top: 0;
+      }
+      /* The box the live sector is drawn in: the camera looks at its middle. */
+      .sector-box {
+        position: absolute;
+        inset: 0;
+        overflow: hidden;
+      }
+      .hero .poster {
         width: 100%;
-        max-width: 100%;
-        height: auto;
-        aspect-ratio: 16 / 9;
+        height: 100%;
         object-fit: cover;
         image-rendering: pixelated;
-        box-shadow:
-          0 calc(var(--px) * -1) 0 0 var(--slate),
-          0 var(--px) 0 0 var(--slate),
-          calc(var(--px) * -1) 0 0 0 var(--slate),
-          var(--px) 0 0 0 var(--slate);
-        background: var(--night);
+        transition: opacity 0.8s;
       }
-      .features {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-        gap: 18px;
+      /* With scripts the live sector takes the picture's place (unless the visitor asked for stillness). */
+      html.js .hero .poster {
+        opacity: 0;
+      }
+      html.js .hero.still .poster {
+        opacity: 1;
+      }
+      .hero-shade {
         width: 100%;
-        margin: 0;
-        padding: 0;
-        list-style: none;
+        height: 100%;
+        pointer-events: none;
+        background: linear-gradient(to bottom, rgba(11, 10, 26, 0.88) 0, rgba(11, 10, 26, 0.5) 20%, rgba(11, 10, 26, 0) 38%, rgba(11, 10, 26, 0) 58%, rgba(11, 10, 26, 0.72) 82%, rgba(11, 10, 26, 0.95) 100%);
       }
-      .features li {
-        background: var(--night);
-        padding: 14px 16px;
-        box-shadow: inset 0 var(--px) 0 0 var(--indigo);
+      .hero-top,
+      .hero-bottom,
+      .crown,
+      .sound {
+        position: relative;
+      }
+      .hero-top {
+        padding: clamp(28px, 7vh, 72px) 16px 0;
+        text-align: center;
+      }
+      .logo {
+        font-family: var(--display);
+        font-weight: normal;
+        font-size: clamp(30px, 8.4vw, 88px);
+        letter-spacing: 0.06em;
+        line-height: 1.1;
+        color: var(--gold);
+        text-shadow:
+          0.06em 0.06em 0 var(--ember),
+          0.12em 0.12em 0 var(--wine),
+          -2px -2px 0 var(--void);
+      }
+      .tagline {
+        margin-top: 18px;
+        font-size: clamp(18px, 2.2vw, 24px);
+        color: var(--mist);
+        text-shadow: 2px 2px 0 var(--void);
+      }
+      .crown {
+        margin: auto;
+        max-width: min(640px, calc(100% - 32px));
+        padding: 16px 22px;
+        text-align: center;
+        font-family: var(--display);
+        font-size: clamp(11px, 1.6vw, 15px);
+        line-height: 1.7;
+        color: var(--bone);
+        background: rgba(11, 10, 26, 0.9);
+        box-shadow: 0 0 0 var(--px) var(--gold);
+      }
+      .crown small {
+        display: block;
+        margin-top: 8px;
+        font-family: var(--body);
+        font-size: 17px;
+        color: var(--mist);
+      }
+      .hero-bottom {
+        margin-top: auto;
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+        grid-template-areas: 'live cta news';
+        align-items: end;
+        gap: 18px 24px;
+        padding: 0 20px 22px;
+      }
+      .cta {
+        grid-area: cta;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 12px;
+      }
+      .touch-note {
+        display: none;
+        max-width: 34ch;
+        text-align: center;
+        font-size: 16px;
+        color: var(--bone);
+        text-shadow: 2px 2px 0 var(--void);
+      }
+      @media (hover: none) and (pointer: coarse) {
+        .touch-note {
+          display: block;
+        }
+      }
+      .live,
+      .news {
+        font-size: 16px;
+        line-height: 1.3;
+        background: rgba(11, 10, 26, 0.82);
+        box-shadow: 0 0 0 var(--px) var(--indigo);
+        padding: 12px 14px;
         min-width: 0;
       }
-      .features b {
-        display: block;
+      .live {
+        grid-area: live;
+        justify-self: start;
+        width: min(330px, 100%);
+      }
+      .live-head {
         font-family: var(--display);
         font-size: 11px;
-        letter-spacing: 0.04em;
+        color: var(--bone);
+        display: flex;
+        align-items: center;
+        gap: 9px;
+      }
+      .dot {
+        width: 9px;
+        height: 9px;
+        background: var(--red);
+        animation: blink 1s steps(1) infinite;
+      }
+      .hero.dawn .dot {
+        background: var(--gold);
+      }
+      @keyframes blink {
+        50% {
+          opacity: 0.25;
+        }
+      }
+      .live-clock {
+        margin-left: auto;
         color: var(--gold);
-        margin-bottom: 8px;
+        font-variant-numeric: tabular-nums;
+      }
+      .live-what {
+        margin: 8px 0 10px;
+        color: var(--mist);
+      }
+      .live-houses {
+        display: grid;
+        gap: 5px;
+      }
+      .chip {
+        width: 100%;
+        display: flex;
+        align-items: center;
+        gap: 9px;
+        font: inherit;
+        color: var(--mist);
+        text-align: left;
+        background: none;
+        border: none;
+        padding: 3px 4px;
+        cursor: pointer;
+      }
+      .chip:hover {
+        background: var(--indigo);
+        color: var(--bone);
+      }
+      .chip i {
+        flex: none;
+        width: 11px;
+        height: 11px;
+        background: var(--hc);
+        box-shadow: 2px 2px 0 var(--void);
+      }
+      .chip b {
+        color: var(--hc);
+        font-weight: 600;
+        min-width: 0;
+        overflow-wrap: anywhere;
+      }
+      .chip span {
+        margin-left: auto;
+        white-space: nowrap;
+        font-variant-numeric: tabular-nums;
+      }
+      .chip.out b {
+        color: var(--slate);
+        text-decoration: line-through;
+      }
+      .chip.out i {
+        background: var(--slate);
+      }
+      .chip.out span {
+        color: var(--slate);
+      }
+      .news {
+        grid-area: news;
+        justify-self: end;
+        width: min(380px, 100%);
+        display: grid;
+        gap: 6px;
+        min-height: 44px;
+      }
+      .news:empty::before {
+        content: 'News from the sector will appear here.';
+        color: var(--slate);
+      }
+      .news li {
+        color: var(--mist);
+        overflow-wrap: anywhere;
+      }
+      .news li:nth-child(2) {
+        opacity: 0.75;
+      }
+      .news li:nth-child(3) {
+        opacity: 0.55;
+      }
+      .news li:nth-child(n + 4) {
+        opacity: 0.38;
+      }
+      .news time {
+        color: var(--slate);
+        font-variant-numeric: tabular-nums;
+        margin-right: 4px;
+      }
+      .news i {
+        font-style: normal;
+        color: var(--bone);
+      }
+      .news .big {
+        color: var(--gold);
+      }
+      .sound {
+        position: absolute;
+        z-index: 2;
+        right: 16px;
+        top: 14px;
+        font-family: var(--display);
+        font-size: 10px;
+        color: var(--mist);
+        background: rgba(11, 10, 26, 0.82);
+        border: none;
+        box-shadow: 0 0 0 var(--px) var(--indigo);
+        padding: 10px 11px 9px;
+        cursor: pointer;
+      }
+      .sound:hover,
+      .sound[aria-pressed='true'] {
+        color: var(--gold);
+        box-shadow: 0 0 0 var(--px) var(--gold);
+      }
+      @media (max-width: 1240px) {
+        /* No room for three side by side: the panel sits above the buttons, the news goes, and the
+           camera's middle is lifted into the clear part of the picture. */
+        .hero-bottom {
+          grid-template-columns: minmax(0, 1fr);
+          grid-template-areas: 'live' 'cta';
+          justify-items: center;
+          padding: 0 16px 18px;
+        }
+        .news {
+          display: none;
+        }
+        .live {
+          justify-self: center;
+          width: min(460px, 100%);
+          padding: 10px 12px;
+        }
+        .live-what {
+          margin: 6px 0 8px;
+        }
+        .live-houses {
+          gap: 1px;
+        }
+        .chip {
+          padding: 2px 3px;
+        }
+        .sector-box {
+          top: -8%;
+        }
+      }
+      @media (max-width: 760px) {
+        .tagline br,
+        .live-what {
+          display: none;
+        }
+        .live-houses {
+          margin-top: 8px;
+          font-size: 15px;
+        }
+        .sector-box {
+          top: -22%;
+        }
+        .btn.big {
+          font-size: 16px;
+          padding: 16px 20px 14px;
+        }
+        .hero .download {
+          display: none;
+        }
+        .sound {
+          right: 10px;
+          top: 8px;
+          font-size: 8px;
+          padding: 8px;
+        }
+      }
+
+      /* ------------------------------------------------------------ the page: a starlane of sections */
+      main {
+        position: relative;
+        width: min(1012px, 100%);
+        margin: 0 auto;
+        padding: 0 16px 40px;
+      }
+      .band {
+        position: relative;
+        padding-top: 64px;
+      }
+      .band-head {
+        position: relative;
+        margin-bottom: 24px;
+      }
+      .band-head h2 {
+        font-family: var(--display);
         font-weight: normal;
+        font-size: clamp(16px, 2.6vw, 24px);
+        line-height: 1.4;
+        letter-spacing: 0.04em;
+        color: var(--bone);
+        text-wrap: balance;
+      }
+      .band-head h2::after {
+        content: '';
+        display: block;
+        width: 72px;
+        height: 6px;
+        margin-top: 12px;
+        background: var(--house);
+        box-shadow: 6px 6px 0 var(--indigo);
+        transition: background 0.4s;
+      }
+      .band-head .sub {
+        margin-top: 18px;
+        max-width: 64ch;
+        color: var(--mist);
+      }
+      /* The world at the head of each section: grey until the section is reached (drawn by site.js). */
+      .node {
+        display: none;
+        width: 54px;
+        height: 54px;
+        margin: 0 0 12px -6px;
+      }
+      html.js .node {
+        display: block;
+      }
+      /* A section not yet reached is unlit: grey, like an unclaimed world. */
+      html.js .band .band-head h2,
+      html.js .band .band-head .sub,
+      html.js .band .band-body {
+        transition:
+          filter 0.9s steps(6),
+          opacity 0.9s steps(6);
+      }
+      html.js .band:not(.lit) .band-head h2,
+      html.js .band:not(.lit) .band-head .sub,
+      html.js .band:not(.lit) .band-body {
+        filter: grayscale(1) brightness(0.55);
+        opacity: 0.7;
+      }
+      @media (min-width: 1200px) {
+        /* Room at the side: the worlds sit on a starlane that runs down the page. */
+        .node {
+          position: absolute;
+          left: -92px;
+          top: -14px;
+          margin: 0;
+        }
+        html.js .band:not(:last-child)::before {
+          content: '';
+          position: absolute;
+          left: -67px;
+          top: 108px;
+          bottom: -46px;
+          width: 3px;
+          background: repeating-linear-gradient(to bottom, var(--lane, var(--indigo)) 0 6px, transparent 6px 12px);
+        }
+        html.js .band.lit::before {
+          --lane: var(--house);
+        }
+      }
+      .lead {
+        font-size: 21px;
+        color: var(--bone);
+        max-width: 60ch;
+      }
+      .tiles {
+        display: grid;
+        gap: 18px;
+        margin: var(--px);
+      }
+      .tile {
+        background: var(--night);
+        box-shadow: 0 0 0 var(--px) var(--indigo);
+        padding: 0 0 14px;
+        min-width: 0;
+      }
+      .tile > :not(canvas) {
+        padding-inline: 14px;
+      }
+      .tile h3 {
+        margin-top: 12px;
+        font-family: var(--display);
+        font-weight: normal;
+        font-size: 11px;
+        line-height: 1.5;
+        letter-spacing: 0.04em;
+        color: var(--house);
+        transition: color 0.4s;
+      }
+      .tile p {
+        margin-top: 8px;
+        font-size: 17px;
+        line-height: 1.35;
+      }
+      .pic {
+        width: 100%;
+        height: 84px;
+        background: var(--void);
+        box-shadow: 0 var(--px) 0 0 var(--indigo);
+      }
+      .steps {
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        counter-reset: step;
+      }
+      .steps h3::before {
+        counter-increment: step;
+        content: counter(step) ' · ';
+        color: var(--slate);
+      }
+      .destinies {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+      }
+      .destinies .pic {
+        height: 66px;
+      }
+      @media (max-width: 860px) {
+        .steps {
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+        .destinies {
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+      }
+      @media (max-width: 480px) {
+        .steps {
+          grid-template-columns: minmax(0, 1fr);
+        }
+        /* One step per row: its picture at the side. */
+        .steps .tile {
+          display: grid;
+          grid-template-columns: 96px minmax(0, 1fr);
+          grid-template-rows: auto 1fr;
+          padding: 0;
+        }
+        .steps .pic {
+          grid-row: 1 / 3;
+          height: 100%;
+          min-height: 96px;
+          box-shadow: var(--px) 0 0 0 var(--indigo);
+        }
+        .steps .tile p {
+          padding-bottom: 12px;
+        }
+        .lead {
+          font-size: 19px;
+        }
+        .band {
+          padding-top: 48px;
+        }
+      }
+
+      /* Effect text, in the game's colors: gains, drawbacks, keywords. */
+      .rt-gain {
+        color: var(--teal);
+      }
+      .rt-loss {
+        color: var(--red);
+      }
+      .rt-kw {
+        color: var(--gold);
+      }
+
+      /* ------------------------------------------------------------ houses */
+      .heirs {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 18px;
+        margin: var(--px);
+      }
+      .heir {
+        display: block;
+        min-width: 0;
+        font: inherit;
+        color: inherit;
+        text-align: left;
+        background: var(--night);
+        border: none;
+        cursor: pointer;
+        padding: 12px 14px 14px;
+        box-shadow: 0 0 0 var(--px) var(--indigo);
+      }
+      .heir:hover {
+        background: var(--indigo);
+      }
+      .heir.sel {
+        background: var(--indigo);
+        box-shadow: 0 0 0 var(--px) var(--hc);
+      }
+      /* The house's banner: its Hearth and starting fleet (the game's own, see src/app/houseArt.ts). */
+      .heir-art {
+        width: 100%;
+        height: 72px;
+        margin-bottom: 12px;
+        background: var(--void);
+        box-shadow: 0 0 0 var(--px) var(--indigo);
+      }
+      .heir:hover .heir-art,
+      .heir.sel .heir-art {
+        box-shadow: 0 0 0 var(--px) var(--hc);
+      }
+      .heir .hn {
+        display: block;
+        font-family: var(--display);
+        font-size: 12px;
+        line-height: 1.4;
+        color: var(--hc);
+      }
+      .heir .ht {
+        display: block;
+        margin-top: 6px;
+        font-size: 16px;
+        color: var(--dusk);
+      }
+      .house-detail {
+        margin: 22px var(--px) var(--px);
+        display: grid;
+        grid-template-columns: 200px minmax(0, 1fr);
+        gap: 22px;
+        align-items: start;
+        background: var(--night);
+        box-shadow: 0 0 0 var(--px) var(--hc, var(--indigo));
+        padding: 18px;
+        min-height: 300px;
+      }
+      .ark-art {
+        width: 100%;
+        height: 200px;
+        background: var(--void);
+        box-shadow: 0 0 0 var(--px) var(--indigo);
+      }
+      .hd-tag {
+        font-size: 16px;
+        color: var(--dusk);
+      }
+      .hd-tag b {
+        color: var(--gold);
+      }
+      .hd-text h3 {
+        margin-top: 8px;
+        font-family: var(--display);
+        font-weight: normal;
+        font-size: 17px;
+        line-height: 1.4;
+        color: var(--hc);
+      }
+      .hd-title {
+        color: var(--dusk);
+        margin-top: 4px;
+      }
+      .hd-desc {
+        margin-top: 12px;
+        color: var(--bone);
+        max-width: 60ch;
+      }
+      .hd-bonuses {
+        margin-top: 12px;
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 4px 18px;
+        font-size: 17px;
+      }
+      .hd-bonuses li {
+        padding-left: 16px;
+        position: relative;
+      }
+      .hd-bonuses li::before {
+        content: '';
+        position: absolute;
+        left: 0;
+        top: 0.5em;
+        width: 6px;
+        height: 6px;
+        background: var(--hc);
+      }
+      .hd-fleet {
+        margin-top: 12px;
+        font-size: 16px;
+        color: var(--dusk);
+      }
+      @media (max-width: 760px) {
+        /* A row to swipe through, so six cards do not fill three screens. */
+        .heirs {
+          display: flex;
+          overflow-x: auto;
+          scroll-snap-type: x mandatory;
+          padding: var(--px) var(--px) 12px;
+          margin-inline: calc(var(--px) * -1);
+        }
+        .heir {
+          flex: 0 0 min(280px, 82%);
+          scroll-snap-align: start;
+        }
+        .house-detail {
+          grid-template-columns: minmax(0, 1fr);
+        }
+        .ark-art {
+          height: 120px;
+        }
+        .hd-bonuses {
+          grid-template-columns: minmax(0, 1fr);
+        }
+      }
+
+      /* ------------------------------------------------------------ the fleet */
+      .fleet {
+        display: grid;
+        grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr);
+        gap: 22px;
+        align-items: stretch;
+      }
+      .triangle {
+        width: 100%;
+        height: 100%;
+        min-height: 330px;
+        background: var(--void);
+        box-shadow: 0 0 0 var(--px) var(--indigo);
+      }
+      .ship-list,
+      .blueprint-list {
+        display: grid;
+        gap: 12px;
+      }
+      .ship-list li,
+      .blueprint-list li {
+        display: grid;
+        grid-template-columns: 108px minmax(0, 1fr);
+        gap: 14px;
+        align-items: center;
+        background: var(--night);
+        box-shadow: inset var(--px) 0 0 0 var(--indigo);
+        padding: 8px 14px 8px 10px;
+        min-width: 0;
+      }
+      .ship-list li:hover,
+      .blueprint-list li:hover {
+        box-shadow: inset var(--px) 0 0 0 var(--house);
+      }
+      .ship-art {
+        width: 108px;
+        height: 96px;
+      }
+      .ship-list b,
+      .blueprint-list b {
+        display: block;
+        font-family: var(--display);
+        font-weight: normal;
+        font-size: 12px;
+        line-height: 1.5;
+        color: var(--house);
+        transition: color 0.4s;
+      }
+      .ship-list span,
+      .blueprint-list span {
+        display: block;
+        margin-top: 4px;
+        font-size: 17px;
+        line-height: 1.3;
+      }
+      .more {
+        margin: 26px 0 14px;
+        font-family: var(--display);
+        font-weight: normal;
+        font-size: 12px;
+        line-height: 1.5;
+        color: var(--dusk);
+      }
+      .blueprint-list {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+      @media (max-width: 760px) {
+        .fleet,
+        .blueprint-list {
+          grid-template-columns: minmax(0, 1fr);
+        }
+        .triangle {
+          height: 300px;
+          min-height: 0;
+        }
+      }
+
+      /* ------------------------------------------------------------ the draft */
+      .draft {
+        min-height: 420px;
+      }
+      .draft-head {
+        margin-bottom: 16px;
+        color: var(--mist);
+      }
+      .draft-head b {
+        color: var(--bone);
+      }
+      .boons {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 18px;
+        margin: var(--px);
+      }
+      .boons.n4 {
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+      }
+      .boons.n5 {
+        grid-template-columns: repeat(5, minmax(0, 1fr));
+      }
+      .boon {
+        display: flex;
+        flex-direction: column;
+        min-width: 0;
+        font: inherit;
+        color: var(--mist);
+        text-align: left;
+        background: var(--night);
+        border: none;
+        padding: 0 0 16px;
+        cursor: pointer;
+        box-shadow: 0 0 0 var(--px) var(--indigo);
+        transition: transform 0.12s steps(2);
+      }
+      .boon > :not(canvas) {
+        padding-inline: 14px;
+      }
+      .boon:hover {
+        background: var(--indigo);
+        box-shadow: 0 0 0 var(--px) var(--rc);
+        transform: translateY(-6px);
+      }
+      .boon-art {
+        width: 100%;
+        height: 90px;
+        background: var(--void);
+        box-shadow: 0 var(--px) 0 0 var(--rc);
+      }
+      .boon-kind {
+        margin-top: 16px;
+        font-size: 15px;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+        color: var(--rc);
+      }
+      .boon-name {
+        margin-top: 6px;
+        font-family: var(--display);
+        font-weight: normal;
+        font-size: 12px;
+        line-height: 1.5;
+        color: var(--bone);
+      }
+      .boon-desc {
+        margin-top: 10px;
+        font-size: 17px;
+        line-height: 1.35;
+        min-height: 5.4em;
+      }
+      .boon.taken {
+        animation: taken 0.5s steps(5);
+        box-shadow: 0 0 0 var(--px) var(--rc);
+      }
+      @keyframes taken {
+        0%,
+        40% {
+          background: var(--rc);
+        }
+        20%,
+        60% {
+          background: var(--bone);
+        }
+        100% {
+          background: var(--indigo);
+        }
+      }
+      .boon.passed {
+        filter: grayscale(1) brightness(0.45);
+        transform: none;
+      }
+      .draft-foot {
+        margin-top: 18px;
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 12px 18px;
+      }
+      .tray {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        font-size: 16px;
+      }
+      .tray.empty {
+        color: var(--slate);
+      }
+      .tray li {
+        color: var(--bone);
+        background: var(--night);
+        padding: 5px 10px 5px 9px;
+        box-shadow: inset var(--px) 0 0 0 var(--rc);
+      }
+      .draft-end {
+        background: var(--night);
+        box-shadow: 0 0 0 var(--px) var(--house);
+        padding: 26px 20px;
+        display: grid;
+        gap: 20px;
+        justify-items: center;
+        text-align: center;
+      }
+      .draft-end .draft-head {
+        margin: 0;
+        max-width: 52ch;
+      }
+      .draft-end .tray {
+        justify-content: center;
+      }
+      @media (max-width: 860px) {
+        .boons,
+        .boons.n4,
+        .boons.n5 {
+          grid-template-columns: minmax(0, 1fr);
+          gap: 14px;
+        }
+        /* One card per row: its picture at the side. */
+        .boon {
+          display: grid;
+          grid-template-columns: 108px minmax(0, 1fr);
+          grid-template-rows: auto auto 1fr;
+          column-gap: 0;
+          padding: 0;
+        }
+        .boon-art {
+          grid-row: 1 / 4;
+          height: 100%;
+          min-height: 108px;
+          box-shadow: var(--px) 0 0 0 var(--rc);
+        }
+        .boon-kind {
+          margin-top: 10px;
+        }
+        .boon-desc {
+          min-height: 0;
+          padding-bottom: 12px;
+        }
+        .boon:hover {
+          transform: none;
+        }
+      }
+
+      /* ------------------------------------------------------------ the last call */
+      .final {
+        text-align: center;
+        display: grid;
+        justify-items: center;
+        gap: 22px;
+      }
+      .daily {
+        background: var(--night);
+        box-shadow: 0 0 0 var(--px) var(--indigo);
+        padding: 12px 18px;
+        max-width: 62ch;
+      }
+      .daily b {
+        color: var(--gold);
+      }
+      html.js .daily [data-daily-clock] {
+        font-family: var(--display);
+        font-size: 13px;
+        color: var(--bone);
+        font-variant-numeric: tabular-nums;
+        white-space: nowrap;
+      }
+      .note {
+        font-size: 16px;
+        color: var(--dusk);
+        max-width: 62ch;
       }
       footer {
+        padding: 34px 16px 30px;
         font-size: 15px;
         color: var(--slate);
         text-align: center;
       }
+      @media (prefers-reduced-motion: reduce) {
+        html {
+          scroll-behavior: auto;
+        }
+        * {
+          animation: none !important;
+          transition: none !important;
+        }
+      }
     </style>
   </head>
   <body>
-    <main>
-      <h1 class="logo">HEGEMARCH</h1>
-      <p class="tagline">Light up a dark sector, world by world.</p>
-      <p class="lead">
-        An 8-bit real-time space strategy roguelite. Kindle dark worlds, raise a fleet, choose Boons that bend the rules, and follow one of
-        three Destinies to the crown. Every run is a new sector, with new rivals and new Boons.
-      </p>
-      <div class="actions">
-        <a class="btn primary" href="play/">PLAY IN BROWSER<small>Free, nothing to install</small></a>
-        <a class="btn" href="hegemarch.zip" download>DOWNLOAD<small>Windows · macOS · Linux</small></a>
+    <header class="hero" id="hero">
+      <img class="poster" src="screenshot.png" alt="A Hegemarch sector: glowing worlds joined by starlanes, with fleets in each house's color." width="1280" height="720" />
+      <div class="sector-box"><canvas class="sector" aria-hidden="true"></canvas></div>
+      <div class="hero-shade"></div>
+      <button type="button" class="sound" aria-pressed="false" hidden>SOUND: OFF</button>
+      <div class="hero-top">
+        <h1 class="logo">HEGEMARCH</h1>
+        <p class="tagline">The last Hegemarch fell, and the sector went dark. <br />Light it again, world by world, and take the crown.</p>
       </div>
-      <p class="note">
-        Best on a computer with a mouse and keyboard. The download is a single file: unzip it and open <b>hegemarch.html</b> in any modern
-        browser, even offline. Your progress is saved in the browser you play in.
-      </p>
-      <img class="shot" src="screenshot.png" alt="A Hegemarch sector: glowing worlds joined by starlanes, with fleets in each house's color." width="1280" height="720" />
-      <ul class="features">
-        <li><b>REAL-TIME FLEETS</b>Strikers beat Breakers, Breakers beat Guardians and worlds, Guardians beat Strikers. Pause any time.</li>
-        <li><b>A RUN IS A NEW SECTOR</b>Omens, rival houses, anomalies and about 60 Boons, Pacts and Blueprints make each run different.</li>
-        <li><b>LEARN IN MINUTES</b>The First Night guides your first run step by step, and anything on screen explains itself when you point at it.</li>
-      </ul>
-      <footer>Hegemarch v{{VERSION}}</footer>
+      <p class="crown" hidden></p>
+      <div class="hero-bottom">
+        <section class="live" aria-label="The sector on screen" hidden>
+          <p class="live-head"><span class="dot"></span><span class="live-label">LIVE</span><span class="live-clock">00:00</span></p>
+          <p class="live-what"></p>
+          <ul class="live-houses"></ul>
+        </section>
+        <div class="cta">
+          <div class="actions">
+            <a class="btn primary big" href="play/">▶ PLAY NOW<small>Free, in your browser, nothing to install</small></a>
+            <a class="btn download" href="hegemarch.zip" download>DOWNLOAD<small>Windows · macOS · Linux</small></a>
+          </div>
+          <p class="touch-note">Hegemarch is played with a mouse and keyboard: open hegemarch.com on a computer to play.</p>
+          <button type="button" class="btn small watch" hidden>▶ WATCH A SECTOR PLAY ITSELF</button>
+        </div>
+        <ol class="news" aria-label="News from the sector" aria-live="off" hidden></ol>
+      </div>
+    </header>
+
+    <main>
+      <section class="band" id="run">
+        <header class="band-head">
+          <canvas class="node" aria-hidden="true"></canvas>
+          <h2>ONE RUN, START TO CROWN</h2>
+          <p class="sub lead">
+            An 8-bit real-time space strategy roguelite. Every run is a new sector, with new rivals and new Boons; a medium one takes about 35 to 50
+            minutes. What you saw above is the game itself.
+          </p>
+        </header>
+        <div class="band-body">
+          <ol class="tiles steps">
+            <li class="tile">
+              <canvas class="pic" data-subjects="seed,kindle" aria-hidden="true"></canvas>
+              <h3>KINDLE</h3>
+              <p>Send a seed ship to a dark world. It floods with your color and starts to pay you Embers.</p>
+            </li>
+            <li class="tile">
+              <canvas class="pic" data-subjects="forge,striker" aria-hidden="true"></canvas>
+              <h3>BUILD</h3>
+              <p>Forges turn Embers into warships. Send them down the starlanes, and pause whenever you want to think.</p>
+            </li>
+            <li class="tile">
+              <canvas class="pic" data-subjects="lore,boon" aria-hidden="true"></canvas>
+              <h3>DRAFT</h3>
+              <p>Lore fills as you play. Each time it does, choose one Boon of three, and the run bends your way.</p>
+            </li>
+            <li class="tile">
+              <canvas class="pic" data-subjects="hearth,ark" aria-hidden="true"></canvas>
+              <h3>CROWN</h3>
+              <p>Fulfil a Destiny before a rival house does, and you are the next Hegemarch.</p>
+            </li>
+          </ol>
+        </div>
+      </section>
+
+      <section class="band needs-js" id="houses">
+        <header class="band-head">
+          <canvas class="node" aria-hidden="true"></canvas>
+          <h2>SIX HOUSES, ONE CROWN</h2>
+          <p class="sub">
+            Three houses are yours from the first run. Three more are earned with Legacy, which every run pays, won or lost. Choose one here
+            and the page takes its color.
+          </p>
+        </header>
+        <div class="band-body">
+          <div class="heirs" id="house-cards"></div>
+          <div class="house-detail" id="house-detail"></div>
+        </div>
+      </section>
+
+      <section class="band needs-js" id="ships">
+        <header class="band-head">
+          <canvas class="node" aria-hidden="true"></canvas>
+          <h2>THREE SHIPS, ONE TRIANGLE</h2>
+          <p class="sub">Every fleet starts from three designs. Each beats one and loses to another, so what you build should answer what you see.</p>
+        </header>
+        <div class="band-body" id="fleet">
+          <div class="fleet">
+            <canvas class="triangle" role="img" aria-label="Strikers beat Breakers, Breakers beat Guardians, Guardians beat Strikers."></canvas>
+            <ul class="ship-list"></ul>
+          </div>
+          <h3 class="more">BLUEPRINT BOONS ADD FOUR MORE</h3>
+          <ul class="blueprint-list"></ul>
+        </div>
+      </section>
+
+      <section class="band needs-js" id="boons">
+        <header class="band-head">
+          <canvas class="node" aria-hidden="true"></canvas>
+          <h2>EVERY RUN IS A NEW DRAFT</h2>
+          <p class="sub">This is the game's own draft, dealt by its own rules for the house you chose. Try it.</p>
+        </header>
+        <div class="band-body">
+          <div class="draft" id="draft"></div>
+        </div>
+      </section>
+
+      <section class="band needs-js" id="destinies">
+        <header class="band-head">
+          <canvas class="node" aria-hidden="true"></canvas>
+          <h2>MORE THAN ONE ROAD TO THE CROWN</h2>
+          <p class="sub">Every run offers Conquest and two other Destinies, drawn for that sector. Your rivals are chasing them too.</p>
+        </header>
+        <div class="band-body">
+          <ul class="tiles destinies" id="destiny-list"></ul>
+        </div>
+      </section>
+
+      <section class="band" id="play">
+        <header class="band-head">
+          <canvas class="node" aria-hidden="true"></canvas>
+          <h2>THE SECTOR IS DARK</h2>
+        </header>
+        <div class="band-body final">
+          <div class="actions">
+            <a class="btn primary big" href="play/">▶ LIGHT IT<small>Play free in your browser</small></a>
+            <a class="btn" href="hegemarch.zip" download>DOWNLOAD<small>Windows · macOS · Linux</small></a>
+          </div>
+          <p class="daily">
+            <b>Daily Run.</b> One sector, the same for every player, new each day. The next one opens in
+            <span data-daily-clock>a few hours</span>.
+          </p>
+          <p class="note">
+            Best on a computer with a mouse and keyboard. The First Night guides your first run step by step. The download is a single file:
+            unzip it and open <b>hegemarch.html</b> in any modern browser, even offline. Your progress is saved in the browser you play in.
+          </p>
+        </div>
+      </section>
     </main>
+    <footer>Hegemarch v{{VERSION}}</footer>
   </body>
 </html>

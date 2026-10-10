@@ -257,6 +257,32 @@ Measured with `npm run simulate` and `npm run balance:passive`. Speeds are ½×,
   title theme, a calm "night" loop and a "war" loop when your worlds or fleets are fighting; a
   jingle plays when a world is kindled.
 
+### The website
+
+The landing page (hegemarch.com) is built from the game's code (`src/site/`), so it shows the game
+and not pictures of it, and it cannot drift from the rules.
+
+- **It opens on a live sector.** A real game, played by the AI houses in the visitor's browser
+  (`app/Attract.ts`, the same class that plays behind the game's menus). It starts at 0:00 and
+  shows the first fourteen minutes in about six seconds, the houses spreading their colors over
+  the dark, then drops into real time. The camera glides from fight to fight and now and then
+  pulls back to the whole sector. A panel names the houses and the worlds each holds (a click
+  flies to that house's Hearth), the sector's news is told as it happens (worlds kindled and
+  taken, Hearths put out, houses fallen, the crowning), and a switch turns on the title theme and
+  the sound of the battles in view. When a house is crowned, a new sector begins.
+- **The page is a starlane.** Each section hangs from a dark world on a lane down the side. A
+  section is grey until the visitor scrolls to it; then its world is kindled and the section
+  floods with color, as worlds do in the game.
+- **The houses** are the setup screen's own banners. Choosing one shows its bonuses and starting
+  fleet and gives the whole page that house's color; left alone, the page tours them once.
+- **The fleet** is the triangle in motion: each ship in turn fires on the one it beats.
+- **The draft is the game's draft.** A real, unplayed run of the chosen house deals the choices by
+  the game's rules (rarities, Blueprints, Pacts, the Ashen Remnant's fourth choice), with rerolls;
+  after four picks it sends the visitor to the game.
+- **Nothing moves unasked** for a visitor who prefers reduced motion (a still picture and a button
+  stand in for the live sector), the sector waits while it is off screen, and with scripts off the
+  page is the picture, the pitch and the PLAY button.
+
 ## 7. Architecture
 
 ```
@@ -269,7 +295,9 @@ src/game/      deterministic simulation (no DOM)
 src/render/    pixel canvas: Screen (scaling), Camera, Renderer, worlds, sprites, fonts, effects
 src/ui/        immediate-mode HUD: Ui toolkit, Hud, Modals, Actions, Input, Tutorial, Tips
 src/audio/     Sfx (synth) and Music (sequencer)
-src/app/       App (menus, loop, attract mode, results) and Session (one run's shared UI state)
+src/app/       App (menus, loop, results), Attract (the sector that plays itself behind the menus
+               and on the website) and Session (one run's shared UI state)
+src/site/      the website's script: the live sector, houses, fleet, Boon draft (see "The website")
 src/meta/      profile, settings and Legacy
 ```
 
@@ -299,3 +327,7 @@ the same game with or without rendering, and a saved run continues identically.
 - `test:uifuzz`, `test:layouts`, `test:menus`: random play through the real UI (fails on any error or
   a dialog that cannot be left), every dialog at the extremes of screen size and content, and every
   menu over the live sector.
+- `test:site`: the packaged website served from `release/site`: the live sector (dawn, real time,
+  news, the flight to a Hearth, sound, the crowning and the sector after it), the lighting of
+  sections, the houses and their tour, the triangle, a whole Boon draft, then the page at laptop,
+  tablet and phone widths, with reduced motion and with scripts off.

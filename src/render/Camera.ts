@@ -12,6 +12,8 @@ export class Camera {
   h = 1;
   minZoom = 0.01;
   maxZoom = 0.6;
+  /** How quickly the view reaches where it is headed (higher is snappier). */
+  ease = 12;
   bounds = { minX: -10000, minY: -10000, maxX: 10000, maxY: 10000 };
   private anchor: { sx: number; sy: number; wx: number; wy: number } | null = null;
 
@@ -79,7 +81,7 @@ export class Camera {
   }
 
   update(dt: number) {
-    const k = 1 - Math.exp(-dt * 12);
+    const k = 1 - Math.exp(-dt * this.ease);
     this.zoom += (this.tzoom - this.zoom) * k;
     if (this.anchor) {
       // keep anchored world point under the cursor while zooming
