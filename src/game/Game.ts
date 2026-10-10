@@ -1,7 +1,7 @@
 import { ABILITY_BY_ID, LEARNABLE_ABILITIES } from './data/abilities';
 import { AMBITIONS } from './data/ambitions';
 import { BLUEPRINT_IDS, CARDS, CARD_BY_ID, RARITY_LUCK, RARITY_WEIGHT, type CardDef } from './data/cards';
-import { ERAS, LAST_CRADLE_ERA, SPACE } from './data/eras';
+import { ERAS, LAST_CRADLE_ERA, SPACE, UPGRADE_MAX, UPGRADE_SPREAD } from './data/eras';
 import { EVENT_BY_ID, ANOMALY_EVENTS, OFFER_EVENTS } from './data/events';
 import { CRISIS_COLOR, GUARDIAN_COLOR, HEIRS, HEIR_BY_ID, PIRATE_COLOR } from './data/heirs';
 import { boonCost, ECON, PLANETS, ROLE_ORDER } from './data/worlds';
@@ -1761,7 +1761,7 @@ export class Game {
     const def = UNITS[type];
     if (!def || !def.buildable) return 'Cannot be built';
     if (!f || !n || n.owner !== fid) return 'Not your world';
-    if (!this.isForge(n)) return this.cradle ? 'Only Forges raise units' : 'Only Forges build ships';
+    if (!this.isForge(n)) return this.cradle ? 'Only Forges build units' : 'Only Forges build ships';
     if (this.cradle && !ERAS[f.era].roster.includes(type)) return 'Not in this age';
     if (n.retool > 0) return 'Retooling';
     if (def.blueprint && !this.hasCard(f, def.blueprint)) return 'Needs its Blueprint Boon';
@@ -1974,11 +1974,22 @@ export class Game {
     }
     f.era++;
     const era = ERAS[f.era];
-    // Walls and guns are as strong as the age: refresh them. Units keep the age they were raised in.
+    // Walls and guns are as strong as the age: refresh them.
     this.recomputeMods(f);
+    // So is every unit the house has, wherever it stands. The change spreads outward from the Hearth:
+    // each unit is upgraded when it reaches the unit (see `agesTick`), the nearest first.
+    const home = f.capital >= 0 ? this.nodes[f.capital] : null;
+    let reach = 0;
+    for (const u of this.unitList) {
+      if (u.dead || u.owner !== f.id || u.era >= f.era) continue;
+      const far = home ? Math.hypot(u.x - home.x, u.y - home.y) : 0;
+      u.rearm = Math.min(UPGRADE_MAX, far / UPGRADE_SPREAD);
+      reach = Math.max(reach, Math.min(UPGRADE_MAX * UPGRADE_SPREAD, far));
+    }
+    if (this.fxEnabled && home && reach > 0) this.fx.push({ k: 'wave', x: home.x, y: home.y, r: reach, dur: reach / UPGRADE_SPREAD, color: f.color, node: home.id });
     f.pendingDrafts++;
     if (this.fxEnabled && f.capital >= 0) this.fx.push({ k: 'capture', node: f.capital, color: f.color });
-    if (f.isPlayer) this.notify(f.id, `The ${era.name} begins! ${era.brings} A Boon of the new age awaits. (B)`, 'good', f.capital, true);
+    if (f.isPlayer) this.notify(f.id, `The ${era.name} begins! All your units are upgraded. ${era.brings} A Boon of the new age awaits. (B)`, 'good', f.capital, true);
     else this.notify(-1, `${f.name} has entered the ${era.name}.`, 'info', this.player.explored[f.capital] ? f.capital : undefined);
   }
 

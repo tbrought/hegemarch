@@ -3,9 +3,8 @@ import { Game } from '../src/game/Game';
 import { ascend, describePassage } from '../src/game/ages';
 import { TICK } from '../src/game/constants';
 import { CARDS, CARD_BY_ID } from '../src/game/data/cards';
-import { ERAS, LAST_CRADLE_ERA, SPACE } from '../src/game/data/eras';
+import { ERAS, LAST_CRADLE_ERA, SPACE, UPGRADE_MAX, UPGRADE_SPREAD } from '../src/game/data/eras';
 import { computePaths, generateCradle } from '../src/game/mapgen';
-import { REARM_TIME } from '../src/game/systems/production';
 import type { GameConfig, UnitType } from '../src/game/types';
 import { art, isTroopArt } from '../src/render/sprites';
 import { cradleVocabulary, unitCount, unitName } from '../src/ui/vocab';
@@ -108,14 +107,16 @@ describe('the cradle world', () => {
     const hearth = g.nodes[p.capital];
     const walls = hearth.maxHp;
     const power = g.unitPower(old);
+    const hull = old.maxHp;
+    const dmg = g.dmgMulOf(old, 'flak');
     advance(g);
     expect(p.era).toBe(1);
     expect(hearth.maxHp).toBeGreaterThan(walls);
     const fresh = g.spawnUnit('guardian', p.id, p.capital);
     expect(fresh.era).toBe(1);
-    expect(fresh.maxHp).toBeGreaterThan(old.maxHp);
+    expect(fresh.maxHp).toBeGreaterThan(hull);
     expect(g.unitPower(fresh)).toBeGreaterThan(power);
-    expect(g.dmgMulOf(fresh, 'flak') / g.dmgMulOf(old, 'flak')).toBeCloseTo(ERAS[1].power / ERAS[0].power, 5);
+    expect(g.dmgMulOf(fresh, 'flak') / dmg).toBeCloseTo(ERAS[1].power / ERAS[0].power, 5);
   });
 });
 
@@ -194,19 +195,63 @@ describe('climbing the ages', () => {
     expect(p.advance!.t).toBeCloseTo(before, 5);
   });
 
-  it('older units are re-armed for the new age after a rest at home, and not while away', () => {
+  it('a new age upgrades every unit the house has, wherever it stands, the nearest to the Hearth first', () => {
     const g = cradle();
     const p = g.player;
+    const cap = g.nodes[p.capital];
+    const far = (n: { x: number; y: number }) => Math.hypot(n.x - cap.x, n.y - cap.y);
     const home = g.unitsOf(p.id).find((u) => u.type === 'guardian')!;
-    const away = g.spawnUnit('striker', p.id, g.nodes.find((n) => n.owner === -1 && !n.tag.startsWith('militia'))!.id);
-    // (Rival Runners wander by and take pot shots; a unit that is being shot at is not resting.)
-    for (const u of g.unitList) if (u.owner !== p.id && u.type === 'scout') g.killUnit(u, -1);
-    advance(g);
-    expect(home.era).toBe(0);
-    run(g, REARM_TIME + 3);
-    expect(home.era).toBe(1);
-    expect(home.maxHp).toBeGreaterThan(0);
+    // A unit far from home, in a land that is not the house's (a quiet one: no beasts to kill it).
+    const quiet = g.nodes.filter((n) => n.kind === 'planet' && n.owner === -1 && !n.tag.startsWith('militia')).sort((a, b) => far(b) - far(a))[0];
+    const away = g.spawnUnit('striker', p.id, quiet.id);
+    // Give the step, and stop at the tick the age begins.
+    p.lore = ERAS[0].lore;
+    p.embers = Math.max(p.embers, ERAS[0].cost);
+    expect(g.cmdAdvance(p.id)).toBe(true);
+    for (let i = 0; i < 4000 && p.era === 0; i++) g.step();
+    expect(p.era).toBe(1);
+    // The change spreads from the Hearth: each unit has a moment of its own, never long.
     expect(away.era).toBe(0);
+    expect(away.rearm!).toBeGreaterThan(home.rearm ?? 0);
+    expect(away.rearm!).toBeLessThanOrEqual(UPGRADE_MAX);
+    expect(away.rearm!).toBeCloseTo(Math.min(UPGRADE_MAX, far(away) / UPGRADE_SPREAD), 1);
+    const hull = away.maxHp;
+    away.hp = hull / 2;
+    // The unit at home changes first...
+    for (let i = 0; i < 200 && home.era === 0; i++) g.step();
+    expect(home.era).toBe(1);
+    expect(away.era).toBe(0);
+    // A few seconds later every unit of the house is of the new age, the one abroad too...
+    run(g, UPGRADE_MAX + 0.5);
+    expect(away.dead).toBeFalsy();
+    expect(away.era).toBe(1);
+    // ...as much stronger as the age is, and keeping the share of its health it had.
+    expect(away.maxHp).toBeCloseTo((hull * ERAS[1].power) / ERAS[0].power, 3);
+    expect(away.hp / away.maxHp).toBeCloseTo(0.5, 1);
+    expect(g.unitsOf(p.id).every((u) => u.era === 1)).toBe(true);
+    // What is built from now on is of the new age from the start.
+    expect(g.spawnUnit('guardian', p.id, p.capital).era).toBe(1);
+    // The rivals, still in the Stone Age, are untouched.
+    const rival = g.empires().find((f) => f.id !== p.id && f.era === 0);
+    if (rival) expect(g.unitsOf(rival.id).every((u) => u.era === 0)).toBe(true);
+  });
+
+  it('an older unit with no moment set (a run saved by an earlier build) is upgraded at once', () => {
+    const g = cradle();
+    const p = g.player;
+    advance(g);
+    run(g, UPGRADE_MAX + 0.5);
+    const u = g.unitsOf(p.id)[0];
+    u.era = 0;
+    u.rearm = undefined;
+    g.refreshUnitStats(u);
+    g.step();
+    expect(u.era).toBe(1);
+    // (A count left by the old rule, up to its twenty seconds of rest, never makes a unit wait longer than the spread.)
+    u.era = 0;
+    u.rearm = 19;
+    run(g, UPGRADE_MAX + 0.2);
+    expect(u.era).toBe(1);
   });
 
   it('from the last age the step is the Ark: the player\'s leaves and the game stands still', () => {

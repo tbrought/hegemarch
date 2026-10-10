@@ -158,13 +158,8 @@ try {
   });
   await wait(300);
   check('siege units come with bronze', !!(await uiRect('build-breaker')) && /Ram/.test(await hover('build-breaker')));
-  // (Rival Runners wander by and take pot shots; a unit that is being shot at is not resting.)
-  await ev(() => {
-    const g = window.__app.session.game;
-    for (const u of g.unitList) if (u.owner !== g.playerId && u.type === 'scout') u.dead = true;
-  });
   await skip(45);
-  check('older units at home are re-armed', (await state()).units.filter((u) => u.endsWith(':0')).length === 0, (await state()).units.join(','));
+  check('the new age has upgraded every unit the house had', (await state()).units.filter((u) => u.endsWith(':0')).length === 0, (await state()).units.join(','));
   await page.keyboard.press('KeyU');
   await wait(400);
   check('the status screen shows the climb', (await state()).modal === 'status' && !!(await uiRect('tab-destinies')));

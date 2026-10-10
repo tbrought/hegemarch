@@ -62,6 +62,16 @@ interface Flash {
   c: string;
 }
 
+/** A ring that sweeps the map (the change of a new age, spreading from a Hearth), in world units. */
+interface Wave {
+  x: number;
+  y: number;
+  r: number;
+  t: number;
+  dur: number;
+  c: string;
+}
+
 const MAX_SPARKS = 2400;
 
 export class Effects {
@@ -70,6 +80,7 @@ export class Effects {
   beams: Beam[] = [];
   floaters: Floater[] = [];
   flashes: Flash[] = [];
+  waves: Wave[] = [];
   /** Screen shake amount in pixels (decays). */
   shake = 0;
 
@@ -79,6 +90,7 @@ export class Effects {
     this.beams.length = 0;
     this.floaters.length = 0;
     this.flashes.length = 0;
+    this.waves.length = 0;
     this.shake = 0;
   }
 
@@ -147,6 +159,15 @@ export class Effects {
           if (!near(f.x, f.y, f.r + 100)) break;
           this.rings.push({ x: f.x, y: f.y, r0: f.r * 0.3, r1: f.r, t: 0, dur: 0.5, c: f.color, world: true, dotted: true });
           break;
+        case 'upgrade':
+          // A unit takes on the look of the new age: a ring closes on it and it throws off a few sparks.
+          if (!near(f.x, f.y, f.r + 100)) break;
+          this.rings.push({ x: f.x, y: f.y, r0: f.r * 1.6, r1: f.r * 0.4, t: 0, dur: 0.45, c: f.color, world: true, dotted: false });
+          this.burst(f.x, f.y, 6, 60, 0.5, [PAL.bone, f.color, light(f.color)]);
+          break;
+        case 'wave':
+          this.waves.push({ x: f.x, y: f.y, r: f.r, t: 0, dur: Math.max(0.2, f.dur), c: f.color });
+          break;
         case 'text':
           if (!near(f.x, f.y, 200)) break;
           this.floaters.push({ x: f.x, y: f.y, t: 0, dur: 1.6, text: f.text, c: f.color });
@@ -195,6 +216,7 @@ export class Effects {
     this.beams = this.beams.filter((b) => (b.t += dt) < b.dur);
     this.floaters = this.floaters.filter((f) => (f.t += dt) < f.dur);
     this.flashes = this.flashes.filter((f) => (f.t += dt) < f.dur);
+    this.waves = this.waves.filter((v) => (v.t += dt) < v.dur);
     this.shake = Math.max(0, this.shake - dt * 8);
   }
 
@@ -224,6 +246,13 @@ export class Effects {
       const rad = (r.r0 + (r.r1 - r.r0) * k) * (r.world ? z : 1);
       if (rad > 600) continue;
       ring(g, sx(r.x), sy(r.y), Math.max(1, rad), k < 0.25 ? PAL.bone : r.c, r.dotted || k > 0.7 ? 2 : 1);
+    }
+    for (const v of this.waves) {
+      // (Drawn only while it is small enough on screen to be worth its pixels; the units' own flashes carry on.)
+      const rad = v.r * (v.t / v.dur) * z;
+      if (rad > 1500) continue;
+      ring(g, sx(v.x), sy(v.y), Math.max(1, rad), v.c, 3);
+      if (rad > 4) ring(g, sx(v.x), sy(v.y), rad - 3, PAL.bone, 6);
     }
     for (const s of this.sparks) {
       const c = s.life > s.max * 0.45 ? s.c : s.c2;

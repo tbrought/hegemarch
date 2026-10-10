@@ -1,14 +1,12 @@
 import type { Game } from '../Game';
 import { UNITS } from '../data/units';
+import { UPGRADE_MAX } from '../data/eras';
 import { HEIR_BY_ID } from '../data/heirs';
 import { mul } from '../mods';
 import type { UnitType } from '../types';
 import { roman, TAU } from '../util';
 
-/** Seconds an older unit must rest in one of its house's lands to be re-armed for the house's age. */
-export const REARM_TIME = 20;
-
-/** Ages, on the cradle: houses take their steps through the ages, and older units at home are re-armed. */
+/** Ages, on the cradle: houses take their steps through the ages, and their units are upgraded with them. */
 function agesTick(g: Game, dt: number) {
   for (const f of g.factions) {
     if (f.kind !== 'empire' || !f.alive || !f.advance || f.capital < 0) continue;
@@ -17,21 +15,19 @@ function agesTick(g: Game, dt: number) {
     f.advance.t += dt;
     if (f.advance.t >= f.advance.total) g.completeAdvance(f);
   }
-  if (g.tick % 20 !== 7) return;
+  // A unit older than its house's age is upgraded when the change reaches it: `rearm` seconds after the
+  // age began (see `Game.completeAdvance`). A unit with no such count (one that came to the house some
+  // other way, or a run saved by an earlier build) is upgraded at once.
   for (const u of g.unitList) {
-    if (u.dead || u.node < 0) continue;
+    if (u.dead) continue;
     const f = g.factions[u.owner];
     if (f.kind !== 'empire' || u.era >= f.era) continue;
-    if (g.nodes[u.node].owner !== u.owner || u.lastHit < 10) {
-      u.rearm = 0;
-      continue;
-    }
-    u.rearm = (u.rearm ?? 0) + 1;
-    if (u.rearm < REARM_TIME) continue;
+    u.rearm = Math.min(UPGRADE_MAX, u.rearm ?? 0) - dt;
+    if (u.rearm > 0) continue;
     u.era = f.era;
     u.rearm = 0;
     g.refreshUnitStats(u);
-    if (g.fxEnabled) g.fx.push({ k: 'ring', x: u.x, y: u.y, r: UNITS[u.type].radius * 2.5, color: f.color, node: u.node });
+    if (g.fxEnabled) g.fx.push({ k: 'upgrade', x: u.x, y: u.y, r: UNITS[u.type].radius * 2.5, color: f.color, node: u.node });
   }
 }
 

@@ -101,7 +101,7 @@ export function cradleVocabulary(era: number): (s: string) => string {
   return f;
 }
 
-/** What a unit of this type, raised in this age, is called. */
+/** What a unit of this type and of this age is called. */
 export function unitName(type: UnitType, era: number): string {
   return ERAS[era]?.units[type]?.name ?? UNITS[type].name;
 }

@@ -5,8 +5,8 @@ import type { UnitType, WorldRole } from '../types';
  * age, to the Space Age; what it can build, and how strong it is, depend on its age.
  *
  * The three lines of fighting units keep their triangle in every age (swift beats siege, siege beats
- * sturdy, sturdy beats swift): only their names, their looks and their strength change. A unit keeps
- * the age it was raised in.
+ * sturdy, sturdy beats swift): only their names, their looks and their strength change. When a house
+ * reaches a new age, every unit it has is upgraded to that age (see `UPGRADE_SPREAD`).
  */
 export interface EraDef {
   id: string;
@@ -24,7 +24,7 @@ export interface EraDef {
   time: number;
   /** The highest level a land can reach. */
   maxLevel: number;
-  /** What a Forge can raise. */
+  /** What a Forge can build. */
   roster: UnitType[];
   roles: WorldRole[];
   /** What the units are called (types not listed keep their Space Age names). */
@@ -32,6 +32,14 @@ export interface EraDef {
   /** One line for the card that announces the age. */
   brings: string;
 }
+
+/**
+ * A new age upgrades every unit its house has, wherever the unit stands. The change spreads outward
+ * from the Hearth at this many world units a second, so the nearest units change first, and it has
+ * reached every unit after `UPGRADE_MAX` seconds at the latest.
+ */
+export const UPGRADE_SPREAD = 2200;
+export const UPGRADE_MAX = 5;
 
 /** What each line is, in words that hold in every age. */
 export const LINE_SHORT: Partial<Record<UnitType, string>> = {

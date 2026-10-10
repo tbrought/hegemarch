@@ -902,9 +902,9 @@ export class Modals {
         ? [
             'THE CRADLE: every house begins here in the Stone Age, all on one planet. Climb through the ages, build your Ark, and carry what you have won to the stars, where the crown is decided.',
             `AGES: your Lore is saved for the next age. When the bar at the top is full, press the button beside it (or A). The step costs Embers and takes time at your Hearth; an attack on the Hearth stops the work. There are five ages: ${ERAS.slice(0, LAST_CRADLE_ERA + 1).map((e) => e.name.replace(' Age', '')).join(', ')}.`,
-            'A NEW AGE brings stronger units, more to build (siege units and Bastions with bronze, higher levels later), and one Boon. A unit keeps the age it was raised in: rest it 20 seconds in a land you hold and it is re-armed.',
+            'A NEW AGE brings stronger units, more to build (siege units and Bastions with bronze, higher levels later), and one Boon. Every unit you already have is upgraded to it, wherever it stands.',
             'KINDLE: click a grey land and press KINDLE. A firebearer walks out and lights it. Each land costs a bit more. Beasts hold the richest lands: drive them off first.',
-            'LANDS: each land earns Embers and has one role. MINE: more Embers. FORGE: raises units. OBSERVATORY: Lore, so a faster climb. BASTION: guns and repairs.',
+            'LANDS: each land earns Embers and has one role. MINE: more Embers. FORGE: builds units. OBSERVATORY: Lore, so a faster climb. BASTION: guns and repairs.',
             'UNITS: swift units beat siege units, siege units beat sturdy units and walls, sturdy units beat swift ones. Their names change with the ages; the triangle does not.',
             'THE ARK is the last step. When yours is done, your house leaves for the stars with its Boons and Embers. A rival whose Ark leaves first is ahead of you out there; a rival whose Hearth you put out here never follows.',
             'Lose your Hearth and your house goes dark. Put out every rival Hearth before any Ark rises, and the crown is yours at once.',
@@ -1147,7 +1147,7 @@ export class Modals {
         ? `Your next step is the Ark: ${era.lore} Lore, ${era.cost} Embers and ${era.time} seconds at your Hearth. When it is done, your house leaves for the stars.`
         : `Your next age is the ${ERAS[p.era + 1].name}: ${era.lore} Lore, ${era.cost} Embers and ${era.time} seconds at your Hearth. ${ERAS[p.era + 1].brings}`,
       'Put out every rival Hearth before any Ark rises, and the crown is yours at once. Otherwise it is decided among the stars: a house whose Ark has left is gone ahead, not beaten.',
-      'A unit keeps the age it was raised in. Rest it 20 seconds in one of your lands and it is re-armed.',
+      'A new age upgrades every unit you have, wherever it stands, and brings a Boon of its own.',
     ];
     for (const t of lines) {
       for (const l of wrap(t, cw, 'main')) {

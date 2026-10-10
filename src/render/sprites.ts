@@ -116,7 +116,7 @@ export function setArtEra(era: number) {
 /** The age pictures are being drawn in right now (see `setArtEra`). */
 export const artAge = (): number => artEra;
 
-/** Is this unit, raised in this age, drawn as a troop of the cradle (from the side, mirrored) and not as a ship? */
+/** Is this unit, of this age, drawn as a troop of the cradle (from the side, mirrored) and not as a ship? */
 export const isTroopArt = (t: UnitType, era = artEra) => !!TROOPS[era]?.[t];
 
 /** The rows of a unit's picture (exported for the tests, which check that every picture is a clean rectangle). */

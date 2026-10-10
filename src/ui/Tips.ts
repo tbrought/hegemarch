@@ -24,7 +24,7 @@ export const TIPS: Record<string, string> = {
   lostWorld: 'You lost a world. Take it back with Breakers, or protect your others with Bastions and a Starbase.',
   // Ages runs, on the cradle.
   ageReady: 'The Lore of your age is gathered. Press the button at the top (or A) to begin the next age. It takes Embers too, and a little time at your Hearth.',
-  ageNew: 'A new age! Your Forges raise its units from now on. Units keep the age they were raised in: rest an older one 20 seconds in a land you hold, and it is re-armed for free.',
+  ageNew: 'A new age! Every unit you have is upgraded to it: watch the change spread out from your Hearth. Your Forges build the new units from now on.',
   ageSiege: 'Bronze brings the Ram, the first siege unit. Until now no wall could be broken; now lands can be taken, and yours too. A Bastion guards a land.',
   ageArk: 'One step is left: your Ark. When it is done, your house leaves for the stars with its Boons, and the run goes on there.',
   ageRival: 'A rival is building its Ark. When it is done, that house is gone to the stars with a head start on you. An attack on its Hearth stops the work.',

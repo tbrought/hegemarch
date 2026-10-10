@@ -373,13 +373,17 @@ under it.
   richest lands in the middle are held by beasts. Everything else is the classic game seen small:
   lands are kindled by Firebearers (the seed ship), take roles, rise in level, and are taken by siege.
 - **Ages.** Stone, Bronze, Iron, Powder, Machine (`data/eras.ts`). A house's age decides:
-  - what a Forge can raise. Three lines of units keep the triangle in every age (swift beats siege,
+  - what a Forge can build. Three lines of units keep the triangle in every age (swift beats siege,
     siege beats sturdy, sturdy beats swift) under new names and looks: Hunter, Chariot, Horseman,
     Dragoon, Armored Car (swift); Warrior, Spearman, Legionary, Musketeer, Tank (sturdy); Ram,
     Catapult, Cannon, Howitzer (siege). The Stone Age has no siege unit, so no walls fall before bronze;
   - how strong its units, walls and guns are (`power`, from 0.3 in the Stone Age to 1 in space), and how
-    fast its units travel the paths. A unit keeps the age it was raised in; an older unit that rests
-    20 seconds in one of its house's lands is re-armed for the house's age;
+    fast its units travel the paths. A new age upgrades every unit its house has, wherever the unit
+    stands: the change spreads outward from the Hearth (`UPGRADE_SPREAD` world units a second, never
+    more than `UPGRADE_MAX` = 5 seconds), a ring sweeps the map with it, and each unit flashes as it
+    changes. (The first build kept old units old until they had rested 20 seconds in a land of their
+    house. It cost a rule to learn and gave little: at home it was only a wait, and Boons already
+    treat a line of units as one thing that changes its name with the age.);
   - which roles and levels its lands can have (Bastions and level II from the Bronze Age, level III
     from the Iron Age).
 - **Lore climbs the ages.** On the cradle Lore is not turned into Boons: it is saved for the next age.
@@ -461,7 +465,7 @@ at about 30 minutes on Easy, 22 on Normal and 19 on Hard, and the middle one at 
 between houses begin at about 16, 12 and 7 minutes. A player who puts everything into Lore can leave
 in about 21 minutes on Normal, at the price of a thin army.
 
-`tests/ages.test.ts` covers the rules (ages, gating, the Ark, re-arming, the cradle's map, the passage,
+`tests/ages.test.ts` covers the rules (ages, gating, the Ark, upgrading, the cradle's map, the passage,
 arrivals, saves); `npm run test:ages` plays a whole run in a browser; `npm run test:fuzz -- 12 55 --ages`
 fuzzes both stages and the crossing; `test:layouts` checks the cradle's cards and bars at every
 screen size; `scripts/ages-look.mjs` takes screenshots of every age for a visual review.

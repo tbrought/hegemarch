@@ -155,9 +155,9 @@ export interface Unit {
   /** Arrived from a lane jump recently (Phase Strike boon). */
   arrivedAt: number;
   temp: number;
-  /** The age this unit was raised in (data/eras.ts). Always the Space Age outside an Ages run's cradle. */
+  /** The age this unit is of (data/eras.ts). Always the Space Age outside an Ages run's cradle. */
   era: number;
-  /** Ages: seconds an older unit has rested in one of its house's lands, on its way to being re-armed. */
+  /** Ages: seconds until this unit is upgraded to its house's new age (the change spreads from the Hearth). */
   rearm?: number;
 }
 
@@ -407,6 +407,10 @@ export type Fx =
   | { k: 'jumpIn'; x: number; y: number; a: number; node: number; color: string }
   | { k: 'capture'; node: number; color: string }
   | { k: 'ring'; x: number; y: number; r: number; color: string; node: number }
+  /** Ages: a unit is upgraded to its house's new age. */
+  | { k: 'upgrade'; x: number; y: number; r: number; color: string; node: number }
+  /** Ages: the change of a new age spreads from a Hearth: a ring that grows to `r` in `dur` seconds. */
+  | { k: 'wave'; x: number; y: number; r: number; dur: number; color: string; node: number }
   | { k: 'text'; x: number; y: number; text: string; color: string; node: number }
   | { k: 'ability'; x: number; y: number; r: number; color: string; node: number; id: string };
 

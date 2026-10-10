@@ -1429,8 +1429,6 @@ export class Hud {
       const desc = unitDesc(u.type, u.era);
       rows.push(this.header(unitName(u.type, u.era).toUpperCase() + (u.level > 1 ? ` · LEVEL ${u.level}` : ''), p.color, null, where));
       rows.push(this.para(desc, PAL.mist, 200, { terms: termsIn(desc, { exclude: def.name }) }));
-      // An older unit: say how it is brought up to the house's age.
-      if (game.cradle && u.era < p.era) rows.push(this.line(`OF THE ${ERAS[u.era].short} AGE: REST IT IN ONE OF YOUR LANDS TO RE-ARM IT`, PAL.ember, 'tiny', { tip: `Units keep the age they were raised in. This one is weaker than a new ${unitName(u.type, p.era)}. Let it rest 20 seconds in a land you hold, out of any fight, and it is re-armed for free.` }));
       if (u.abil.length) {
         rows.push(this.line('ABILITIES: ' + u.abil.map((a) => ABILITY_BY_ID[a.id]?.name ?? a.id).join(', ').toUpperCase(), PAL.violet, 'tiny', {
           tip: u.abil.map((a) => `{${ABILITY_BY_ID[a.id]?.name ?? a.id}}: ${ABILITY_BY_ID[a.id]?.desc ?? ''}`).join('\n'),
