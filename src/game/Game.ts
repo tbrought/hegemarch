@@ -322,6 +322,8 @@ export class Game {
       f.era ??= SPACE;
       f.advance ??= null;
       f.launchedAt ??= -1;
+      // (A Boon that no longer exists is dropped, so that a run saved by an earlier build still loads.)
+      f.cards = f.cards.filter((id) => CARD_BY_ID[id]);
       f.asleepUntil ??= 0;
       f.graceUntil ??= 0;
       if (f.ai) {
@@ -1376,7 +1378,9 @@ export class Game {
     return CARDS.filter(
       (c) =>
         !c.hidden &&
+        // (On the cradle a house is offered the Boons of its own age, and no others.)
         !!c.cradle === this.cradle &&
+        (!this.cradle || c.age === f.era) &&
         this.cardCount(f, c.id) < c.max &&
         (!c.requires || f.cards.includes(c.requires)) &&
         // An extra choice is worthless once the draft is already as big as it gets.

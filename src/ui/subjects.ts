@@ -13,7 +13,9 @@ import type { Faction, UnitType } from '../game/types';
 import { PAL } from '../render/palette';
 import type { Ctx } from '../render/pixel';
 import { plainText } from '../render/rich';
-import { ICONS, isStructureArt, isTroopArt, pixelCanvas, shipSprite, spriteSize } from '../render/sprites';
+import { SPACE } from '../game/data/eras';
+import { dwellingIcon } from '../render/ground';
+import { artAge, ICONS, isStructureArt, isTroopArt, pixelCanvas, shipSprite, spriteSize } from '../render/sprites';
 
 interface SubjectDef {
   /** What the tooltip calls it. */
@@ -63,6 +65,27 @@ const SUBJECTS: Record<string, SubjectDef> = {
 };
 
 const ORDER = Object.keys(SUBJECTS);
+
+/**
+ * On the cradle of an Ages run (pictures are being drawn in an age before the Space Age) some subjects look
+ * different: "all your ships" is a pair of the age's troops, not a wing of starships; a world is a dwelling
+ * of the age; the hangar is a supply tent.
+ */
+const onCradle = (): boolean => artAge() < SPACE;
+
+function shown(ids: string[]): string[] {
+  if (!onCradle() || !ids.includes('fleet')) return ids;
+  const out: string[] = [];
+  for (const id of ids) for (const k of id === 'fleet' ? ['striker', 'guardian'] : [id]) if (!out.includes(k)) out.push(k);
+  return out;
+}
+
+/** The rows of an icon subject as it looks right now, and a name for the cache. */
+function iconOf(s: SubjectDef): { key: string; rows: string[] } {
+  if (onCradle() && s.icon === 'world') return { key: 'dwelling' + artAge(), rows: dwellingIcon(artAge()) };
+  if (onCradle() && s.icon === 'hangar') return { key: 'supply', rows: ICONS.supply };
+  return { key: s.icon!, rows: ICONS[s.icon!] ?? ICONS.star };
+}
 
 /** The subjects a text mentions, in the order they appear. */
 export function subjectsIn(text: string, max = 3): string[] {
@@ -189,6 +212,8 @@ function heading(t: number, lively: boolean): number {
 
 /** The icon's rows at time t (its frame, marched or spun), and a name for the cache. */
 function iconFrame(s: SubjectDef, t: number, lively: boolean): { key: string; rows: string[] } {
+  const swapped = iconOf(s);
+  if (swapped.key !== s.icon) return swapped;
   const base = s.icon!;
   const n = Math.floor(t * (s.fps ?? 0) * (lively ? 2 : 1));
   if (s.frames) {
@@ -230,7 +255,7 @@ function picture(id: string, look: Look, i: number): HTMLCanvasElement | null {
     return shipSprite(s.ship, look.color, dir, flick);
   }
   if (!s.icon) return null;
-  if (!moving) return pixelCanvas(s.icon, ICONS[s.icon] ?? ICONS.star, look.color);
+  if (!moving) return pixelCanvas(iconOf(s).key, iconOf(s).rows, look.color);
   let { key, rows } = iconFrame(s, t, lively);
   // Now and then a glint runs across the icon from its top-left corner.
   const period = lively ? 1.5 : 3.6;
@@ -255,12 +280,13 @@ function cell(id: string, look: Look): { w: number; h: number; k: number } | nul
     return { w: side || w, h: side || h, k: look.scale };
   }
   if (!s.icon) return null;
-  const rows = ICONS[s.icon] ?? ICONS.star;
+  const rows = iconOf(s).rows;
   return { w: rows[0].length, h: rows.length, k: look.iconScale ?? look.scale };
 }
 
 /** The size of a row of subject pictures. */
 export function subjectsSize(ids: string[], look: Look): { w: number; h: number } {
+  ids = shown(ids);
   let w = 0;
   let h = 0;
   for (const id of ids) {
@@ -277,6 +303,7 @@ export function subjectsSize(ids: string[], look: Look): { w: number; h: number 
  * with `right`, or centred on it with `center`). Returns the width drawn.
  */
 export function drawSubjects(g: Ctx, ids: string[], x: number, y: number, rowH: number, look: Look, align: 'left' | 'right' | 'center' = 'left'): number {
+  ids = shown(ids);
   const { w } = subjectsSize(ids, look);
   let px = align === 'right' ? x - w : align === 'center' ? x - w / 2 : x;
   ids.forEach((id, i) => {
@@ -302,6 +329,27 @@ function hash(a: number, b: number): number {
  * (each to its own beat) and drift slowly past.
  */
 export function starWindow(g: Ctx, x: number, y: number, w: number, h: number, seed: number, t: number, lively = false, travel?: number) {
+  if (onCradle()) {
+    // The cradle of an Ages run: the dark ground of the land, flecked with scrub, under a strip of night sky.
+    const sky = Math.max(3, Math.round(h * 0.3));
+    g.fillStyle = PAL.void;
+    g.fillRect(x, y, w, sky);
+    g.fillStyle = PAL.night;
+    g.fillRect(x, y + sky, w, h - sky);
+    g.fillStyle = PAL.indigo;
+    g.fillRect(x, y + sky, w, 1);
+    const n = Math.max(6, Math.round((w * h) / 90));
+    for (let i = 0; i < n; i++) {
+      const sx = Math.floor(hash(seed, i * 3) * w);
+      const sy = Math.floor(hash(seed, i * 3 + 1) * h);
+      if (sy < sky) {
+        if (Math.sin(t * (1.2 + hash(seed, i * 3 + 2) * 2.5) + i * 1.7) < -0.4) continue;
+        g.fillStyle = i % 2 ? PAL.dusk : PAL.slate;
+      } else g.fillStyle = sy === sky ? PAL.night : PAL.indigo;
+      g.fillRect(x + sx, y + sy, 1, 1);
+    }
+    return;
+  }
   g.fillStyle = PAL.void;
   g.fillRect(x, y, w, h);
   const n = Math.max(5, Math.round((w * h) / 220));

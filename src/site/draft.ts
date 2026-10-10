@@ -123,7 +123,8 @@ export class Draft {
   }
 
   private sumUp() {
-    const total = CARDS.filter((c) => !c.hidden).length;
+    // (The Boons a run among the stars can deal; the cradle of an Ages run has its own.)
+    const total = CARDS.filter((c) => !c.hidden && !c.cradle).length;
     this.root.innerHTML = `
       <div class="draft-end">
         <p class="draft-head"><b>That is ${PICKS} of ${total} Boons.</b> A run deals you many more, and no two runs deal the same.</p>

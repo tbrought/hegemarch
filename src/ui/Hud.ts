@@ -349,7 +349,7 @@ export class Hud {
     // Hangar, only near the limit.
     if (R.fleet && p.hangarCap > 0 && (p.hangarUsed >= p.hangarCap - 3 || p.hangarUsed / p.hangarCap >= 0.8)) {
       x += 2;
-      icon(g, 'hangar', x, 3);
+      icon(g, this.g.cradle ? 'supply' : 'hangar', x, this.g.cradle ? 4 : 3);
       const full = p.hangarUsed >= p.hangarCap;
       const ex = text(g, `${p.hangarUsed}/${p.hangarCap}`, x + 7, 3, full ? PAL.red : PAL.mist);
       this.ui.hit('hangar', x - 1, 0, ex - x + 2, 13, undefined, 'Hangar: room for your ships. Every world you hold adds room, and higher-level worlds add more. When it is full you cannot build. Hangar Bays at your Hearth add more.');
@@ -1169,12 +1169,18 @@ export class Hud {
     return {
       h: 8,
       draw: (x, y, w) => {
-        text(g, 'HULL', x, y, PAL.dusk, 'tiny');
-        const bw = Math.min(90, w - 20);
-        bar(g, x + 18, y + 1, bw, 2, n.hp / Math.max(1, n.maxHp), PAL.teal, PAL.indigo);
-        if (n.maxSh > 0) bar(g, x + 18, y + 4, bw, 1, n.sh / n.maxSh, PAL.sky, PAL.night);
-        this.ui.hint('card-hp', x - 1, y - 1, bw + 20, 8, {
-          tip: `Hull ${fmt(n.hp)} / ${fmt(n.maxHp)} (green)${n.maxSh > 0 ? ` · shields ${fmt(n.sh)} / ${fmt(n.maxSh)} (blue)` : ''}. Shields soak up damage first. At zero hull the world falls to whoever is attacking it.`,
+        // (On the cradle a land has walls, and the longer word needs more room before the bar.)
+        const cradle = this.g.cradle;
+        const label = cradle ? 'WALLS' : 'HULL';
+        const off = cradle ? textWidth(label, 'tiny') + 4 : 18;
+        text(g, label, x, y, PAL.dusk, 'tiny');
+        const bw = Math.min(90, w - off - 2);
+        bar(g, x + off, y + 1, bw, 2, n.hp / Math.max(1, n.maxHp), PAL.teal, PAL.indigo);
+        if (n.maxSh > 0) bar(g, x + off, y + 4, bw, 1, n.sh / n.maxSh, PAL.sky, PAL.night);
+        this.ui.hint('card-hp', x - 1, y - 1, bw + off + 2, 8, {
+          tip: cradle
+            ? `Walls ${fmt(n.hp)} / ${fmt(n.maxHp)} (green)${n.maxSh > 0 ? ` · shields ${fmt(n.sh)} / ${fmt(n.maxSh)} (blue)` : ''}. Shields soak up damage first. When the walls are down the land falls to whoever is attacking it.`
+            : `Hull ${fmt(n.hp)} / ${fmt(n.maxHp)} (green)${n.maxSh > 0 ? ` · shields ${fmt(n.sh)} / ${fmt(n.maxSh)} (blue)` : ''}. Shields soak up damage first. At zero hull the world falls to whoever is attacking it.`,
         });
       },
     };
@@ -1468,10 +1474,12 @@ export class Hud {
     rows.push({
       h: 8,
       draw: (x, y, w) => {
+        // ("HEALTH", as the cradle calls it, is a longer word than "HULL".)
+        const off = game.cradle ? textWidth('HEALTH', 'tiny') + 4 : 18;
         text(gx, 'HULL', x, y, PAL.dusk, 'tiny');
-        bar(gx, x + 18, y + 1, Math.min(90, w - 20), 2, hp / Math.max(1, max), PAL.teal, PAL.indigo);
-        if (shMax > 0) bar(gx, x + 18, y + 4, Math.min(90, w - 20), 1, sh / shMax, PAL.sky, PAL.night);
-        this.ui.hint('fleet-hp', x - 1, y - 1, Math.min(90, w - 20) + 20, 8, {
+        bar(gx, x + off, y + 1, Math.min(90, w - off - 2), 2, hp / Math.max(1, max), PAL.teal, PAL.indigo);
+        if (shMax > 0) bar(gx, x + off, y + 4, Math.min(90, w - off - 2), 1, sh / shMax, PAL.sky, PAL.night);
+        this.ui.hint('fleet-hp', x - 1, y - 1, Math.min(90, w - off - 2) + off + 2, 8, {
           tip: `Hull ${fmt(hp)} / ${fmt(max)} (green)${shMax > 0 ? ` · shields ${fmt(sh)} / ${fmt(shMax)} (blue)` : ''}. Shields soak up damage first and recharge out of battle. Bastions and Starbases repair hulls.`,
         });
       },

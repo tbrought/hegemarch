@@ -334,10 +334,13 @@ the same game with or without rendering, and a saved run continues identically.
 
 ## 9. Ages mode
 
-A second way to play, beside the classic run (AGES RUN on the title screen): every house begins as a
-tribe in the Stone Age, all on one **cradle world**, and climbs age by age to the stars. It is a longer
-game (about an hour or more): the cradle first, then the classic game among the stars with what was
-won on the cradle.
+A second way to play, beside the classic run: every house begins as a tribe in the Stone Age, all on
+one **cradle world**, and climbs age by age to the stars. It is a longer game (about an hour or
+more): the cradle first, then the classic game among the stars with what was won on the cradle.
+
+Its button on the title screen looks like no other: an ember frame around a picture of the climb, the
+swift line of each age marching toward an Ark that lifts into the stars (`app/agesArt.ts`). The same
+picture heads its setup, with the six ages named under it.
 
 ### The cradle
 
@@ -358,8 +361,14 @@ won on the cradle.
 - **Lore climbs the ages.** On the cradle Lore is not turned into Boons: it is saved for the next age.
   With the Lore of the age gathered, the player presses ADVANCE (an explicit order, never automatic):
   it takes the Lore, a price in Embers, and time at the Hearth, and stands still while the Hearth is
-  under attack. Each new age brings one Boon, from a pool of its own (`cradle: true` in
-  `data/cards.ts`): Boons that speak of "units" and "lands and worlds", because the house keeps them.
+  under attack.
+- **Every age has its own Boons.** A house chooses one Boon at the start and one with every new
+  age, from the seven that belong to that age (`cradle: true, age: n` in `data/cards.ts`; 35 in all,
+  one Epic per age): Hunting Bands and Firekeepers in the Stone Age, Shield Wall and Siegecraft with
+  bronze, Paved Roads and Iron Discipline, Powder Mills and Banking Houses, Railways and War
+  Industry. The house keeps them among the stars. They are written in the words of the stars like
+  every other Boon ("Guardians gain 20% hull"); on the cradle the vocabulary shows them in the
+  words of the age ("Warriors gain 20% health").
 - **The Ark.** The step out of the Machine Age is the Ark. When the player's Ark is done it leaves,
   and the run goes on among the stars. A rival's Ark that leaves first takes its house with it: its
   lands fall dark, open to anyone, and it will have a head start among the stars. A house whose Ark
@@ -381,8 +390,12 @@ won on the cradle.
   never turned; their legs, wheels or tracks move only while they do.
 - **The words.** The cradle is the same game seen small, so its HUD is the same HUD with other words:
   everything it draws passes through a vocabulary (`ui/vocab.ts`: world to land, ship to unit, starlane
-  to path, hangar to supply, and each unit line to its name in the player's age). Lines written for
-  the cradle say what they mean directly.
+  to path, hangar to supply, hull to health or walls, and each unit line to its name in the player's
+  age). Lines written for the cradle say what they mean directly.
+- **The pictures.** Whatever the HUD draws of a unit (build buttons, Boon cards, lists) is drawn in
+  the player's age (`setArtEra`). On a Boon card, "all your ships" is a pair of the age's troops, a
+  world is a dwelling of the age, the hangar is a supply tent, and the card's window looks onto dark
+  ground under a strip of night sky, not onto the stars.
 - **The climb.** The top bar shows the Lore of the age; when it is full, a button there (and on the
   Hearth's card, and the A key) gives the order to advance, with what it costs and brings. The corner
   where the Destinies sit among the stars shows the race instead: every house and the ages it has

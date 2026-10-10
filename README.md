@@ -102,7 +102,8 @@ AGES RUN on the title screen starts a longer game (about an hour or more) in two
   Machine.
 - **What an age brings.** Stronger units under new names and looks (a Striker is a Hunter, then a
   Chariot, a Horseman, a Dragoon, an Armored Car), new things to build (siege units and Bastions
-  with bronze, higher levels later), stronger walls, and one Boon that your house keeps for good. A
+  with bronze, higher levels later), stronger walls, and one Boon that your house keeps for good,
+  chosen from the seven that belong to that age (Hunting Bands, Shield Wall, Paved Roads…). A
   unit keeps the age it was raised in; rest it 20 seconds in a land you hold and it is re-armed.
 - **The Ark.** The step out of the Machine Age is your Ark. When it is done, your house leaves for
   the stars and the run goes on as the game above, with your Boons, half your Embers, and a few

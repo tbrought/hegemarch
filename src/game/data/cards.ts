@@ -20,11 +20,11 @@ export interface CardDef {
   /** Granted only by events, never offered in drafts. */
   hidden?: boolean;
   /**
-   * Offered only on the cradle world of an Ages run (and nowhere else). These Boons speak of "units" and of
-   * "everything you hold", because the house keeps them when it leaves for the stars: a text must read
-   * right in both places (and "world" would not: on the cradle it is shown as "land").
+   * Offered only on the cradle world of an Ages run (and nowhere else), to a house in the age `age`.
    */
   cradle?: boolean;
+  /** The age (data/eras.ts) whose Boon this is. */
+  age?: number;
   /** What the Boon affects, as picture ids (ui/subjects.ts), when its modifiers and text would show it wrong. */
   icons?: string[];
   mods?: (m: Mods) => void;
@@ -275,77 +275,152 @@ export const CARDS: CardDef[] = [
   { id: 'forgeBlessing', name: 'Starfire Tempering', rarity: 'rare', cat: 'war', max: 3, hidden: true, desc: '[+8% hull] on all ships.', mods: (m) => (m.hull += 0.08) },
   { id: 'lensCalibration', name: 'Lens Calibration', rarity: 'rare', cat: 'growth', max: 3, hidden: true, desc: 'Ride starlanes [15% faster].', mods: (m) => (m.laneSpeed += 0.15) },
 
-  // ---------------- Boons of the cradle (Ages runs: one with every new age) ----------------
-  { id: 'firekeepers', name: 'Firekeepers', rarity: 'common', cat: 'wealth', max: 3, cradle: true, desc: '[+12% Embers].', icons: ['embers'], mods: (m) => (m.embers += 0.12) },
-  { id: 'elders', name: 'Council of Elders', rarity: 'common', cat: 'lore', max: 3, cradle: true, desc: '[+15% Lore].', icons: ['lore'], mods: (m) => (m.lore += 0.15) },
-  { id: 'huntingLodges', name: 'Hunting Lodges', rarity: 'common', cat: 'war', max: 2, cradle: true, desc: 'Your swift units deal [20% more damage].', icons: ['striker'], mods: (m) => addU(m, 'striker', 'dmg', 0.2) },
-  { id: 'shieldWall', name: 'Shield Wall', rarity: 'common', cat: 'war', max: 2, cradle: true, desc: 'Your sturdy units gain [20% hull].', icons: ['guardian'], mods: (m) => addU(m, 'guardian', 'hull', 0.2) },
-  { id: 'siegecraft', name: 'Siegecraft', rarity: 'common', cat: 'war', max: 2, cradle: true, desc: 'Your siege units deal [25% more damage].', icons: ['breaker'], mods: (m) => addU(m, 'breaker', 'dmg', 0.25) },
-  { id: 'masterSmiths', name: 'Master Smiths', rarity: 'common', cat: 'war', max: 3, cradle: true, desc: 'Your units deal [8% more damage].', icons: ['fleet'], mods: (m) => (m.dmg += 0.08) },
+  // ---------------- Boons of the cradle (Ages runs) ----------------
+  // Each age has its own seven; a house is offered a Boon of its age when the age begins (and one of the
+  // Stone Age at the start). They are written in the words of the stars, like every other Boon: on the
+  // cradle the HUD's vocabulary shows them in the words of the age ("Strikers" as "Hunters", "ships" as
+  // "units", "worlds" as "lands", "hull" as "health"), and among the stars, where the house keeps them,
+  // they read as written.
+  // Stone Age
+  { id: 'firekeepers', name: 'Firekeepers', rarity: 'common', cat: 'wealth', max: 1, cradle: true, age: 0, desc: '[+12% Embers].', icons: ['embers'], mods: (m) => (m.embers += 0.12) },
+  { id: 'elders', name: 'Council of Elders', rarity: 'common', cat: 'lore', max: 1, cradle: true, age: 0, desc: '[+15% Lore].', icons: ['lore'], mods: (m) => (m.lore += 0.15) },
+  { id: 'huntingBands', name: 'Hunting Bands', rarity: 'common', cat: 'war', max: 1, cradle: true, age: 0, desc: 'Strikers deal [20% more damage].', icons: ['striker'], mods: (m) => addU(m, 'striker', 'dmg', 0.2) },
+  { id: 'hideShields', name: 'Hide Shields', rarity: 'common', cat: 'war', max: 1, cradle: true, age: 0, desc: 'Guardians gain [20% hull].', icons: ['guardian'], mods: (m) => addU(m, 'guardian', 'hull', 0.2) },
   {
-    id: 'roadBuilders', name: 'Road Builders', rarity: 'common', cat: 'growth', max: 2, cradle: true, desc: 'Units move [10% faster] and travel from place to place [20% faster].', icons: ['speed'],
-    mods: (m) => {
-      m.speed += 0.1;
-      m.laneSpeed += 0.2;
-    },
-  },
-  {
-    id: 'wanderingKin', name: 'Wandering Kin', rarity: 'common', cat: 'growth', max: 2, cradle: true, desc: 'Kindling costs [25% less] and takes [40% less time].', icons: ['kindle'],
+    id: 'wanderingKin', name: 'Wandering Kin', rarity: 'rare', cat: 'growth', max: 1, cradle: true, age: 0, desc: 'Kindling costs [25% less] and takes [40% less time].', icons: ['kindle'],
     mods: (m) => {
       m.kindleCost -= 0.25;
       m.kindleSpeed += 0.4;
     },
   },
-  { id: 'granaries', name: 'Granaries', rarity: 'common', cat: 'growth', max: 2, cradle: true, desc: 'Room for [4 more] units.', icons: ['hangar'], mods: (m) => (m.hangar += 4) },
-  { id: 'stonewrights', name: 'Stonewrights', rarity: 'common', cat: 'ward', max: 2, cradle: true, desc: 'Everything you hold is [25% tougher].', icons: ['world', 'shield'], mods: (m) => (m.worldHp += 0.25) },
-  { id: 'drillYards', name: 'Drill Yards', rarity: 'rare', cat: 'war', max: 2, cradle: true, desc: 'Your units strike [10% faster].', icons: ['fleet'], mods: (m) => (m.rof += 0.1) },
   {
-    id: 'bloodOath', name: 'Blood Oath', rarity: 'rare', cat: 'war', max: 1, cradle: true, desc: 'Your units deal [15% more damage]. They [!lose 8% hull].', icons: ['fleet'],
+    id: 'greatHunt', name: 'The Great Hunt', rarity: 'rare', cat: 'war', max: 1, cradle: true, age: 0, desc: 'Gain Embers worth [30%] of every enemy ship you destroy, and your ships deal [6% more damage].', icons: ['target', 'embers'],
     mods: (m) => {
-      m.dmg += 0.15;
-      m.hull -= 0.08;
+      flag(m, 'salvage', 0.3);
+      m.dmg += 0.06;
     },
   },
   {
-    id: 'masterBuilders', name: 'Master Builders', rarity: 'rare', cat: 'growth', max: 2, cradle: true, desc: 'Raising a level costs [20% less], and Forges work [15% faster].', icons: ['forge'],
+    id: 'oldLight', name: 'The Old Light', rarity: 'epic', cat: 'lore', max: 1, cradle: true, age: 0, desc: '[+12% Embers and Lore].', icons: ['embers', 'lore'],
+    mods: (m) => {
+      m.embers += 0.12;
+      m.lore += 0.12;
+    },
+  },
+  // Bronze Age
+  { id: 'bronzeSmiths', name: 'Bronze Smiths', rarity: 'common', cat: 'war', max: 1, cradle: true, age: 1, desc: 'Your ships deal [8% more damage].', icons: ['fleet'], mods: (m) => (m.dmg += 0.08) },
+  {
+    id: 'shieldWall', name: 'Shield Wall', rarity: 'common', cat: 'war', max: 1, cradle: true, age: 1, desc: 'Guardians gain [15% hull] and deal [15% more damage].', icons: ['guardian'],
+    mods: (m) => {
+      addU(m, 'guardian', 'hull', 0.15);
+      addU(m, 'guardian', 'dmg', 0.15);
+    },
+  },
+  { id: 'granaries', name: 'Granaries', rarity: 'common', cat: 'growth', max: 1, cradle: true, age: 1, desc: '[+4 hangar space].', icons: ['hangar'], mods: (m) => (m.hangar += 4) },
+  { id: 'deepQuarries', name: 'Deep Quarries', rarity: 'common', cat: 'wealth', max: 1, cradle: true, age: 1, desc: 'Mines pay [30% more] of their bonus Embers.', icons: ['mine'], mods: (m) => (m.role.mine += 0.3) },
+  { id: 'cityWalls', name: 'City Walls', rarity: 'rare', cat: 'ward', max: 1, cradle: true, age: 1, desc: 'Your worlds are [25% tougher].', icons: ['world', 'shield'], mods: (m) => (m.worldHp += 0.25) },
+  { id: 'siegecraft', name: 'Siegecraft', rarity: 'rare', cat: 'war', max: 1, cradle: true, age: 1, desc: 'Breakers deal [25% more damage].', icons: ['breaker'], mods: (m) => addU(m, 'breaker', 'dmg', 0.25) },
+  {
+    id: 'templeScribes', name: 'Temple Scribes', rarity: 'epic', cat: 'lore', max: 1, cradle: true, age: 1, desc: '[+15% Lore], and Observatories make [30% more].', icons: ['lore', 'observatory'],
+    mods: (m) => {
+      m.lore += 0.15;
+      m.role.observatory += 0.3;
+    },
+  },
+  // Iron Age
+  {
+    id: 'pavedRoads', name: 'Paved Roads', rarity: 'common', cat: 'growth', max: 1, cradle: true, age: 2, desc: 'Ships move [10% faster] and ride starlanes [20% faster].', icons: ['speed'],
+    mods: (m) => {
+      m.speed += 0.1;
+      m.laneSpeed += 0.2;
+    },
+  },
+  { id: 'legionDrill', name: 'Legion Drill', rarity: 'common', cat: 'war', max: 1, cradle: true, age: 2, desc: 'Your ships fire [10% faster].', icons: ['fleet'], mods: (m) => (m.rof += 0.1) },
+  {
+    id: 'stonewrights', name: 'Stonewrights', rarity: 'common', cat: 'ward', max: 1, cradle: true, age: 2, desc: 'Your Hearth is [30% tougher] and its guns deal [30% more damage].', icons: ['hearth'],
+    mods: (m) => {
+      m.hearthHp += 0.3;
+      m.hearthGun += 0.3;
+    },
+  },
+  { id: 'coinage', name: 'Coinage', rarity: 'common', cat: 'wealth', max: 1, cradle: true, age: 2, desc: 'Ships cost [10% less].', icons: ['embers', 'fleet'], mods: (m) => (m.shipCost -= 0.1) },
+  {
+    id: 'engineers', name: 'Engineers', rarity: 'rare', cat: 'growth', max: 1, cradle: true, age: 2, desc: 'Raising a level costs [20% less], and Forges work [15% faster].', icons: ['forge'],
     mods: (m) => {
       m.upgradeCost -= 0.2;
       m.build += 0.15;
     },
   },
-  { id: 'stoneCircles', name: 'Stone Circles', rarity: 'rare', cat: 'lore', max: 2, cradle: true, desc: 'Observatories make [30% more Lore].', icons: ['observatory'], mods: (m) => (m.role.observatory += 0.3) },
-  { id: 'deepQuarries', name: 'Deep Quarries', rarity: 'rare', cat: 'wealth', max: 2, cradle: true, desc: 'Mines pay [30% more] of their bonus Embers.', icons: ['mine'], mods: (m) => (m.role.mine += 0.3) },
   {
-    id: 'watchfires', name: 'Watchfires', rarity: 'rare', cat: 'ward', max: 1, cradle: true, desc: 'Everything you hold [fights back] with a small gun, and all its guns deal [20% more damage].', icons: ['world', 'target'],
+    id: 'watchtowers', name: 'Watchtowers', rarity: 'rare', cat: 'ward', max: 1, cradle: true, age: 2, desc: 'Every world you hold [fights back] with a small gun, and all their guns deal [20% more damage].', icons: ['world', 'target'],
     mods: (m) => {
       flag(m, 'allGuns', 1);
       m.worldGun += 0.2;
     },
   },
   {
-    id: 'heralds', name: 'Heralds', rarity: 'rare', cat: 'lore', max: 1, cradle: true, desc: '[+2 rerolls], and your Boon choices are [luckier].', icons: ['boon'],
-    mods: (m) => (m.luck += 1),
-    onPick: (_g, f) => (f.rerolls += 2),
-  },
-  {
-    id: 'oldLight', name: 'The Old Light', rarity: 'epic', cat: 'lore', max: 1, cradle: true, desc: '[+12% Embers and Lore].', icons: ['embers', 'lore'],
-    mods: (m) => {
-      m.embers += 0.12;
-      m.lore += 0.12;
-    },
-  },
-  {
-    id: 'ironDiscipline', name: 'Iron Discipline', rarity: 'epic', cat: 'war', max: 1, cradle: true, desc: 'Your units gain [12% hull] and deal [10% more damage].', icons: ['fleet'],
+    id: 'ironDiscipline', name: 'Iron Discipline', rarity: 'epic', cat: 'war', max: 1, cradle: true, age: 2, desc: 'Your ships gain [12% hull] and deal [10% more damage].', icons: ['fleet'],
     mods: (m) => {
       m.hull += 0.12;
       m.dmg += 0.1;
     },
   },
+  // Powder Age
+  { id: 'powderMills', name: 'Powder Mills', rarity: 'common', cat: 'war', max: 1, cradle: true, age: 3, desc: 'Your ships deal [10% more damage].', icons: ['fleet'], mods: (m) => (m.dmg += 0.1) },
+  { id: 'printingPress', name: 'Printing Press', rarity: 'common', cat: 'lore', max: 1, cradle: true, age: 3, desc: '[+20% Lore].', icons: ['lore'], mods: (m) => (m.lore += 0.2) },
   {
-    id: 'hearthguard', name: 'Hearthguard', rarity: 'epic', cat: 'ward', max: 1, cradle: true, desc: 'Your Hearth is [40% tougher] and its guns deal [40% more damage].', icons: ['hearth'],
+    id: 'remounts', name: 'Remounts', rarity: 'common', cat: 'war', max: 1, cradle: true, age: 3, desc: 'Strikers gain [20% hull] and cost [15% less].', icons: ['striker'],
     mods: (m) => {
-      m.hearthHp += 0.4;
-      m.hearthGun += 0.4;
+      addU(m, 'striker', 'hull', 0.2);
+      addU(m, 'striker', 'cost', -0.15);
+    },
+  },
+  {
+    id: 'conscription', name: 'Conscription', rarity: 'common', cat: 'growth', max: 1, cradle: true, age: 3, desc: '[+5 hangar space], and Forges work [10% faster].', icons: ['hangar', 'forge'],
+    mods: (m) => {
+      m.hangar += 5;
+      m.build += 0.1;
+    },
+  },
+  { id: 'bankingHouses', name: 'Banking Houses', rarity: 'rare', cat: 'wealth', max: 1, cradle: true, age: 3, desc: 'Every 30 seconds, earn [3% interest] on your banked Embers (up to 200).', icons: ['embers'], mods: (m) => flag(m, 'interest', 0.03) },
+  {
+    id: 'starForts', name: 'Star Forts', rarity: 'rare', cat: 'ward', max: 1, cradle: true, age: 3, desc: 'Bastions are [40% stronger], and your worlds are [15% tougher].', icons: ['bastion', 'world'],
+    mods: (m) => {
+      m.role.bastion += 0.4;
+      m.worldHp += 0.15;
+    },
+  },
+  {
+    id: 'grandBattery', name: 'Grand Battery', rarity: 'epic', cat: 'war', max: 1, cradle: true, age: 3, desc: 'Breakers deal [30% more damage] and reach [20% further].', icons: ['breaker'],
+    mods: (m) => {
+      addU(m, 'breaker', 'dmg', 0.3);
+      addU(m, 'breaker', 'range', 0.2);
+    },
+  },
+  // Machine Age
+  {
+    id: 'assemblyLines', name: 'Assembly Lines', rarity: 'common', cat: 'growth', max: 1, cradle: true, age: 4, desc: 'Ships cost [10% less], and Forges work [20% faster].', icons: ['forge', 'fleet'],
+    mods: (m) => {
+      m.shipCost -= 0.1;
+      m.build += 0.2;
+    },
+  },
+  { id: 'railways', name: 'Railways', rarity: 'common', cat: 'growth', max: 1, cradle: true, age: 4, desc: 'Ride starlanes [35% faster].', icons: ['speed'], mods: (m) => (m.laneSpeed += 0.35) },
+  { id: 'steelworks', name: 'Steelworks', rarity: 'common', cat: 'war', max: 1, cradle: true, age: 4, desc: 'Your ships gain [12% hull].', icons: ['fleet'], mods: (m) => (m.hull += 0.12) },
+  { id: 'oilFields', name: 'Oil Fields', rarity: 'common', cat: 'wealth', max: 1, cradle: true, age: 4, desc: '[+15% Embers].', icons: ['embers'], mods: (m) => (m.embers += 0.15) },
+  { id: 'universities', name: 'Universities', rarity: 'rare', cat: 'lore', max: 1, cradle: true, age: 4, desc: '[+25% Lore].', icons: ['lore'], mods: (m) => (m.lore += 0.25) },
+  {
+    id: 'armorPlate', name: 'Armor Plate', rarity: 'rare', cat: 'war', max: 1, cradle: true, age: 4, desc: 'Guardians gain [25% hull], and all your ships take [5% less damage].', icons: ['guardian'],
+    mods: (m) => {
+      addU(m, 'guardian', 'hull', 0.25);
+      m.armor += 0.05;
+    },
+  },
+  {
+    id: 'warIndustry', name: 'War Industry', rarity: 'epic', cat: 'war', max: 1, cradle: true, age: 4, desc: 'Your ships deal [12% more damage] and fire [10% faster].', icons: ['fleet'],
+    mods: (m) => {
+      m.dmg += 0.12;
+      m.rof += 0.1;
     },
   },
 ];

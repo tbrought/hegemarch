@@ -210,7 +210,9 @@ try {
 
   // ---------------- the draft (Ashen Remnant is chosen: its drafts offer one more choice)
   await scrollTo(page, '#boons');
-  check('the draft was dealt for the chosen house (Ashen Remnant: one more choice)', (await page.$$('.boon')).length === 4 && /Boon 1 of 4 for the Ashen Remnant/.test(await page.textContent('.draft-head')), await page.textContent('.draft-head'));
+  // (Four choices for the Ashen Remnant, or five when the Epic Boon it starts with is the one that adds a choice.)
+  const dealt = (await page.$$('.boon')).length;
+  check('the draft was dealt for the chosen house (Ashen Remnant: one more choice)', dealt >= 4 && dealt <= 5 && /Boon 1 of 4 for the Ashen Remnant/.test(await page.textContent('.draft-head')), `${dealt} choices`);
   const art = await look(page, '.boon:nth-child(1) .boon-art');
   check('Boon cards show what they affect', art.colors >= 4, `${art.colors} colors`);
   await page.screenshot({ path: '.shots/site-draft.png' });
@@ -221,7 +223,7 @@ try {
   const first = await page.textContent('.boon:nth-child(2) .boon-name');
   await page.click('.boon:nth-child(2)');
   await wait(150);
-  check('a pick flashes and the others fall dark', await page.evaluate(() => document.querySelector('.boon.taken') !== null && document.querySelectorAll('.boon.passed').length === 3));
+  check('a pick flashes and the others fall dark', await page.evaluate(() => document.querySelector('.boon.taken') !== null && document.querySelectorAll('.boon.passed').length === document.querySelectorAll('.boon').length - 1));
   await wait(700);
   check('the pick is kept and the next Boon is dealt', /Boon 2 of 4/.test(await page.textContent('.draft-head')) && (await page.textContent('.tray li')) === first, first);
   for (let i = 0; i < 3; i++) {

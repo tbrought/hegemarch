@@ -354,15 +354,19 @@ describe('from the cradle to the stars', () => {
     });
     const old = c.player;
     const pass = describePassage(c);
-    expect(pass.lands).toBe(5);
-    expect(pass.ships).toBe(2);
+    // (How many lands were still free to kindle depends on how the rivals played.)
+    const held = c.worldsOf(old.id).length;
+    expect(held).toBeGreaterThanOrEqual(3);
+    expect(pass.lands).toBe(held);
+    expect(pass.ships).toBe(Math.min(4, Math.floor((held - 1) / 2)));
+    expect(pass.ships).toBeGreaterThan(0);
     expect(pass.boons).toBe(old.cards.length);
     const plain = Game.create({ ...c.config, stage: 'stars', houses: 4, seed: 1 });
     const s = ascend(c)!;
     const me = s.player;
     for (const id of old.cards) expect(me.cards).toContain(id);
     expect(me.embers).toBeGreaterThan(plain.player.embers + 500);
-    expect(s.unitsOf(me.id).length).toBe(plain.unitsOf(plain.player.id).length + 2);
+    expect(s.unitsOf(me.id).length).toBe(plain.unitsOf(plain.player.id).length + pass.ships);
     expect(s.computeMods(me)).toEqual(s.computeMods({ ...me, cards: [...old.cards] } as typeof me));
     // Lore makes Boons again out there, and the cradle's own Boons are never offered.
     for (const id of s.generateOffer(me)) expect(CARD_BY_ID[id].cradle).toBeFalsy();
@@ -483,12 +487,67 @@ describe('the cradle on screen', () => {
     }
   });
 
-  it('a Boon of the cradle reads right on the cradle and among the stars', () => {
-    const say = cradleVocabulary(2);
-    for (const c of CARDS.filter((x) => x.cradle)) {
-      expect(c.desc, `${c.name} must not speak of worlds, ships or lands`).not.toMatch(/\b(worlds?|ships?|lands?|starlanes?|hangar|fleets?)\b/i);
-      expect(say(c.desc), `${c.name} reads the same in the cradle's words`).toBe(c.desc);
-      expect(c.icons?.length, `${c.name} says what it affects`).toBeGreaterThan(0);
+  it('every age has seven Boons of its own, written in the words of the stars', () => {
+    for (let era = 0; era <= LAST_CRADLE_ERA; era++) {
+      const own = CARDS.filter((c) => c.cradle && c.age === era);
+      expect(own.length, `${ERAS[era].name}: seven Boons`).toBe(7);
+      expect(own.filter((c) => c.rarity === 'epic').length, `${ERAS[era].name}: one Epic Boon`).toBe(1);
+      for (const c of own) {
+        expect(c.icons?.length, `${c.name} says what it affects`).toBeGreaterThan(0);
+        // Written like every other Boon ("ships", "worlds"): the cradle's vocabulary does the rest.
+        expect(c.desc, `${c.name} is written in the words of the stars`).not.toMatch(/(units?|lands?|paths?|supply|health)/i);
+      }
     }
+    expect(CARDS.filter((c) => c.cradle).every((c) => c.age !== undefined && c.age >= 0 && c.age <= LAST_CRADLE_ERA)).toBe(true);
+  });
+
+  it('on the cradle a Boon is shown in the words of the age, with nothing of the stars left in it', () => {
+    for (let era = 0; era <= LAST_CRADLE_ERA; era++) {
+      const say = cradleVocabulary(era);
+      // A house keeps its Boons: in a later age the earlier ones are read in the later age's words.
+      for (const c of CARDS.filter((x) => x.cradle && x.age! <= era)) {
+        const shown = say(c.desc);
+        expect(shown, `${c.name} in the ${ERAS[era].name}: ${shown}`).not.toMatch(/(ships?|worlds?|starlanes?|hangar|hulls?|Strikers?|Guardians?|Breakers?)/);
+        expect(shown, `${c.name}: no word doubled up`).not.toMatch(/(\w+) and /i);
+      }
+    }
+    expect(cradleVocabulary(0)(CARD_BY_ID.hideShields.desc)).toBe('Warriors gain [20% health].');
+    expect(cradleVocabulary(0)(CARD_BY_ID.huntingBands.desc)).toBe('Hunters deal [20% more damage].');
+    expect(cradleVocabulary(1)(CARD_BY_ID.siegecraft.desc)).toBe('Rams deal [25% more damage].');
+    expect(cradleVocabulary(1)(CARD_BY_ID.cityWalls.desc)).toBe('Your lands are [25% tougher].');
+    expect(cradleVocabulary(1)(CARD_BY_ID.granaries.desc)).toBe('[+4 supply].');
+    expect(cradleVocabulary(3)(CARD_BY_ID.grandBattery.desc)).toBe('Cannons deal [30% more damage] and reach [20% further].');
+    expect(cradleVocabulary(4)(CARD_BY_ID.railways.desc)).toBe('Ride paths [35% faster].');
+    // The stat lines of a card, and a house's own bonuses.
+    expect(cradleVocabulary(2)('Ship hull')).toBe('Unit health');
+    expect(cradleVocabulary(2)('World hull')).toBe('Land walls');
+    expect(cradleVocabulary(2)('Hearth hull')).toBe('Hearth walls');
+    expect(cradleVocabulary(2)('+15% world hull and shields')).toBe('+15% land walls');
+    expect(cradleVocabulary(2)('+10% ship shields')).toBe('+10% unit shields');
+  });
+
+  it('a house is offered the Boons of its own age, and only those', () => {
+    const g = cradle();
+    const p = g.player;
+    for (let era = 0; era <= LAST_CRADLE_ERA; era++) {
+      p.era = era;
+      for (let k = 0; k < 12; k++) {
+        const offer = g.generateOffer(p);
+        expect(offer.length).toBe(3);
+        for (const id of offer) expect(CARD_BY_ID[id].age, `${ERAS[era].name}: ${id}`).toBe(era);
+      }
+    }
+    // The house of the old light starts with the Stone Age's Epic Boon, and still has a full choice.
+    const ashen = cradle({ heir: 'ashen' });
+    expect(ashen.player.cards).toEqual(['oldLight']);
+    expect(ashen.generateOffer(ashen.player).length).toBe(4);
+  });
+
+  it('a run saved with a Boon that no longer exists still loads', () => {
+    const g = cradle();
+    const data = JSON.parse(JSON.stringify(g.serialize()));
+    data.factions[0].cards = ['masterSmiths', 'firekeepers', 'noSuchBoon'];
+    const back = Game.load(data);
+    expect(back.player.cards).toEqual(['firekeepers']);
   });
 });

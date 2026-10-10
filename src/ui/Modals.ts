@@ -283,8 +283,9 @@ export class Modals {
     const ch = Math.min(Math.max(60, ...cards.map((k) => k.hgt)), maxH);
     const w = n * cw + (n - 1) * 4 + 16;
     const h = ch + 52;
-    const { x, y } = this.frame(g, w, h, p.pendingDrafts > 1 ? `CHOOSE A BOON (${p.pendingDrafts} WAITING)` : 'CHOOSE A BOON');
-    textCenter(g, this.g.cradle ? 'Every new age brings one. Pick one: your house keeps it, here and among the stars.' : 'Your Lore has gathered. Pick one to keep for this run.', x + w / 2, y + 16, PAL.dusk, 'tiny');
+    const title = this.g.cradle && p.era <= LAST_CRADLE_ERA ? `A BOON OF THE ${ERAS[p.era].name.toUpperCase()}` : 'CHOOSE A BOON';
+    const { x, y } = this.frame(g, w, h, p.pendingDrafts > 1 ? `${title} (${p.pendingDrafts} WAITING)` : title);
+    textCenter(g, this.g.cradle ? 'Every age brings one of its own. Pick one: your house keeps it, here and among the stars.' : 'Your Lore has gathered. Pick one to keep for this run.', x + w / 2, y + 16, PAL.dusk, 'tiny');
     const cx0 = x + 8;
     const cy = y + 25;
     if (this.dealt !== offer) {

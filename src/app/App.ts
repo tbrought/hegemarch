@@ -16,6 +16,7 @@ import type { Difficulty, GameConfig, MapSize } from '../game/types';
 import { applyRunToProfile, computeLegacy, PERKS, UNLOCKS, type LegacyReport } from '../meta/legacy';
 import { clearRun, defaultProfile, hasRun, loadProfile, loadRun, saveProfile, saveRun, todayKey, type Profile } from '../meta/profile';
 import { fmtTime, Renderer } from '../render/Renderer';
+import { drawAgesArt } from './agesArt';
 import { Attract } from './Attract';
 import { drawHouseBanners, startingFleet } from './houseArt';
 import { Screen } from '../render/Screen';
@@ -148,6 +149,7 @@ export class App {
         g.fillRect(0, 0, this.screenObj.W, this.screenObj.H);
       }
       if (this.screen === 'setup') drawHouseBanners(this.ui, now / 1000);
+      if (this.screen === 'menu' || this.screen === 'setup') drawAgesArt(this.ui, now / 1000);
     } catch (err) {
       console.error(err);
     }
@@ -700,7 +702,11 @@ export class App {
       <div class="menu-buttons">
         ${saved ? '<button class="primary" data-sa="continue">CONTINUE</button>' : ''}
         <button class="${saved ? '' : 'primary'}" data-sa="setup">NEW RUN</button>
-        <button data-sa="ages" data-tip="A longer game. Every house starts in the Stone Age on one world, and climbs age by age to the stars.">AGES RUN</button>
+        <button class="ages" data-sa="ages" data-tip="A longer game. Every house starts in the Stone Age on one world, and climbs age by age to the stars.">
+          <canvas class="ages-art" height="14" aria-hidden="true"></canvas>
+          <span class="ages-title">AGES RUN</span>
+          <small>From the Stone Age to the stars</small>
+        </button>
         <button data-sa="daily" data-tip="The same sector for every player today: medium, Normal, with [Legacy ×1.25].">DAILY RUN${dailyDone ? ' ✓' : ''}</button>
         <button data-sa="hall" data-tip="Spend Legacy, earned by every run, on new houses, perks and unlocks.">HALL OF HEIRS · <span class="gold">◆${p.legacy}</span></button>
         <button data-sa="howto">HOW TO PLAY</button>
@@ -801,6 +807,8 @@ export class App {
       <h1>${daily ? 'DAILY RUN' : ages ? 'AGES RUN' : 'NEW RUN'}</h1>
       <div class="lead">${daily ? `Today's sector is the same for everyone: medium, Normal, seed ${dailySeed()}. Legacy ×1.25.` : ages ? 'A longer game. Every house begins as a tribe in the Stone Age, all on one cradle world. Climb through the ages, build your Ark, and carry what you have won to the stars, where the crown is decided.' : 'Choose a house to bid for the crown of Hegemarch. The sector, your rivals, your Destinies and your Boons are new every run.'}</div>
       ${savedNote}
+      ${ages ? `<div class="px-box ages-head"><canvas class="ages-art" height="20" aria-hidden="true"></canvas>
+        <div class="ages-names">${ERAS.map((e) => `<span>${e.short}</span>`).join('')}</div></div>` : ''}
       ${ages && !p.tutorialDone ? '<div class="px-box notice wide"><span>New to Hegemarch? An Ages run is the long game. The guided First Night (NEW RUN) teaches the basics in a few minutes.</span></div>' : ''}
       <div class="heirs">${heirs}</div>
       ${daily ? '' : `<div class="opts">

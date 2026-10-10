@@ -88,6 +88,40 @@ try {
   await ev(() => (window.__app.session.paused = false));
   await wait(1500);
   await shot('advance-going');
+  // The Boons of two later ages (their own names, the age's own units and buildings in the pictures).
+  for (const era of [1, 2, 4]) {
+    await ev((e) => {
+      const s = window.__app.session;
+      const p = s.game.player;
+      p.advance = null;
+      p.era = e;
+      s.game.recomputeMods(p);
+      p.pendingDrafts = 1;
+      p.draftOffer = null;
+      p.rerolls = 3;
+      window.__app.hud.modals.open({ kind: 'draft' });
+    }, era);
+    await wait(900);
+    await shot(`draft-era-${era}`);
+    await ev(() => {
+      const s = window.__app.session;
+      s.game.cmdReroll(s.game.playerId);
+    });
+    await wait(900);
+    await shot(`draft-era-${era}-b`);
+    await ev(() => {
+      const s = window.__app.session;
+      s.game.player.pendingDrafts = 0;
+      s.game.player.draftOffer = null;
+      s.modal = null;
+    });
+  }
+  await ev(() => {
+    const p = window.__app.session.game.player;
+    p.era = 0;
+    window.__app.session.game.recomputeMods(p);
+    p.advance = { t: 5, total: 30, lore: 0, cost: 0 };
+  });
   await page.keyboard.press('KeyU');
   await wait(500);
   await shot('status');

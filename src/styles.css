@@ -125,6 +125,88 @@ body {
   margin-top: 8px;
 }
 
+/* The Ages run is a mode of its own, so its button looks like no other: an ember frame, and a picture of
+   the climb drawn by the game (app/agesArt.ts). */
+button.ages {
+  padding: 9px 12px 10px;
+  box-shadow:
+    0 calc(var(--px) * -1) 0 0 var(--ember),
+    0 var(--px) 0 0 var(--ember),
+    calc(var(--px) * -1) 0 0 0 var(--ember),
+    var(--px) 0 0 0 var(--ember),
+    inset 0 calc(var(--px) * -1) 0 0 var(--indigo);
+}
+
+button.ages:hover {
+  box-shadow:
+    0 calc(var(--px) * -1) 0 0 var(--gold),
+    0 var(--px) 0 0 var(--gold),
+    calc(var(--px) * -1) 0 0 0 var(--gold),
+    var(--px) 0 0 0 var(--gold),
+    inset 0 calc(var(--px) * -1) 0 0 var(--night);
+}
+
+.ages-art {
+  display: block;
+  width: 100%;
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+  pointer-events: none;
+}
+
+button.ages .ages-art {
+  height: 42px;
+  margin-bottom: 8px;
+}
+
+button.ages .ages-title {
+  display: block;
+  color: var(--ember);
+}
+
+button.ages:hover .ages-title {
+  color: var(--gold);
+}
+
+button.ages small {
+  display: block;
+  margin-top: 7px;
+  font-family: var(--body);
+  font-size: 15px;
+  letter-spacing: 0;
+  color: var(--mist);
+}
+
+/* The same picture over the setup of an Ages run, with the ages named under its figures. */
+.ages-head {
+  margin-bottom: 14px;
+  padding: 12px 10px 10px;
+  box-shadow:
+    0 calc(var(--px) * -1) 0 0 var(--ember),
+    0 var(--px) 0 0 var(--ember),
+    calc(var(--px) * -1) 0 0 0 var(--ember),
+    var(--px) 0 0 0 var(--ember);
+}
+
+.ages-head .ages-art {
+  height: 60px;
+}
+
+.ages-names {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  margin-top: 8px;
+  font-family: var(--display);
+  font-size: 9px;
+  letter-spacing: 0.04em;
+  color: var(--dusk);
+  text-align: center;
+}
+
+.ages-names span:last-child {
+  color: var(--gold);
+}
+
 .menu-foot {
   color: var(--slate);
   font-size: 15px;

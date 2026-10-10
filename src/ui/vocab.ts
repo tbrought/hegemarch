@@ -15,7 +15,15 @@ import type { UnitType } from '../game/types';
 const WORDS: [string, string][] = [
   ['hangar bays', 'storehouses'],
   ['hangar bay', 'storehouse'],
+  ['hangar space', 'supply'],
   ['hangar', 'supply'],
+  // (A troop has health where a ship has a hull; a land or a Hearth has walls.)
+  ['world hull and shields', 'land walls'],
+  ['world hull', 'land walls'],
+  ['hearth hull', 'hearth walls'],
+  ['repair hulls', 'heal units'],
+  ['hulls', 'units'],
+  ['hull', 'health'],
   ['warships', 'units'],
   ['warship', 'unit'],
   ['ships', 'units'],
@@ -59,12 +67,16 @@ export function cradleVocabulary(era: number): (s: string) => string {
   let f = cache.get(era);
   if (f) return f;
   const map = new Map<string, string>(WORDS);
+  /** Names of units: every word of them takes a capital ("Armored Car"). Other words follow the sentence. */
+  const names = new Set<string>();
   for (const t of LINES) {
     const now = ERAS[era]?.units[t];
     if (!now) continue;
     const was = UNITS[t].name.toLowerCase();
     map.set(was, now.name.toLowerCase());
     map.set(was + 's', (now.plural ?? now.name + 's').toLowerCase());
+    names.add(now.name.toLowerCase());
+    names.add((now.plural ?? now.name + 's').toLowerCase());
   }
   const keys = [...map.keys()].sort((a, b) => b.length - a.length).map((k) => k.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
   const re = new RegExp(`\\b(?:${keys.join('|')})\\b`, 'gi');
@@ -77,7 +89,7 @@ export function cradleVocabulary(era: number): (s: string) => string {
       if (!to) return m;
       // Keep the way it was written: SHOUTED, Capitalized or plain.
       if (m === m.toUpperCase() && m !== m.toLowerCase()) return to.toUpperCase();
-      if (m[0] !== m[0].toLowerCase()) return to.replace(/\b[a-z]/g, (c) => c.toUpperCase());
+      if (m[0] !== m[0].toLowerCase()) return names.has(to) ? to.replace(/\b[a-z]/g, (c) => c.toUpperCase()) : to[0].toUpperCase() + to.slice(1);
       return to;
     });
     // (Texts with running numbers pass through every frame: do not remember them all.)

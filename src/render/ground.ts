@@ -133,6 +133,12 @@ const WILD: string[][] = [
   ['.ss', 'sss', '.i.'],
 ];
 
+/** A dwelling of an age as an icon (in the letters of `ICONS` in sprites.ts: c is the caller's color). */
+export function dwellingIcon(era: number): string[] {
+  const to: Record<string, string> = { x: 'c', d: 's', w: 'w', e: 'e', k: 'o', m: 'm', o: 'x' };
+  return HOUSES[Math.max(0, Math.min(HOUSES.length - 1, era))].map((row) => [...row].map((ch) => to[ch] ?? '.').join(''));
+}
+
 const glyphs = new Map<string, HTMLCanvasElement>();
 
 function glyph(key: string, rows: string[], color: string, flick: boolean): HTMLCanvasElement {

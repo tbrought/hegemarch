@@ -113,6 +113,9 @@ export function setArtEra(era: number) {
   artEra = era;
 }
 
+/** The age pictures are being drawn in right now (see `setArtEra`). */
+export const artAge = (): number => artEra;
+
 /** Is this unit, raised in this age, drawn as a troop of the cradle (from the side, mirrored) and not as a ship? */
 export const isTroopArt = (t: UnitType, era = artEra) => !!TROOPS[era]?.[t];
 
@@ -294,6 +297,8 @@ export const ICONS: Record<string, string[]> = {
   ember: ['..e..', '..ee.', '.egge', 'egwge', 'egwge', '.egg.', '..e..'],
   lore: ['.....', 'vv.vv', 'vpvpv', 'vpvpv', 'vpvpv', 'vvvvv', '.....'],
   hangar: ['.....', '..m..', '.mmm.', 'mm.mm', 'm...m', 'mmmmm', '.....'],
+  // (Supply: what the hangar is called on the cradle of an Ages run. A tent.)
+  supply: ['...w...', '..mmm..', '.mmmmm.', 'mmmommm', 'mmmommm'],
   clock: ['.mmm.', 'm.w.m', 'm.w.m', 'm.wwm', 'm...m', '.mmm.', '.....'],
   sword: ['....w', '...w.', '..w..', 'mw...', '.m...', 'm.m..', '.....'],
   shield: ['kkkkk', 'kwkwk', 'kkwkk', 'kkkkk', '.kkk.', '..k..', '.....'],
