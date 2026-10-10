@@ -52,6 +52,8 @@ export interface Profile {
   seenTips: string[];
   lastDaily: string | null;
   winsByHeir: Record<string, number>;
+  /** Has opened the setup of an Ages run (until then the title screen marks that mode as new). */
+  agesSeen: boolean;
 }
 
 const KEY = 'hegemarch.profile.v1';
@@ -80,6 +82,7 @@ export function defaultProfile(): Profile {
     seenTips: [],
     lastDaily: null,
     winsByHeir: {},
+    agesSeen: false,
   };
 }
 

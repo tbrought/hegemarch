@@ -88,8 +88,18 @@ body {
 .screen.menu {
   align-items: center;
   flex-direction: column;
-  justify-content: center;
-  gap: 18px;
+  justify-content: flex-start;
+  gap: 16px;
+}
+
+/* (Centred while it fits. In a window too short for it, it scrolls from the top: a column centred by
+   `justify-content` would lose its top there.) */
+.screen.menu > :first-child {
+  margin-top: auto;
+}
+
+.screen.menu > :last-child {
+  margin-bottom: auto;
 }
 
 .page {
@@ -117,27 +127,42 @@ body {
   margin-top: -2px;
 }
 
-.menu-buttons {
+/* ------------------------------------------------------------------ title screen */
+
+.home {
   display: flex;
   flex-direction: column;
-  gap: 12px;
-  width: min(340px, 100%);
-  margin-top: 8px;
+  gap: 14px;
+  width: min(900px, 100%);
+  margin-top: 6px;
 }
 
-/* The Ages run is a mode of its own, so its button looks like no other: an ember frame, and a picture of
-   the climb drawn by the game (app/agesArt.ts). */
-button.ages {
-  padding: 9px 12px 10px;
+/* The pictures the game draws for the ways to play (app/modeArt.ts). */
+.mode-art {
+  display: block;
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+  pointer-events: none;
+}
+
+/* The run in progress, or a new player's First Night: the one thing most likely wanted, so the largest
+   thing on the screen. Its picture, what it is, and one plain word for what the click does. */
+.hero {
+  display: grid;
+  grid-template-columns: minmax(0, 246px) minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 18px;
+  padding: 12px 18px 12px 12px;
+  text-align: left;
   box-shadow:
-    0 calc(var(--px) * -1) 0 0 var(--ember),
-    0 var(--px) 0 0 var(--ember),
-    calc(var(--px) * -1) 0 0 0 var(--ember),
-    var(--px) 0 0 0 var(--ember),
+    0 calc(var(--px) * -1) 0 0 var(--gold),
+    0 var(--px) 0 0 var(--gold),
+    calc(var(--px) * -1) 0 0 0 var(--gold),
+    var(--px) 0 0 0 var(--gold),
     inset 0 calc(var(--px) * -1) 0 0 var(--indigo);
 }
 
-button.ages:hover {
+.hero:hover {
   box-shadow:
     0 calc(var(--px) * -1) 0 0 var(--gold),
     0 var(--px) 0 0 var(--gold),
@@ -146,35 +171,238 @@ button.ages:hover {
     inset 0 calc(var(--px) * -1) 0 0 var(--night);
 }
 
-.ages-art {
-  display: block;
-  width: 100%;
-  image-rendering: pixelated;
-  image-rendering: crisp-edges;
+.hero .heir-art,
+.hero .mode-art {
+  width: calc(100% - var(--px) * 2);
+  height: 72px;
+  margin: var(--px);
+  background: var(--void);
+  box-shadow: 0 0 0 var(--px) var(--hc);
   pointer-events: none;
 }
 
-button.ages .ages-art {
-  height: 42px;
-  margin-bottom: 8px;
+.hero-text {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
 }
 
-button.ages .ages-title {
-  display: block;
-  color: var(--ember);
+.hero-kicker {
+  font-size: 9px;
+  letter-spacing: 0.1em;
+  color: var(--dusk);
 }
 
-button.ages:hover .ages-title {
-  color: var(--gold);
+.hero-title {
+  font-size: 16px;
+  line-height: 1.3;
+  color: var(--hc);
 }
 
-button.ages small {
-  display: block;
-  margin-top: 7px;
+.hero-line {
   font-family: var(--body);
-  font-size: 15px;
+  font-size: 17px;
   letter-spacing: 0;
+  line-height: 1.3;
   color: var(--mist);
+}
+
+.hero-go {
+  margin: var(--px);
+  padding: 16px 22px 15px;
+  font-size: 14px;
+  white-space: nowrap;
+  color: var(--gold);
+  background: var(--wine);
+  box-shadow:
+    0 calc(var(--px) * -1) 0 0 var(--gold),
+    0 var(--px) 0 0 var(--gold),
+    calc(var(--px) * -1) 0 0 0 var(--gold),
+    var(--px) 0 0 0 var(--gold),
+    inset 0 calc(var(--px) * -1) 0 0 var(--night);
+}
+
+.hero:hover .hero-go {
+  color: var(--bone);
+  background: var(--red);
+}
+
+/* "CHOOSE YOUR RUN", ruled to both sides. */
+.home-label {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin: 4px var(--px) 0;
+  font-family: var(--display);
+  font-size: 9px;
+  letter-spacing: 0.1em;
+  color: var(--dusk);
+}
+
+.home-label::before,
+.home-label::after {
+  content: '';
+  flex: 1;
+  height: var(--px);
+  background: var(--indigo);
+}
+
+/* The ways to play, side by side. Each is one button: a window onto its picture, its name in its own
+   color (--mc), one line on what it is, and how long it takes. */
+.modes {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.mode {
+  --mc: var(--gold);
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  padding: 12px 14px 14px;
+  text-align: left;
+}
+
+.mode.ages {
+  --mc: var(--ember);
+}
+
+.mode.daily {
+  --mc: var(--teal);
+}
+
+.mode:hover {
+  box-shadow:
+    0 calc(var(--px) * -1) 0 0 var(--mc),
+    0 var(--px) 0 0 var(--mc),
+    calc(var(--px) * -1) 0 0 0 var(--mc),
+    var(--px) 0 0 0 var(--mc),
+    inset 0 calc(var(--px) * -1) 0 0 var(--night);
+}
+
+.mode .mode-art {
+  width: calc(100% - var(--px) * 2);
+  height: 66px;
+  margin: var(--px) var(--px) 14px;
+  background: var(--void);
+  box-shadow: 0 0 0 var(--px) var(--indigo);
+}
+
+.mode:hover .mode-art {
+  box-shadow: 0 0 0 var(--px) var(--mc);
+}
+
+/* (With no banner over them, the ways to play are what the screen is about: their pictures grow.) */
+.home.solo .mode .mode-art {
+  height: 90px;
+}
+
+.home.solo .mode-name {
+  font-size: 14px;
+}
+
+.mode-name {
+  font-size: 13px;
+  color: var(--mc);
+}
+
+.mode-pitch {
+  flex: 1;
+  margin-top: 9px;
+  font-family: var(--body);
+  font-size: 17px;
+  letter-spacing: 0;
+  line-height: 1.3;
+  color: var(--mist);
+}
+
+.mode-meta {
+  margin-top: 12px;
+  font-size: 8px;
+  letter-spacing: 0.08em;
+  color: var(--dusk);
+}
+
+/* "NEW", on a way to play the player has not looked at yet. */
+.mode-flag {
+  position: absolute;
+  top: calc(var(--px) * -3);
+  right: 12px;
+  padding: 5px 7px 4px;
+  font-size: 8px;
+  letter-spacing: 0.08em;
+  color: var(--void);
+  background: var(--ember);
+}
+
+/* Everything that is not a run: a quiet row at the foot. */
+.home-links {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 10px;
+}
+
+/* A light on the Hall of Heirs when the player's Legacy would buy something there. */
+.pip {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  margin-left: 10px;
+  vertical-align: 1px;
+  background: var(--gold);
+  animation: pip 1s steps(1) infinite;
+}
+
+@keyframes pip {
+  50% {
+    background: var(--wine);
+  }
+}
+
+@media (max-width: 760px) {
+  .hero {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 12px;
+    padding: 12px;
+    text-align: center;
+  }
+
+  /* One way to play per row. */
+  .modes {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .mode .mode-art,
+  .home.solo .mode .mode-art {
+    height: 60px;
+    margin-bottom: 12px;
+  }
+}
+
+/* A short window: a smaller title leaves the room to what can be clicked. */
+@media (max-height: 800px) {
+  .screen.menu {
+    gap: 12px;
+  }
+
+  .logo {
+    font-size: clamp(28px, 5.6vw, 56px);
+  }
+
+  .tagline {
+    font-size: 18px;
+  }
+}
+
+/* The ways to play again, over the setup of a run: a change of mind costs one click. */
+.mode-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 14px;
 }
 
 /* The same picture over the setup of an Ages run, with the ages named under its figures. */
@@ -188,7 +416,8 @@ button.ages small {
     var(--px) 0 0 0 var(--ember);
 }
 
-.ages-head .ages-art {
+.ages-head .mode-art {
+  width: 100%;
   height: 60px;
 }
 
@@ -526,19 +755,6 @@ input[type='range'] {
   background: var(--gold);
 }
 
-.first-night {
-  text-align: center;
-  padding: 22px 24px 26px;
-}
-
-.first-night .big {
-  font-size: 20px;
-  color: var(--mist);
-  line-height: 1.45;
-  margin: 8px auto 18px;
-  max-width: 560px;
-}
-
 /* ------------------------------------------------------------------ hall, results */
 
 .perks {
@@ -703,6 +919,10 @@ table.stats tr.total td {
 @media (prefers-reduced-motion: reduce) {
   button:active {
     transform: none;
+  }
+
+  .pip {
+    animation: none;
   }
 }
 

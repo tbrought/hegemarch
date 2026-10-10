@@ -95,7 +95,8 @@ try {
   await page.waitForFunction(() => window.__app.attract.game !== window.__backdrop, null, { timeout: 30000 });
   await ev(() => (window.__backdrop = window.__app.attract.game));
   await wait(1500);
-  check('a finished backdrop sector is replaced by one new sector', await ev(() => window.__app.attract.game === window.__backdrop && window.__app.attract.phase === 'live' && !window.__backdrop.outcome));
+  // (Now and then a house wins the new sector within its opening minutes, before it is ever shown; that one is rightly replaced too.)
+  check('a finished backdrop sector is replaced by one new sector', await ev(() => !!window.__backdrop.outcome || (window.__app.attract.game === window.__backdrop && window.__app.attract.phase === 'live')));
   await page.click('[data-sa="settings"]');
   await page.click('[data-sa="toggle:crt"]');
   check('settings toggle (CRT) persists', await ev(() => JSON.parse(localStorage.getItem('hegemarch.profile.v1')).settings.crt === true));
@@ -105,11 +106,29 @@ try {
   check('Hall of Heirs lists perks', (await page.$$('[data-sa^="perk:"]')).length >= 5);
   await page.click('[data-sa="menu"]');
 
-  // ---- First-run setup offers the guided First Night, with an escape hatch ----
+  // ---- The title screen: a new player is offered the guided First Night first, and the ways to play under it ----
+  check('first run offers The First Night, as the banner of the title screen', (await page.$('.hero[data-sa="first-night"]')) !== null && /FIRST NIGHT/.test(await page.textContent('.hero')));
+  check('the three ways to play stand under it, each with its picture', await ev(() => ['setup', 'ages', 'daily'].every((a) => document.querySelector(`.modes .mode[data-sa="${a}"] canvas.mode-art`))));
+  await wait(300); // (the pictures are drawn with the next frame)
+  check('their pictures are drawn', await ev(() =>
+    [...document.querySelectorAll('.mode canvas.mode-art')].every((c) => {
+      const d = c.getContext('2d').getImageData(0, 0, c.width, c.height).data;
+      let n = 0;
+      for (let i = 3; i < d.length; i += 4) if (d[i]) n++;
+      return c.width > 40 && n > 20;
+    })));
+  check('the Ages run is marked as new until it has been looked at', (await page.textContent('.mode.ages .mode-flag')) === 'NEW');
+  check('the daily run counts down to the next one', /^ENDS IN (\d+H )?\d+M$/.test(await page.textContent('[data-daily]')), await page.textContent('[data-daily]'));
   await page.click('[data-sa="setup"]');
-  check('first run offers The First Night', (await page.$('[data-sa="first-night"]')) !== null);
-  await page.click('[data-sa="custom"]');
-  check('custom setup lists houses', (await page.$$('.heir')).length === 6);
+  check('SECTOR RUN opens its setup, with the houses', (await page.$$('.heir')).length === 6 && (await page.textContent('.mode-tabs .active')) === 'SECTOR RUN');
+  // The ways to play are tabs here: a change of mind costs one click.
+  await page.click('.mode-tabs [data-sa="ages"]');
+  check('the setup switches to an Ages run in place', (await page.textContent('.mode-tabs .active')) === 'AGES RUN' && (await page.$('.ages-head canvas.mode-art')) !== null && (await page.$('[data-sa="guided"]')) === null);
+  await page.click('.mode-tabs [data-sa="daily"]');
+  check('and to the daily run', /^DAILY RUN/.test(await page.textContent('.mode-tabs .active')) && (await page.$('[data-sa="size:small"]')) === null);
+  await page.click('[data-sa="menu"]');
+  check('once looked at, the Ages run is no longer marked as new', (await page.$('.mode-flag')) === null);
+  await page.click('[data-sa="setup"]');
   // Each house card carries a banner: its Hearth and starting fleet, drawn by the game, and alive.
   const banner = () =>
     ev(() => {
@@ -561,6 +580,11 @@ try {
   await clickUi('m-4');
   await wait(600);
   check('save and quit returns to the menu with CONTINUE', (await page.$('[data-sa="continue"]')) !== null);
+  check('the run in progress is the banner of the title screen: what it is, and one word for the click', await ev(() => {
+    const h = document.querySelector('.hero[data-sa="continue"]');
+    return !!h && /SECTOR RUN IN PROGRESS/.test(h.textContent) && /played/.test(h.querySelector('.hero-line').textContent) && h.querySelector('.hero-go').textContent === 'CONTINUE' && !!h.querySelector('canvas.heir-art');
+  }), await ev(() => document.querySelector('.hero')?.textContent.replace(/\s+/g, ' ')));
+  check('and the First Night is not offered over it', (await page.$('[data-sa="first-night"]')) === null);
 
   // ---- A new run while one is saved: told at the top, asked in a pop-up, and the page stays put ----
   await page.setViewportSize({ width: 1100, height: 600 }); // short enough that the setup page scrolls

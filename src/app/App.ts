@@ -16,9 +16,9 @@ import type { Difficulty, GameConfig, MapSize } from '../game/types';
 import { applyRunToProfile, computeLegacy, PERKS, UNLOCKS, type LegacyReport } from '../meta/legacy';
 import { clearRun, defaultProfile, hasRun, loadProfile, loadRun, saveProfile, saveRun, todayKey, type Profile } from '../meta/profile';
 import { fmtTime, Renderer } from '../render/Renderer';
-import { drawAgesArt } from './agesArt';
 import { Attract } from './Attract';
 import { drawHouseBanners, startingFleet } from './houseArt';
+import { drawModeArt } from './modeArt';
 import { Screen } from '../render/Screen';
 import { groupBoons } from '../ui/boons';
 import { installDomTips } from '../ui/domtips';
@@ -89,12 +89,14 @@ export class App {
   /** A one-time message on the title screen. */
   private menuNotice = '';
   /** `confirm`: the launch that waits for an answer about the saved run it would replace ('' = none). */
-  private setup: { heir: string; size: MapSize; difficulty: Difficulty; seed: string; daily: boolean; ages: boolean; confirm: '' | 'launch' | 'first-night'; guided: boolean; custom: boolean } = {
-    heir: 'concord', size: 'medium', difficulty: 1, seed: '', daily: false, ages: false, confirm: '', guided: true, custom: false,
+  private setup: { heir: string; size: MapSize; difficulty: Difficulty; seed: string; daily: boolean; ages: boolean; confirm: '' | 'launch'; guided: boolean } = {
+    heir: 'concord', size: 'medium', difficulty: 1, seed: '', daily: false, ages: false, confirm: '', guided: true,
   };
   private confirmReset = false;
   /** One line about the saved run (house, sector, time played), read when the setup screen opens. */
   private savedRun = '';
+  /** The day (UTC) the title screen was drawn for: when it turns, the daily run is a new one. */
+  private menuDay = '';
 
   constructor() {
     this.canvas = document.getElementById('game') as HTMLCanvasElement;
@@ -148,8 +150,11 @@ export class App {
         g.fillStyle = '#0b0a1a';
         g.fillRect(0, 0, this.screenObj.W, this.screenObj.H);
       }
-      if (this.screen === 'setup') drawHouseBanners(this.ui, now / 1000);
-      if (this.screen === 'menu' || this.screen === 'setup') drawAgesArt(this.ui, now / 1000);
+      if (this.screen === 'menu' || this.screen === 'setup') {
+        drawHouseBanners(this.ui, now / 1000);
+        drawModeArt(this.ui, now / 1000);
+      }
+      if (this.screen === 'menu') this.tickMenu();
     } catch (err) {
       console.error(err);
     }
@@ -523,6 +528,10 @@ export class App {
         st.daily = false;
         st.ages = true;
         st.confirm = '';
+        if (!this.profile.agesSeen) {
+          this.profile.agesSeen = true;
+          saveProfile(this.profile);
+        }
         this.savedRun = this.describeSavedRun();
         this.showSetup();
         break;
@@ -530,27 +539,18 @@ export class App {
         st.daily = true;
         st.ages = false;
         st.confirm = '';
-        st.custom = true;
         this.savedRun = this.describeSavedRun();
         this.showSetup();
         break;
-      case 'custom':
-        st.custom = true;
-        this.showSetup();
-        break;
       case 'first-night':
-        // A saved run would be replaced: ask first, in a pop-up over the page.
-        if (hasRun()) {
-          st.confirm = 'first-night';
-          this.showSetup();
-          break;
-        }
-        void this.startRun(this.firstNightConfig());
+        // (The title screen offers the First Night only when no run is saved; a saved one is never replaced unasked.)
+        if (hasRun()) this.showMenu();
+        else void this.startRun(this.firstNightConfig());
         break;
       case 'confirm-new': {
         const which = st.confirm;
         st.confirm = '';
-        if (which) void this.startRun(which === 'first-night' ? this.firstNightConfig() : this.buildConfig());
+        if (which) void this.startRun(this.buildConfig());
         break;
       }
       case 'confirm-cancel':
@@ -651,7 +651,6 @@ export class App {
         this.profile.seenTips = [];
         saveProfile(this.profile);
         this.setup.guided = true;
-        this.setup.custom = false;
         this.showSettings();
         break;
       case 'reset':
@@ -663,7 +662,6 @@ export class App {
           clearRun();
           this.confirmReset = false;
           this.setup.guided = true;
-          this.setup.custom = false;
         }
         this.showSettings();
         break;
@@ -688,33 +686,110 @@ export class App {
     return this.profile.settings.crt ? ' crt' : '';
   }
 
+  /**
+   * The title screen. What the player most likely wants is the largest thing on it: the run in progress,
+   * or, for a new player, the guided First Night. Under it the ways to play stand side by side, each
+   * with a living picture of what it is (app/modeArt.ts); everything else is a quiet row at the foot.
+   */
   private showMenu() {
     this.screen = 'menu';
     if (this.sfx.ctx && this.music.playing !== 'title') this.music.play('title');
     const p = this.profile;
     const saved = hasRun();
+    const run = saved ? this.savedRunInfo() : null;
+    const first = !saved && !p.tutorialDone && p.runs === 0;
     const dailyDone = p.lastDaily === todayKey();
+    this.menuDay = todayKey();
     queueMicrotask(() => (this.menuNotice = ''));
+    const banner = (heir: string) => `<canvas class="heir-art chosen" data-heir="${heir}" height="24" aria-hidden="true"></canvas>`;
+    const hero = saved
+      ? `<button class="hero" data-sa="continue" style="--hc:${run?.color ?? 'var(--gold)'}">
+          ${run && run.era >= 0 ? `<canvas class="mode-art" data-art="ages" data-era="${run.era}" data-color="${run.color}" aria-hidden="true"></canvas>` : banner(run?.heir ?? 'concord')}
+          <span class="hero-text"><span class="hero-kicker">${esc((run?.kind ?? 'Run').toUpperCase())} IN PROGRESS</span>
+            <span class="hero-title">${esc((run?.name ?? 'Your saved run').toUpperCase())}</span>
+            <span class="hero-line">${esc(run?.line ?? 'Pick it up where you left it.')}</span></span>
+          <span class="hero-go">CONTINUE</span>
+        </button>`
+      : first
+        ? `<button class="hero" data-sa="first-night" style="--hc:${HEIR_BY_ID.concord.color}">
+          ${banner('concord')}
+          <span class="hero-text"><span class="hero-kicker">YOUR FIRST RUN</span>
+            <span class="hero-title">THE FIRST NIGHT</span>
+            <span class="hero-line">A guided run in a small, quiet sector. The game shows you the first few moves, one at a time.</span></span>
+          <span class="hero-go">BEGIN</span>
+        </button>`
+        : '';
+    const offers = this.hallOffers();
     this.ui.innerHTML = `<div class="screen menu${this.crt()}">
       <div class="logo">HEGEMARCH</div>
       <div class="tagline">The last Hegemarch fell, and the sector went dark. Light it again, world by world, and take the crown.</div>
       ${this.menuNotice ? `<div class="px-box notice">${esc(this.menuNotice)}</div>` : ''}
-      <div class="menu-buttons">
-        ${saved ? '<button class="primary" data-sa="continue">CONTINUE</button>' : ''}
-        <button class="${saved ? '' : 'primary'}" data-sa="setup">NEW RUN</button>
-        <button class="ages" data-sa="ages" data-tip="A longer game. Every house starts in the Stone Age on one world, and climbs age by age to the stars.">
-          <canvas class="ages-art" height="14" aria-hidden="true"></canvas>
-          <span class="ages-title">AGES RUN</span>
-          <small>From the Stone Age to the stars</small>
-        </button>
-        <button data-sa="daily" data-tip="The same sector for every player today: medium, Normal, with [Legacy ×1.25].">DAILY RUN${dailyDone ? ' ✓' : ''}</button>
-        <button data-sa="hall" data-tip="Spend Legacy, earned by every run, on new houses, perks and unlocks.">HALL OF HEIRS · <span class="gold">◆${p.legacy}</span></button>
-        <button data-sa="howto">HOW TO PLAY</button>
-        <button data-sa="settings">SETTINGS</button>
+      <div class="home${hero ? '' : ' solo'}">
+        ${hero}
+        <div class="home-label"><span>${saved ? 'OR START A NEW RUN' : first ? 'OR CHOOSE YOUR OWN RUN' : 'CHOOSE YOUR RUN'}</span></div>
+        <div class="modes">
+          <button class="mode sector" data-sa="setup" data-tip="Choose a house, a sector and a difficulty. 3 to 6 houses, 25 to 70 minutes. The sector, your rivals, your Destinies and your Boons are new every run.">
+            <canvas class="mode-art" data-art="sector" aria-hidden="true"></canvas>
+            <span class="mode-name">SECTOR RUN</span>
+            <span class="mode-pitch">The classic. A dark sector, rival houses and one crown.</span>
+            <span class="mode-meta">25 TO 70 MIN</span>
+          </button>
+          <button class="mode ages" data-sa="ages" data-tip="A longer game. Every house starts in the Stone Age on one world, and climbs age by age to the stars.">
+            ${p.agesSeen ? '' : '<span class="mode-flag">NEW</span>'}
+            <canvas class="mode-art" data-art="ages" aria-hidden="true"></canvas>
+            <span class="mode-name">AGES RUN</span>
+            <span class="mode-pitch">The long game. From the Stone Age to the stars.</span>
+            <span class="mode-meta">50 TO 110 MIN</span>
+          </button>
+          <button class="mode daily" data-sa="daily" data-tip="The same sector for every player today: medium, Normal, with [Legacy ×1.25]. The picture is the chart of today's sector.">
+            <canvas class="mode-art" data-art="daily" aria-hidden="true"></canvas>
+            <span class="mode-name">DAILY RUN${dailyDone ? ' ✓' : ''}</span>
+            <span class="mode-pitch">Today's sector, the same for every player. Legacy ×1.25.</span>
+            <span class="mode-meta" data-daily>${this.dailyLine()}</span>
+          </button>
+        </div>
+        <div class="home-links">
+          <button class="small" data-sa="hall" data-tip="Spend Legacy, earned by every run, on new houses, perks and unlocks.${offers ? ` [You can afford ${offers} of them now.]` : ''}">HALL OF HEIRS · <span class="gold">◆${p.legacy}</span>${offers ? '<span class="pip" aria-hidden="true"></span>' : ''}</button>
+          <button class="small" data-sa="howto">HOW TO PLAY</button>
+          <button class="small" data-sa="settings">SETTINGS</button>
+        </div>
       </div>
       <div class="menu-foot">Runs ${p.runs} · Crowned ${p.wins}${p.bestTime !== null ? ` · Fastest crown ${fmtTime(p.bestTime)}` : ''}<br>
       Real-time strategy · a new sector, new rivals and new Boons every run · v${GAME_VERSION}</div>
     </div>`;
+  }
+
+  /** While the title screen shows: the daily run counts down to the next one, and turns over with the day. */
+  private tickMenu() {
+    if (todayKey() !== this.menuDay) {
+      this.showMenu();
+      return;
+    }
+    const el = this.ui.querySelector('[data-daily]');
+    const line = this.dailyLine();
+    if (el && el.textContent !== line) el.textContent = line;
+  }
+
+  /** "ENDS IN 5H 12M": how long today's daily sector lasts (the day turns at midnight, UTC). */
+  private dailyLine(): string {
+    const now = new Date();
+    const left = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + 1) - now.getTime();
+    const m = Math.max(1, Math.ceil(left / 60000));
+    const span = m >= 60 ? `${Math.floor(m / 60)}H ${String(m % 60).padStart(2, '0')}M` : `${m}M`;
+    return this.profile.lastDaily === todayKey() ? `PLAYED · NEXT IN ${span}` : `ENDS IN ${span}`;
+  }
+
+  /** How many things in the Hall of Heirs the player's Legacy would buy right now. */
+  private hallOffers(): number {
+    const p = this.profile;
+    let n = 0;
+    for (const h of HEIRS) if (h.cost > 0 && !p.heirs.includes(h.id) && p.legacy >= h.cost) n++;
+    for (const pk of PERKS) {
+      const rank = p.perks[pk.id] ?? 0;
+      if (rank < pk.costs.length && p.legacy >= pk.costs[rank]) n++;
+    }
+    for (const u of UNLOCKS) if (!(u.id === 'pacts' ? p.unlockPacts : p.unlockLegendary) && p.legacy >= u.cost) n++;
+    return n;
   }
 
   /**
@@ -729,17 +804,37 @@ export class App {
     if (was && now) now.scrollTop = was;
   }
 
-  /** "Solar Concord · Medium sector · Normal · 12:34 played" for the saved run ('' if there is none). */
-  private describeSavedRun(): string {
+  /**
+   * The saved run, for the title screen and the setup: its house, the kind of run ("Sector run"), and a
+   * line like "Medium · Normal · 7 worlds · 12:34 played". `era`: the age an Ages run has reached on its
+   * cradle (-1 for any other run). Null if there is no saved run, or it cannot be read.
+   */
+  private savedRunInfo(): { heir: string; name: string; color: string; kind: string; line: string; era: number } | null {
     const d = loadRun();
-    if (!d) return '';
+    if (!d) return null;
     try {
-      const size = d.config.size[0].toUpperCase() + d.config.size.slice(1);
-      const kind = d.config.mode === 'ages' ? (d.config.stage === 'stars' ? ' · Ages run, among the stars' : ' · Ages run, on the cradle') : d.config.daily ? ' · daily run' : d.config.tutorial ? ' · the First Night' : '';
-      return `${HEIR_BY_ID[d.config.heir]?.name ?? 'Your house'} · ${size} sector · ${DIFFICULTY_NAMES[d.config.difficulty]} · ${fmtTime(d.time)} played${kind}`;
+      const c = d.config;
+      const heir = HEIR_BY_ID[c.heir];
+      const ages = c.mode === 'ages';
+      const cradle = ages && c.stage !== 'stars';
+      const era = cradle ? Math.max(0, Math.min(LAST_CRADLE_ERA, d.factions[d.playerId]?.era ?? 0)) : -1;
+      const kind = ages ? 'Ages run' : c.daily ? 'Daily run' : c.tutorial ? 'First Night' : 'Sector run';
+      const held = d.nodes.filter((n) => n.kind === 'planet' && n.owner === d.playerId).length;
+      // (An Ages run: the time on the cradle, plus the time among the stars since the player arrived there.)
+      const played = c.ages ? c.ages.cradleTime + Math.max(0, d.time - c.ages.arrival) : d.time;
+      const where = cradle ? [ERAS[era].name] : ages ? ['Among the stars'] : [];
+      const line = [...where, c.size[0].toUpperCase() + c.size.slice(1), DIFFICULTY_NAMES[c.difficulty], `${held} ${cradle ? 'land' : 'world'}${held === 1 ? '' : 's'}`, `${fmtTime(played)} played`].join(' · ');
+      return { heir: c.heir, name: heir?.name ?? 'Your house', color: heir?.color ?? '#ffd23f', kind, line, era };
     } catch {
-      return 'a saved run';
+      return null;
     }
+  }
+
+  /** "Solar Concord · Sector run · Medium · Normal · 7 worlds · 12:34 played" for the saved run ('' if there is none). */
+  private describeSavedRun(): string {
+    if (!hasRun()) return '';
+    const run = this.savedRunInfo();
+    return run ? `${run.name} · ${run.kind} · ${run.line}` : 'a saved run';
   }
 
   private showSetup() {
@@ -765,20 +860,6 @@ export class App {
           </div>
         </div></div>`
       : '';
-    // A simpler first-run setup: one big choice.
-    if (!p.tutorialDone && p.runs === 0 && !st.custom && !st.daily && !st.ages) {
-      this.put('setup', `<div class="screen${this.crt()}"><div class="page" style="max-width:760px">
-        ${savedNote}
-        <div class="px-box first-night" style="--hc:${HEIR_BY_ID.concord.color}">
-          <canvas class="heir-art chosen" data-heir="concord" height="24" data-tip="${esc(`You start with ${startingFleet(HEIR_BY_ID.concord)}.`)}"></canvas>
-          <h1>THE FIRST NIGHT</h1>
-          <div class="big">Your first run is guided. You lead the <span class="gold">Solar Concord</span> in a small, quiet sector, and the game shows you the first few moves one at a time.</div>
-          <button class="primary" data-sa="first-night" style="font-size:14px;padding:16px 22px">BEGIN</button>
-        </div>
-        <div class="foot-actions"><button data-sa="menu">BACK</button><button data-sa="custom" class="small">CHOOSE MY OWN SETUP</button></div>
-      </div></div>${dialog}`);
-      return;
-    }
     const heirs = HEIRS.map((h) => {
       const owned = p.heirs.includes(h.id);
       return `<div class="heir px-box ${st.heir === h.id ? 'sel' : ''} ${owned ? '' : 'locked'}" style="--hc:${h.color}" data-sa="heir:${h.id}">
@@ -803,13 +884,16 @@ export class App {
         ];
     const diffHelp = ['Rivals earn less and attack late. Good for learning.', 'A fair fight.', 'Richer, faster, bolder rivals.', 'Merciless.'];
     const daily = st.daily;
+    // The ways to play, as tabs: a change of mind costs one click here, not a trip back to the title screen.
+    const tab = (sa: string, name: string, on: boolean) => `<button class="small${on ? ' active' : ''}" data-sa="${sa}" role="tab" aria-selected="${on}">${name}</button>`;
     this.put('setup', `<div class="screen${this.crt()}"><div class="page">
-      <h1>${daily ? 'DAILY RUN' : ages ? 'AGES RUN' : 'NEW RUN'}</h1>
+      <h1>NEW RUN</h1>
+      <div class="mode-tabs" role="tablist">${tab('setup', 'SECTOR RUN', !daily && !ages)}${tab('ages', 'AGES RUN', ages)}${tab('daily', `DAILY RUN${p.lastDaily === todayKey() ? ' ✓' : ''}`, daily)}</div>
       <div class="lead">${daily ? `Today's sector is the same for everyone: medium, Normal, seed ${dailySeed()}. Legacy ×1.25.` : ages ? 'A longer game. Every house begins as a tribe in the Stone Age, all on one cradle world. Climb through the ages, build your Ark, and carry what you have won to the stars, where the crown is decided.' : 'Choose a house to bid for the crown of Hegemarch. The sector, your rivals, your Destinies and your Boons are new every run.'}</div>
       ${savedNote}
-      ${ages ? `<div class="px-box ages-head"><canvas class="ages-art" height="20" aria-hidden="true"></canvas>
+      ${ages ? `<div class="px-box ages-head"><canvas class="mode-art" data-art="ages" aria-hidden="true"></canvas>
         <div class="ages-names">${ERAS.map((e) => `<span>${e.short}</span>`).join('')}</div></div>` : ''}
-      ${ages && !p.tutorialDone ? '<div class="px-box notice wide"><span>New to Hegemarch? An Ages run is the long game. The guided First Night (NEW RUN) teaches the basics in a few minutes.</span></div>' : ''}
+      ${ages && !p.tutorialDone ? '<div class="px-box notice wide"><span>New to Hegemarch? An Ages run is the long game. The guided First Night, on the title screen, teaches the basics in a few minutes.</span></div>' : ''}
       <div class="heirs">${heirs}</div>
       ${daily ? '' : `<div class="opts">
         <div class="opt px-box"><h4>${ages ? 'SIZE' : 'SECTOR'}</h4><div class="row">${sizes.map(([k, n, d]) => `<button class="small ${st.size === k ? 'active' : ''}" data-sa="size:${k}" data-tip="${esc(d)}">${n}</button>`).join('')}</div>

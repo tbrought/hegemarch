@@ -85,7 +85,7 @@ try {
   check('the menu offers an Ages run', (await page.$('[data-sa="ages"]')) !== null);
   await page.click('[data-sa="ages"]');
   await wait(300);
-  check('its setup says what it is, and has no First Night guide', (await page.textContent('h1')) === 'AGES RUN' && (await page.$('[data-sa="guided"]')) === null && /Stone Age/.test(await page.textContent('.lead')));
+  check('its setup says what it is, and has no First Night guide', (await page.textContent('.mode-tabs .active')) === 'AGES RUN' && (await page.$('[data-sa="guided"]')) === null && /Stone Age/.test(await page.textContent('.lead')));
   await page.click('[data-sa="size:small"]');
   await page.click('[data-sa="launch"]');
   await page.waitForFunction(() => window.__app?.screen === 'game', null, { timeout: 60000 });

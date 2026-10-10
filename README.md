@@ -27,7 +27,12 @@ Requires Node 18+ (developed on Node 24). Any modern desktop browser works.
 
 ## Your first run
 
-The first run is **guided** (the First Night). It shows you six things, one at a time:
+The title screen offers three ways to play: a **Sector run** (the classic: 25 to 70 minutes), an
+**Ages run** (the long game, see below) and the **Daily run** (today's sector, the same for every
+player). A run in progress is the banner at the top: CONTINUE.
+
+The first run is **guided** (the First Night, BEGIN on the title screen). It shows you six things, one
+at a time:
 
 1. **Kindle a dark world.** Click a grey world, then press KINDLE. A seed ship flies out and lights it.
 2. **Build a Striker** at your Hearth.

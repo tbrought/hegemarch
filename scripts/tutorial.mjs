@@ -70,7 +70,6 @@ async function freshGuidedRun() {
   await ev(() => localStorage.clear());
   await page.reload();
   await wait(2000);
-  await page.click('[data-sa="setup"]');
   await page.click('[data-sa="first-night"]');
   await page.waitForFunction(() => window.__app?.screen === 'game', null, { timeout: 60000 });
   await wait(1000);

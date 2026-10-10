@@ -210,8 +210,25 @@ Measured with `npm run simulate` and `npm run balance:passive`. Speeds are ½×,
   unfold under the pointer, which also holds them on screen. The lines are hints, not buttons, so
   clicks and orders still reach the map beneath. The full log (L) wraps every message, stamps it
   with its game time, scrolls, and jumps to the place on a click.
-- **House banners** (`src/app/houseArt.ts`): each house card on the setup page (and the First Night
-  card) carries a small canvas drawn with the game's sprites at three screen pixels per pixel: the
+- **The title screen puts first what the player most likely wants.** Its largest element is a
+  banner: the run in progress (the house's banner, "SECTOR RUN IN PROGRESS", the house, a line like
+  "Medium · Normal · 7 worlds · 12:34 played", and one word for the click: CONTINUE), or, for a
+  player who has never played, the guided First Night (BEGIN). With neither, there is no banner and
+  the cards under it grow. Under the banner the **ways to play** stand side by side as cards
+  (SECTOR RUN, AGES RUN, DAILY RUN): choosing a mode is the title screen itself, not a step after
+  it. Each card is one button with a living picture of what the mode is (`src/app/modeArt.ts`), its
+  name in its own color, one line on what it is, and how long it takes. The pictures: a tiny sector
+  that plays itself (a house lights the dark worlds, meets a rival, takes its Hearth and is crowned;
+  then a new sector is dealt to other houses); the climb of the ages toward an Ark; and the chart of
+  today's daily sector, which is the real map every player is dealt that day, with a countdown to
+  the next. A saved Ages run still on its cradle shows the climb in its banner, lit as far as the
+  age it has reached. A mode the player has not opened yet is flagged NEW. Everything that is not a
+  run (Hall of Heirs, How to Play, Settings) is a quiet row at the foot; the Hall's button shows a
+  light when the player's Legacy would buy something there. The setup page carries the same three
+  modes as tabs, so a change of mind costs one click. In a window too short for it the title screen
+  scrolls from the top; under 760 px wide the cards stack, each with its picture beside its words.
+- **House banners** (`src/app/houseArt.ts`): each house card on the setup page (and the banner of
+  the title screen) carries a small canvas drawn with the game's sprites at three screen pixels per pixel: the
   house's Hearth at the left, ringed in its color, and the fleet it really starts with (its Ark and
   escorts) flying out over drifting stars, each ship bobbing to its own beat. Under the pointer
   the fleet speeds up; the chosen house surges ahead, flies on fast, and its Ark sends out a ring
@@ -296,7 +313,8 @@ src/render/    pixel canvas: Screen (scaling), Camera, Renderer, worlds, sprites
 src/ui/        immediate-mode HUD: Ui toolkit, Hud, Modals, Actions, Input, Tutorial, Tips
 src/audio/     Sfx (synth) and Music (sequencer)
 src/app/       App (menus, loop, results), Attract (the sector that plays itself behind the menus
-               and on the website) and Session (one run's shared UI state)
+               and on the website), houseArt and modeArt (the pictures the menus draw) and Session
+               (one run's shared UI state)
 src/site/      the website's script: the live sector, houses, fleet, Boon draft (see "The website")
 src/meta/      profile, settings and Legacy
 ```
@@ -338,9 +356,9 @@ A second way to play, beside the classic run: every house begins as a tribe in t
 one **cradle world**, and climbs age by age to the stars. It is a longer game (about an hour or
 more): the cradle first, then the classic game among the stars with what was won on the cradle.
 
-Its button on the title screen looks like no other: an ember frame around a picture of the climb, the
-swift line of each age marching toward an Ark that lifts into the stars (`app/agesArt.ts`). The same
-picture heads its setup, with the six ages named under it.
+Its card on the title screen shows the climb: the swift line of each age marching toward an Ark that
+lifts into the stars (`app/modeArt.ts`). The same picture heads its setup, with the six ages named
+under it.
 
 ### The cradle
 

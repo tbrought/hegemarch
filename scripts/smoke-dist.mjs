@@ -21,7 +21,6 @@ await page.goto(file);
 await page.waitForSelector('[data-sa="setup"]', { timeout: 20000 });
 await page.waitForTimeout(2500);
 await page.screenshot({ path: '.shots/dist-menu.png' });
-await page.click('[data-sa="setup"]');
 await page.click('[data-sa="first-night"]');
 // In game the DOM overlay is empty and everything is drawn on the canvas.
 await page.waitForFunction(() => document.getElementById('ui').children.length === 0, null, { timeout: 60000 });

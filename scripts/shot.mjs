@@ -83,10 +83,6 @@ try {
   await wait(5500);
   await shot('01-menu');
 
-  await page.click('[data-sa="setup"]');
-  await wait(400);
-  await shot('02-first-night');
-
   await page.click('[data-sa="first-night"]');
   await page.waitForFunction(() => window.__app && window.__app.screen === 'game', null, { timeout: 60000 });
   await wait(2500);
