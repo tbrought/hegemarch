@@ -161,7 +161,12 @@ interface Tone {
 function rig(seed = 3) {
   const played: Tone[] = [];
   let drums = 0;
-  const ctx = { currentTime: 0, state: 'running', createGain: () => ({ gain: { value: 0, setTargetAtTime() {} }, connect() {}, disconnect() {} }) };
+  /** What the music's own volume was told to do: [level, at]. */
+  const levels: [number, number][] = [];
+  const ctx = {
+    currentTime: 0, state: 'running',
+    createGain: () => ({ gain: { value: 0, setTargetAtTime: (v: number, t: number) => void levels.push([v, t]), cancelScheduledValues() {} }, connect() {}, disconnect() {} }),
+  };
   const sfx = {
     ctx,
     musicGain: {},
@@ -191,7 +196,7 @@ function rig(seed = 3) {
     }
     return out.sort((a, b) => b - a);
   };
-  return { music, inner, played, heard, run, silences, ctx, drums: () => drums };
+  return { music, inner, played, heard, run, silences, ctx, levels, drums: () => drums };
 }
 
 describe('played through', () => {
@@ -304,6 +309,42 @@ describe('played through', () => {
     const r = rig();
     r.music.playTrack('no such track');
     expect(r.music.playing).toBeNull();
+  });
+
+  it("asked to wait, it is silent first: the fanfare of a run's end is heard alone", () => {
+    const r = rig();
+    r.music.play('night');
+    r.run(20);
+    // The run ends: the music stops...
+    r.music.play(null);
+    const ended = r.ctx.currentTime;
+    r.run(1);
+    const still = r.played.filter((x) => x.t > ended + 0.3).length;
+    expect(still).toBe(0);
+    // ...and the music of the results waits for the fanfare, however soon it is asked for.
+    r.music.play('title', 1.6);
+    r.run(6);
+    const after = r.played.filter((x) => x.t > ended + 0.3);
+    expect(after.length).toBeGreaterThan(10);
+    expect(Math.min(...after.map((x) => x.t))).toBeGreaterThanOrEqual(ended + 1 + 1.6 - 1e-6);
+    expect(r.music.playing).toBe('title');
+  });
+
+  it('it steps back for something said over it, and comes forward again', () => {
+    const r = rig();
+    r.music.duck(2);
+    expect(r.levels.length).toBe(0);
+    r.music.play('cradle');
+    r.run(5);
+    r.levels.length = 0;
+    const at = r.ctx.currentTime;
+    r.music.duck(2.2);
+    expect(r.levels.map(([v, t]) => [v, Math.round((t - at) * 10) / 10])).toEqual([[0.2, 0], [1, 2.2]]);
+    // (It plays on underneath: the track is where it was.)
+    const title = r.music.title;
+    r.run(3);
+    expect(r.music.title).toBe(title);
+    expect(r.music.playing).toBe('cradle');
   });
 
   it('asked for the mood it is in, it plays on; asked for none, it stops', () => {

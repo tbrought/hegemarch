@@ -506,7 +506,11 @@ Measured with `npm run simulate` and `npm run balance:passive`. Speeds are ½×,
   once, in a new order each round, never the same twice running. A battle does not wait between its
   tracks. A mood that is interrupted picks its track up at the part it had reached, so a skirmish does
   not send the night back to its beginning. The tracks differ in key, tempo, metre (Starlanes is in
-  three), bass, drums and the wave that sings. `tests/music.test.ts` checks the writing (every note in
+  three), bass, drums and the wave that sings. When a run ends the music stops for the fanfare of the
+  crowning or of the fall and stays stopped (it used to be started again on the next frame, and the
+  fanfare played over it); the music of the results waits for the fanfare to be over, also for a
+  player who skips straight to them. Under the smaller fanfare of an Ark that leaves its cradle the
+  music steps back for two seconds and comes forward again. `tests/music.test.ts` checks the writing (every note in
   its key or its chord, no long note a semitone above a chord tone, no leap over an octave) and plays
   half an hour into a list; `npm run test:music` plays every part of every track through the real
   sound engine. **Settings has a Track row**: a selector of every track, grouped by mood, and NEXT.

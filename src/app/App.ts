@@ -54,6 +54,9 @@ const GAME_VERSION = __GAME_VERSION__;
 /** A screen that is touched and has no pointer to hover with: a phone or a tablet. The game needs a mouse (the wheel, the right button). */
 const NO_MOUSE = typeof matchMedia === 'function' && matchMedia('(hover: none) and (pointer: coarse)').matches;
 
+/** How long the fanfare of a run's end lasts, in seconds, with its last note left to ring (audio/Sfx.ts: 'victory', 'defeat'). */
+const FANFARE = 2.2;
+
 /** The moods of the music, as the list of tracks under Settings names them. */
 const MOODS: [Mood, string][] = [['title', 'Title screen'], ['night', 'Quiet night'], ['war', 'Battle'], ['cradle', 'Ages cradle']];
 
@@ -99,6 +102,8 @@ export class App {
   /** The sound button in the corner of every menu screen, and what it says now (see `syncSound`). */
   private soundBtn: HTMLButtonElement;
   private soundState = '';
+  /** When the fanfare of the run's end is over, on the sound engine's clock. */
+  private fanfareEnds = 0;
   /** The track the selector under Settings shows as playing (see `syncTracks`). */
   private trackShown: string | null = null;
   /** Was the sound still asleep when the click or key now being handled began? Then that click woke it. */
@@ -225,7 +230,10 @@ export class App {
     this.renderer.render(g, alpha, dt, s.view, !playing);
     // Ages: the player's Ark has left the cradle. A card says what goes with it; its button takes the run on.
     if (playing && g.ascended && !g.outcome && s.modal?.kind !== 'ascend') {
-      if (!s.modal) this.sfx.play('victory', 0.6);
+      if (!s.modal) {
+        this.sfx.play('victory', 0.6);
+        this.music.duck(FANFARE);
+      }
       s.modal = { kind: 'ascend' };
     }
     if (playing && this.hud) {
@@ -253,6 +261,10 @@ export class App {
    * while the player's worlds or fleets are fighting. Each is a mood with several tracks (audio/Music.ts).
    */
   private pickMusic(g: Game, dt: number) {
+    // The run is over: its music has stopped, for the fanfare of the crowning or of the fall, and it
+    // stays stopped. (This looked for the music of the moment on every frame, found none playing, and
+    // started it again: the fanfare played over a tune that was not meant to be there.)
+    if (g.outcome) return;
     const p = g.player;
     let fighting = false;
     if (g.tick % 10 === 0) {
@@ -622,6 +634,7 @@ export class App {
     const p = g.player;
     this.sfx.play(o.playerWon ? 'victory' : 'defeat', 0.9);
     this.music.play(null);
+    this.fanfareEnds = (this.sfx.ctx?.currentTime ?? 0) + FANFARE;
     const winner = o.winner >= 0 ? g.factions[o.winner] : null;
     const vname = (v: string) => VICTORIES[v as keyof typeof VICTORIES]?.name ?? v;
     this.results = {
@@ -1240,7 +1253,8 @@ export class App {
     this.input = null;
     this.hud = null;
     this.screen = 'results';
-    this.music.play('title');
+    // (A player who skips the ending is at the results before the fanfare is over: the music waits for it.)
+    this.music.play('title', Math.max(0, this.fanfareEnds - (this.sfx.ctx?.currentTime ?? 0)));
     const heir = HEIR_BY_ID[r.heir];
     const ambLine = r.report.lines.find(([k]) => k.startsWith('Ambition'));
     const cards = groupBoons(r.cards)

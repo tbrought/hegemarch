@@ -351,11 +351,17 @@ export class Music {
     return this.track?.name ?? null;
   }
 
-  play(mood: Mood | null) {
+  /**
+   * `wait`: seconds of silence first. (The fanfare of a crowning, or of a fall, is heard alone: the
+   * music of the results does not come in under it.)
+   */
+  play(mood: Mood | null, wait = 0) {
     if (mood === this.mood) return;
     if (this.mood && this.track) this.held[this.mood] = { track: this.track, seg: this.seg };
     this.mood = mood;
     this.cut();
+    const c = this.sfx.ctx;
+    if (c && wait > 0) this.startAt = Math.max(this.startAt, c.currentTime + wait);
     const was = mood ? this.held[mood] : undefined;
     this.track = was ? was.track : mood ? this.draw(mood) : null;
     this.seg = was ? was.seg : 0;
@@ -382,6 +388,19 @@ export class Music {
     this.seg = Math.max(0, t.form.findIndex(([, voices]) => voices.includes('l')));
     this.step = 0;
     this.ensureTimer();
+  }
+
+  /**
+   * The music steps back for a few seconds and comes forward again: something is being said over it
+   * (the fanfare of an Ark that leaves its cradle), and it plays on underneath.
+   */
+  duck(seconds: number, level = 0.2) {
+    const c = this.sfx.ctx;
+    if (!this.bus || !c) return;
+    const g = this.bus.gain;
+    g.cancelScheduledValues(c.currentTime);
+    g.setTargetAtTime(level, c.currentTime, 0.05);
+    g.setTargetAtTime(1, c.currentTime + seconds, 0.3);
   }
 
   /** On to the next track of the mood, now. */

@@ -215,6 +215,36 @@ const screen = (page) => ev(page, () => window.__app.screen);
   });
   check(fits, 'every row is inside the dialog');
   await page.screenshot({ path: '.shots/qol-settings.png' });
+  await page.keyboard.press('Escape');
+  // The run ends: the music stops for the fanfare and stays stopped, and the music of the results
+  // waits for the fanfare to be over, also for a player who skips straight to them.
+  await page.waitForTimeout(300);
+  await ev(page, () => {
+    const app = window.__app;
+    app.session.modal = null;
+    const sfx = app.sfx;
+    const music = app.music;
+    window.__notes = [];
+    const tone = sfx.tone.bind(sfx);
+    sfx.tone = (dest, ...rest) => {
+      // (When the note sounds, not when it is asked for: notes are scheduled a little ahead.)
+      if (dest === music.bus) window.__notes.push(rest[3]);
+      return tone(dest, ...rest);
+    };
+    window.__ended = sfx.ctx.currentTime;
+    const g = app.session.game;
+    g.declareWinner(g.playerId, 'conquest', 'Every rival Hearth is dark.');
+  });
+  await page.waitForTimeout(1200);
+  let end = await ev(page, () => ({ mood: window.__app.music.playing, notes: window.__notes.filter((t) => t > window.__ended + 0.35).length, screen: window.__app.screen }));
+  check(end.mood === null && end.notes === 0 && end.screen === 'game', `when the run ends the music stops for the fanfare, and stays stopped (${end.mood}, ${end.notes} notes since)`);
+  await page.keyboard.press('Enter');
+  await page.waitForFunction(() => window.__app?.screen === 'results', null, { timeout: 15000 });
+  end = await ev(page, () => ({ mood: window.__app.music.playing, wait: window.__app.music.startAt - window.__app.sfx.ctx.currentTime, since: window.__app.sfx.ctx.currentTime - window.__ended }));
+  check(end.mood === 'title' && end.since < 2 && end.wait > 0.1 && end.since + end.wait > 2.1, `skipped to the results, their music waits for the fanfare to end (asked ${end.since.toFixed(1)} s in, starts ${(end.since + end.wait).toFixed(1)} s in)`);
+  await page.waitForTimeout(3200);
+  const playing = await ev(page, () => ({ notes: window.__notes.filter((t) => t > window.__ended + 2.1).length, early: window.__notes.filter((t) => t > window.__ended + 0.35 && t < window.__ended + 2.1).length }));
+  check(playing.notes > 5 && playing.early === 0, `and then plays (${playing.notes} notes, none before the fanfare was over)`);
   await browser.close();
 }
 
