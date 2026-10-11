@@ -42,8 +42,8 @@ export interface StatDelta {
   novel: boolean;
 }
 
-const flagOf = (name: string) => {
-  const get = (m: Mods) => m.flags[name] ?? 0;
+const flagOf = (...names: string[]) => {
+  const get = (m: Mods) => names.reduce((sum, name) => sum + (m.flags[name] ?? 0), 0);
   FLAG_GETTERS.add(get);
   return get;
 };
@@ -79,8 +79,9 @@ const STATS: StatDef[] = [
   { key: 'xp', label: 'Experience', get: (m) => m.xp },
   { key: 'fighters', label: 'Fighters per Carrier', get: (m) => m.fighters, fmt: 'num' },
   { key: 'draft', label: 'Boon options', get: (m) => m.draft, fmt: 'num' },
-  { key: 'salvage', label: 'Salvage from kills', get: flagOf('salvage') },
-  { key: 'bounty', label: 'Kill bounty', get: flagOf('bounty') },
+  // (Salvage Crews and War Economy do the same thing, Embers for every enemy ship destroyed, and add
+  // up: one line, so that each card shows the total with the other.)
+  { key: 'killEmbers', label: 'Embers from kills', get: flagOf('salvage', 'bounty') },
   { key: 'interest', label: 'Interest', get: flagOf('interest') },
   { key: 'reverse', label: 'Lore per kill', get: flagOf('reverse'), fmt: 'num' },
   { key: 'fieldRepair', label: 'Field repairs', get: flagOf('fieldRepair'), fmt: 'pps' },

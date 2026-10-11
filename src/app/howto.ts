@@ -62,7 +62,7 @@ export function howtoHtml(): string {
         <li><kbd>Right-drag</kbd> <kbd>Arrows</kbd> Move the view</li>
       </ul>
       <ul class="how-keys">
-        <li><kbd>Space</kbd> Pause. Paused, you can look and read, but not give orders.</li>
+        <li><kbd>Space</kbd> Pause. Paused, you can still give orders: think, then go on.</li>
         <li><kbd>E</kbd> Send selected Scouts exploring</li>
         <li><kbd>Q</kbd> <kbd>W</kbd> <kbd>E</kbd> <kbd>R</kbd> <kbd>T</kbd> With a Forge selected, build its ships</li>
         <li><kbd>Tab</kbd> Your next Forge, the idle ones first</li>

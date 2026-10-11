@@ -6,7 +6,7 @@ import { PAL } from '../render/palette';
 
 /**
  * Player commands with feedback (sound, markers, a short reason when something can't be done).
- * Every order the player can give goes through here, and none is taken while the game stands still.
+ * Every order the player can give goes through here, and none is taken once the run is over.
  */
 export class Actions {
   constructor(private s: Session) {}
@@ -24,19 +24,9 @@ export class Actions {
     this.s.showToast(reason, PAL.red, 2.5);
   }
 
-  /**
-   * May an order be given right now? Not while the game stands still (see `Session.mode`). Every order
-   * below asks first; a refusal says why, and makes whatever stops the game flash.
-   */
+  /** May an order be given right now? At any time, paused or not, until the run is over (see `Session.mode`). */
   private ready(): boolean {
-    const mode = this.s.mode;
-    if (mode === 'play') return true;
-    if (mode === 'look') {
-      this.s.sfx.play('error', 0.4);
-      this.s.showToast(this.s.tipHold ? 'The game waits while you read: OK or Space to go on.' : 'The game is paused: press Space, then give your orders.', PAL.ember, 2.5);
-      this.s.refusedAt = performance.now() / 1000;
-    }
-    return false;
+    return this.s.mode === 'play';
   }
 
   kindle(nodeId: number): boolean {

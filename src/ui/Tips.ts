@@ -199,9 +199,7 @@ export class Tips {
       const room = w - (textWidth(all, 'tiny') + 14) - (okW + textWidth('LATER', 'tiny') + 22);
       if (textWidth(held, 'tiny') <= room) text(g, held, x + textWidth(all, 'tiny') + 14 + Math.floor((room - textWidth(held, 'tiny')) / 2), fy + 3, PAL.dusk, 'tiny');
     }
-    // (An order was just refused because this card holds the game: the way on flashes.)
-    const flash = performance.now() / 1000 - this.s.refusedAt < 1.2;
-    this.hud.ui.button(g, 'tip-ok', x + w - okW - 5, fy, okW, 10, ok, () => this.dismiss(), { font: 'tiny', tip: 'Got it.', primary: flash, pulse: flash });
+    this.hud.ui.button(g, 'tip-ok', x + w - okW - 5, fy, okW, 10, ok, () => this.dismiss(), { font: 'tiny', tip: 'Got it.' });
     const later = 'LATER';
     const laterW = textWidth(later, 'tiny') + 10;
     this.hud.ui.button(g, 'tip-later', x + w - okW - laterW - 8, fy, laterW, 10, later, () => this.putOff(), {

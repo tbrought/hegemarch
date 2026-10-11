@@ -29,6 +29,7 @@ import { esc, fmt } from '../ui/format';
 import { glossHtml } from '../ui/glossary';
 import { Hud } from '../ui/Hud';
 import { Input } from '../ui/Input';
+import { runData } from './rundata';
 import { Session } from './Session';
 
 type ScreenId = 'menu' | 'setup' | 'hall' | 'howto' | 'settings' | 'loading' | 'game' | 'results';
@@ -703,6 +704,8 @@ export class App {
         `Destinies: ${g.victories.map(vname).join(', ')}. Omens: ${g.traits.map((t) => TRAIT_BY_ID[t]?.name ?? t).join(', ') || 'none'}.`,
         `Boons: ${groupBoons(p.cards).map(({ id, count }) => (CARD_BY_ID[id]?.name ?? id) + (count > 1 ? ` x${count}` : '')).join(', ') || 'none'}.`,
         `Worlds ${p.stats.maxWorlds} at most, ships built ${p.stats.shipsBuilt}, lost ${p.stats.shipsLost}, destroyed ${p.stats.kills}.`,
+        // The same and more, for a machine to read: JSON, in base64 so that no chat mangles it.
+        `Data: ${runData(g, GAME_VERSION)}`,
       ].join('\n'),
     };
     s.modal = null;

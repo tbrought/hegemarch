@@ -6,7 +6,7 @@ import { ERAS, LAST_CRADLE_ERA, LINE_SHORT, SPACE } from '../game/data/eras';
 import { RELIC_BY_ID } from '../game/data/relics';
 import { isWarship, UNITS } from '../game/data/units';
 import { ASCENSION_BOONS, DOMINATION_HOLD, DOMINATION_SHARE, GATE_CHARGE, RELIC_HOLD, relicsRequired, TREASURY_HOLD, treasuryTarget, VICTORIES } from '../game/data/victories';
-import { HOLD_FIELD } from '../game/constants';
+import { FIRE_SPOOL, HOLD_FIELD, JUMP_CHARGE, UNDER_FIRE } from '../game/constants';
 import { ECON, PLANETS, ROLES, ROLE_ORDER } from '../game/data/worlds';
 import type { Faction, GNode, Note, Unit, UnitType, VictoryId } from '../game/types';
 import { roman } from '../game/util';
@@ -41,6 +41,9 @@ function numberRoom(s: string, least: string): number {
   const room = (t: string) => textWidth(t.replace(/\d/g, widest));
   return Math.max(room(s), room(least));
 }
+
+/** How long a drive charges with nothing holding it, for the words of a tip. */
+const JUMP_CHARGE_TEXT = `${JUMP_CHARGE} s`;
 
 /** Seconds the idle-Forge button flashes when one more Forge has run out of work. */
 const IDLE_FLASH = 3;
@@ -208,12 +211,6 @@ export class Hud {
     this.tutorial.update(dt);
     this.tips.update(dt);
     this.goals.update(dt);
-    // While the game stands still nothing is about to be sent anywhere: clicks pick things to look at.
-    // When it goes on, ships that are still selected are ready for their order again.
-    const look = s.mode !== 'play';
-    if (look) s.view.orderMode = false;
-    else if (this.wasLook && !s.modal && s.ownSelected().some((u) => !UNITS[u.type].isStatic)) s.view.orderMode = true;
-    this.wasLook = look;
     this.nudge();
   }
 
@@ -277,6 +274,9 @@ export class Hud {
     if (this.s.modal) {
       dimScreen(g, this.W, this.H, 14, this.s.modal.kind === 'log' ? 0.55 : 0.7);
       this.modals.draw(g);
+      // The top bar is not dimmed, and its figures can still be read: a Boon to choose is a question of
+      // Lore and Embers. (Under the dialog's backdrop its tooltips used to go dark.)
+      for (const t of this.barTips) this.ui.hint(t.id + '-read', t.x, t.y, t.w, t.h, { tip: t.tip });
     } else if (this.s.paused && !this.g.outcome) {
       this.drawPaused();
     }
@@ -332,8 +332,6 @@ export class Hud {
   private drawPaused() {
     const g = this.s.screen.g;
     const t = 'PAUSED · SPACE TO RESUME';
-    // (An order was just refused: this is why.)
-    const flash = performance.now() / 1000 - this.s.refusedAt < 1.2 && Math.floor(performance.now() / 110) % 2 === 0;
     const w = textWidth(t, 'tiny') + 10;
     let x = Math.round(this.W / 2 - w / 2);
     if (this.cardRect.w > 0 && x < this.cardRect.x + this.cardRect.w + 4) x = this.cardRect.x + this.cardRect.w + 6;
@@ -342,8 +340,8 @@ export class Hud {
     const right = this.minimapRect.w > 0 ? this.minimapRect.x - 4 : this.W - 3;
     if (x + w > right) x = Math.max(3, right - w);
     const y = this.H - 13;
-    box(g, x, y, w, 9, flash ? PAL.wine : PAL.night, flash ? PAL.bone : PAL.gold);
-    text(g, t, x + 5, y + 2, flash ? PAL.bone : PAL.gold, 'tiny');
+    box(g, x, y, w, 9, PAL.night, PAL.gold);
+    text(g, t, x + 5, y + 2, PAL.gold, 'tiny');
   }
 
   // ---------------------------------------------------------------------
@@ -354,6 +352,7 @@ export class Hud {
     const g = this.s.screen.g;
     const p = this.g.player;
     const W = this.W;
+    this.barTips = [];
     rect(g, 0, 0, W, 13, PAL.night);
     rect(g, 0, 13, W, 1, PAL.indigo);
     this.ui.add({ id: 'topbar', x: 0, y: 0, w: W, h: 14, block: true });
@@ -385,7 +384,7 @@ export class Hud {
       py += 7;
     }
     this.emberPops = this.emberPops.filter((pop) => pop.t <= 1.4);
-    this.ui.hit('embers', 1, 0, x + 1, 13, undefined, () => `Embers: your only currency. You earn ${fmtRate(p.income)} every second from your worlds. Spend them on ships, kindling and world upgrades.`);
+    this.barTip('embers', 1, 0, x + 1, 13, () => `Embers: your only currency. You earn ${fmtRate(p.income)} every second from your worlds. Spend them on ships, kindling and world upgrades.`);
     x += 8;
     // Lore
     if (R.lore && this.g.cradle) x = this.drawAge(x);
@@ -396,12 +395,13 @@ export class Hud {
       if (p.pendingDrafts > 0) {
         const label = p.pendingDrafts > 1 ? `BOON ×${p.pendingDrafts}` : 'BOON';
         this.ui.button(g, 'boon', x, 1, textWidth(label, 'tiny') + 12, 11, label, () => this.modals.open({ kind: 'draft' }), {
-          primary: true, pulse: true, font: 'tiny', tip: 'A Boon is ready. Choose one of a few upgrades for your house. (B)',
+          primary: true, pulse: true, font: 'tiny', tip: () => `A Boon is ready. Choose one of a few upgrades for your house. (B)\n${this.nextBoonText()}`,
         });
+        this.barTips.push({ id: 'boon', x, y: 1, w: textWidth(label, 'tiny') + 12, h: 11, tip: () => `${p.pendingDrafts > 1 ? `${p.pendingDrafts} Boons are` : 'A Boon is'} waiting. ${this.nextBoonText()}` });
         x += textWidth(label, 'tiny') + 15;
       } else {
         bar(g, x + 1, 5, 36, 3, p.lore / cost, PAL.violet, PAL.indigo, PAL.indigo);
-        this.ui.hit('lore', x - 8, 0, 48, 13, undefined, () => `Lore: ${Math.floor(p.lore)} / ${cost}. Every time it fills you choose a Boon. Observatories make Lore faster. (+${p.loreRate.toFixed(2)}/s)`);
+        this.barTip('lore', x - 8, 0, 48, 13, () => `Lore: ${Math.floor(p.lore)} / ${cost}. Every time it fills you choose a Boon. Observatories make Lore faster. (+${p.loreRate.toFixed(2)}/s)\n${this.nextBoonText()}`);
         x += 42;
       }
     }
@@ -411,7 +411,7 @@ export class Hud {
       icon(g, this.g.cradle ? 'supply' : 'hangar', x, this.g.cradle ? 4 : 3);
       const full = p.hangarUsed >= p.hangarCap;
       const ex = text(g, `${p.hangarUsed}/${p.hangarCap}`, x + 7, 3, full ? PAL.red : PAL.mist);
-      this.ui.hit('hangar', x - 1, 0, ex - x + 2, 13, undefined, 'Hangar: room for your ships. Every world you hold adds room, and higher-level worlds add more. When it is full you cannot build. Hangar Bays at your Hearth add more.');
+      this.barTip('hangar', x - 1, 0, ex - x + 2, 13, 'Hangar: room for your ships. Every world you hold adds room, and higher-level worlds add more. When it is full you cannot build. Hangar Bays at your Hearth add more.');
       x = ex + 6;
     }
     // Forges that build nothing: how many, and a click (or Tab) to go to the next of them. A button and
@@ -518,6 +518,24 @@ export class Hud {
     return n > 0 ? String(n) : '';
   }
 
+  /** The top bar's tooltips (its figures), kept to be read again above an open dialog. */
+  private barTips: { id: string; x: number; y: number; w: number; h: number; tip: string | (() => string) }[] = [];
+
+  /** A tooltip of the top bar: one to point at now, and one to read again while a dialog is open. */
+  private barTip(id: string, x: number, y: number, w: number, h: number, tip: string | (() => string)) {
+    this.ui.hit(id, x, y, w, h, undefined, tip);
+    this.barTips.push({ id, x, y, w, h, tip });
+  }
+
+  /** "The next Boon: 120 of 450 Lore, in about 2:40 at this rate." */
+  private nextBoonText(): string {
+    const p = this.g.player;
+    const cost = this.g.boonCostOf(p);
+    const left = Math.max(0, cost - p.lore);
+    const eta = p.loreRate > 0 ? ` in about ${fmtTime(left / p.loreRate)} at this rate` : '';
+    return `The next Boon: ${Math.floor(Math.min(p.lore, cost))} of ${cost} Lore${eta}.`;
+  }
+
   /** How many Forges were idle at the last frame, and when one more went idle (the button flashes for `IDLE_FLASH` s). */
   private idleShown = 0;
   private idleFlashAt = -99;
@@ -525,8 +543,6 @@ export class Hud {
   /** Ability choices that have opened by themselves already (ship, level and choices waiting). */
   private abilityShown = new Set<string>();
 
-  /** Did the game stand still at the last update (see `Session.mode`)? */
-  private wasLook = false;
 
   /** Where the banner was drawn this frame (the right-hand column keeps clear of it). */
   private bannerRect = { x: 0, y: 0, w: 0, h: 0 };
@@ -606,28 +622,69 @@ export class Hud {
     }
   }
 
+  /**
+   * What a Destiny's chip says: how far the player has got against what it takes ("14/22"), or, once
+   * the Destiny is on the clock, the time left on it ("1:42"). (It said a bare percentage, and the
+   * target and the time had to be read from its tooltip and remembered.)
+   */
+  private chipText(f: Faction, v: VictoryId): { text: string; clock: boolean } {
+    const g = this.g;
+    const left = (s: number) => ({ text: fmtTime(Math.max(0, s)), clock: true });
+    switch (v) {
+      case 'conquest': {
+        const rivals = g.empires().filter((e) => e.id !== f.id);
+        return { text: `${rivals.filter((e) => !e.alive).length}/${rivals.length}`, clock: false };
+      }
+      case 'domination':
+        if (f.holdTimer > 0) return left(DOMINATION_HOLD - f.holdTimer);
+        return { text: `${g.worldsOf(f.id).length}/${Math.ceil(g.worldCount * DOMINATION_SHARE)}`, clock: false };
+      case 'ascension':
+        if (f.gate) return left(GATE_CHARGE - f.gate.charge);
+        return { text: `${f.boons}/${ASCENSION_BOONS}`, clock: false };
+      case 'relics':
+        if (f.relicTimer > 0) return left(RELIC_HOLD - f.relicTimer);
+        return { text: `${f.relics.length}/${relicsRequired(g.relicTotal)}`, clock: false };
+      case 'treasury':
+        if (f.treasuryTimer > 0) return left(TREASURY_HOLD - f.treasuryTimer);
+        return { text: pct(f.embers / treasuryTarget(g.config.size)), clock: false };
+      case 'crisis': {
+        const c = g.crisis;
+        if (!c || !c.awake) return { text: '—', clock: false };
+        if (c.dead) return { text: 'DONE', clock: false };
+        const h = g.units.get(c.heart);
+        const barrier = h?.buffs.find((b) => b.id === 'barrier');
+        if (barrier) return left(Math.ceil(barrier.t));
+        return { text: h ? pct(1 - h.hp / h.maxHp) : '—', clock: false };
+      }
+    }
+    return { text: '', clock: false };
+  }
+
   private drawDestinies() {
     const g = this.s.screen.g;
     const vs = this.g.victories;
-    const cw = 22;
-    let x = this.W - 3 - vs.length * (cw + 2);
     const y = 16;
     const p = this.g.player;
-    for (const v of vs) {
-      const pr = this.destinyProgress(p, v);
+    // (A chip is as wide as what it says: "14/22", or the time left once its Destiny is on the clock.)
+    const chips = vs.map((v) => ({ v, pr: this.destinyProgress(p, v), ...this.chipText(p, v) }));
+    const widths = chips.map((c) => Math.max(22, 12 + textWidth(c.text, 'tiny')));
+    let x = this.W - 3 - widths.reduce((a, w) => a + w + 2, 0) + 2;
+    chips.forEach(({ v, pr, text: label, clock }, i) => {
+      const cw = widths[i];
       const id = 'dest-' + v;
       const hot = this.ui.isHot(id);
-      box(g, x, y, cw, 12, PAL.night, hot ? PAL.dusk : PAL.indigo);
+      box(g, x, y, cw, 12, PAL.night, hot ? PAL.dusk : clock ? PAL.gold : PAL.indigo);
       icon(g, v, x + 2, y + 2);
       const k = Math.max(0, Math.min(1, pr.frac));
-      rect(g, x + 9, y + 8, 11, 2, PAL.indigo);
-      if (k > 0) rect(g, x + 9, y + 8, Math.max(1, Math.round(11 * k)), 2, k >= 1 ? PAL.teal : PAL.gold);
-      text(g, String(Math.min(99, Math.floor(k * 100))), x + 9, y + 2, PAL.mist, 'tiny');
+      const bw = cw - 11;
+      rect(g, x + 9, y + 8, bw, 2, PAL.indigo);
+      if (k > 0) rect(g, x + 9, y + 8, Math.max(1, Math.round(bw * k)), 2, k >= 1 ? PAL.teal : PAL.gold);
+      text(g, label, x + 9, y + 2, clock ? PAL.gold : PAL.mist, 'tiny');
       this.ui.hit(id, x, y, cw, 12, () => this.modals.open({ kind: 'status' }), () => `${VICTORIES[v].name}: ${VICTORIES[v].short} (${pr.label}). Click for details.`, undefined, {
         terms: termsIn(VICTORIES[v].desc, { exclude: VICTORIES[v].name, max: 2 }),
       });
       x += cw + 2;
-    }
+    });
   }
 
   // ---------------------------------------------------------------------
@@ -977,8 +1034,11 @@ export class Hud {
         const hot = this.ui.isHot(id);
         const sel = o === pid && this.fleetSelectedAt(n.id);
         fleetBadge(g, bx, by, label, f.color, { own: o === pid, fill: o === pid ? (sel ? PAL.indigo : PAL.night) : PAL.void, border: sel || hot ? PAL.bone : f.color });
+        // Ships of ours charging their drives to jump: a bar under the badge fills as they charge.
+        const wait = o === pid ? this.jumpWait(this.s.fleetAt(n.id)) : null;
+        if (wait) bar(g, bx, by + 10, w, 1, wait.done, wait.held || wait.fire || wait.snared ? PAL.ember : PAL.sky, PAL.indigo);
         if (o === pid) {
-          this.ui.hit(id, bx - 1, by - 1, w + 2, 11, () => this.selectFleet(n.id), `Your fleet at ${n.name}: ${this.fleetSummary(this.s.fleetAt(n.id))}. Click to select it, then click a world to send it.`);
+          this.ui.hit(id, bx - 1, by - 1, w + 2, 11, () => this.selectFleet(n.id), `${wait ? `${this.jumpWaitText(wait)}. ` : ''}Your fleet at ${n.name}: ${this.fleetSummary(this.s.fleetAt(n.id))}. Click to select it, then click a world to send it.`);
         } else {
           const units = b.filter((u) => u.owner === o && !u.dead && u.type !== 'fighter' && !UNITS[u.type].isStatic);
           this.ui.hit(id, bx - 1, by - 1, w + 2, 11, () => {
@@ -1195,6 +1255,37 @@ export class Hud {
         if (right && rightTip) this.ui.hint('card-right', x + w - rw + 2, y + 1, rw, 9, rightTip);
       },
     };
+  }
+
+  /**
+   * Ships of ours that are charging their drives to jump on: how far the slowest has got (0 to 1), how
+   * many seconds it still needs, and what is holding it back. Null when none is charging.
+   */
+  private jumpWait(units: Unit[]): { done: number; left: number; held: boolean; fire: boolean; snared: boolean } | null {
+    const game = this.g;
+    let done = 1;
+    let left = 0;
+    let held = false;
+    let fire = false;
+    let snared = false;
+    let any = false;
+    for (const u of units) {
+      if (u.dead || u.lane || u.node < 0 || !u.path.length || u.charge < 0) continue;
+      any = true;
+      const total = Math.max(0.1, game.jumpChargeOf(u));
+      const under = u.lastHit < UNDER_FIRE;
+      done = Math.min(done, Math.max(0, 1 - u.charge / total));
+      left = Math.max(left, Math.max(0, u.snare) + u.charge / (under ? FIRE_SPOOL : 1));
+      held ||= game.holdAt(u) > 0;
+      fire ||= under;
+      snared ||= u.snare > 0;
+    }
+    return any ? { done, left, held, fire, snared } : null;
+  }
+
+  private jumpWaitText(w: { left: number; held: boolean; fire: boolean; snared: boolean }): string {
+    const why = [w.snared ? 'snared' : '', w.held ? 'held by an anti-warp field' : '', w.fire ? 'under fire' : ''].filter(Boolean);
+    return `Jumping in ${Math.ceil(w.left)} s${why.length ? `: ${why.join(', ')}` : ''}`;
   }
 
   private line(t: string, color: string = PAL.dusk, font: 'tiny' | 'main' = 'tiny', tip?: TipOpts): CardRow {
@@ -1599,6 +1690,14 @@ export class Hud {
       }
     } else {
       rows.push(this.header(`YOUR FLEET · ${units.length} SHIPS`, p.color, null, where));
+    }
+    // (A ship charging its drive stands where it is, and a long charge looked like a ship that would not
+    // go: the card says how long, and what holds it.)
+    const wait = this.jumpWait(units);
+    if (wait) {
+      rows.push(this.line(this.jumpWaitText(wait).toUpperCase(), wait.held || wait.fire || wait.snared ? PAL.ember : PAL.sky, 'tiny', {
+        tip: `A ship charges its drive before every jump (${JUMP_CHARGE_TEXT}). An enemy anti-warp field (a Bastion, a Hearth, a Starbase) adds ${HOLD_FIELD} s; under fire the drive charges at half speed; a Gravity Snare stops it for a while.`,
+      }));
     }
     // Composition: click a type to keep only those.
     const counts = new Map<UnitType, number>();

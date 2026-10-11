@@ -180,7 +180,7 @@ export const CARDS: CardDef[] = [
     },
   },
   { id: 'laneStrike', name: 'Starlane Strike', rarity: 'epic', cat: 'war', max: 1, desc: 'Ships arriving off a starlane deal [50% more damage] for 12 seconds.', mods: (m) => flag(m, 'phaseStrike', 0.5) },
-  { id: 'warEconomy', name: 'War Economy', rarity: 'epic', cat: 'wealth', max: 1, desc: 'Destroying enemy ships pays Embers worth [40%] of their cost.', mods: (m) => flag(m, 'bounty', 0.4) },
+  { id: 'warEconomy', name: 'War Economy', rarity: 'epic', cat: 'wealth', max: 1, desc: 'Gain Embers worth [40%] of every enemy ship you destroy. (It adds up with Salvage Crews.)', mods: (m) => flag(m, 'bounty', 0.4) },
   {
     id: 'dreadDoctrine', name: 'Dreadnought Doctrine', rarity: 'epic', cat: 'war', max: 1, requires: 'bpDread', desc: 'Your Ark and Dreadnoughts gain [30% hull and damage]. Dreadnoughts cost [25% less].',
     mods: (m) => {

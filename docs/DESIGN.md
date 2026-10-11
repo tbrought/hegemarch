@@ -237,6 +237,14 @@ There is no truce. What keeps an early rush risky:
 - **Early warning**: AI houses see fleets bound for their worlds once those fleets are in sight and
   pull defenders home. Ships within four jumps answer a threat to a world; for the Hearth every
   ship does, from anywhere (a fleet used to go on besieging a far world while its own Hearth fell).
+  Ships at a threatened world, or on their way to it, stay on that job as long as it needs them (up
+  to half again the enemy's strength). Before 1.9 they were sent on to the army's business and back
+  every few seconds and never fought: the loop the third playtest saw at a rival's Hearth, where one
+  defender changed course up to sixty times in two and a half minutes. Too few to win at the Hearth,
+  they gather a jump or two short of it and go in together once they are enough (they used to fly
+  in one by one and be picked off). And a few ships on their own (new ships, stragglers, defenders)
+  go round places held by more than they could take on, where there is another way; the army itself
+  takes the straight way, or its attacks take so long that they are called off.
 - **A siege that gets nowhere is called off**: every 50 seconds at its target an AI fleet must have
   taken 3% off the world's hull and shields, or be in a battle; otherwise it goes home and picks
   again. A fleet without the guns for a world no longer sits at it for minutes.
@@ -245,9 +253,17 @@ There is no truce. What keeps an early rush risky:
   their level). A failed rush leaves the attacker without an army against a rival with its economy
   intact and a grudge.
 
-Measured with `npx tsx scripts/rush.ts` (Normal, opening build of Breakers, Breaker, Striker,
-Guardian, then the AI plays on for the rusher): small sectors, launched at 4:00, take the Hearth in
-about half of the runs; failed rushes end with 1–6 worlds by 35 minutes.
+Measured with `npx tsx scripts/rush.ts` (opening build of Breakers, Breaker, Striker, Guardian, then
+the AI plays on for the rusher), small sectors, launched at 4:30. Up to 1.8 the rush took the Hearth
+in half of the runs on Easy (4 of 8) and a third on Normal (2 of 6), but mostly because the Hearth's
+defenders were caught in the loop above and away. Since 1.9 they are at home: 0 of 8 on Easy and 0
+of 6 on Normal, and a rush at 7:00 on Normal takes 1 of 8. An early rush now has to beat the house's
+army, or come while it is away. Against a player who does nothing, the AI houses are as deadly as
+before (`npm run balance:passive`: about the same times on Normal, Hard and Brutal; some games last longer on Easy).
+
+AI-only games (`npm run simulate`, 40 seeds a size, Normal) last longer since houses stopped feeding
+ships to their enemies: decided within 60 minutes in 31, 34 and 28 of 40 games (small, medium,
+large; before 1.9: 37, 35 and 37), with a median of 42, 41 and 45 minutes (37, 36 and 39).
 
 ### Destinies
 Conquest (take every rival Hearth) plus two of: **Dominion** (60% of all worlds for 150 s),
@@ -272,7 +288,7 @@ used to walk into them and never arrive.
 | First rival attack on a passive player | 13–17 min (20–30 Easy, 10–13 Brutal) |
 | Galactic events | first at 6–7 min, then every 5–6 min |
 | The Maw opens (Purge the Void runs) | about 18–21 min |
-| Medium AI-only games | 24–86 min, median about 39 (sectors without Dominion run longest) |
+| Medium AI-only games | 22–60+ min, median about 41 (sectors without Dominion run longest) |
 
 Measured with `npm run simulate` and `npm run balance:passive`. Speeds are ½×, 1×, 2× and 3×.
 
@@ -364,6 +380,18 @@ Measured with `npm run simulate` and `npm run balance:passive`. Speeds are ½×,
   give way is written over it: SHIELDS DOWN. A click on one of the player's own ships always picks
   it, even while an order waits for its destination (before, the world around the ship took the
   click as a move order, so a second ship at the same world could not be selected).
+- **What the third playtest found hard to read** (October 2026). The top bar keeps its tooltips
+  above an open dialog (a Boon to choose is a question of Lore and Embers; under the dialog's shade
+  they had gone), and the Lore and BOON tooltips say when the next Boon comes at the present rate
+  ("The next Boon: 120 of 450 Lore in about 2:40"). A Destiny chip at the top right says how far it
+  is ("3/12", "40%") and, once its Destiny is on the clock, the time left, in gold. A fleet whose
+  drives are charging has a bar under its badge and a line in its card ("JUMPING IN 9 S: HELD BY AN
+  ANTI-WARP FIELD, UNDER FIRE"): a charge held by a field and slowed by fire can last twenty
+  seconds, and seed ships under fire looked as if they would not go. Salvage Crews and War Economy
+  are one figure, **Embers from kills**, so each card shows what it adds to the other (two lines
+  had each shown its own share, and War Economy seemed to replace Salvage Crews). The screen stops
+  shaking while paused (the shake was wound down by the game's clock, so a Dreadnought's upgrade
+  dialog shook for as long as it was open).
 - **What a choice affects, as pictures** (`src/ui/subjects.ts`): every Boon card, event choice and
   ability choice shows the ship type (drawn as on the map, in the house color), resource or part of
   the realm it touches. Boons are read from the modifiers they really change, then from their text
@@ -429,20 +457,14 @@ Measured with `npm run simulate` and `npm run balance:passive`. Speeds are ½×,
   Hall of Heirs, settings) keep their scroll position (`App.put`).
 - **Auto-pause** (setting) for anomalies (when a ship you sent reaches one), visitors, the first
   raid and a Hearth under siege.
-- **Stopped means stopped.** While the game stands still no order goes through: not while it is
-  paused (by the player or by an alarm), not while a tip card holds it, not after the run has ended.
-  A pause is a moment to look and to read, as in the RTS games this one is modelled on, not a moment
-  to queue up moves. The player can still pan and zoom, pick worlds and ships to read their cards
-  (ships picked during a stop are not "waiting for a destination", and are again when the game goes
-  on), open the status screens, and answer a dialog the game has put up (choosing a Boon is not an
-  order). Everything that takes input asks one question, `Session.mode` ('play', 'look' or 'none'),
-  and every order the player can give goes through `ui/Actions.ts`, which asks it first: a new way
-  of stopping the game cannot forget to stop the orders. A refused order says why ("The game is
-  paused: press Space, then give your orders") and makes whatever stops the game flash: the PAUSED
-  label, or a tip card's OK button. (Before, every order worked in every pause: with a tip card up,
-  KINDLE spent its Embers and launched a seed ship into a game that stood still, and after the run
-  had ended hotkeys still acted on it: K spent Embers, B opened a Boon choice over the ending.)
-  `npm run test:stopped` tries keys and buttons in each stopped state.
+- **A pause is a pause to think.** While the game is paused, by the player, by an alarm or by a
+  tip card, the player looks around and gives orders, and the game goes on when they are ready.
+  Once the run has ended nothing acts any more (no key spends Embers or opens a Boon choice over the
+  ending). Everything that takes input asks one question, `Session.mode` ('play' or 'none'), and
+  every order the player can give goes through `ui/Actions.ts`, which asks it first. (From 1.3.3 to
+  1.8 a pause was for looking only, for the feel of an RTS; a playtester paused and unpaused around
+  every single order instead, and said it plainly: do not make the controls serve the feel, and do
+  not punish the player who likes to think. `npm run test:stopped` checks both states.)
   Closing a decision without choosing parks it behind a "! DECISION" button.
 
 ## 6. Presentation
@@ -461,7 +483,9 @@ Measured with `npm run simulate` and `npm run balance:passive`. Speeds are ½×,
   Heirs for a leaderboard and nearly closed the screen: the only hint was one dim line under a
   table. The stats name the seed and the setup, and COPY RUN DETAILS copies version, seed, setup,
   outcome, Destinies, omens and Boons for a bug report (where the clipboard is refused, the text is
-  shown to select).
+  shown to select), and a last line, `Data:`, that is the same and more for a machine to read: JSON
+  in base64, so that no chat mangles it (`app/rundata.ts`: perks, relics, the player's figures and
+  where every house stood).
 - **Text is never drawn through a pattern.** A dither (every other pixel) over or under the
   1-pixel-wide font scrambles it, so: dialogs dim what is behind them with a flat dark shade and
   leave the top bar (Embers, Lore) bright; the comms log sits on a flat shade; the drag-select box

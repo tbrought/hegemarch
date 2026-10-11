@@ -9,6 +9,8 @@ import { CARD_BY_ID, LEGENDARY_BY } from '../src/game/data/cards';
 import { GOAL_REWARD, GOALS } from '../src/game/data/goals';
 import type { GameConfig } from '../src/game/types';
 import { EPIC_ODDS, perkDesc, PERKS, UNLOCKS } from '../src/meta/legacy';
+import { modDelta, modLines } from '../src/game/modstats';
+import { readRunData, runData } from '../src/app/rundata';
 import { GLOSS_BY_ID, termsIn } from '../src/ui/glossary';
 
 function mk(opts: Partial<GameConfig> = {}): Game {
@@ -395,7 +397,9 @@ describe('rival fleets', () => {
     // ...when a strong enemy arrives at its Hearth.
     for (let i = 0; i < 14; i++) g.spawnUnit('breaker', p.id, rival.capital);
     run(g, 6);
-    const coming = fleet.filter((u) => !u.dead && (u.dest === rival.capital || u.node === rival.capital));
+    // (Home: the Hearth, or a place a jump or two from it where they gather while they are too few to win.)
+    const home = (id: number) => id >= 0 && g.hops(id, rival.capital) <= 2;
+    const coming = fleet.filter((u) => !u.dead && (home(u.dest) || (u.dest < 0 && home(u.node))));
     expect(coming.length).toBeGreaterThanOrEqual(4);
   });
 });
@@ -784,5 +788,91 @@ describe('what the Hall of Heirs sells for rarer Boons can be felt', () => {
     const rest = offers(again, LEGENDARY_BY - 3);
     expect([...first, ...rest].some((o) => has(o, 'legendary'))).toBe(true);
     expect(offers(g, LEGENDARY_BY - 3)).toEqual(rest);
+  });
+});
+
+describe('a rival house under siege at its Hearth (the third playtest)', () => {
+  /** A rival whose eight Guardians are away from home when thirty ships come for its Hearth (which is made to hold). */
+  function siege() {
+    const g = mk({ size: 'medium' });
+    const p = g.player;
+    const rival = g.empires().find((f) => f.id !== p.id)!;
+    rival.ai!.firstAttackAt = 0;
+    const far = g.nodes.filter((n) => n.kind === 'planet' && g.hops(n.id, rival.capital) === 3 && g.hostilePowerAt(n.id, rival.id) === 0)[0];
+    for (const u of g.unitsOf(rival.id)) if (u.type !== 'ark' && u.type !== 'scout') g.killUnit(u, -1);
+    const fleet = [0, 1, 2, 3, 4, 5, 6, 7].map(() => g.spawnUnit('guardian', rival.id, far.id));
+    for (let i = 0; i < 30; i++) g.spawnUnit(i % 2 ? 'breaker' : 'striker', p.id, rival.capital);
+    return { g, rival, fleet, hearth: g.nodes[rival.capital] };
+  }
+
+  it('its ships keep the course they are given: no turning back and forth, never leaving', () => {
+    const { g, fleet, hearth } = siege();
+    const changes = new Map<number, number>();
+    const last = new Map<number, number>();
+    for (let t = 0; t < 60 / TICK; t++) {
+      hearth.hp = hearth.maxHp;
+      g.step();
+      g.fx.length = 0;
+      for (const u of fleet) {
+        if (u.dead || last.get(u.id) === u.dest) continue;
+        last.set(u.id, u.dest);
+        changes.set(u.id, (changes.get(u.id) ?? 0) + 1);
+      }
+    }
+    // (Before: up to sixty orders in two and a half minutes, each one starting the drive's charge again.)
+    expect(Math.max(...fleet.map((u) => changes.get(u.id) ?? 0))).toBeLessThanOrEqual(4);
+  });
+
+  it('too few to win, they gather a jump or two short of the Hearth instead of flying in one by one', () => {
+    const { g, rival, fleet, hearth } = siege();
+    for (let t = 0; t < 20 / TICK; t++) {
+      hearth.hp = hearth.maxHp;
+      g.step();
+      g.fx.length = 0;
+    }
+    const living = fleet.filter((u) => !u.dead);
+    expect(living.length).toBe(8);
+    for (const u of living) {
+      expect(u.dest).not.toBe(rival.capital);
+      const hops = g.hops(u.dest >= 0 ? u.dest : u.node, rival.capital);
+      expect(hops).toBeGreaterThanOrEqual(1);
+      expect(hops).toBeLessThanOrEqual(2);
+    }
+  });
+});
+
+describe('Embers from kills (the third playtest)', () => {
+  it('Salvage Crews and War Economy are one figure, and each card shows the other in it', () => {
+    const g = mk();
+    const p = g.player;
+    p.cards.push('warEconomy');
+    g.recomputeMods(p);
+    const line = modLines(g.computeMods(p)).find((l) => l.key === 'killEmbers')!;
+    expect(line.label).toBe('Embers from kills');
+    // Salvage Crews, offered to a house that has War Economy: from 40% to 65%.
+    const d = modDelta(g.computeMods(p), g.computeMods(p, ['salvage'])).find((x) => x.key === 'killEmbers')!;
+    expect([d.from, d.to, d.novel]).toEqual(['+40%', '+65%', false]);
+    // (With neither, the card's own words say it: no line that only repeats them.)
+    const plain = mk();
+    expect(modDelta(plain.computeMods(plain.player), plain.computeMods(plain.player, ['salvage'])).find((x) => x.key === 'killEmbers')?.novel).toBe(true);
+  });
+});
+
+describe("the run's details for a machine (the third playtest)", () => {
+  it('the last line of COPY RUN DETAILS is the run as JSON, and reads back', () => {
+    const g = mk();
+    g.player.cards.push('salvage');
+    g.planetDefeated(g.nodes[g.player.capital], 1);
+    g.flushDeferred();
+    const text = runData(g, '9.9.9');
+    expect(text).toMatch(/^[A-Za-z0-9+/=]+$/);
+    const back = readRunData(text);
+    expect(back.v).toBe('9.9.9');
+    expect(back.seed).toBe(4242);
+    expect(back.outcome.won).toBe(false);
+    expect(back.outcome.victory).toBe('defeat');
+    expect(back.boons).toContain('salvage');
+    expect(back.houses.length).toBe(g.empires().length);
+    expect(back.houses.filter((h: { player: boolean }) => h.player).length).toBe(1);
   });
 });

@@ -130,6 +130,9 @@ export class Renderer {
     const ctx = this.screen.g;
     this.time += dt;
     this.cam.update(dt);
+    // (The shake wears off in real time: worn off with the game's time, it went on for as long as a pause
+    // that came in the middle of it lasted.)
+    this.fx.shake = Math.max(0, this.fx.shake - dt * 8);
     const sh = this.fx.shake;
     this.ox = sh > 0.2 ? Math.round((Math.random() - 0.5) * sh * 2) : 0;
     this.oy = sh > 0.2 ? Math.round((Math.random() - 0.5) * sh * 2) : 0;

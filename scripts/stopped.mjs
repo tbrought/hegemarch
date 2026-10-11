@@ -1,5 +1,6 @@
-// Stopped means stopped: while the game stands still (paused, held by a tip card, or over) no order
-// goes through, by mouse or by key, and the player can still look around and answer dialogs.
+// A pause is a pause to think: while the game stands still (paused, or held by a tip card) the player
+// looks around and gives orders, by mouse and by key, and the game does not move. Once the run is over
+// nothing acts any more.
 //   node scripts/stopped.mjs [url]     (needs a dev server: npx vite --port 5173 --strictPort)
 import { chromium } from 'playwright-core';
 import fs from 'node:fs';
@@ -57,7 +58,7 @@ const snap = () =>
 const state = () =>
   ev(() => {
     const s = window.__app.session;
-    return { mode: s.mode, halted: s.halted, paused: s.paused, tipHold: s.tipHold, tip: window.__app.hud.tips.current?.id ?? null, modal: s.modal?.kind ?? null, toast: s.toast?.text ?? '', orderMode: s.view.orderMode, selected: s.ownSelected().length, node: s.view.selectedNode, time: s.game.time, refused: performance.now() / 1000 - s.refusedAt < 2 };
+    return { mode: s.mode, halted: s.halted, paused: s.paused, tipHold: s.tipHold, tip: window.__app.hud.tips.current?.id ?? null, modal: s.modal?.kind ?? null, toast: s.toast?.text ?? '', orderMode: s.view.orderMode, selected: s.ownSelected().length, node: s.view.selectedNode, time: s.game.time };
   });
 const selectWorld = (id) => ev((n) => window.__app.session.selectNode(n), id);
 const screenOf = (id) =>
@@ -114,29 +115,30 @@ try {
   await wait(200);
   check('K kindles while the game runs', (await snap()) !== before);
 
-  // ---- Paused: look, do not touch ----
+  // ---- Paused: a pause to think. Orders go through; the game does not move. ----
   await page.keyboard.press('Space');
   await wait(200);
   let st = await state();
-  check('Space pauses: the game stands still, and the player may only look', st.paused && st.halted && st.mode === 'look');
+  check('Space pauses: the game stands still, and the player may still give orders', st.paused && st.halted && st.mode === 'play');
   before = await snap();
   await selectWorld(w.dark);
   await wait(150);
   await page.keyboard.press('k');
   await wait(200);
-  st = await state();
-  check('K does not kindle while paused', (await snap()) === before);
-  check('and the game says why', /paused: press Space/i.test(st.toast) && st.refused, st.toast);
-  check('the KINDLE button does nothing either', (await clickUi('kindle')) && (await snap()) === before);
+  check('K kindles while paused', (await snap()) !== before);
+  before = await snap();
   await selectWorld(w.cap);
   await wait(150);
-  check('a build button at the Hearth queues nothing', (await clickUi('build-striker')) && (await snap()) === before);
+  check('a build button at the Hearth queues a ship', (await clickUi('build-striker')) && (await snap()) !== before);
+  before = await snap();
+  await page.keyboard.press('q');
+  await wait(150);
+  check('and so does its key', (await snap()) !== before);
+  before = await snap();
   await selectWorld(w.mine);
   await wait(150);
-  check('a role button changes no role', (await clickUi('role-forge')) && (await snap()) === before);
-  const raised = await clickUi('upgrade');
-  check('RAISE raises nothing', (await snap()) === before, raised ? '' : 'no button');
-  // Ships can be picked to look at them, but they are not about to be sent anywhere.
+  check('a role button changes the role', (await clickUi('role-forge')) && (await snap()) !== before);
+  // Ships picked while paused wait for their destination, and a right-click sends them.
   await ev((c) => {
     const a = window.__app;
     const n = a.session.game.nodes[c];
@@ -146,49 +148,31 @@ try {
   await wait(200);
   await clickUi('fleet-' + w.cap);
   st = await state();
-  check('a fleet can still be picked, to look at it', st.selected >= 3);
-  check('but it is not waiting for a destination', !st.orderMode);
+  check('a fleet picked while paused waits for its destination', st.selected >= 3 && st.orderMode);
+  before = await snap();
   const [dx, dy] = await screenOf(w.dark);
   await wait(150);
   await page.mouse.click(...(await toPage(dx, dy)), { button: 'right' });
   await wait(200);
-  check('a right-click sends no one', (await snap()) === before);
-  for (const key of ['e', 's', 'r', 'm']) await page.keyboard.press(key);
-  await wait(200);
-  st = await state();
-  check('E, S, R and M order nothing', (await snap()) === before && !st.orderMode);
-  // Looking and reading still work.
+  check('and a right-click sends it', (await snap()) !== before);
+  // Looking and reading work as ever.
   const zoom0 = await ev(() => window.__app.renderer.cam.tzoom);
   await page.mouse.move(600, 400);
   await page.mouse.wheel(0, -300);
   await wait(200);
-  check('the camera still zooms', (await ev(() => window.__app.renderer.cam.tzoom)) !== zoom0);
+  check('the camera zooms', (await ev(() => window.__app.renderer.cam.tzoom)) !== zoom0);
   await page.keyboard.press('u');
   await wait(200);
-  check('the status screen still opens', (await state()).modal === 'status');
+  check('the status screen opens', (await state()).modal === 'status');
   await page.keyboard.press('Escape');
   await wait(150);
-  // A decision the game asks for is answered in its dialog, paused or not.
-  await ev(() => (window.__app.session.game.player.pendingDrafts = 1));
-  await page.keyboard.press('b');
-  await wait(900);
-  const cards0 = await ev(() => window.__app.session.game.player.cards.length);
-  await page.keyboard.press('1');
-  await wait(900);
-  check('a Boon can still be chosen: answering a dialog is not an order', (await ev(() => window.__app.session.game.player.cards.length)) === cards0 + 1 && (await state()).paused);
-  await ev(() => (window.__app.session.modal = null));
-  await wait(150);
   check('all through the pause, the game has not moved', (await state()).time === st.time);
+  check('and nothing said an order was refused', !/paused: press Space/i.test((await state()).toast));
   await page.screenshot({ path: '.shots/stopped-paused.png' });
-  // On: the ships that were picked are ready for their order again.
-  before = await snap();
   await page.keyboard.press('Space');
   await wait(300);
   st = await state();
-  check('Space resumes, and the fleet that is still picked waits for a destination again', st.mode === 'play' && st.orderMode && st.selected >= 3);
-  await page.mouse.click(...(await toPage(...(await screenOf(w.dark)))), { button: 'right' });
-  await wait(250);
-  check('now the right-click sends it', (await snap()) !== before);
+  check('Space goes on', !st.paused && st.mode === 'play');
 
   // ---- A tip card holds the game: the same ----
   await ev(() => {
@@ -198,24 +182,18 @@ try {
   });
   await wait(900);
   st = await state();
-  check('a tip card holds the game, and the player may only look', st.tip === 'raid' && st.tipHold && st.mode === 'look', JSON.stringify(st));
+  check('a tip card holds the game', st.tip === 'raid' && st.tipHold && st.halted, JSON.stringify(st));
   before = await snap();
-  await selectWorld(w.dark);
+  await selectWorld(w.cap);
   await wait(150);
-  await page.keyboard.press('k');
+  await page.keyboard.press('w');
   await wait(200);
-  st = await state();
-  check('K does not kindle behind a tip card', (await snap()) === before);
-  check('and the game says to answer the card', /waits while you read/i.test(st.toast) && st.refused, st.toast);
-  check('the KINDLE button does nothing either', (await clickUi('kindle')) && (await snap()) === before);
+  check('and a ship can be queued behind it all the same', (await snap()) !== before);
   await page.screenshot({ path: '.shots/stopped-tip.png' });
   await page.keyboard.press('Space');
   await wait(300);
   st = await state();
-  check('Space answers the card and the game goes on', st.tip === null && st.mode === 'play');
-  await page.keyboard.press('k');
-  await wait(250);
-  check('and now K kindles', (await snap()) !== before);
+  check('Space answers the card and the game goes on', st.tip === null && !st.halted);
 
   // ---- A tip waits until the player's hands are free ----
   await ev((c) => {

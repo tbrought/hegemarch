@@ -269,8 +269,77 @@ const screen = (page) => ev(page, () => window.__app.screen);
   await page.waitForTimeout(200);
   check(r && (await ev(page, () => window.__app.session.view.selectedNode)) === k.hearth, 'a click on the count goes there too');
   await page.screenshot({ path: '.shots/qol-build-keys.png' });
+  // (The third playtest.) The top bar can be read above an open dialog: the next Boon is a question of Lore.
+  // (Lore, or the BOON button in its place while one is waiting.)
+  await ev(page, () => window.__app.hud.modals.open({ kind: 'status' }));
+  await page.waitForTimeout(300);
+  const lore = await ev(page, () => {
+    const c = document.getElementById('game').getBoundingClientRect();
+    const app = window.__app;
+    const h = app.hud.ui.lastHints.find((x) => x.key === 'lore-read' || x.key === 'boon-read');
+    return h ? { x: c.left + ((h.x + h.w / 2) * c.width) / app.hud.W, y: c.top + ((h.y + h.h / 2) * c.height) / app.hud.H } : null;
+  });
+  if (lore) await page.mouse.move(lore.x, lore.y);
+  await page.waitForTimeout(900);
+  const read = await ev(page, () => {
+    const u = window.__app.hud.ui;
+    const h = u.hintNow;
+    return { key: h?.key, tip: h ? (typeof h.tip === 'function' ? h.tip() : h.tip) : '', modal: window.__app.session.modal?.kind };
+  });
+  check(read.modal === 'status' && /^(lore|boon)-read$/.test(read.key) && /The next Boon: \d+ of \d+ Lore/.test(read.tip), `with Status open, the Lore (or the waiting Boon) in the top bar still has its tooltip, with the next Boon (${read.key}: ${read.tip.split('\n').pop()})`);
+  await page.screenshot({ path: '.shots/qol-bar-over-dialog.png' });
+  await page.keyboard.press('Escape');
+  await page.mouse.move(640, 400);
+  // The Destinies at the top right say how far: "3/12", and the time left once one is on the clock.
+  const chips = await ev(page, () => {
+    const app = window.__app;
+    const g = app.session.game;
+    const p = g.player;
+    const out = { plain: g.victories.map((v) => app.hud.chipText(p, v).text), timed: null };
+    const v = g.victories.find((x) => ['domination', 'relics', 'treasury'].includes(x));
+    if (v === 'domination') p.holdTimer = 30;
+    if (v === 'relics') p.relicTimer = 30;
+    if (v === 'treasury') p.treasuryTimer = 30;
+    if (v) out.timed = { v, ...app.hud.chipText(p, v) };
+    return out;
+  });
+  check(chips.plain.every((t) => /^\d+\/\d+$|^\d+%$|^—$/.test(t)), `every Destiny chip says how far it is (${chips.plain.join(', ')})`);
+  check(!chips.timed || (chips.timed.clock && /^\d+:\d\d$/.test(chips.timed.text)), `and one on the clock says the time left (${chips.timed ? `${chips.timed.v}: ${chips.timed.text}` : 'none of the timed Destinies in this run'})`);
+  await page.waitForTimeout(200);
+  await page.screenshot({ path: '.shots/qol-destinies.png' });
+  // A fleet that charges its drives says so, and how long it will be.
+  const jump = await ev(page, () => {
+    const app = window.__app;
+    const s = app.session;
+    const g = s.game;
+    const p = g.player;
+    p.holdTimer = 0;
+    p.relicTimer = 0;
+    p.treasuryTimer = 0;
+    const units = s.fleetAt(p.capital).filter((u) => u.type !== 'ark');
+    const next = g.nodes.find((n) => n.id !== p.capital && g.hops(n.id, p.capital) === 1);
+    g.cmdMove(p.id, units.map((u) => u.id), next.id);
+    for (let i = 0; i < 4; i++) window.__step.call(g);
+    s.selectUnits(units.map((u) => u.id));
+    const w = app.hud.jumpWait(units);
+    return { n: units.length, text: w ? app.hud.jumpWaitText(w) : null };
+  });
+  check(jump.n > 0 && /^Jumping in \d+ s/.test(jump.text ?? ''), `a fleet charging its drives says when it will jump (${jump.text})`);
+  await page.waitForTimeout(300);
+  await page.screenshot({ path: '.shots/qol-jump-charge.png' });
+  // A shake that began before a pause dies down while paused (it went on as long as the pause did).
+  await ev(page, () => {
+    const app = window.__app;
+    app.session.clearSelection();
+    app.session.paused = true;
+    app.renderer.fx.shake = 6;
+  });
+  await page.waitForTimeout(1500);
+  const shake = await ev(page, () => window.__app.renderer.fx.shake);
+  check(shake === 0, `paused, the screen stops shaking (${shake})`);
   await ev(page, () => {
     const g = window.__app.session.game;
+    window.__app.session.paused = false;
     g.step = window.__step;
   });
   // The run ends: the music stops for the fanfare and stays stopped, and the music of the results

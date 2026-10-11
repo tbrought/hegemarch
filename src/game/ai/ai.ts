@@ -369,14 +369,51 @@ function buildShips(g: Game, f: Faction, ctx: Ctx, max: number) {
 /** How many jumps a rival's free ships will go to hold a drifting derelict. */
 const DERELICT_REACH = 5;
 
-function sendIfNeeded(g: Game, f: Faction, units: Unit[], node: number) {
-  const ids: number[] = [];
+/**
+ * Send ships to a place (those not there or on their way already). A few ships (`careful`: new ships,
+ * stragglers, defenders) go round places held by more than they could take on, where there is another
+ * way: sent through an enemy fleet sitting on a star, they were picked off one by one as they came.
+ * (`DANGER`: how much further such a place counts, about the length of forty jumps.) The army itself
+ * takes the straight way, as it always did: sent round, its attacks took so long that they were called
+ * off with nothing done, and AI-only games dragged on.
+ */
+function sendIfNeeded(g: Game, f: Faction, units: Unit[], node: number, careful = true) {
+  const going: Unit[] = [];
   for (const u of units) {
     if (u.node === node && !u.lane && u.path.length === 0) continue;
     if (u.dest === node && (u.lane || u.path.length > 0)) continue;
-    ids.push(u.id);
+    going.push(u);
   }
-  if (ids.length) g.cmdMove(f.id, ids, node);
+  if (!going.length) return;
+  if (!careful) {
+    g.cmdMove(f.id, going.map((u) => u.id), node);
+    return;
+  }
+  const strength = power(g, going);
+  g.cmdMove(f.id, going.map((u) => u.id), node, undefined, undefined, (id) => (g.hostilePowerAt(id, f.id) > strength * 0.6 ? DANGER : 0));
+}
+
+const DANGER = 40000;
+
+/**
+ * Where ships gather that are too few to win at `node` (the house's Hearth under attack): one of the
+ * house's places a jump or two away with no enemy at it, the nearest first. -1 if there is none.
+ */
+function gatherPoint(g: Game, f: Faction, node: number): number {
+  let best = -1;
+  let bd = Infinity;
+  for (const n of g.nodes) {
+    if (n.id === node || g.hostilePowerAt(n.id, f.id) > 0) continue;
+    const hops = g.hops(n.id, node);
+    if (hops < 1 || hops > 2) continue;
+    // (A world of the house's own is better: its guns and walls are on the house's side.)
+    const d = g.pathLen(n.id, node) + (n.owner === f.id ? 0 : 2000);
+    if (d < bd) {
+      bd = d;
+      best = n.id;
+    }
+  }
+  return best;
 }
 
 function power(g: Game, units: Unit[]): number {
@@ -480,6 +517,18 @@ function military(g: Game, f: Faction, ctx: Ctx) {
     (a, b) => (g.nodes[b.node].capitalOf === f.id ? 1 : 0) - (g.nodes[a.node].capitalOf === f.id ? 1 : 0) || b.power - a.power,
   );
   for (const th of threats) {
+    // Ships already there, or on their way, are on this job, as many as it takes (half again the enemy's
+    // strength, those on the spot first): nothing below may send them elsewhere. (Left out, they were
+    // sent on to the army's business and back again, changing course every few seconds and never
+    // leaving: the loop a playtester saw while he took a rival's Hearth. All of them kept, a whole army
+    // resting at a world that one enemy ship was heading for stayed there for good.)
+    let kept = 0;
+    const onJob = all.filter((u) => !assigned.has(u.id) && (u.node === th.node || u.dest === th.node)).sort((x, y) => (x.node === th.node ? 0 : 1) - (y.node === th.node ? 0 : 1));
+    for (const u of onJob) {
+      if (kept >= th.power * 1.5) break;
+      assigned.add(u.id);
+      kept += g.unitPower(u);
+    }
     const already = g.powerAt(th.node, f.id);
     const need = th.power * 1.3 - already;
     if (need <= 0) continue;
@@ -499,11 +548,18 @@ function military(g: Game, f: Faction, ctx: Ctx) {
       sum += g.unitPower(c.u);
     }
     const isHearth = g.nodes[th.node].capitalOf === f.id;
-    if (send.length && (sum + already >= th.power * 0.8 || isHearth)) {
+    if (send.length && sum + already >= th.power * 0.8) {
       sendIfNeeded(g, f, send, th.node);
       for (const u of send) assigned.add(u.id);
-      if (isHearth && ai.mode !== 'build') ai.mode = 'build';
+    } else if (send.length && isHearth) {
+      // Too few to win at the Hearth: they gather a jump or two short of the fight, and go in together
+      // once they are enough (counted again at every thought). They used to fly in as they came, and
+      // an enemy fleet sitting there picked them off one by one.
+      const at = gatherPoint(g, f, th.node);
+      if (at >= 0) sendIfNeeded(g, f, send, at);
+      for (const u of send) assigned.add(u.id);
     }
+    if (isHearth && send.length && ai.mode !== 'build') ai.mode = 'build';
   }
 
   // ---- A drifting derelict is worth a detour ----
@@ -535,7 +591,8 @@ function military(g: Game, f: Faction, ctx: Ctx) {
   switch (ai.mode) {
     case 'build': {
       const idle = army.filter((u) => u.node !== ctx.staging && !u.lane && u.path.length === 0 && u.order === 'idle' && u.lastHit > 6);
-      if (idle.length && ctx.staging >= 0) sendIfNeeded(g, f, idle, ctx.staging);
+      // (Not to a staging world that an enemy is sitting on: new ships would fly into it one at a time.)
+      if (idle.length && ctx.staging >= 0 && g.hostilePowerAt(ctx.staging, f.id) === 0) sendIfNeeded(g, f, idle, ctx.staging);
       // Before the first big attack, still clear guarded dark worlds nearby.
       const canAttack = g.time >= ai.firstAttackAt && g.time - ai.lastAttack > 45 && armyPower >= minArmy;
       const canClear = g.time < ai.firstAttackAt && g.time > 240 && g.time - ai.lastAttack > 60 && armyPower >= 8 * age;
@@ -547,7 +604,7 @@ function military(g: Game, f: Faction, ctx: Ctx) {
           ai.rally = rallyFor(g, f, t.node);
           ai.mode = 'rally';
           ai.modeSince = g.time;
-          sendIfNeeded(g, f, army, ai.rally);
+          sendIfNeeded(g, f, army, ai.rally, false);
         }
       }
       break;
@@ -563,7 +620,7 @@ function military(g: Game, f: Faction, ctx: Ctx) {
         ai.mode = 'attack';
         ai.modeSince = g.time;
         if (!isNeutralTarget(g, ai.target)) ai.attackCount++;
-        sendIfNeeded(g, f, army, ai.target);
+        sendIfNeeded(g, f, army, ai.target, false);
       }
       break;
     }
@@ -574,7 +631,7 @@ function military(g: Game, f: Faction, ctx: Ctx) {
         if (next && g.hops(tn, next.node) <= 2 && fairTarget(g, f, next.node)) {
           ai.target = next.node;
           ai.modeSince = g.time;
-          sendIfNeeded(g, f, army, next.node);
+          sendIfNeeded(g, f, army, next.node, false);
         } else {
           ai.mode = 'build';
           ai.lastAttack = g.time;

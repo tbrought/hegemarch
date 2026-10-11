@@ -114,7 +114,7 @@ function subjectOfStat(key: string): string | null {
   if (group === 'role') return name;
   if (group === 'dmgT') return name === 'fighter' ? 'fighters' : 'fleet';
   switch (key) {
-    case 'embers': case 'salvage': case 'bounty': case 'interest':
+    case 'embers': case 'killEmbers': case 'interest':
       return 'embers';
     case 'lore': case 'reverse':
       return 'lore';

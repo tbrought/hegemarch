@@ -81,7 +81,7 @@ export class Effects {
   floaters: Floater[] = [];
   flashes: Flash[] = [];
   waves: Wave[] = [];
-  /** Screen shake amount in pixels (decays). */
+  /** Screen shake amount in pixels. It wears off in real time, in `Renderer.render`, not with the game. */
   shake = 0;
 
   clear() {
@@ -217,7 +217,6 @@ export class Effects {
     this.floaters = this.floaters.filter((f) => (f.t += dt) < f.dur);
     this.flashes = this.flashes.filter((f) => (f.t += dt) < f.dur);
     this.waves = this.waves.filter((v) => (v.t += dt) < v.dur);
-    this.shake = Math.max(0, this.shake - dt * 8);
   }
 
   draw(g: Ctx, cam: Camera, ox: number, oy: number) {
