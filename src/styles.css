@@ -924,6 +924,34 @@ select optgroup {
   margin-top: 6px;
 }
 
+/* A house's card: its name has the whole width of the card, above its words and its price, so that
+   the longest of them (the Choir of the First Flame) stands on one line. */
+.perk.house {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 0 12px;
+  align-content: center;
+}
+
+.perk.house > div:first-child {
+  display: contents;
+}
+
+.perk.house .pn {
+  grid-column: 1 / -1;
+  white-space: nowrap;
+}
+
+.perk.house .pd {
+  grid-column: 1;
+}
+
+.perk.house > :last-child {
+  grid-column: 2;
+  grid-row: 2 / span 2;
+  align-self: center;
+}
+
 .legacy-badge {
   font-family: var(--display);
   font-size: 13px;

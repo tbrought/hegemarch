@@ -1166,7 +1166,7 @@ export class App {
     const heirs = HEIRS.filter((h) => h.cost > 0)
       .map((h) => {
         const owned = p.heirs.includes(h.id);
-        return `<div class="perk px-box"><div><div class="pn" style="color:${h.color}">${esc(h.name.toUpperCase())}</div><div class="pd">${glossHtml(h.desc)}</div>
+        return `<div class="perk house px-box"><div><div class="pn" style="color:${h.color}">${esc(h.name.toUpperCase())}</div><div class="pd">${glossHtml(h.desc)}</div>
           <div class="pd">${h.bonuses.map((b) => glossHtml(b)).join(' · ')}</div></div>
         ${owned ? '<span class="good">OWNED</span>' : `<button class="small ${p.legacy >= h.cost ? 'primary' : 'disabled'}" data-sa="unlock-heir:${h.id}">◆${h.cost}</button>`}</div>`;
       })
