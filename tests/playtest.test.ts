@@ -947,48 +947,128 @@ describe("a fleet's way (the third playtest)", () => {
   });
 });
 
-describe("a Bastion's field reaches further as it rises (the third playtest)", () => {
-  /** A system with a star and at least two planets; one of them a rival's Bastion, and a ship of the player's at each other place. */
-  function system() {
+describe("fields link: two towers and the wall between them (the third playtest)", () => {
+  /**
+   * Two systems side by side, far from every Hearth, each with planets one jump from its star. The
+   * rival's Bastions go there; a ship of the player's waits at each place that might be held.
+   */
+  function sector() {
     const g = mk({ size: 'medium' });
     const p = g.player;
     const rival = g.empires().find((f) => f.id !== p.id)!;
-    const sys = g.nodes.find((n) => n.kind === 'star' && g.systemNodes(n.system).filter((id) => g.nodes[id].kind === 'planet' && g.nodes[id].capitalOf < 0).length >= 2 && n.system !== g.nodes[p.capital].system && n.system !== g.nodes[rival.capital].system)!;
-    const [b, other] = g.systemNodes(sys.system).map((id) => g.nodes[id]).filter((n) => n.kind === 'planet' && n.capitalOf < 0);
-    for (const n of [b, other]) for (const u of [...g.buckets[n.id]]) g.killUnit(u, -1);
-    for (const u of [...g.buckets[sys.id]]) g.killUnit(u, -1);
-    g.kindleWorld(b, rival.id);
-    b.role = 'bastion';
-    b.retool = 0;
-    g.flushDeferred();
-    const atStar = g.spawnUnit('striker', p.id, sys.id);
-    const atOther = g.spawnUnit('striker', p.id, other.id);
-    const atBastion = g.spawnUnit('striker', p.id, b.id);
-    return { g, b, sys, other, atStar, atOther, atBastion };
+    const beside = (star: { id: number; system: number }) => g.nodes.filter((n) => n.kind === 'planet' && n.capitalOf < 0 && n.owner < 0 && n.system === star.system && g.hops(n.id, star.id) === 1);
+    const stars = g.nodes.filter((n) => n.kind === 'star' && beside(n).length >= 3 && g.hops(n.id, rival.capital) >= 3 && g.hops(n.id, p.capital) >= 2);
+    const starA = stars.find((x) => stars.some((y) => y.id !== x.id && g.hops(x.id, y.id) === 1))!;
+    const starB = stars.find((y) => y.id !== starA.id && g.hops(starA.id, y.id) === 1)!;
+    // (a1 and a2 meet only at the star: worlds joined by a starlane of their own link along that.)
+    const planets = beside(starA);
+    const a1 = planets.find((x) => planets.filter((y) => y.id !== x.id && g.hops(x.id, y.id) === 2).length >= 2)!;
+    const [a2, a3] = planets.filter((y) => y.id !== a1.id);
+    const b1 = beside(starB).find((x) => g.hops(a1.id, x.id) === 3)!;
+    for (const n of [starA, starB, a1, a2, a3, b1]) for (const u of [...g.buckets[n.id]]) g.killUnit(u, -1);
+    const bastion = (n: typeof a1, level: number, owner = rival.id) => {
+      g.kindleWorld(n, owner);
+      g.flushDeferred();
+      n.role = 'bastion';
+      n.retool = 0;
+      g.setLevel(n, level);
+    };
+    const ship = (at: { id: number }, owner = p.id) => g.spawnUnit('striker', owner, at.id);
+    return { g, p, rival, starA, starB, a1, a2, a3, b1, bastion, ship };
   }
 
-  it("level I: its own world; level II: its system's star too; level III: every place in its system", () => {
-    const { g, b, atStar, atOther, atBastion } = system();
-    g.setLevel(b, 1);
-    expect([g.holdAt(atBastion), g.holdAt(atStar), g.holdAt(atOther)]).toEqual([FIELD, 0, 0]);
-    g.setLevel(b, 2);
-    expect([g.holdAt(atBastion), g.holdAt(atStar), g.holdAt(atOther)]).toEqual([FIELD, FIELD, 0]);
-    g.setLevel(b, 3);
-    expect([g.holdAt(atBastion), g.holdAt(atStar), g.holdAt(atOther)]).toEqual([FIELD, FIELD, FIELD]);
-    // (Fields do not add up: one is one.)
-    expect(g.jumpChargeOf(atStar)).toBeLessThan(FIELD * 2);
+  it('a Bastion alone holds only its own world, at every level', () => {
+    const { g, starA, a1, a2, bastion, ship } = sector();
+    const [atBastion, atStar, atOther] = [ship(a1), ship(starA), ship(a2)];
+    for (const level of [1, 2, 3]) {
+      bastion(a1, level);
+      expect([g.holdAt(atBastion), g.holdAt(atStar), g.holdAt(atOther)]).toEqual([FIELD, 0, 0]);
+      expect(g.fieldLinks().filter((l) => l.a === a1.id || l.b === a1.id)).toEqual([]);
+    }
   });
 
-  it("it holds only the house's enemies, and a Hearth or a Starbase holds its own world only", () => {
-    const { g, b, sys, atStar } = system();
-    g.setLevel(b, 3);
-    const friend = g.spawnUnit('striker', b.owner, sys.id);
-    expect(g.holdAt(friend)).toBe(0);
+  it('two Bastions on one star hold the star between them from level II, and nothing else', () => {
+    const { g, rival, starA, a1, a2, a3, bastion, ship } = sector();
+    const [atStar, atThird] = [ship(starA), ship(a3)];
+    bastion(a1, 1);
+    bastion(a2, 1);
+    expect(g.holdAt(atStar)).toBe(0);
+    // One of the two at level II reaches the other.
+    bastion(a1, 2);
+    const link = g.fieldLinks().find((l) => [l.a, l.b].includes(a1.id) && [l.a, l.b].includes(a2.id))!;
+    expect(link.owner).toBe(rival.id);
+    expect(link.way.slice(1, -1)).toEqual([starA.id]);
     expect(g.holdAt(atStar)).toBe(FIELD);
-    const hearth = g.nodes[g.player.capital];
-    hearth.level = 3;
-    expect(g.fieldReach(hearth)).toBe(0);
-    expect(g.fieldsOver(g.nodes[g.systemNodes(hearth.system).find((id) => g.nodes[id].kind === 'star')!])).not.toContain(g.playerId);
+    expect(g.holdAt(atThird)).toBe(0);
+    // It holds the house's enemies only, and two links through a place are still one field.
+    expect(g.holdAt(ship(starA, rival.id))).toBe(0);
+    bastion(a3, 2);
+    expect(g.fieldLinks().filter((l) => l.way.includes(starA.id)).length).toBeGreaterThanOrEqual(2);
+    expect(g.holdAt(atStar)).toBe(FIELD);
+    expect(g.jumpChargeOf(atStar)).toBeCloseTo(JUMP_CHARGE + FIELD, 5);
+  });
+
+  it('level III links across to the next system: both stars of the starlane between', () => {
+    const { g, starA, starB, a1, b1, bastion, ship } = sector();
+    expect(g.hops(a1.id, b1.id)).toBe(3);
+    const [atA, atB] = [ship(starA), ship(starB)];
+    bastion(b1, 1);
+    bastion(a1, 2);
+    expect([g.holdAt(atA), g.holdAt(atB)]).toEqual([0, 0]);
+    bastion(a1, 3);
+    const link = g.fieldLinks().find((l) => [l.a, l.b].includes(a1.id) && [l.a, l.b].includes(b1.id))!;
+    expect([...link.way.slice(1, -1)].sort()).toEqual([starA.id, starB.id].sort());
+    // (The way runs lane by lane from one world to the other.)
+    for (let i = 1; i < link.way.length; i++) expect(g.hops(link.way[i - 1], link.way[i])).toBe(1);
+    expect([g.holdAt(atA), g.holdAt(atB)]).toEqual([FIELD, FIELD]);
+  });
+
+  it('lose or retool one end, and the wall is down on both sides', () => {
+    const { g, p, rival, starA, a1, a2, bastion, ship } = sector();
+    const atStar = ship(starA);
+    bastion(a1, 2);
+    bastion(a2, 2);
+    expect(g.holdAt(atStar)).toBe(FIELD);
+    expect(g.cmdSetRole(rival.id, a2.id, 'mine')).toBe(true);
+    expect(g.holdAt(atStar)).toBe(0);
+    expect(g.cmdSetRole(rival.id, a2.id, 'bastion')).toBe(true);
+    // (Retooling: no field, and no link, until the work is done.)
+    expect(g.holdAt(atStar)).toBe(0);
+    a2.retool = 0;
+    expect(g.holdAt(atStar)).toBe(FIELD);
+    // Taken by the player: the rival's link is gone (and one Bastion of the player's links with nothing).
+    g.planetDefeated(a2, p.id);
+    g.flushDeferred();
+    run(g, 0.1);
+    expect(g.fieldLinks().filter((l) => l.way.includes(starA.id))).toEqual([]);
+  });
+
+  it("a Hearth can be an end of a link, but it takes a Bastion to make one", () => {
+    const g = mk({ size: 'medium' });
+    const p = g.player;
+    const rival = g.empires().find((f) => f.id !== p.id)!;
+    const hearth = g.nodes[p.capital];
+    const [near, other] = g.nodes.filter((n) => n.kind === 'planet' && n.owner < 0 && g.hops(n.id, hearth.id) === 2);
+    for (const n of [near, other]) {
+      for (const u of [...g.buckets[n.id]]) g.killUnit(u, -1);
+      g.kindleWorld(n, p.id);
+    }
+    g.flushDeferred();
+    // A world with a Starbase two jumps from the Hearth: two fields, and no link.
+    g.spawnUnit('starbase', p.id, other.id);
+    run(g, 0.1);
+    expect(g.fieldAt(other)).toBe(true);
+    expect(g.fieldLinks().filter((l) => l.owner === p.id)).toEqual([]);
+    expect(g.linkReach(hearth)).toBe(0);
+    // A Bastion at level II two jumps from the Hearth: linked, and the place between is held.
+    near.role = 'bastion';
+    near.retool = 0;
+    g.setLevel(near, 2);
+    const link = g.fieldLinks().find((l) => [l.a, l.b].includes(hearth.id) && [l.a, l.b].includes(near.id))!;
+    expect(link.way.length).toBe(3);
+    const between = g.nodes[link.way[1]];
+    expect(g.holdAt(g.spawnUnit('striker', rival.id, between.id))).toBe(FIELD);
+    expect(g.holdAt(g.spawnUnit('striker', p.id, between.id))).toBe(0);
   });
 });
 

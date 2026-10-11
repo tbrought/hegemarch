@@ -8,6 +8,12 @@ export const JUMP_CHARGE = 3.5;
  * world with a Starbase.
  */
 export const HOLD_FIELD = 6;
+/**
+ * How far a Bastion's field links with another field of its house, in jumps, by the world's level
+ * (index 1 to 3): not at all at level I, to a partner in its own system at level II (the star between
+ * them), across to the next system at level III (both stars of the starlane between).
+ */
+export const LINK_REACH = [0, 0, 2, 3];
 /** A ship that was hit this many seconds ago or less is under fire... */
 export const UNDER_FIRE = 2;
 /** ...and its drive spools at this share of its speed: running from a fight costs time. */

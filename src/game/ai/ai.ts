@@ -1,5 +1,5 @@
 import type { Game } from '../Game';
-import { AI_ATTACK_RATIO, AI_FIRST_ATTACK, AI_RUSH, AI_THINK } from '../constants';
+import { AI_ATTACK_RATIO, AI_FIRST_ATTACK, AI_RUSH, AI_THINK, LINK_REACH } from '../constants';
 import { CARD_BY_ID, type CardCat } from '../data/cards';
 import { ERAS, LAST_CRADLE_ERA } from '../data/eras';
 import { isWarship, UNITS } from '../data/units';
@@ -294,6 +294,8 @@ function roles(g: Game, f: Faction, ctx: Ctx) {
       let s = SIZE_VALUE[w.size] + (g.affinityOf(w) === role ? 1.5 : 0) - (g.affinityOf(w) === 'mine' ? 1 : 0);
       if (role !== 'observatory' && frontier.has(w.id)) s += 1.2;
       if (role === 'observatory' && frontier.has(w.id)) s -= 1;
+      // (A Bastion is worth more within reach of another field of the house: there its field links.)
+      if (role === 'bastion' && ctx.worlds.some((o) => o.id !== w.id && g.fieldAt(o) && g.hops(o.id, w.id) <= LINK_REACH[2])) s += 1;
       return s;
     };
     cands.sort((a, b) => score(b) - score(a));

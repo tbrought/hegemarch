@@ -70,7 +70,7 @@ export const GLOSSARY: GlossEntry[] = [
   term('shields', 'Shields', 'shields?', 'Take damage before the hull, and recharge when out of combat.', true),
   term('armor', 'Armor', 'armou?r', 'Cuts the damage that gets through to the hull.'),
   term('starlane', 'Starlane', 'starlanes?|jumps?', 'The routes between stars and worlds. Ships jump onto a starlane to travel.'),
-  term('field', 'Anti-warp field', 'anti-warp fields?', 'Kept up by a Bastion, a Hearth and any world with a Starbase. Enemy ships there take [6 s longer] to jump away, so raiders must stand and fight. A Bastion’s field reaches further as it rises: its system’s star at level II, the whole system at III.'),
+  term('field', 'Anti-warp field', 'anti-warp fields?', 'Kept up by a Bastion, a Hearth and any world with a Starbase. Enemy ships there take [6 s longer] to jump away, so raiders must stand and fight. From level II a Bastion’s field links with another field of yours 2 jumps away (3 at level III), and the places on the starlanes between them are held too.'),
   term('spool', 'Spool', 'spool(?:s|ing)?', 'Ships charge their drives for a few seconds before they jump onto a starlane. Under fire it takes twice as long.'),
   // The sector
   term('relic', 'Relic', 'relics?', 'An ancient treasure dug out of a guarded vault. Each relic gives its holder a bonus.'),

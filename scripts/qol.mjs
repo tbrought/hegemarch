@@ -327,6 +327,49 @@ const screen = (page) => ev(page, () => window.__app.screen);
   check(jump.n > 0 && /^Jumping in \d+ s/.test(jump.text ?? ''), `a fleet charging its drives says when it will jump (${jump.text})`);
   await page.waitForTimeout(300);
   await page.screenshot({ path: '.shots/qol-jump-charge.png' });
+  // (The third playtest.) Fields link: a Bastion at level II two jumps from the Hearth, and its card and
+  // the card of the place between them say so.
+  const linked = await ev(page, () => {
+    const app = window.__app;
+    const s = app.session;
+    const g = s.game;
+    const p = g.player;
+    const hearth = g.nodes[p.capital];
+    const world = g.nodes.find((n) => n.kind === 'planet' && n.owner < 0 && g.hops(n.id, hearth.id) === 2);
+    for (const u of [...g.buckets[world.id]]) g.killUnit(u, -1);
+    g.kindleWorld(world, p.id);
+    g.flushDeferred();
+    world.role = 'bastion';
+    world.retool = 0;
+    world.fresh = undefined;
+    g.setLevel(world, 1);
+    const before = g.fieldLinks().filter((l) => l.owner === p.id).length;
+    s.selectNode(world.id);
+    window.__bastion = world.id;
+    return { before, name: world.name };
+  });
+  await page.waitForTimeout(300);
+  const cardLine = () => ev(page, () => window.__app.hud.ui.lastHints.map((h) => h.key).filter((k) => k.startsWith('card-line:') && /LINK|BETWEEN/.test(k)).map((k) => k.slice(10)));
+  const lone = await cardLine();
+  check(linked.before === 0 && lone.some((t) => /^AT LEVEL II ITS FIELD LINKS/.test(t)), `a Bastion at level I links with nothing, and its card says what level II brings (${lone.join(' | ')})`);
+  const link = await ev(page, () => {
+    const app = window.__app;
+    const g = app.session.game;
+    const world = g.nodes[window.__bastion];
+    g.setLevel(world, 2);
+    const l = g.fieldLinks().find((x) => x.owner === g.playerId);
+    window.__between = l?.way[1];
+    return l ? l.way.map((id) => g.nodes[id].name) : null;
+  });
+  await page.waitForTimeout(300);
+  const joined = await cardLine();
+  check(link && link.length === 3 && joined.some((t) => t.startsWith('LINKED WITH') && t.includes(link[1].toUpperCase())), `at level II it links with the Hearth, and the place between is held (${joined.join(' | ')})`);
+  await ev(page, () => window.__app.session.selectNode(window.__between));
+  await page.waitForTimeout(300);
+  const mid = await cardLine();
+  check(mid.some((t) => t.startsWith('BETWEEN YOUR FIELDS')), `and that place's card says it lies between two fields (${mid.join(' | ')})`);
+  await page.screenshot({ path: '.shots/qol-link.png' });
+  await ev(page, () => window.__app.session.clearSelection());
   // (The third playtest.) A right-click shows the way for a moment; Shift+right-click adds a stop.
   const way = await ev(page, () => {
     const app = window.__app;

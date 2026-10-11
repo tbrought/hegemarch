@@ -152,6 +152,7 @@ export class Renderer {
       this.drawSystemHalos(ctx, g, explored);
     }
     this.drawLanes(ctx, g, explored, vis, view);
+    if (!backdrop) this.drawFieldLinks(ctx, g, explored, vis);
     if (!backdrop) this.drawRoutes(ctx, g, view, dt);
     for (const n of g.nodes) {
       if (!explored(n.id)) continue;
@@ -287,6 +288,28 @@ export class Renderer {
   }
 
   /**
+   * Links between fields (`Game.fieldLinks`): a violet line along the starlanes from one world to the
+   * other, the wall between two towers. The player's own are always drawn; another house's where the
+   * player sees a place on that stretch.
+   */
+  private drawFieldLinks(ctx: Ctx, g: Game, explored: (i: number) => boolean, vis: (i: number) => boolean) {
+    if (this.cam.zoom < 0.03) return;
+    const seen = new Set<string>();
+    for (const l of g.fieldLinks()) {
+      for (let i = 1; i < l.way.length; i++) {
+        const a = l.way[i - 1];
+        const b = l.way[i];
+        if (!explored(a) || !explored(b) || !(l.owner === g.playerId || vis(a) || vis(b))) continue;
+        const key = Math.min(a, b) + '-' + Math.max(a, b);
+        if (seen.has(key)) continue;
+        seen.add(key);
+        const seg = this.laneSeg(g.nodes[a], g.nodes[b]);
+        if (seg) line(ctx, seg[0], seg[1], seg[2], seg[3], PAL.violet, 2);
+      }
+    }
+  }
+
+  /**
    * The way the selected ships of ours will take, from where they are to where they are bound, stop by
    * stop: bright for a moment after an order, then dim while they stay selected. A leg into a place the
    * house knows to be dangerous (`Game.dangerKnown`) is red: a playtester sent fleets through an enemy
@@ -359,8 +382,8 @@ export class Renderer {
     // Gravity well edge (where ships gather) for visible worlds at closer zoom.
     if (visible && z >= 0.05 && n.kind !== 'star') ring(ctx, x, y, wellR, this.ground ? PAL.indigo : PAL.night, 4);
     // An anti-warp field (a Bastion, a Hearth, a Starbase): a second, violet ring just inside the edge. A
-    // place that a Bastion's field reaches from another world of its system has the same ring: a violet
-    // ring is a field, wherever it comes from. (Clear of the place itself: a star's well is small.)
+    // place held by a link between two fields has the same ring: a violet ring is a field, wherever it
+    // comes from. (Clear of the place itself: a star's well is small.)
     if (visible && z >= 0.08 && this.game && this.game.fieldsOver(n).length) ring(ctx, x, y, Math.max(wellR - 3, this.nodeR(n) * 2 + 6), PAL.violet, 8);
 
     if (n.kind === 'star') {

@@ -12,7 +12,7 @@ import { ABILITY_LEVELS, DMG_TABLE, DREADNOUGHT_CAP, isWarship, LEVEL_XP, MAX_LE
 import { PERK_EMBERS, PERK_HEARTH, PERK_HULL, PERK_LORE, PERK_WALLS } from '../meta/perks';
 import { ASCENSION_BOONS, OPTIONAL_VICTORIES } from './data/victories';
 import {
-  AI_INCOME, CRISIS_AWAKEN, CRISIS_OFFSET, JUMP_CHARGE, PHASE_SPEED, PIRATE_FIRST_RAID, HOLD_FIELD, QUEUE_MAX, SAVE_VERSION, TICK,
+  AI_INCOME, CRISIS_AWAKEN, CRISIS_OFFSET, JUMP_CHARGE, LINK_REACH, PHASE_SPEED, PIRATE_FIRST_RAID, HOLD_FIELD, QUEUE_MAX, SAVE_VERSION, TICK,
 } from './constants';
 import { computePaths, EMPIRES_BY_SIZE, generateCradle, generateMap, type SystemInfo } from './mapgen';
 import { baseMods, mul } from './mods';
@@ -89,6 +89,24 @@ export interface HistorySample {
 
 /** Seconds of game time between two samples of `Game.history`. */
 export const HISTORY_EVERY = 30;
+
+/** Two fields of one house, joined: `way` runs from one world to the other through the places between. */
+export interface FieldLink {
+  owner: number;
+  a: number;
+  b: number;
+  way: number[];
+}
+
+interface FieldState {
+  tick: number;
+  sig: number;
+  nodes: GNode[];
+  links: FieldLink[];
+  over: Map<number, number[]>;
+}
+
+const NO_FIELDS: number[] = [];
 
 /** A reason a command cannot be carried out, or null when it can. */
 export type QueueCheck = string | null;
@@ -864,46 +882,125 @@ export class Game {
   }
 
   /**
-   * How far a Bastion's field reaches, by the world's level: 1, its own world; 2, its system's star as
-   * well (where the system's starlanes meet); 3, every place in its system. 0 for a world that is not a
-   * Bastion. (A Hearth and a Starbase hold their own world only. Among the stars only: the lands of the
-   * cradle are all one system.) Plan A of the third playtest's answer: a field across a whole system
-   * from the start was too strong, and a Bastion's level only made its guns hit harder.
+   * How far a Bastion's field links, in jumps (`LINK_REACH`). 0 for a world that is not a Bastion: a
+   * Hearth and a world with a Starbase can be linked to, but throw no link themselves. 0 in the cradle,
+   * where a Bastion holds its own land only.
    */
-  fieldReach(n: GNode): number {
-    if (n.capitalOf >= 0 || !this.hasRole(n, 'bastion') || this.factions[n.owner].kind !== 'empire') return 0;
-    return this.cradle ? 1 : clamp(n.level, 1, 3);
+  linkReach(n: GNode): number {
+    if (this.cradle || n.capitalOf >= 0 || n.owner < 0 || !this.hasRole(n, 'bastion') || this.factions[n.owner].kind !== 'empire') return 0;
+    return LINK_REACH[clamp(n.level, 1, 3)];
   }
 
-  /** The houses whose anti-warp fields cover a place: its own world's field, and the reach of the Bastions of its system. */
+  /**
+   * The links between fields. A Bastion alone holds only its own world, at every level. Two fields of
+   * one house (a Bastion's, its Hearth's, a Starbase's), at least one of them a Bastion that reaches the
+   * other (`linkReach`, the higher level of two Bastions), join along the starlanes between them, and
+   * every place on the way is held as well: two towers, and the wall between them. So one Bastion never
+   * covers a system, a pair is where the field starts to matter, and taking or retooling one end brings
+   * the wall down on both sides. (1.11 gave one Bastion its system's star at level II and the whole
+   * system at level III: one world did it all, and no second Bastion was ever worth its role.)
+   */
+  fieldLinks(): FieldLink[] {
+    return this.fields().links;
+  }
+
+  /** The houses whose anti-warp fields hold a place: its own world's field, and the links that run through it. */
   fieldsOver(n: GNode): number[] {
+    return this.fields().over.get(n.id) ?? NO_FIELDS;
+  }
+
+  /**
+   * Fields and links as they stand. Worked out again whenever what they come from has changed (`fieldSig`:
+   * a world's house, role or level, a Starbase built or lost), so the map shows a link the moment a
+   * paused player makes one; and forgotten at the end of every tick, so a game that was saved and one
+   * that went on always work them out from the same state.
+   */
+  private fields(): FieldState {
+    const sig = this.fieldSig();
+    const c = this.fieldCache;
+    if (c && c.tick === this.tick && c.sig === sig && c.nodes === this.nodes) return c;
+    const links: FieldLink[] = [];
+    const over = new Map<number, number[]>();
+    const hold = (id: number, owner: number) => {
+      const l = over.get(id);
+      if (!l) over.set(id, [owner]);
+      else if (!l.includes(owner)) l.push(owner);
+    };
+    const worlds = this.nodes.filter((n) => this.fieldAt(n));
+    for (const n of worlds) hold(n.id, n.owner);
+    for (let i = 0; i < worlds.length; i++) {
+      for (let j = i + 1; j < worlds.length; j++) {
+        const a = worlds[i];
+        const b = worlds[j];
+        if (a.owner !== b.owner) continue;
+        const reach = Math.max(this.linkReach(a), this.linkReach(b));
+        if (!reach || this.hops(a.id, b.id) > reach) continue;
+        const way = [a.id, ...this.hopPath(a.id, b.id)];
+        if (way[way.length - 1] !== b.id) continue;
+        links.push({ owner: a.owner, a: a.id, b: b.id, way });
+        for (const id of way) hold(id, a.owner);
+      }
+    }
+    this.fieldCache = { tick: this.tick, sig, nodes: this.nodes, links, over };
+    return this.fieldCache;
+  }
+
+  private fieldCache: FieldState | null = null;
+  /** Counts the Starbases built and lost (they make and unmake a field). */
+  private fieldEpoch = 0;
+
+  /** A number that changes when anything a field or a link depends on does. */
+  private fieldSig(): number {
+    let h = this.fieldEpoch;
+    for (const n of this.nodes) {
+      if (n.kind !== 'planet' || n.owner < 0) continue;
+      h = (Math.imul(h, 31) + n.id * 97 + n.owner * 13 + n.level * 5 + (n.role === 'bastion' ? 3 : 0) + (n.retool > 0 ? 1 : 0)) | 0;
+    }
+    return h;
+  }
+
+  /**
+   * The way from `a` to `b` in the fewest jumps (the shortest of those ways), without `a` itself: what a
+   * player counts on the map when the rule says "within two jumps". (`pathTo` is the way ships fly, the
+   * shortest in time, which now and then takes one jump more.)
+   */
+  hopPath(a: number, b: number): number[] {
     const out: number[] = [];
-    if (this.fieldAt(n)) out.push(n.owner);
-    for (const id of this.systemNodes(n.system)) {
-      const b = this.nodes[id];
-      if (b.id === n.id || b.owner < 0 || out.includes(b.owner)) continue;
-      const reach = this.fieldReach(b);
-      if (reach >= 3 || (reach >= 2 && n.kind === 'star')) out.push(b.owner);
+    let cur = a;
+    while (cur !== b && out.length < 16) {
+      const left = this.hops(cur, b);
+      let best = -1;
+      let bd = Infinity;
+      for (const x of this.neighbours(cur)) {
+        if (this.hops(x, b) !== left - 1) continue;
+        const d = this.pathLen(cur, x) + this.pathLen(x, b);
+        if (d < bd - 1e-9) {
+          bd = d;
+          best = x;
+        }
+      }
+      if (best < 0) return [];
+      out.push(best);
+      cur = best;
     }
     return out;
   }
 
-  /** The places of a system (worked out once from the map, which does not change). */
-  systemNodes(system: number): number[] {
-    if (!this.bySystem || this.bySystemOf !== this.nodes) {
-      this.bySystem = new Map();
-      this.bySystemOf = this.nodes;
-      for (const n of this.nodes) {
-        const list = this.bySystem.get(n.system);
-        if (list) list.push(n.id);
-        else this.bySystem.set(n.system, [n.id]);
+  /** The places one starlane away (worked out once from the map, which does not change). */
+  neighbours(id: number): number[] {
+    if (!this.nextTo || this.nextToOf !== this.lanes) {
+      this.nextTo = this.nodes.map(() => []);
+      this.nextToOf = this.lanes;
+      for (const l of this.lanes) {
+        this.nextTo[l.a].push(l.b);
+        this.nextTo[l.b].push(l.a);
       }
     }
-    return this.bySystem.get(system) ?? [];
+    return this.nextTo[id] ?? [];
   }
 
-  private bySystem: Map<number, number[]> | null = null;
-  private bySystemOf: GNode[] | null = null;
+  private nextTo: number[][] | null = null;
+  private nextToOf: Lane[] | null = null;
 
   /**
    * How many seconds longer a ship takes to jump away from where it is, because the house that holds
@@ -1096,6 +1193,7 @@ export class Game {
     nodeId: number,
     opts: { x?: number; y?: number; hpFrac?: number; parent?: number; temp?: number } = {},
   ): Unit {
+    if (type === 'starbase') this.fieldEpoch++;
     const def = UNITS[type];
     const n = this.nodes[nodeId];
     let { x, y } = opts;
@@ -1335,6 +1433,7 @@ export class Game {
     if (u.dead) return;
     u.dead = true;
     u.hp = 0;
+    if (u.type === 'starbase') this.fieldEpoch++;
     const def = UNITS[u.type];
     const owner = this.factions[u.owner];
     if (this.fxEnabled) this.fx.push({ k: 'boom', x: u.x, y: u.y, size: def.radius, color: owner.color, node: u.node });
@@ -2558,6 +2657,7 @@ export class Game {
     if (!this.history.length || this.tick % Math.round(HISTORY_EVERY / TICK) === 0) this.sampleHistory();
     this.flushDeferred();
     if (this.tick % 20 === 0 || this.unitList.length > 4000) this.cleanup();
+    this.fieldCache = null;
   }
 
   flushDeferred() {

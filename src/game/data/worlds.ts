@@ -34,7 +34,7 @@ export const ROLES: Record<WorldRole, RoleDef> = {
   mine: { id: 'mine', name: 'Mine', short: '[+75% Embers] here.', desc: 'Digs deep: this world makes [75% more Embers].' },
   forge: { id: 'forge', name: 'Forge', short: 'Builds ships.', desc: 'Builds ships. Higher levels build [faster].' },
   observatory: { id: 'observatory', name: 'Observatory', short: 'Makes [Lore] and sees further.', desc: 'Studies the dark: makes [Lore] and sees [one starlane further].' },
-  bastion: { id: 'bastion', name: 'Bastion', short: '[Guns], [armor], [repairs], and enemies cannot run.', desc: 'Fortifies the world: [orbital guns], [+50% hull and shields], [repairs] for your ships here, and an [anti-warp field]: enemy ships take 6s longer to jump away. At level II the field reaches the system’s star as well, at level III every place in the system.' },
+  bastion: { id: 'bastion', name: 'Bastion', short: '[Guns], [armor], [repairs], and enemies cannot run.', desc: 'Fortifies the world: [orbital guns], [+50% hull and shields], [repairs] for your ships here, and an [anti-warp field]: enemy ships take 6s longer to jump away. From level II the field links with another field of yours [2 jumps] away ([3] at level III), and the places between them are held too.' },
 };
 
 export const ROLE_ORDER: WorldRole[] = ['mine', 'forge', 'observatory', 'bastion'];

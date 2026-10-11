@@ -72,15 +72,32 @@ the depth into the draft and the screen into a "one thing at a time" model.
     role) and at any world with a Starbase, enemy ships take 6 seconds longer to jump away. The field
     shows as a violet ring inside the world's well, and the world's card says so, for its owner and
     for an attacker. The Gravity Anchors Boon adds its 4 seconds at every world of the house.
-    A **Bastion's field reaches further as the world rises** (`Game.fieldReach`, `fieldsOver`): at
-    level I it covers its own world, at level II its system's star as well (where the system's
-    starlanes meet), at level III every place in its system. A place it reaches has the same violet
-    ring, and its card says whose field it is. Fields do not add up: one is one. A Hearth and a
-    Starbase hold their own world only, and in the cradle a Bastion holds its own land only (the
-    lands are all one system). The third playtest found a Bastion on an isolated leg did nothing
-    for the way past it, and that its level only made its guns hit harder; a field across a whole
-    system from level I would have made every system a trap. In AI-only games the reach changed
-    nothing measurable (40 seeds: small 34 and medium 33 of 40 games decided, against 31 and 34).
+    **Fields link** (`Game.fieldLinks`, `linkReach`, `LINK_REACH`): two towers, and the wall between
+    them. A Bastion alone holds only its own world, at every level. Two fields of one house (a
+    Bastion's, its Hearth's, a Starbase's), at least one of them a Bastion that reaches the other,
+    join along the starlanes between them, and every place on that way is held as well. A Bastion
+    reaches by its level: not at all at level I, 2 jumps at level II (a partner in its own system:
+    the star between them), 3 jumps at level III (across to the next system: both stars of the
+    starlane between). The way is the one with the fewest jumps (`hopPath`: what a player counts on
+    the map), so two worlds joined by a starlane of their own link along that, and hold nothing more.
+    The map draws a link as a violet line along its starlanes and rings each place it holds; the
+    cards say it in words ("LINKED WITH AURELIA: ORISON HELD TOO", "BETWEEN YOUR FIELDS: ENEMIES JUMP
+    6S SLOWER"), and a Bastion of the player's that links with nothing says why ("AT LEVEL II ITS
+    FIELD LINKS 2 JUMPS AWAY", "NO FIELD OF YOURS WITHIN 2 JUMPS TO LINK"): the third playtest's
+    Bastion on an isolated leg did nothing for the way past it, and nothing said so. Fields do not
+    add up: one is one. Lose or retool one end and the link is gone. In the cradle a Bastion holds
+    its own land only.
+    So the choices are real ones: two level II Bastions in a system cost two worlds' roles and
+    little else; one level III Bastion a system, each linked to the next system's, costs fewer
+    worlds and more Embers, and the whole chain falls with one of its links. A world that only hangs
+    off its star (a Mine) is on no way between two fields: raiders still reach it, and are caught at
+    the star on their way out. (1.11 had tried reach by level: its own world, then its system's
+    star, then the whole system. One level III Bastion did it all, no second Bastion was ever worth
+    its role, and "world, star, everything" was not something a player would guess from the map.)
+    Rival houses prefer a world within two jumps of another of their fields for a Bastion; in twelve
+    AI-only games every game had links, one to four of them, the first between minute 6 and 29.
+    Pace is within what the seeds vary by (40 seeds, Normal: small 28 and medium 31 of 40 games
+    decided within the hour, against 34 and 33; medians 40 and 35 minutes, against 44 and 37).
   - **Under fire a drive spools at half speed** (`UNDER_FIRE`, `FIRE_SPOOL`): a ship hit in the last
     two seconds takes twice as long to get away. Running from a fight costs time.
   So a raid on a Bastion is a commitment, a Bastion is the buildable answer to raiders, and the
