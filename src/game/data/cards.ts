@@ -29,6 +29,8 @@ export interface CardDef {
   icons?: string[];
   mods?: (m: Mods) => void;
   onPick?: (g: Game, f: Faction) => void;
+  /** Offered only while this holds (a Boon that would be wasted on a house is not dealt to it). */
+  when?: (g: Game, f: Faction) => boolean;
 }
 
 export const CARDS: CardDef[] = [
@@ -167,8 +169,10 @@ export const CARDS: CardDef[] = [
   { id: 'echo', name: 'Echo Fleet', rarity: 'epic', cat: 'war', max: 1, desc: 'Every 150 seconds, [two Guardians] arrive at your Hearth.', mods: (m) => flag(m, 'echo', 1) },
   { id: 'quantum', name: 'Quantum Archives', rarity: 'epic', cat: 'lore', max: 1, desc: 'Boon choices offer [one more option] (up to 5).', mods: (m) => (m.draft += 1) },
   {
-    id: 'arkAscendant', name: 'Ark Ascendant', rarity: 'epic', cat: 'war', max: 1, desc: 'Your Ark gains [2 levels] at once and deals [25% more damage].',
+    id: 'arkAscendant', name: 'Ark Ascendant', rarity: 'epic', cat: 'war', max: 1, desc: 'Your Ark gains [2 levels] at once (it learns an ability at levels 3, 5 and 7) and deals [25% more damage].',
     mods: (m) => addU(m, 'ark', 'dmg', 0.25),
+    // (Two levels always reach an ability, unless the Ark is at level 7 or 8 already: then they would be lost.)
+    when: (_g, f) => f.arkLevel <= 6,
     onPick: (g, f) => {
       const ark = g.units.get(f.ark);
       if (ark) g.grantLevels(ark, 2);

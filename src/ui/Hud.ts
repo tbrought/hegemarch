@@ -177,6 +177,17 @@ export class Hud {
     if (!s.modal && !g.outcome && s.profile.settings.autoPause && !this.tutorial.busy()) {
       const pr = g.prompts.find((x) => x.result === undefined && !this.snoozed.has(x.id));
       if (pr) this.modals.open({ kind: 'event', promptId: pr.id });
+      else if (!s.view.box) {
+        // An Ark or a Dreadnought that may learn an ability is a decision too: its choice opens by itself,
+        // once. (It waited behind a small button at the edge of the screen, easy to miss, above all right
+        // after the Boon that gave the levels.) Closed without a choice, it waits behind that button.
+        const key = (x: Unit) => `${x.id}:${x.level}:${x.pendingAbil.length}`;
+        const u = g.unitList.find((x) => !x.dead && x.owner === g.playerId && x.pendingAbil.length > 0 && !this.abilityShown.has(key(x)));
+        if (u) {
+          this.abilityShown.add(key(u));
+          this.modals.open({ kind: 'ability', unitId: u.id });
+        }
+      }
     }
     this.tutorial.update(dt);
     this.tips.update(dt);
@@ -460,6 +471,9 @@ export class Hud {
     const n = node >= 0 ? this.s.fleetAt(node).length : 0;
     return n > 0 ? String(n) : '';
   }
+
+  /** Ability choices that have opened by themselves already (ship, level and choices waiting). */
+  private abilityShown = new Set<string>();
 
   /** Did the game stand still at the last update (see `Session.mode`)? */
   private wasLook = false;

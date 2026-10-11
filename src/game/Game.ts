@@ -1043,6 +1043,7 @@ export class Game {
       const abil = f.arkAbil.length ? f.arkAbil : [heir?.signature ?? 'barrage'];
       u.abil = abil.map((id) => ({ id, cd: 4 }));
       f.ark = u.id;
+      this.oweAbilities(u);
     } else if (type === 'dreadnought') {
       const pool = LEARNABLE_ABILITIES.filter((a) => a.id !== HEIR_BY_ID[f.heir]?.signature);
       u.abil = [{ id: this.rng.pick(pool).id, cd: 4 }];
@@ -1297,19 +1298,38 @@ export class Game {
     const f = this.factions[u.owner];
     if (u.type === 'ark') f.arkLevel = u.level;
     if (this.fxEnabled && u.node >= 0) this.fx.push({ k: 'text', x: u.x, y: u.y - 40, text: `LEVEL ${u.level}`, color: '#ffd23f', node: u.node });
-    if (ABILITY_LEVELS.includes(u.level)) {
-      const owned = new Set(u.abil.map((a) => a.id));
-      const pool = this.rng.shuffle(LEARNABLE_ABILITIES.filter((a) => !owned.has(a.id)).map((a) => a.id));
-      const choices = pool.slice(0, 3);
-      if (choices.length === 0) return;
-      if (f.isPlayer) {
-        u.pendingAbil.push(choices);
-        this.notify(f.id, `Your ${UNITS[u.type].name} reached level ${u.level}. Choose a new ability!`, 'good', u.node >= 0 ? u.node : undefined);
-      } else {
-        u.abil.push({ id: choices[0], cd: 3 });
-        if (u.type === 'ark') f.arkAbil = u.abil.map((a) => a.id);
-      }
+    if (ABILITY_LEVELS.includes(u.level)) this.offerAbility(u);
+  }
+
+  /**
+   * A capital ship may learn an ability: the player is given a choice of three (it waits in
+   * `pendingAbil` until it is made), a rival house takes one at once. False if there is none left to learn.
+   */
+  private offerAbility(u: Unit): boolean {
+    const f = this.factions[u.owner];
+    const owned = new Set(u.abil.map((a) => a.id));
+    const pool = this.rng.shuffle(LEARNABLE_ABILITIES.filter((a) => !owned.has(a.id)).map((a) => a.id));
+    const choices = pool.slice(0, 3);
+    if (choices.length === 0) return false;
+    if (f.isPlayer) {
+      u.pendingAbil.push(choices);
+      this.notify(f.id, `Your ${UNITS[u.type].name} reached level ${u.level}. Choose a new ability!`, 'good', u.node >= 0 ? u.node : undefined);
+    } else {
+      u.abil.push({ id: choices[0], cd: 3 });
+      if (u.type === 'ark') f.arkAbil = u.abil.map((a) => a.id);
     }
+    return true;
+  }
+
+  /**
+   * An Ark that is rebuilt comes back at the level its house has reached. If it gained levels while
+   * there was no Ark to gain them (a Boon taken with the Ark destroyed), the abilities of those levels
+   * were never offered: they are now. An Ark knows its house's signature ability and one more for each
+   * of the levels in `ABILITY_LEVELS` it has reached.
+   */
+  private oweAbilities(u: Unit) {
+    const due = 1 + ABILITY_LEVELS.filter((l) => l <= u.level).length;
+    for (let i = 0; i < 4 && u.abil.length + u.pendingAbil.length < due; i++) if (!this.offerAbility(u)) break;
   }
 
   /** A seed ship finished its work: the world joins the house. */
@@ -1534,6 +1554,7 @@ export class Game {
     return CARDS.filter(
       (c) =>
         !c.hidden &&
+        (!c.when || c.when(this, f)) &&
         // (On the cradle a house is offered the Boons of its own age, and no others.)
         !!c.cradle === this.cradle &&
         (!this.cradle || c.age === f.era) &&

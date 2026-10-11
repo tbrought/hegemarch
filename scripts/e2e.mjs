@@ -688,6 +688,36 @@ try {
   check('continue restores the run', Math.abs((await ev(() => window.__app.session.game.time)) - t0) < 2);
   check('restored run starts paused', await ev(() => window.__app.session.paused));
 
+  // ---- An Ark that may learn an ability: its choice opens by itself (with auto-pause on), once ----
+  await ev(() => {
+    const a = window.__app;
+    const s = a.session;
+    const g = s.game;
+    s.modal = null;
+    s.paused = false;
+    s.clearSelection();
+    while (a.hud.tips.current) a.hud.tips.dismiss();
+    s.profile.settings.autoPause = true;
+    for (const p of g.prompts) if (p.result === undefined) g.cmdResolvePrompt(p.id, 0);
+    const ark = g.units.get(g.player.ark);
+    ark.pendingAbil = [];
+    g.grantLevels(ark, ark.level < 3 ? 3 - ark.level : ark.level < 5 ? 5 - ark.level : 7 - ark.level);
+  });
+  await wait(600);
+  check('the choice of an ability opens by itself', await ev(() => window.__app.session.modal?.kind === 'ability'));
+  await page.keyboard.press('Escape');
+  await wait(600);
+  check('closed without a choice, it does not open again, and waits behind its button', await ev(() => window.__app.session.modal === null && window.__app.session.game.units.get(window.__app.session.game.player.ark).pendingAbil.length === 1) && !!(await ev(() => window.__app.hud.ui.rectOf('abil-' + window.__app.session.game.player.ark))));
+  await ev(() => {
+    const s = window.__app.session;
+    const g = s.game;
+    const ark = g.units.get(g.player.ark);
+    g.cmdChooseAbility(g.playerId, ark.id, ark.pendingAbil[0][0]);
+    s.profile.settings.autoPause = false;
+    s.modal = null;
+    s.paused = false;
+  });
+
   // ---- A Destiny that runs on a clock shows the clock, a rival's too ----
   const clk = await ev(() => {
     const a = window.__app;

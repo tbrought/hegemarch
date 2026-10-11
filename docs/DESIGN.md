@@ -286,6 +286,13 @@ Measured with `npm run simulate` and `npm run balance:passive`. Speeds are ½×,
   it in its tooltip and a click that looks at the place; before, a hold was one line in the log and
   a tooltip that counted up. And the fleet card's chips are as wide as their ship, so a
   **Dreadnought** has its picture (it was the one ship too wide for the chip, and got none).
+- **An Ark's ability is never lost, and its choice is never missed.** With auto-pause on, the choice
+  of an ability opens by itself, once, like any other decision (it waited behind a small "ARK LEVEL
+  5!" button at the edge of the screen, easy to miss right after the Boon that gave the levels);
+  closed without a choice it waits behind that button. A rebuilt Ark is offered any ability it is
+  owed (`Game.oweAbilities`: levels gained while there was no Ark, by the Ark Ascendant Boon, came
+  without their ability). And that Boon is not dealt to a house whose Ark is at level 7 or 8, where
+  its two levels would be lost (`CardDef.when`).
 - **What the player sees is what happened.** A ship of the player's is never lost silently: the log
   says "Lost at Cinder to Ancient Sentinels: 2 Scouts, 1 Striker", one line per place that counts up
   while more are lost there (`Note.loss`), with an alarm only when the place is off screen. A shield
