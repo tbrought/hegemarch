@@ -450,7 +450,10 @@ Measured with `npm run simulate` and `npm run balance:passive`. Speeds are ½×,
   **sound button** in the corner of every menu screen says which: SOUND ON, SOUND OFF, or CLICK FOR
   SOUND while the browser waits. One click on it turns everything off or on (`settings.muted`, kept
   apart from the volumes); the click that woke the sound does not also turn it off. Settings has the
-  same switch, on the menus and in a run. `npm run test:sound` checks it under both browser rules.
+  same switch, on the menus and in a run. The button is a child of the screen that is showing, in
+  the margin above its page: it stands beside that screen's scrollbar and goes up with the page when
+  it is scrolled. (Pinned to the corner of the window, it sat on the scrollbar.) `npm run test:sound`
+  checks it under both browser rules, and with a scrollbar that takes room.
 
 ### The website
 

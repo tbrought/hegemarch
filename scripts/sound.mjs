@@ -20,8 +20,9 @@ const check = (ok, what) => {
 const PROFILE = { tutorialDone: true, runs: 4, wins: 1, legacy: 140, totalLegacy: 300, seenTips: [] };
 
 /** A browser with the given autoplay rule, on the title screen with the given profile. */
-async function open(policy, size = { width: 1280, height: 720 }) {
-  const browser = await chromium.launch({ executablePath, headless: true, args: [`--autoplay-policy=${policy}`] });
+async function open(policy, size = { width: 1280, height: 720 }, scrollbars = false) {
+  // (A headless browser is started with its scrollbars hidden; `scrollbars` leaves them in.)
+  const browser = await chromium.launch({ executablePath, headless: true, args: [`--autoplay-policy=${policy}`], ignoreDefaultArgs: scrollbars ? ['--hide-scrollbars'] : [] });
   const page = await browser.newPage({ viewport: size });
   page.on('pageerror', (e) => errors.push(e.message));
   page.on('console', (m) => m.type() === 'error' && !/fonts\.g/.test(m.text()) && errors.push(m.text()));
@@ -40,7 +41,8 @@ async function open(policy, size = { width: 1280, height: 720 }) {
 const state = (page) =>
   page.evaluate(() => {
     const app = window.__app;
-    const b = document.getElementById('sound');
+    // (In a run the button is in no screen, and so not in the page at all.)
+    const b = document.getElementById('sound') ?? Object.assign(document.createElement('button'), { hidden: true });
     const r = b.getBoundingClientRect();
     const pg = document.querySelector('.page')?.getBoundingClientRect();
     return {
@@ -101,6 +103,59 @@ const state = (page) =>
   await page.waitForTimeout(250);
   s = await state(page);
   check(!s.muted && s.state === 'on', 'Settings: ON turns it on');
+  await page.click('#sound');
+  await page.waitForTimeout(250);
+  check(await page.evaluate(() => document.querySelector('[data-sa="sound:off"]').classList.contains('active')), 'and the corner button moves the switch in Settings');
+  await page.click('#sound');
+  await browser.close();
+}
+
+// ---- A page that scrolls: the button stands beside the scrollbar, and goes up with the page ----
+{
+  // (With a scrollbar that takes room, as desktop browsers have.)
+  const { browser, page } = await open('document-user-activation-required', { width: 1100, height: 600 }, true);
+  const where = () =>
+    page.evaluate(() => {
+      const scr = document.querySelector('.screen');
+      const b = document.getElementById('sound').getBoundingClientRect();
+      const r = scr.getBoundingClientRect();
+      const logo = document.querySelector('.logo')?.getBoundingClientRect();
+      const foot = document.querySelector('.menu-foot')?.getBoundingClientRect();
+      return {
+        bar: scr.offsetWidth - scr.clientWidth,
+        inside: scr.contains(document.getElementById('sound')),
+        right: Math.round(b.right),
+        top: Math.round(b.top),
+        bottom: Math.round(b.bottom),
+        edge: Math.round(r.left + scr.clientLeft + scr.clientWidth),
+        scrolls: scr.scrollHeight > scr.clientHeight,
+        above: logo ? Math.round(logo.top - r.top) : -1,
+        below: foot ? Math.round(r.top + scr.scrollHeight - (foot.bottom + scr.scrollTop)) : -1,
+      };
+    });
+  let p = await where();
+  check(p.inside && Math.abs(p.above - p.below) <= 2 + 40, `the title screen is laid out as before, with the button in it (${p.above}px above the title, ${p.below}px under the foot)`);
+  await page.click('[data-sa="setup"]');
+  await page.waitForTimeout(400);
+  p = await where();
+  check(p.scrolls && p.bar >= 10, `the setup page scrolls, with a scrollbar ${p.bar}px wide`);
+  check(p.right <= p.edge, `the button stands beside the scrollbar, not on it (button to ${p.right}px, scrollbar from ${p.edge}px)`);
+  await page.screenshot({ path: '.shots/sound-scrollbar.png' });
+  await page.evaluate(() => (document.querySelector('.screen').scrollTop = 300));
+  await page.waitForTimeout(300);
+  p = await where();
+  check(p.bottom < 0, `scrolled down, it has gone up with the top of the page (button at ${p.top}px)`);
+  // A click on an option draws the page again: the button is still in it, and the page keeps its place.
+  // (Clicked from inside the page: a click from here would first scroll the option into view.)
+  await page.evaluate(() => [...document.querySelectorAll('.opt button.small:not(.active):not(.disabled)')][0].click());
+  await page.waitForTimeout(300);
+  p = await where();
+  const top = await page.evaluate(() => document.querySelector('.screen').scrollTop);
+  check(p.inside && Math.abs(top - 300) <= 2, `after the page is drawn again the button is still in it, and the page has kept its place (scrolled to ${top}px)`);
+  await page.evaluate(() => (document.querySelector('.screen').scrollTop = 0));
+  await page.waitForTimeout(300);
+  p = await where();
+  check(p.top >= 0 && p.right <= p.edge, 'and back at the top it is there again');
   await browser.close();
 }
 

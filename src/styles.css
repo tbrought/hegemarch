@@ -64,19 +64,25 @@ body {
 
 /* ------------------------------------------------------------------ sound */
 
-/* One button in the corner of every menu screen: what is heard, and a click to change it. It fits in
-   the margin above a page, so it covers nothing. */
+/* One button in the corner of every menu screen: what is heard, and a click to change it. It is a
+   child of the screen (App.syncSound) and fits in the margin above its page: it stands beside the
+   screen's scrollbar, covers nothing, and goes up with the page when that is scrolled. */
 #sound {
-  position: fixed;
+  position: absolute;
   top: 0;
   right: 4px;
-  z-index: 30;
+  z-index: 5;
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  padding: 4px 7px;
+  padding: 3px 7px;
   font-size: 9px;
   color: var(--mist);
+}
+
+/* (So near the corner, the usual ring round a focused button would run off the screen.) */
+#sound:focus-visible {
+  outline-offset: 0;
 }
 
 #sound[hidden] {
@@ -149,7 +155,7 @@ body {
   margin-top: auto;
 }
 
-.screen.menu > :last-child {
+.screen.menu > .menu-foot {
   margin-bottom: auto;
 }
 

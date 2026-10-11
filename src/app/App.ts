@@ -127,7 +127,6 @@ export class App {
     this.soundBtn.className = 'small';
     this.soundBtn.hidden = true;
     this.soundBtn.addEventListener('click', () => this.toggleSound());
-    document.body.appendChild(this.soundBtn);
     this.ui.addEventListener('click', (e) => this.onScreenAction(e));
     window.addEventListener('keydown', (e) => {
       if (e.code === 'Escape' && this.screen === 'setup' && this.setup.confirm) {
@@ -475,14 +474,21 @@ export class App {
    * The sound button: in the corner of every menu screen (in a run, sound is under Menu, Settings). It
    * says what is heard: on, off, or waiting for the browser, which plays nothing before the first
    * click on a page.
+   *
+   * It lives inside the screen that is showing, in the margin above its page, and is put back there
+   * whenever the screen is drawn again. So it stands beside that screen's scrollbar, not on it, and
+   * goes up with the top of a page that is scrolled instead of floating over what comes after. (Pinned
+   * to the corner of the window, it did both.)
    */
   private syncSound() {
     const b = this.soundBtn;
-    if (this.screen === 'game' || this.screen === 'loading') {
+    const scr = this.screen === 'game' || this.screen === 'loading' ? null : this.ui.querySelector('.screen');
+    if (!scr) {
       this.soundState = '';
       b.hidden = true;
       return;
     }
+    if (b.parentElement !== scr) scr.appendChild(b);
     const state = this.profile.settings.muted ? 'off' : this.sfx.live ? 'on' : 'asleep';
     if (state === this.soundState) return;
     this.soundState = state;
@@ -506,6 +512,8 @@ export class App {
     // (The click that woke the sound has turned it on: it is not also a click to turn it off.)
     if (this.gestureWoke && !st.muted) return;
     this.setMuted(!st.muted);
+    // (Settings shows the same switch.)
+    if (this.screen === 'settings') this.showSettings();
   }
 
   private setMuted(muted: boolean) {
