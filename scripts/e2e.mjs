@@ -432,10 +432,24 @@ try {
   // ---- Roles ----
   await clickWorld(dark);
   await clickUi('role-forge');
-  check('role changes to Forge (retooling)', await ev((d) => {
+  check('the first role given to a newly kindled world costs no time', await ev((d) => {
     const n = window.__app.session.game.nodes[d];
-    return n.role === 'forge' && n.retool > 0;
+    return n.role === 'forge' && n.retool === 0 && !n.fresh;
   }, dark));
+  await clickUi('role-observatory');
+  check('a later change of role retools the world', await ev((d) => {
+    const n = window.__app.session.game.nodes[d];
+    return n.role === 'observatory' && n.retool > 0;
+  }, dark));
+  await clickUi('role-forge').catch(() => {});
+  await ev((d) => {
+    // (Back to a Forge, ready, for the checks that follow.)
+    const g = window.__app.session.game;
+    const n = g.nodes[d];
+    n.role = 'forge';
+    n.retool = 0;
+    g.refreshWorld(n);
+  }, dark);
 
   // ---- Fleet orders: badge, then a world ----
   await ev((c) => {
@@ -678,6 +692,20 @@ try {
   await page.waitForSelector('.results', { timeout: 10000 });
   check('abandoning shows the results', (await page.textContent('.results .logo'))?.includes('DEFEAT'));
   check('legacy is awarded', await ev(() => JSON.parse(localStorage.getItem('hegemarch.profile.v1')).runs === 1));
+  await wait(1700); // (the Legacy total counts up)
+  check('Legacy is the headline of the results: how much, what it is for, and where to spend it', await ev(() => {
+    const h = document.querySelector('.legacy-hero');
+    const total = JSON.parse(localStorage.getItem('hegemarch.profile.v1')).legacy;
+    return !!h && /Legacy is yours to keep/.test(h.textContent) && /Hall of Heirs/.test(h.textContent) && h.querySelector('#legacy-total').textContent === String(window.__app.results.report.total) && h.textContent.includes('◆' + total) && !!h.querySelector('[data-sa="results-hall"]') && !!h.querySelector('.lh-buys');
+  }), await ev(() => document.querySelector('.legacy-hero')?.textContent.replace(/\s+/g, ' ').slice(0, 200)));
+  check('the results name the seed and the setup', /Seed\s*\d+ · Small · /.test((await page.textContent('.results table.stats')) ?? ''), ((await page.textContent('.results table.stats')) ?? '').slice(-60));
+  await page.click('[data-sa="copy-run"]');
+  await wait(300);
+  check('COPY RUN DETAILS copies the run (or, where the clipboard is refused, shows it to select)', await ev(() => {
+    const b = document.querySelector('[data-sa="copy-run"]');
+    const t = document.getElementById('run-details');
+    return (b.textContent === 'COPIED' || !t.hidden) && /^Hegemarch v\d/.test(t.value) && /seed \d+, small/.test(t.value) && /Defeat by/.test(t.value);
+  }), await ev(() => document.getElementById('run-details')?.value.slice(0, 160)));
   await page.screenshot({ path: '.shots/e2e-results.png' });
   await page.click('[data-sa="results-again"]');
   check('after a run, setup skips the First Night card', (await page.$('[data-sa="launch"]')) !== null);

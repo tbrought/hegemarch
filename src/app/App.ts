@@ -42,6 +42,8 @@ interface ResultsData {
   relics: string[];
   heir: string;
   ambition: string;
+  /** The run in one paragraph, for a bug report: version, seed, setup, how it ended. */
+  details: string;
 }
 
 /** Shown on the title screen: package.json's version, put in by Vite (vite.config.ts). */
@@ -502,6 +504,8 @@ export class App {
         ['Anomalies resolved', String(p.stats.eventsResolved)],
         ['Embers earned', fmt(p.stats.embersEarned)],
         ['Omens', g.traits.map((t) => TRAIT_BY_ID[t]?.name ?? t).join(', ')],
+        // (The seed rebuilds the same sector: with the setup beside it, a run can be played again.)
+        ['Seed', `${g.config.seed} · ${g.config.size[0].toUpperCase() + g.config.size.slice(1)} · ${DIFFICULTY_NAMES[g.config.difficulty]}`],
         // An Ages run: how long the cradle took (or, if the run ended there, how far the climb came).
         ...(g.config.ages ? [['Time on the cradle', fmtTime(g.config.ages.cradleTime)], ['Lands held when the Ark left', String(g.config.ages.lands)]] : []),
         ...(g.cradle ? [['Age reached', ERAS[Math.min(p.era, LAST_CRADLE_ERA)].name]] : []),
@@ -514,6 +518,14 @@ export class App {
       relics: [...p.relics],
       heir: p.heir,
       ambition: g.ambition,
+      details: [
+        `Hegemarch v${GAME_VERSION}`,
+        `${g.config.mode === 'ages' ? 'Ages run' : g.config.daily ? 'Daily run' : g.config.tutorial ? 'First Night' : 'Classic run'}, seed ${g.config.seed}, ${g.config.size}, ${DIFFICULTY_NAMES[g.config.difficulty]}, ${HEIR_BY_ID[p.heir]?.name ?? p.heir}`,
+        `${o.playerWon ? 'Victory' : 'Defeat'} by ${vname(o.victory)} at ${fmtTime(o.time)}: ${o.reason}`,
+        `Destinies: ${g.victories.map(vname).join(', ')}. Omens: ${g.traits.map((t) => TRAIT_BY_ID[t]?.name ?? t).join(', ') || 'none'}.`,
+        `Boons: ${groupBoons(p.cards).map(({ id, count }) => (CARD_BY_ID[id]?.name ?? id) + (count > 1 ? ` x${count}` : '')).join(', ') || 'none'}.`,
+        `Worlds ${p.stats.maxWorlds} at most, ships built ${p.stats.shipsBuilt}, lost ${p.stats.shipsLost}, destroyed ${p.stats.kills}.`,
+      ].join('\n'),
     };
     s.modal = null;
     s.paused = true;
@@ -705,6 +717,24 @@ export class App {
         }
         this.showSettings();
         break;
+      case 'copy-run': {
+        // (A copy has to start in the click itself; where the clipboard is refused, show the text to select.)
+        const text = this.results?.details ?? '';
+        const done = () => (el.textContent = 'COPIED');
+        const show = () => {
+          const box = this.ui.querySelector<HTMLTextAreaElement>('#run-details');
+          if (!box) return;
+          box.hidden = false;
+          box.focus();
+          box.select();
+        };
+        try {
+          navigator.clipboard.writeText(text).then(done, show);
+        } catch {
+          show();
+        }
+        break;
+      }
       case 'results-hall':
         this.teardownSession();
         this.showHall();
@@ -789,7 +819,7 @@ export class App {
           </button>
         </div>
         <div class="home-links">
-          <button class="small" data-sa="hall" data-tip="Spend Legacy, earned by every run, on new houses, perks and unlocks.${offers ? ` [You can afford ${offers} of them now.]` : ''}">HALL OF HEIRS · <span class="gold">◆${p.legacy}</span>${offers ? '<span class="pip" aria-hidden="true"></span>' : ''}</button>
+          <button class="small" data-sa="hall" data-tip="Spend Legacy, earned by every run, on new houses, perks and unlocks.${offers ? ` [You can afford ${offers} of them now.]` : ''}">HALL OF HEIRS · <span class="gold">◆${p.legacy}${offers ? ' TO SPEND' : ''}</span>${offers ? '<span class="pip" aria-hidden="true"></span>' : ''}</button>
           <button class="small" data-sa="howto">HOW TO PLAY</button>
           <button class="small" data-sa="settings">SETTINGS</button>
         </div>
@@ -819,17 +849,22 @@ export class App {
     return this.profile.lastDaily === todayKey() ? `PLAYED · NEXT IN ${span}` : `ENDS IN ${span}`;
   }
 
-  /** How many things in the Hall of Heirs the player's Legacy would buy right now. */
-  private hallOffers(): number {
+  /** Everything in the Hall of Heirs the player does not have yet, cheapest first: its name and its price. */
+  private hallShop(): { name: string; cost: number }[] {
     const p = this.profile;
-    let n = 0;
-    for (const h of HEIRS) if (h.cost > 0 && !p.heirs.includes(h.id) && p.legacy >= h.cost) n++;
+    const out: { name: string; cost: number }[] = [];
+    for (const h of HEIRS) if (h.cost > 0 && !p.heirs.includes(h.id)) out.push({ name: h.name, cost: h.cost });
     for (const pk of PERKS) {
       const rank = p.perks[pk.id] ?? 0;
-      if (rank < pk.costs.length && p.legacy >= pk.costs[rank]) n++;
+      if (rank < pk.costs.length) out.push({ name: pk.name, cost: pk.costs[rank] });
     }
-    for (const u of UNLOCKS) if (!(u.id === 'pacts' ? p.unlockPacts : p.unlockLegendary) && p.legacy >= u.cost) n++;
-    return n;
+    for (const u of UNLOCKS) if (!(u.id === 'pacts' ? p.unlockPacts : p.unlockLegendary)) out.push({ name: u.name, cost: u.cost });
+    return out.sort((a, b) => a.cost - b.cost);
+  }
+
+  /** How many things in the Hall of Heirs the player's Legacy would buy right now. */
+  private hallOffers(): number {
+    return this.hallShop().filter((x) => x.cost <= this.profile.legacy).length;
   }
 
   /**
@@ -981,7 +1016,7 @@ export class App {
       : '<div class="dim">No runs yet. The first heir is waiting.</div>';
     this.put('hall', `<div class="screen${this.crt()}"><div class="page">
       <h1>HALL OF HEIRS</h1>
-      <div class="lead">Every heir who falls leaves a legacy for the next. <span class="gl" data-gl="legacy">Legacy</span>: <span class="legacy-badge">◆${p.legacy}</span> <span class="dim">(${p.totalLegacy} earned in all)</span></div>
+      <div class="lead">Every heir who falls leaves a legacy for the next. Every run earns Legacy, win or lose; what you buy with it here is yours in every run after. <span class="gl" data-gl="legacy">Legacy</span>: <span class="legacy-badge">◆${p.legacy}</span> <span class="dim">(${p.totalLegacy} earned in all)</span></div>
       <h2>HOUSES</h2><div class="perks">${heirs}</div>
       <h2>INHERITANCE</h2><div class="perks">${perks}</div>
       <h2>FORBIDDEN KNOWLEDGE</h2><div class="perks">${unlocks}</div>
@@ -1047,22 +1082,42 @@ export class App {
     const relics = r.relics.map((id) => `<span class="chip" style="--rc:var(--sky)" data-tip-title="${esc(RELIC_BY_ID[id]?.name ?? id)}" data-tip="${esc(RELIC_BY_ID[id]?.desc ?? '')}">♦ ${esc(RELIC_BY_ID[id]?.name ?? id)}</span>`).join('');
     const amb = AMBITION_BY_ID[r.ambition];
     const daily = this.session?.game.config.daily;
+    // Legacy is what a run leaves behind, and the reason to play another: it is the headline here, with
+    // what it buys right now, or how far the next thing is. (As one dim line under a table it was missed.)
+    const have = this.profile.legacy;
+    const shop = this.hallShop();
+    const afford = shop.filter((x) => x.cost <= have);
+    const next = shop.find((x) => x.cost > have);
+    const buys = afford.length
+      ? `<div class="lh-buys"><span>Enough for:</span>${afford.slice(0, 4).map((x) => `<span class="chip" style="--rc:var(--gold)">${esc(x.name)} ◆${x.cost}</span>`).join('')}${afford.length > 4 ? `<span class="dim">and ${afford.length - 4} more</span>` : ''}</div>`
+      : next
+        ? `<div class="lh-buys"><span>Next: <b>${esc(next.name)}</b> ◆${next.cost}, <b>◆${next.cost - have}</b> to go</span><span class="lh-bar"><i style="width:${Math.round((100 * have) / next.cost)}%"></i></span></div>`
+        : '<div class="lh-buys"><span>Everything in the Hall of Heirs is yours.</span></div>';
+    const legacyHero = `<div class="px-box legacy-hero">
+        <div class="lh-earned"><span class="lh-num">◆<span id="legacy-total">0</span></span><span class="lh-label">LEGACY EARNED</span></div>
+        <div class="lh-text"><p><b>Legacy is yours to keep.</b> Every run earns it, win or lose. Spend it in the <b>Hall of Heirs</b> on new houses to play, on perks that every future run starts with, and on rarer Boons. You have <b class="gold">◆${have}</b> to spend.</p>${buys}</div>
+        <button class="${afford.length ? 'primary' : ''}" data-sa="results-hall">${afford.length ? 'SPEND IT' : 'SEE THE HALL'}</button>
+      </div>`;
     this.ui.innerHTML = `<div class="screen results${this.crt()}"><div class="page">
       <div class="logo" style="font-size:clamp(28px,6vw,56px);${r.won ? '' : 'color:var(--red);text-shadow:4px 4px 0 var(--wine),8px 8px 0 var(--night)'}">${r.title}</div>
       <div class="reason">${esc(r.reason)}</div>
+      ${legacyHero}
       <div class="cols">
         <div class="px-box"><h3>THE REIGN OF THE ${esc((heir?.name ?? '').toUpperCase())}</h3><table class="stats">${r.stats.map(([k, v]) => `<tr><td>${k}</td><td>${esc(v)}</td></tr>`).join('')}</table></div>
         <div class="px-box"><h3>LEGACY EARNED</h3><table class="stats">
           ${r.report.lines.filter(([k]) => !k.startsWith('Ambition')).map(([k, v]) => `<tr><td>${esc(k)}</td><td>+${v}</td></tr>`).join('')}
           <tr><td>Difficulty${daily ? ' and daily' : ''} multiplier</td><td>×${r.report.multiplier.toFixed(2)}</td></tr>
           ${ambLine ? `<tr><td class="gold" data-tip="${esc(amb?.desc ?? '')}">${esc(ambLine[0])}</td><td>+${ambLine[1]}</td></tr>` : amb ? `<tr><td class="dim" data-tip="${esc(`${amb.desc} Missed this time.`)}">Ambition: ${esc(amb.name)} (missed)</td><td>—</td></tr>` : ''}
-          <tr class="total"><td>TOTAL</td><td>◆<span id="legacy-total">0</span></td></tr></table>
-          ${r.unlocked ? `<div class="good" style="margin-top:10px">New difficulty unlocked: <b>${r.unlocked}</b></div>` : ''}
-          <div class="dim" style="margin-top:8px"><span class="gl" data-gl="legacy">Legacy</span> to spend: ◆${this.profile.legacy}</div></div>
+          <tr class="total"><td>TOTAL</td><td>◆${r.report.total}</td></tr></table>
+          ${r.unlocked ? `<div class="good" style="margin-top:10px">New difficulty unlocked: <b>${r.unlocked}</b></div>` : ''}</div>
       </div>
       <div class="px-box" style="margin-top:16px"><h3>BOONS</h3><div class="chips">${cards || '<span class="dim">None</span>'}</div>
         ${relics ? `<h3 style="margin-top:12px">RELICS</h3><div class="chips">${relics}</div>` : ''}</div>
-      <div class="foot-actions"><button data-sa="results-hall">HALL OF HEIRS</button><button class="primary" data-sa="results-again">NEW RUN</button></div>
+      <div class="run-details">
+        <button class="small" data-sa="copy-run" data-tip="Copies this run's version, seed, setup and outcome, to send with a bug report or to play the same sector again.">COPY RUN DETAILS</button>
+        <textarea id="run-details" readonly hidden rows="6">${esc(r.details)}</textarea>
+      </div>
+      <div class="foot-actions"><button class="${afford.length ? 'primary' : ''}" data-sa="results-hall">${afford.length ? 'SPEND LEGACY IN THE HALL OF HEIRS' : 'HALL OF HEIRS'}</button><button class="${afford.length ? '' : 'primary'}" data-sa="results-again">NEW RUN</button></div>
     </div></div>`;
     // The Legacy total counts up like a score.
     const el = this.ui.querySelector('#legacy-total');

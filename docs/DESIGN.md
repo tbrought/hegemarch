@@ -325,6 +325,14 @@ Measured with `npm run simulate` and `npm run balance:passive`. Speeds are ½×,
   piling up, a hint says what to spend them on (at most every 3 minutes, off with tips). The end of
   a run is its own moment: the screen dims, VICTORY or DEFEAT rises with the reason (gold sparks on
   a win), and a click skips to the results, where the Legacy total counts up.
+- **The results put Legacy first.** Under the verdict, a gold-framed banner counts up the Legacy
+  earned, says in two lines what Legacy is (kept between runs, spent in the Hall of Heirs on houses,
+  perks and rarer Boons) and what it buys right now ("Enough for: Old Coin ◆40 …"), or how far the
+  next thing is with a bar, and has the button to spend it. The first playtester took the Hall of
+  Heirs for a leaderboard and nearly closed the screen: the only hint was one dim line under a
+  table. The stats name the seed and the setup, and COPY RUN DETAILS copies version, seed, setup,
+  outcome, Destinies, omens and Boons for a bug report (where the clipboard is refused, the text is
+  shown to select).
 - **Text is never drawn through a pattern.** A dither (every other pixel) over or under the
   1-pixel-wide font scrambles it, so: dialogs dim what is behind them with a flat dark shade and
   leave the top bar (Embers, Lore) bright; the comms log sits on a flat shade; the drag-select box

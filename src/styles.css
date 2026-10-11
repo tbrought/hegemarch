@@ -844,6 +844,116 @@ table.stats tr.total td {
   margin: -4px 0 20px;
 }
 
+/* What the run leaves behind, as the headline of its results: the Legacy earned, what Legacy is, what it
+   buys right now (or how far the next thing is), and the way to spend it. */
+.legacy-hero {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 20px;
+  margin-bottom: 16px;
+  padding: 14px 18px;
+  box-shadow:
+    0 calc(var(--px) * -1) 0 0 var(--gold),
+    0 var(--px) 0 0 var(--gold),
+    calc(var(--px) * -1) 0 0 0 var(--gold),
+    var(--px) 0 0 0 var(--gold);
+}
+
+.lh-earned {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+
+.lh-num {
+  font-family: var(--display);
+  font-size: 30px;
+  color: var(--gold);
+  text-shadow: 3px 3px 0 var(--wine);
+  font-variant-numeric: tabular-nums;
+}
+
+.lh-label {
+  font-family: var(--display);
+  font-size: 9px;
+  letter-spacing: 0.08em;
+  color: var(--ember);
+}
+
+.lh-text p {
+  margin: 0;
+  color: var(--mist);
+  line-height: 1.4;
+}
+
+.lh-text b {
+  color: var(--bone);
+  font-weight: normal;
+}
+
+.lh-buys {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 10px;
+  margin-top: 10px;
+  color: var(--dusk);
+}
+
+.lh-buys b {
+  color: var(--gold);
+}
+
+/* How far the player's Legacy is toward the next thing in the Hall. */
+.lh-bar {
+  display: inline-block;
+  width: 140px;
+  max-width: 100%;
+  height: 8px;
+  background: var(--indigo);
+}
+
+.lh-bar i {
+  display: block;
+  height: 100%;
+  background: var(--gold);
+}
+
+.run-details {
+  margin-top: 14px;
+  text-align: right;
+}
+
+.run-details textarea {
+  display: block;
+  width: 100%;
+  margin-top: 10px;
+  padding: 8px 10px;
+  font-family: var(--body);
+  font-size: 15px;
+  color: var(--mist);
+  background: var(--void);
+  border: var(--px) solid var(--slate);
+  resize: vertical;
+}
+
+.run-details textarea[hidden] {
+  display: none;
+}
+
+@media (max-width: 700px) {
+  .legacy-hero {
+    grid-template-columns: minmax(0, 1fr);
+    text-align: center;
+  }
+
+  .lh-buys {
+    justify-content: center;
+  }
+}
+
 .chips {
   display: flex;
   flex-wrap: wrap;
