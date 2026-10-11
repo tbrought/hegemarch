@@ -1241,6 +1241,67 @@ table.stats tr.total td {
   margin-right: 6px;
 }
 
+/* How fleet strength is counted: what each warship adds, and the three things that change it. */
+.rc-note {
+  margin-top: 14px;
+  padding-top: 10px;
+  border-top: 2px solid var(--indigo);
+  color: var(--mist);
+  font-size: 16px;
+  line-height: 1.35;
+}
+
+.rc-note h4 {
+  font-family: var(--display);
+  font-size: 9px;
+  color: var(--mist);
+  margin: 0 0 6px;
+}
+
+.rc-note p {
+  margin: 0 0 6px;
+}
+
+.rc-note ul {
+  list-style: none;
+  margin: 0 0 8px;
+  padding: 0;
+}
+
+.rc-ships {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 8px;
+}
+
+.rc-ships li {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 8px;
+  background: var(--void);
+  box-shadow: 0 0 0 2px var(--indigo);
+}
+
+.rc-ships b {
+  color: var(--bone);
+  font-variant-numeric: tabular-nums;
+}
+
+.rc-pic {
+  image-rendering: pixelated;
+  flex: none;
+}
+
+.rc-rules li {
+  margin: 2px 0;
+}
+
+.rc-rules b {
+  color: var(--bone);
+  font-weight: normal;
+}
+
 .rc-tables {
   margin-top: 12px;
 }

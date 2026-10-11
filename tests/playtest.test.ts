@@ -14,7 +14,7 @@ import { PERK_EMBERS, PERK_HEARTH, PERK_HULL, PERK_LORE, PERK_WALLS } from '../s
 import { ECON } from '../src/game/data/worlds';
 import { HOLD_FIELD as FIELD } from '../src/game/constants';
 import { modDelta, modLines } from '../src/game/modstats';
-import { scale } from '../src/app/charts';
+import { chartsHtml, runCharts, scale, strengthParts } from '../src/app/charts';
 import { readRunData, runData } from '../src/app/rundata';
 import { GLOSS_BY_ID, termsIn } from '../src/ui/glossary';
 
@@ -1182,6 +1182,45 @@ describe("the run, minute by minute (the third playtest's graphs)", () => {
       expect(s.max).toBeGreaterThanOrEqual(v);
       expect(s.max / s.step).toBeLessThanOrEqual(4);
     }
+  });
+
+  it('the page says how fleet strength is counted, in the numbers the game counts it with', () => {
+    const parts = strengthParts();
+    expect(parts.ships.map((x) => x.type)).toEqual(['striker', 'guardian', 'breaker', 'lancer', 'carrier', 'dreadnought', 'ark']);
+    const g = mk();
+    const p = g.player;
+    const bonus = 1 + (p.mods.dmg + p.mods.hull) * parts.boon;
+    for (const x of parts.ships) {
+      const u = x.type === 'ark' ? g.units.get(p.ark)! : g.spawnUnit(x.type, p.id, p.capital);
+      // At full hull and shields: its power (and what the house's Boons add).
+      u.hp = u.maxHp;
+      u.sh = u.maxSh;
+      expect(g.unitPower(u)).toBeCloseTo(x.power * bonus, 5);
+      // With nothing left: the share the page says.
+      u.hp = 0;
+      u.sh = 0;
+      expect(g.unitPower(u)).toBeCloseTo(x.power * bonus * parts.wreck, 5);
+      // A level more: what the page says a level adds.
+      u.hp = u.maxHp;
+      u.sh = u.maxSh;
+      u.level += 1;
+      expect(g.unitPower(u)).toBeCloseTo(x.power * bonus * (1 + parts.level), 5);
+      u.level -= 1;
+    }
+    // +10% damage from a Boon: half of that on every ship.
+    const striker = g.spawnUnit('striker', p.id, p.capital);
+    const before = g.unitPower(striker);
+    p.mods.dmg += 0.1;
+    expect(g.unitPower(striker) / before).toBeCloseTo((bonus + 0.1 * parts.boon) / bonus, 5);
+    // And the page has it: every ship with its number, and the three rules.
+    run(g, 65);
+    g.declareWinner(g.playerId, 'conquest', 'Every rival Hearth is dark.');
+    const html = chartsHtml(runCharts(g)!);
+    expect(html).toContain('HOW FLEET STRENGTH IS COUNTED');
+    for (const x of parts.ships) expect(html).toContain(`<span>${x.name}</span><b>${x.power}</b>`);
+    expect(html).toContain('counts 35%');
+    expect(html).toContain('adds 5%');
+    expect(html).toContain('adds 8%');
   });
 
   it('a saved run keeps its history', () => {

@@ -534,6 +534,12 @@ const screen = (page) => ev(page, () => window.__app.screen);
   check(charts && charts.charts.length === 4 && charts.charts.every((c) => c.lines === charts.houses && c.lit === 2 && c.ends >= 1 && c.w > 100 && c.w <= c.room + 1), `the results draw four charts, a line for every house, the player and one rival in colour (${charts ? charts.charts.map((c) => `${c.key}: ${c.lines} lines`).join(', ') : 'no charts'}; ${charts?.samples} samples)`);
   check(charts && charts.picks === charts.houses - 1 && charts.pressed === 1 && !charts.wide, `with a button for every rival, one of them compared (${charts?.picks} rivals)`);
   check(charts && charts.tables === 4 && charts.rows >= 3, `and the figures as a table (${charts?.tables} tables, ${charts?.rows} rows each)`);
+  // What "fleet strength" is: every warship with its picture and its power, and the three rules.
+  const note = await ev(page, () => {
+    const n = document.querySelector('.rc-note');
+    return n ? { ships: [...n.querySelectorAll('.rc-ships li')].map((li) => li.textContent.trim()), pics: n.querySelectorAll('.rc-ships img').length, rules: n.querySelectorAll('.rc-rules li').length, text: n.textContent } : null;
+  });
+  check(note && note.ships.length === 7 && note.pics === 7 && note.rules === 3 && /counts 35%/.test(note.text), `under the charts the page says how fleet strength is counted (${note ? note.ships.join(', ') : 'no note'})`);
   const plot = page.locator('.rc-chart[data-key="e"] .rc-plot');
   const pb = await plot.boundingBox();
   await page.mouse.move(pb.x + 60, pb.y - 30);

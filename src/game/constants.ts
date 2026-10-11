@@ -9,6 +9,16 @@ export const JUMP_CHARGE = 3.5;
  */
 export const HOLD_FIELD = 6;
 /**
+ * What a ship is worth in a fight (`Game.unitPower`, the fleet strength of the results' graphs): its
+ * type's power, times its health (a ship with no hull or shields left still counts `POWER_WRECK`),
+ * times one plus `POWER_BOON` of its house's damage and hull bonuses, times `LEVEL_STEP` more for
+ * every level above the first. The results spell these out, so they are named here.
+ */
+export const POWER_WRECK = 0.35;
+export const POWER_BOON = 0.5;
+/** What each level above the first adds to a ship that has levels (an Ark, a Dreadnought). */
+export const LEVEL_STEP = 0.08;
+/**
  * How far a Bastion's field links with another field of its house, in jumps, by the world's level
  * (index 1 to 3): not at all at level I, to a partner in its own system at level II (the star between
  * them), across to the next system at level III (both stars of the starlane between).

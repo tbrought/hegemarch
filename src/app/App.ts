@@ -1356,7 +1356,7 @@ export class App {
       </div>
       <div class="px-box" style="margin-top:16px"><h3>BOONS</h3><div class="chips">${cards || '<span class="dim">None</span>'}</div>
         ${relics ? `<h3 style="margin-top:12px">RELICS</h3><div class="chips">${relics}</div>` : ''}</div>
-      ${r.charts ? chartsHtml(r.charts) : ''}
+      ${r.charts ? chartsHtml(r.charts, (type, color) => shipPic(type, color, 'rc-pic')) : ''}
       <div class="run-details">
         <button class="small" data-sa="copy-run" data-tip="Copies this run's version, seed, setup and outcome, to send with a bug report or to play the same sector again.">COPY RUN DETAILS</button>
         <textarea id="run-details" readonly hidden rows="6">${esc(r.details)}</textarea>

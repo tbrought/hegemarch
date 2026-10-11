@@ -12,7 +12,7 @@ import { ABILITY_LEVELS, DMG_TABLE, DREADNOUGHT_CAP, isWarship, LEVEL_XP, MAX_LE
 import { PERK_EMBERS, PERK_HEARTH, PERK_HULL, PERK_LORE, PERK_WALLS } from '../meta/perks';
 import { ASCENSION_BOONS, OPTIONAL_VICTORIES } from './data/victories';
 import {
-  AI_INCOME, CRISIS_AWAKEN, CRISIS_OFFSET, JUMP_CHARGE, LINK_REACH, PHASE_SPEED, PIRATE_FIRST_RAID, HOLD_FIELD, QUEUE_MAX, SAVE_VERSION, TICK,
+  AI_INCOME, CRISIS_AWAKEN, CRISIS_OFFSET, JUMP_CHARGE, LEVEL_STEP, LINK_REACH, PHASE_SPEED, PIRATE_FIRST_RAID, POWER_BOON, POWER_WRECK, HOLD_FIELD, QUEUE_MAX, SAVE_VERSION, TICK,
 } from './constants';
 import { computePaths, EMPIRES_BY_SIZE, generateCradle, generateMap, type SystemInfo } from './mapgen';
 import { baseMods, mul } from './mods';
@@ -829,7 +829,7 @@ export class Game {
   }
 
   levelMul(u: Unit): number {
-    return 1 + 0.08 * (u.level - 1);
+    return 1 + LEVEL_STEP * (u.level - 1);
   }
 
   refreshUnitStats(u: Unit, fresh = false, hpFrac = 1) {
@@ -1073,7 +1073,7 @@ export class Game {
     const def = UNITS[u.type];
     const frac = (u.hp + u.sh) / Math.max(1, u.maxHp + u.maxSh);
     const m = this.factions[u.owner].mods;
-    return def.power * (0.35 + 0.65 * frac) * (1 + (m.dmg + m.hull) * 0.5) * this.levelMul(u) * ERAS[u.era].power;
+    return def.power * (POWER_WRECK + (1 - POWER_WRECK) * frac) * (1 + (m.dmg + m.hull) * POWER_BOON) * this.levelMul(u) * ERAS[u.era].power;
   }
 
   /** Combat power of a faction's units at a node. */

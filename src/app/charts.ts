@@ -1,4 +1,7 @@
 import type { Game, HistorySample } from '../game/Game';
+import { LEVEL_STEP, POWER_BOON, POWER_WRECK } from '../game/constants';
+import { BUILD_ORDER, isWarship, UNITS } from '../game/data/units';
+import type { UnitType } from '../game/types';
 import { esc } from '../ui/format';
 
 /**
@@ -33,7 +36,7 @@ type Key = 'e' | 'w' | 's' | 'b';
 const METRICS: { key: Key; title: string; what: string; whole: boolean; fmt: (v: number) => string }[] = [
   { key: 'e', title: 'EMBERS PER SECOND', what: 'What a house’s worlds earn each second.', whole: false, fmt: (v) => v.toFixed(1) },
   { key: 'w', title: 'WORLDS', what: 'The worlds a house holds.', whole: true, fmt: (v) => String(Math.round(v)) },
-  { key: 's', title: 'FLEET STRENGTH', what: 'What a house’s warships are worth in a battle.', whole: true, fmt: (v) => String(Math.round(v)) },
+  { key: 's', title: 'FLEET STRENGTH', what: 'The power of all a house’s warships, added up. How it is counted is under the charts.', whole: true, fmt: (v) => String(Math.round(v)) },
   { key: 'b', title: 'BOONS', what: 'The Boons a house has chosen.', whole: true, fmt: (v) => String(Math.round(v)) },
 ];
 
@@ -67,8 +70,46 @@ export function runCharts(g: Game): RunCharts | null {
   return { houses, samples, pick };
 }
 
+/**
+ * How fleet strength is counted (`Game.unitPower`), for the page to say: the power of each kind of
+ * warship, and what raises and lowers it. Read from the game's own numbers, so the words cannot drift
+ * from the sum.
+ */
+export function strengthParts(): { ships: { type: UnitType; name: string; power: number }[]; wreck: number; boon: number; level: number } {
+  const types: UnitType[] = [...BUILD_ORDER.filter(isWarship), 'ark'];
+  return {
+    ships: types.map((t) => ({ type: t, name: UNITS[t].name, power: UNITS[t].power })),
+    wreck: POWER_WRECK,
+    boon: POWER_BOON,
+    level: LEVEL_STEP,
+  };
+}
+
+const pc = (x: number) => `${Math.round(x * 100)}%`;
+
+/**
+ * The note under the charts. "Fleet strength 195" is a number without a unit: the third playtest's
+ * host asked what it meant. So the page shows the sum: what each warship adds, with its picture (`pic`
+ * draws a ship in the player's colour), and the three things that change it.
+ */
+function strengthNote(c: RunCharts, pic?: (type: UnitType, color: string) => string): string {
+  const s = strengthParts();
+  const color = c.houses.find((h) => h.you)?.color ?? '#fff4e0';
+  return `<div class="rc-note">
+      <h4>HOW FLEET STRENGTH IS COUNTED</h4>
+      <p>A house's fleet strength is the power of all its warships, added up:</p>
+      <ul class="rc-ships">${s.ships.map((x) => `<li>${pic ? pic(x.type, color) : ''}<span>${esc(x.name)}</span><b>${x.power}</b></li>`).join('')}</ul>
+      <ul class="rc-rules">
+        <li><b>Damage counts.</b> A ship at full hull and shields counts in full; one that is nearly destroyed counts ${pc(s.wreck)}.</li>
+        <li><b>Boons count.</b> Every +10% damage or hull from a house's Boons adds ${pc(s.boon * 0.1)}.</li>
+        <li><b>Levels count.</b> Each level of an Ark or a Dreadnought adds ${pc(s.level)}.</li>
+      </ul>
+      <p class="dim">Not counted: Scouts, seed ships, Starbases and the guns of worlds.</p>
+    </div>`;
+}
+
 /** The section's markup. The charts themselves are drawn by `mountCharts`, to the width they are given. */
-export function chartsHtml(c: RunCharts): string {
+export function chartsHtml(c: RunCharts, pic?: (type: UnitType, color: string) => string): string {
   const you = c.houses.find((h) => h.you);
   const rivals = c.houses.filter((h) => !h.you);
   // The table: every five minutes and the end.
@@ -89,6 +130,7 @@ export function chartsHtml(c: RunCharts): string {
     </div>
     <div class="rc-grid">${METRICS.map((m) => `<figure class="rc-chart" data-key="${m.key}"><figcaption data-tip="${esc(m.what)}">${esc(m.title)}</figcaption><div class="rc-plot" tabindex="0" role="img" aria-label="${esc(`${m.title} of every house over the run. ${m.what} The figures are in the table below.`)}"></div></figure>`).join('')}</div>
     <div class="rc-tip" hidden></div>
+    ${strengthNote(c, pic)}
     <details class="rc-tables"><summary>THE FIGURES AS A TABLE</summary><div class="rc-tables-in">${tables}</div></details>
   </div>`;
 }

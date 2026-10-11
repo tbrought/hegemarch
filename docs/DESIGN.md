@@ -545,7 +545,13 @@ Measured with `npm run simulate` and `npm run balance:passive`. Speeds are ½×,
   that held the most worlds; a row of buttons above the charts picks another), the other houses grey.
   The two coloured lines are named where they end, the pointer (or the arrow keys) reads every house
   at a moment of the run on all four charts at once, and THE FIGURES AS A TABLE has it all in numbers,
-  so nothing is told by colour alone. The colours are the houses' own, unchanged: they are what the
+  so nothing is told by colour alone. **Fleet strength is spelled out** under the charts ("195" is a
+  number without a unit, and the game's host asked what it meant): what each warship adds, with its
+  picture (Striker 1.6 … Ark 17.5), and three rules in a line each: a ship that is nearly destroyed
+  counts 35%, every +10% damage or hull from Boons adds 5%, each level of an Ark or a Dreadnought
+  adds 8%; and what is not counted. The words are made from the numbers the game counts with
+  (`strengthParts`, `POWER_WRECK`, `POWER_BOON`, `LEVEL_STEP`), and a test holds them to
+  `Game.unitPower`. The colours are the houses' own, unchanged: they are what the
   player knows a house by, they are far enough apart in pairs for full colour vision, and stepped to
   an even lightness they either merged or stopped looking like their houses.
 - **Text is never drawn through a pattern.** A dither (every other pixel) over or under the
