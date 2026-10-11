@@ -33,6 +33,9 @@ export interface SessionHooks {
   ascend?(): void;
   saveProfile(): void;
   applySettings(): void;
+  /** Is the game filling the screen? Null where the browser does not offer it. */
+  fullscreen(): boolean | null;
+  toggleFullscreen(): void;
 }
 
 export const SPEEDS = [0.5, 1, 2, 3];

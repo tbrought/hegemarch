@@ -1019,7 +1019,8 @@ export class Hud {
       y -= h;
       const w = Math.max(...lines.map((t) => textWidth(t))) + 6;
       // A flat shade, not a dither: world names on the map would show between the letters.
-      g.fillStyle = hot ? 'rgba(27, 24, 56, 0.96)' : age > 7 ? 'rgba(11, 10, 26, 0.55)' : 'rgba(11, 10, 26, 0.8)';
+      // (And it stays as dark while the line ages: only the words fade. Thinned, it let the names through.)
+      g.fillStyle = hot ? 'rgba(27, 24, 56, 0.96)' : 'rgba(11, 10, 26, 0.8)';
       g.fillRect(3, y - 1, w, h);
       this.logRight = Math.max(this.logRight, 3 + w);
       this.logBottom = Math.max(this.logBottom, y + h - 1);

@@ -843,6 +843,13 @@ select optgroup {
   font-size: 17px;
 }
 
+/* (A tick box and a house card are worked with the keyboard too: they show where it is.) */
+.check:focus-visible,
+.heir:focus-visible {
+  outline: 2px dashed var(--gold);
+  outline-offset: 4px;
+}
+
 .check .box {
   width: 16px;
   height: 16px;

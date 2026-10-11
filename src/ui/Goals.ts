@@ -5,7 +5,7 @@
  * for good.
  */
 import { GOAL_REWARD, GOALS, type GoalDef } from '../game/data/goals';
-import { fit, text, textWidth } from '../render/font';
+import { text, textWidth, wrap } from '../render/font';
 import { PAL } from '../render/palette';
 import { box, type Ctx } from '../render/pixel';
 import { icon } from '../render/sprites';
@@ -62,15 +62,16 @@ export class Goals {
     const reward = `+${GOAL_REWARD}`;
     const rw = textWidth(reward) + 9;
     const maxW = Math.max(96, Math.min(160, Math.floor(this.hud.W / 3)));
-    const label = fit(goal.label, maxW - rw - 12);
-    const w = Math.max(textWidth(head, 'tiny') + 8, textWidth(label) + rw + 12);
-    const h = 21;
+    // (The goal in full, on a second line if it needs one: cut short, it named a thing to do and not what.)
+    const lines = wrap(goal.label, maxW - rw - 12).slice(0, 2);
+    const w = Math.max(textWidth(head, 'tiny') + 8, Math.max(...lines.map((l) => textWidth(l))) + rw + 12);
+    const h = 11 + lines.length * 10;
     const x = right - w;
     if (clear.w > 0 && x < clear.x + clear.w + 2 && y < clear.y + clear.h + 2) y = clear.y + clear.h + 2;
     const hot = this.hud.ui.isHinted('goal');
     box(g, x, y, w, h, PAL.night, hot ? PAL.teal : PAL.sea);
     text(g, head, x + 4, y + 3, PAL.teal, 'tiny');
-    text(g, label, x + 4, y + 10, PAL.mist);
+    lines.forEach((l, i) => text(g, l, x + 4, y + 10 + i * 10, PAL.mist));
     icon(g, 'ember', x + w - rw - 2, y + 10);
     text(g, reward, x + w - rw + 5, y + 10, PAL.gold);
     const next = left.slice(1).map((x) => x.label);

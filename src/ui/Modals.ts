@@ -33,6 +33,10 @@ export type StatusTab = 'destinies' | 'boons' | 'rivals' | 'run';
 type HelpTab = 'basics' | 'controls' | 'tips';
 
 /** Tips in the order a run usually meets them. */
+/** The dialogs that are read (Status, How to Play, the Comms Log) are one size: going from one to another, nothing jumps. */
+const BOOK_W = 420;
+const BOOK_H = 250;
+
 const TIP_ORDER = ['role', 'fleet', 'boonReady', 'raid', 'anomalySeen', 'anomaly', 'blueprint', 'hangar', 'arkLevel', 'lostWorld', 'converted', 'crisis'];
 /** Tips of the cradle of an Ages run (listed first there, last elsewhere). */
 const AGES_TIPS = ['ageReady', 'ageNew', 'ageSiege', 'ageRival', 'ageGone', 'ageArk'];
@@ -527,8 +531,8 @@ export class Modals {
   private status(g: Ctx) {
     const W = this.hud.W;
     const H = this.hud.H;
-    const w = Math.min(W - 12, 420);
-    const h = Math.min(H - 12, 250);
+    const w = Math.min(W - 12, BOOK_W);
+    const h = Math.min(H - 12, BOOK_H);
     const { x, y } = this.frame(g, w, h, this.statusTab === 'boons' ? 'YOUR BOONS' : 'STATUS');
     this.closeButton(g, x, y, w);
     const early = !this.s.reveal().destinies && this.s.guided;
@@ -830,7 +834,8 @@ export class Modals {
   private settings(g: Ctx) {
     const st = this.s.profile.settings;
     const w = 220;
-    const h = 164;
+    const full = this.s.hooks.fullscreen();
+    const h = 178 + (full === null ? 0 : 14);
     const { x, y } = this.frame(g, w, h, 'SETTINGS');
     this.closeButton(g, x, y, w);
     const save = () => {
@@ -854,7 +859,12 @@ export class Modals {
     vol('Volume', 'master');
     vol('Effects', 'sfx');
     vol('Music', 'music');
-    ly += 2;
+    // The track that plays, and a way on to the next of its mood (a run plays the music that fits the moment).
+    const track = this.s.music.title;
+    this.ui.button(g, 'tg-track', x + 10, ly + 1, w - 20, 12, fit(`Track: ${track ?? 'none'}`, w - 60), () => this.s.music.skip(), {
+      right: 'NEXT', rightColor: PAL.gold, align: 'left', disabled: !track, tip: 'Play another track. A run chooses its music by the moment: a quiet night, a battle. This goes on to the next track of the same kind.',
+    });
+    ly += 16;
     const toggle = (label: string, key: 'autoPause' | 'crt' | 'edgePan' | 'tips' | 'explainTerms', tip: string) => {
       this.ui.button(g, 'tg-' + key, x + 10, ly, w - 20, 12, label, () => {
         st[key] = !st[key];
@@ -867,6 +877,12 @@ export class Modals {
     toggle('Explain game terms', 'explainTerms', 'Boxes beside tooltips that explain game terms such as Kindle, Glow or Hangar.');
     toggle('Scanlines (CRT)', 'crt', 'An old-monitor scanline filter.');
     toggle('Edge scrolling', 'edgePan', 'Move the view when the pointer touches the edge of the screen.');
+    if (full !== null) {
+      this.ui.button(g, 'tg-full', x + 10, ly, w - 20, 12, 'Fullscreen', () => this.s.hooks.toggleFullscreen(), {
+        right: full ? 'ON' : 'OFF', rightColor: full ? PAL.teal : PAL.slate, align: 'left', tip: 'Fill the whole screen with the game. Esc leaves it.',
+      });
+      ly += 14;
+    }
     ly += 2;
     text(g, 'Pixel size', x + 10, ly + 3, PAL.mist);
     const sizes: ['small' | 'auto' | 'large', string, string][] = [
@@ -887,8 +903,8 @@ export class Modals {
   private help(g: Ctx) {
     const W = this.hud.W;
     const H = this.hud.H;
-    const w = Math.min(W - 12, 400);
-    const h = Math.min(H - 12, 240);
+    const w = Math.min(W - 12, BOOK_W);
+    const h = Math.min(H - 12, BOOK_H);
     const { x, y } = this.frame(g, w, h, 'HOW TO PLAY');
     this.closeButton(g, x, y, w);
     const tabs: [HelpTab, string][] = [['basics', 'THE BASICS'], ['controls', 'CONTROLS'], ['tips', 'TIPS']];
@@ -905,29 +921,32 @@ export class Modals {
     const top = y + 31;
     const cw = w - 16;
     const seen = this.s.profile.seenTips;
-    const paras: { text: string; color: string; star?: boolean }[] =
+    // THE BASICS is the game in five numbered moves, each under its own heading, like How to Play on the
+    // title screen (app/howto.ts): a page of paragraphs is opened and not read.
+    const step = (n: number, head: string, t: string) => ({ n, head, text: t, color: PAL.mist });
+    const note = (head: string, t: string) => ({ head, text: t, color: PAL.mist });
+    const paras: { text: string; color: string; star?: boolean; head?: string; n?: number }[] =
       this.helpTab === 'basics' && this.g.cradle
         ? [
-            'THE CRADLE: every house begins here in the Stone Age, all on one planet. Climb through the ages, build your Ark, and carry what you have won to the stars, where the crown is decided.',
-            `AGES: your Lore is saved for the next age. When the bar at the top is full, press the button beside it (or A). The step costs Embers and takes time at your Hearth; an attack on the Hearth stops the work. There are five ages: ${ERAS.slice(0, LAST_CRADLE_ERA + 1).map((e) => e.name.replace(' Age', '')).join(', ')}.`,
-            'A NEW AGE brings stronger units, more to build (siege units and Bastions with bronze, higher levels later), and one Boon. Every unit you already have is upgraded to it, wherever it stands.',
-            'KINDLE: click a grey land and press KINDLE. You pay for a firebearer, who walks out, lights the land and stays there. If the firebearer is killed on the way, the Embers are lost. Each land costs a bit more. Beasts hold the richest lands: drive them off first.',
-            'LANDS: each land earns Embers and has one role. MINE: more Embers. FORGE: builds units. OBSERVATORY: Lore, so a faster climb. BASTION: guns and repairs.',
-            'UNITS: swift units beat siege units, siege units beat sturdy units and walls, sturdy units beat swift ones. Their names change with the ages; the triangle does not.',
-            'THE ARK is the last step. When yours is done, your house leaves for the stars with its Boons and Embers. A rival whose Ark leaves first is ahead of you out there; a rival whose Hearth you put out here never follows.',
-            'Lose your Hearth and your house goes dark. Put out every rival Hearth before any Ark rises, and the crown is yours at once.',
-          ].map((t) => ({ text: t, color: PAL.mist }))
+            { text: 'Every house begins here in the Stone Age, all on one planet. Climb the ages, build your Ark, and carry what you have won to the stars, where the crown is decided.', color: PAL.bone },
+            step(1, 'KINDLE LANDS', 'Click a grey land and press KINDLE. A firebearer walks out, lights the land and stays there; if the firebearer is killed on the way, the Embers are lost. Each land costs a bit more. Beasts hold the richest lands: drive them off first.'),
+            step(2, 'GIVE EACH LAND A ROLE', 'MINE: more Embers. FORGE: builds units. OBSERVATORY: Lore, so a faster climb. BASTION: guns and repairs.'),
+            step(3, 'RAISE UNITS', 'Swift units beat siege units, siege units beat sturdy units and walls, sturdy units beat swift ones. Their names change with the ages; the triangle does not.'),
+            step(4, 'CLIMB THE AGES', `Your Lore is saved for the next age. When the bar at the top is full, press the button beside it (or A). The step costs Embers and takes time at your Hearth; an attack on the Hearth stops the work. There are five ages: ${ERAS.slice(0, LAST_CRADLE_ERA + 1).map((e) => e.name.replace(' Age', '')).join(', ')}. A new age brings stronger units, more to build (siege units and Bastions with bronze, higher levels later), and one Boon. Every unit you already have is upgraded to it, wherever it stands.`),
+            step(5, 'BUILD YOUR ARK', 'The Ark is the last step. When yours is done, your house leaves for the stars with its Boons and Embers. A rival whose Ark leaves first is ahead of you out there; a rival whose Hearth you put out here never follows.'),
+            note('THE HEARTH', 'Lose your Hearth and your house goes dark. Put out every rival Hearth before any Ark rises, and the crown is yours at once.'),
+          ]
         : this.helpTab === 'basics'
         ? [
-            'The last Hegemarch fell, and the sector went dark. Light it up, one world at a time, and follow one of your three Destinies to the crown.',
-            'KINDLE: click a grey world and press KINDLE. You pay for a seed ship, which flies out, lights the world and is used up. If it is destroyed on the way, the Embers are lost. Each world costs a bit more.',
-            'SCOUTS wait for your order: select one (click its fleet badge) and press EXPLORE, and it charts the dark by itself. To look inside an anomaly (a violet swirl), send any ship there.',
-            'WORLDS: each world earns Embers and has one role. MINE: more Embers. FORGE: builds ships. OBSERVATORY: Lore. BASTION: guns and repairs. Raise worlds to level II and III.',
-            'SHIPS: Strikers beat Breakers, Breakers beat Guardians and worlds, Guardians beat Strikers. New ships come as Blueprint Boons.',
-            'BOONS: when your Lore fills, choose a Boon. They shape every run differently. Your Boons line the left edge of the screen.',
-            'Lose your Hearth and your house goes dark. Hearth walls start at half strength and are full at 12:00: a rush can win early, but if it fails your rivals will strike back.',
-            'NOT SURE WHAT SOMETHING IS? Point at it. Tooltips, Boon cards, events and Destinies explain the game terms they use in boxes beside them (Settings can turn this off).',
-          ].map((t) => ({ text: t, color: PAL.mist }))
+            { text: 'The sector is dark. Light it, world by world, and take the crown.', color: PAL.bone },
+            step(1, 'KINDLE WORLDS', 'Click a grey world and press KINDLE. A seed ship flies out, lights it and is used up; if it is destroyed on the way, the Embers are lost. Every lit world earns Embers, and each one costs a bit more than the last.'),
+            step(2, 'GIVE EACH WORLD A ROLE', 'MINE: more Embers. FORGE: builds ships. OBSERVATORY: Lore. BASTION: guns and repairs. Raise worlds to level II and III for more of everything.'),
+            step(3, 'BUILD A FLEET', 'Strikers beat Breakers, Breakers beat Guardians and worlds, Guardians beat Strikers. New ships come as Blueprint Boons. Scouts wait for your order: select one (click its fleet badge) and press EXPLORE, and it charts the dark by itself.'),
+            step(4, 'CHOOSE BOONS', 'When your Lore fills, choose one Boon of three. They shape every run differently, and line the left edge of the screen.'),
+            step(5, 'TAKE THE CROWN', 'Follow one of your three Destinies to the crown (U shows them). Lose your Hearth and your house goes dark.'),
+            note('WHAT IS COMING', 'Corsairs raid from about 10:00 and rivals attack from about 12:00. Hearth walls start at half strength and are full at 12:00: a rush can win early, but if it fails your rivals will strike back.'),
+            note('NOT SURE WHAT SOMETHING IS?', 'Point at it. Tooltips, Boon cards, events and Destinies explain the game terms they use in boxes beside them (Settings can turn this off). To look inside an anomaly (a violet swirl), send any ship there.'),
+          ]
         : this.helpTab === 'controls'
           ? [
               `Left-click: select a world, a ship or a fleet badge (${IC.fleet}, the number of ships beside a world). Drag: select ships.`,
@@ -947,8 +966,12 @@ export class Modals {
             ];
     // Lay out, then draw inside a clipped area that scrolls with the wheel.
     const lh = lineHeight('main');
-    const blocks = paras.map((p) => ({ ...p, lines: wrap(p.text, cw - (p.star ? 9 : 0), 'main') }));
-    const total = blocks.reduce((a, b) => a + b.lines.length * lh + 4, 0);
+    // (A tip hangs from its star, a numbered step from its number; a heading stands on a line of its own.)
+    const blocks = paras.map((p) => {
+      const indent = p.star ? 9 : p.n ? 13 : 0;
+      return { ...p, indent, lines: wrap(p.text, cw - indent, 'main'), gap: p.head ? 7 : 4 };
+    });
+    const total = blocks.reduce((a, b) => a + (b.head ? lh + 1 : 0) + b.lines.length * lh + b.gap, 0);
     const ah = y + h - 6 - top;
     this.helpScrollMax = Math.max(0, total - ah);
     this.helpScroll = Math.min(this.helpScroll, this.helpScrollMax);
@@ -958,12 +981,22 @@ export class Modals {
     g.clip();
     let ly = top - this.helpScroll;
     for (const b of blocks) {
+      if (b.head) {
+        if (ly + lh > top && ly < top + ah) {
+          if (b.n) {
+            rect(g, cx, ly - 1, 9, 9, PAL.gold);
+            text(g, String(b.n), cx + 2, ly, PAL.void);
+          }
+          text(g, b.head, cx + b.indent, ly, PAL.gold);
+        }
+        ly += lh + 1;
+      }
       if (b.star) icon(g, 'star', cx, ly, b.color === PAL.mist ? undefined : PAL.slate, b.color !== PAL.mist);
       for (const l of b.lines) {
-        if (ly + lh > top && ly < top + ah) text(g, l, cx + (b.star ? 9 : 0), ly, b.color);
+        if (ly + lh > top && ly < top + ah) text(g, l, cx + b.indent, ly, b.color);
         ly += lh;
       }
-      ly += 4;
+      ly += b.gap;
     }
     g.restore();
     if (this.helpScrollMax > 0) {
@@ -1220,8 +1253,8 @@ export class Modals {
   private logView(g: Ctx) {
     const W = this.hud.W;
     const H = this.hud.H;
-    const w = Math.min(W - 12, 360);
-    const h = Math.min(H - 12, 220);
+    const w = Math.min(W - 12, BOOK_W);
+    const h = Math.min(H - 12, BOOK_H);
     const { x, y } = this.frame(g, w, h, 'COMMS LOG');
     this.closeButton(g, x, y, w);
     // Every message in full, newest first, with the time it happened. The wheel scrolls.

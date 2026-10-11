@@ -28,6 +28,8 @@ export class Sfx {
    */
   private pitch = 1;
   private settings: Settings;
+  /** Put to sleep because the page was hidden (see `hush`), not by the browser. */
+  private hushed = false;
 
   constructor(settings: Settings) {
     this.settings = settings;
@@ -84,6 +86,23 @@ export class Sfx {
       d[i] = lfsr & 1 ? 0.8 : -0.8;
     }
     this.apply(this.settings);
+  }
+
+  /**
+   * The page is hidden (another tab), or shown again. A hidden page does not draw, so the game stands
+   * still there; its music played on over a game that had stopped. Now the sound stops with it, and
+   * comes back where it was.
+   */
+  hush(hidden: boolean) {
+    const c = this.ctx;
+    if (!c) return;
+    if (hidden && c.state === 'running') {
+      this.hushed = true;
+      void c.suspend();
+    } else if (!hidden && this.hushed) {
+      this.hushed = false;
+      void c.resume();
+    }
   }
 
   apply(s: Settings) {

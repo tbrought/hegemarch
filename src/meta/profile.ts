@@ -59,6 +59,8 @@ export interface Profile {
   agesSeen: boolean;
   /** First goals this player has reached, ever (game/data/goals.ts). */
   goalsDone: string[];
+  /** The house, sector and difficulty last chosen for a run: the setup opens on them. */
+  lastSetup?: { heir: string; size: MapSize; difficulty: Difficulty };
 }
 
 const KEY = 'hegemarch.profile.v1';

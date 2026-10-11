@@ -51,6 +51,9 @@ interface ResultsData {
 declare const __GAME_VERSION__: string;
 const GAME_VERSION = __GAME_VERSION__;
 
+/** A screen that is touched and has no pointer to hover with: a phone or a tablet. The game needs a mouse (the wheel, the right button). */
+const NO_MOUSE = typeof matchMedia === 'function' && matchMedia('(hover: none) and (pointer: coarse)').matches;
+
 /** The moods of the music, as the list of tracks under Settings names them. */
 const MOODS: [Mood, string][] = [['title', 'Title screen'], ['night', 'Quiet night'], ['war', 'Battle'], ['cradle', 'Ages cradle']];
 
@@ -112,6 +115,13 @@ export class App {
     this.sfx = new Sfx(this.profile.settings);
     this.music = new Music(this.sfx);
     this.setup.guided = !this.profile.tutorialDone;
+    // The setup opens on what was chosen last time (if it can still be chosen).
+    const last = this.profile.lastSetup;
+    if (last) {
+      if (HEIR_BY_ID[last.heir]) this.setup.heir = last.heir;
+      if (['small', 'medium', 'large'].includes(last.size)) this.setup.size = last.size;
+      if (last.difficulty >= 0 && last.difficulty <= this.profile.maxDifficulty) this.setup.difficulty = last.difficulty;
+    }
     if (!this.profile.heirs.includes(this.setup.heir)) this.setup.heir = this.profile.heirs[0];
     // Sound starts with the page where the browser lets it: for a visitor who clicked PLAY on the site
     // the click carries over, and the title music is there with the title. Everywhere else a browser
@@ -137,12 +147,27 @@ export class App {
       if (e.code === 'Escape' && this.screen === 'setup' && this.setup.confirm) {
         this.setup.confirm = '';
         this.showSetup();
+      } else if (e.code === 'Escape' && (this.screen === 'setup' || this.screen === 'hall' || this.screen === 'howto' || this.screen === 'settings')) {
+        // Escape is BACK on every page behind the title screen.
+        this.sfx.play('ui', 0.5);
+        this.showMenu();
+      } else if ((e.code === 'Enter' || e.code === 'Space') && this.screen !== 'game') {
+        // A house card and a tick box are not buttons, but the keyboard works them like buttons.
+        const el = document.activeElement as HTMLElement | null;
+        if (el && el.tagName !== 'BUTTON' && el.dataset?.sa && this.ui.contains(el)) {
+          e.preventDefault();
+          el.click();
+        }
       }
+    });
+    document.addEventListener('fullscreenchange', () => {
+      if (this.screen === 'settings') this.showSettings();
     });
     this.ui.addEventListener('input', (e) => this.onScreenInput(e));
     installDomTips();
     document.addEventListener('visibilitychange', () => {
       if (document.hidden) this.autosave();
+      this.sfx.hush(document.hidden);
     });
     window.addEventListener('beforeunload', () => this.autosave());
     this.showMenu();
@@ -397,6 +422,8 @@ export class App {
       ascend: () => void this.toStars(g),
       saveProfile: () => saveProfile(this.profile),
       applySettings: () => this.applySettings(),
+      fullscreen: () => this.fullscreen(),
+      toggleFullscreen: () => this.toggleFullscreen(),
       showResults: () => {
         if (this.screen === 'game' && this.results) this.showResults();
       },
@@ -534,6 +561,27 @@ export class App {
     // (Drawn again only if the Sound switch has moved: the selector keeps the keyboard otherwise, and
     // the arrow keys go through the tracks one by one.)
     if (wasMuted && this.screen === 'settings') this.showSettings();
+  }
+
+  /** Is the game filling the screen? Null where the browser does not offer it (some frames, some phones). */
+  private fullscreen(): boolean | null {
+    return document.fullscreenEnabled ? !!document.fullscreenElement : null;
+  }
+
+  private toggleFullscreen() {
+    try {
+      const done = document.fullscreenElement ? document.exitFullscreen() : document.documentElement.requestFullscreen();
+      // (A browser may say no; then nothing changes, and the switch goes on saying OFF.)
+      void done.catch(() => {});
+    } catch {
+      /* not offered here */
+    }
+  }
+
+  private rememberSetup() {
+    const st = this.setup;
+    this.profile.lastSetup = { heir: st.heir, size: st.size, difficulty: st.difficulty };
+    saveProfile(this.profile);
   }
 
   private toggleSound() {
@@ -718,15 +766,21 @@ export class App {
         break;
       case 'heir':
         if (this.profile.heirs.includes(b)) st.heir = b;
+        this.rememberSetup();
         this.showSetup();
         break;
       case 'size':
         st.size = b as MapSize;
+        this.rememberSetup();
         this.showSetup();
         break;
       case 'diff':
         st.difficulty = parseInt(b, 10) as Difficulty;
+        this.rememberSetup();
         this.showSetup();
+        break;
+      case 'fullscreen':
+        this.toggleFullscreen();
         break;
       case 'guided':
         st.guided = !st.guided;
@@ -899,6 +953,7 @@ export class App {
     this.ui.innerHTML = `<div class="screen menu${this.crt()}">
       <div class="logo">HEGEMARCH</div>
       <div class="tagline">The last Hegemarch fell, and the sector went dark. Light it again, world by world, and take the crown.</div>
+      ${NO_MOUSE ? '<div class="px-box notice">Hegemarch is played with a mouse and keyboard. On a phone or tablet you can look, but not play it well: open it on a computer.</div>' : ''}
       ${this.menuNotice ? `<div class="px-box notice">${esc(this.menuNotice)}</div>` : ''}
       <div class="home${hero ? '' : ' solo'}">
         ${hero}
@@ -978,11 +1033,16 @@ export class App {
    * its options) keeps the place it was scrolled to, instead of jumping back to the top.
    */
   private put(screen: ScreenId, html: string) {
-    const was = this.screen === screen ? (this.ui.querySelector('.screen')?.scrollTop ?? 0) : 0;
+    const same = this.screen === screen;
+    const was = same ? (this.ui.querySelector('.screen')?.scrollTop ?? 0) : 0;
+    // (And the keyboard stays on the control that was just used: drawn again, the page would drop it.)
+    const held = same ? (document.activeElement as HTMLElement | null) : null;
+    const focus = held && this.ui.contains(held) ? held.dataset.sa : undefined;
     this.screen = screen;
     this.ui.innerHTML = html;
     const now = this.ui.querySelector('.screen');
     if (was && now) now.scrollTop = was;
+    if (focus) this.ui.querySelector<HTMLElement>(`[data-sa="${focus}"]`)?.focus({ preventScroll: true });
   }
 
   /**
@@ -1041,7 +1101,7 @@ export class App {
       : '';
     const heirs = HEIRS.map((h) => {
       const owned = p.heirs.includes(h.id);
-      return `<div class="heir px-box ${st.heir === h.id ? 'sel' : ''} ${owned ? '' : 'locked'}" style="--hc:${h.color}" data-sa="heir:${h.id}">
+      return `<div class="heir px-box ${st.heir === h.id ? 'sel' : ''} ${owned ? '' : 'locked'}" style="--hc:${h.color}" data-sa="heir:${h.id}" role="button" aria-pressed="${st.heir === h.id}" aria-label="${esc(h.name)}${owned ? '' : ', locked'}" tabindex="0">
         <canvas class="heir-art" data-heir="${h.id}" height="24" data-tip="${esc(`${h.name} starts with ${startingFleet(h)}${h.start.epicCard ? ', and a random Epic Boon' : ''}.`)}"></canvas>
         <div class="hn${h.name.length > 20 ? ' long' : ''}">${esc(h.name.toUpperCase())}</div>
         <div class="ht">${esc(h.title)}${owned ? '' : ` · locked: ◆${h.cost} in the Hall of Heirs`}${p.winsByHeir[h.id] ? ` · <span class="gold">${p.winsByHeir[h.id]} win${p.winsByHeir[h.id] > 1 ? 's' : ''}</span>` : ''}</div>
@@ -1080,7 +1140,7 @@ export class App {
           <div class="help">${diffHelp[st.difficulty]}${p.maxDifficulty < 3 ? ' Win to unlock the next one.' : ''}</div></div>
         <div class="opt px-box"><h4>SEED</h4><div class="row"><input type="text" id="seed-input" placeholder="random" value="${esc(st.seed)}"><button class="small" data-sa="reseed" data-tip="Pick a random seed. The same seed always builds the same sector.">ROLL</button></div>
           <div class="help">Share a seed to replay the same sector.</div></div>
-        ${ages ? '' : `<div class="opt px-box"><h4>GUIDE</h4><div class="check ${st.guided ? 'on' : ''}" data-sa="guided"><span class="box"></span>Guided First Night</div>
+        ${ages ? '' : `<div class="opt px-box"><h4>GUIDE</h4><div class="check ${st.guided ? 'on' : ''}" data-sa="guided" role="checkbox" aria-checked="${st.guided}" tabindex="0"><span class="box"></span>Guided First Night</div>
           <div class="help">Shows the first few moves step by step and reveals the screen as you go.</div></div>`}
       </div>`}
       <div class="foot-actions"><button data-sa="menu">BACK</button>
@@ -1133,7 +1193,8 @@ export class App {
 
   private showSettings() {
     const s = this.profile.settings;
-    const tog = (k: string, label: string, on: boolean) => `<div class="check ${on ? 'on' : ''}" data-sa="toggle:${k}"><span class="box"></span>${label}</div>`;
+    const full = this.fullscreen();
+    const tog = (k: string, label: string, on: boolean) => `<div class="check ${on ? 'on' : ''}" data-sa="toggle:${k}" role="checkbox" aria-checked="${on}" tabindex="0"><span class="box"></span>${label}</div>`;
     this.put('settings', `<div class="screen${this.crt()}"><div class="page px-box" style="max-width:620px">
       <h1>SETTINGS</h1>
       <div class="kv">
@@ -1142,6 +1203,7 @@ export class App {
         <b>Effects</b><input type="range" min="0" max="1" step="0.05" value="${s.sfx}" data-setting="sfx">
         <b>Music</b><input type="range" min="0" max="1" step="0.05" value="${s.music}" data-setting="music">
         <b>Track</b><div class="row"><select data-track aria-label="The track that is playing" data-tip="${TRACKS.length} tracks. A run plays the ones that fit the moment, a new one each time; here you can hear any of them.">${MOODS.map(([m, label]) => `<optgroup label="${label}">${TRACKS.filter((t) => t.mood === m).map((t) => `<option value="${esc(t.name)}"${this.music.title === t.name ? ' selected' : ''}>${esc(t.name)}</option>`).join('')}</optgroup>`).join('')}</select><button class="small" data-sa="track-next" data-tip="Play the next track in the list.">NEXT</button></div>
+        ${full === null ? '' : `<b>Fullscreen</b><div class="row"><button class="small ${full ? 'active' : ''}" data-sa="fullscreen" aria-pressed="${full}">${full ? 'ON' : 'OFF'}</button></div>`}
         <b>Pixel size</b><div class="row">${(['small', 'auto', 'large'] as const).map((k) => `<button class="small ${s.pixelSize === k ? 'active' : ''}" data-sa="pixels:${k}" data-tip="${PIXEL_TIPS[k]}">${k.toUpperCase()}</button>`).join('')}</div>
       </div>
       <div style="display:grid;gap:12px;margin-top:20px">
