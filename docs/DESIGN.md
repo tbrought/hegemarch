@@ -485,6 +485,12 @@ Measured with `npm run simulate` and `npm run balance:passive`. Speeds are ½×,
   carries its own copies (`src/fonts`, under the Open Font License): they are inside the one file a
   player downloads, so it looks the same with no connection, and the website serves them itself, so
   neither asks anything of another site.
+- **The Hall of Heirs** shows a house as the setup does: its banner (its Hearth and starting fleet,
+  flying), its name, what it is, what it has in a list, and its price along the foot of the card, with
+  how much Legacy is still missing. Every card is the same shape, whatever the length of a name. A
+  perk or an unlock has a picture drawn with the game's own icons (Embers, Lore, a Guardian, a Boon, a
+  star, walls, the Hearth; a Pact, a crown) in a frame that turns gold once the player has it; its
+  name runs across the top of its card on one line, and the cards of a row start at the same height.
 - **The small things** (the sweep of October 2026, `npm run test:qol`): the setup opens on the house,
   sector and difficulty chosen last time; Escape is BACK on every page behind the title screen; house
   cards and tick boxes are worked with the keyboard, and a page drawn again keeps the keyboard where

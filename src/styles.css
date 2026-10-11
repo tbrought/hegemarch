@@ -896,60 +896,101 @@ select optgroup {
   gap: 12px;
 }
 
+/* A thing the Hall sells: its picture, its name across the top (on one line, whatever its length),
+   what it does under the name, and its price beside that. Every card starts at its top, so the
+   pictures and the names of a row stand in a line. */
 .perk {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 12px;
-  padding: 10px 12px;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  grid-template-areas:
+    'pic name name'
+    'pic desc buy';
+  gap: 5px 12px;
+  align-items: start;
+  align-content: start;
+  padding: 12px;
+}
+
+.perk > .perk-pic {
+  grid-area: pic;
+}
+
+.perk > div {
+  display: contents;
+}
+
+.perk > :last-child {
+  grid-area: buy;
+  align-self: center;
+}
+
+/* The picture of a thing the Hall sells (app/pics.ts), on a square of its own; lit once the player has it. */
+.perk-pic {
+  flex: none;
+  width: 42px;
+  height: 42px;
+  display: grid;
+  place-items: center;
+  background: var(--void);
+  box-shadow: 0 0 0 var(--px) var(--indigo);
+  margin: var(--px);
+}
+
+.perk-pic.has {
+  box-shadow: 0 0 0 var(--px) var(--gold);
+}
+
+.perk-pic img {
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
 }
 
 .perk .pn {
+  grid-area: name;
   font-family: var(--display);
   font-size: 10px;
-  /* (A long name, the Choir of the First Flame, takes two lines here: they must not touch.) */
   line-height: 1.5;
   color: var(--gold);
-  margin-bottom: 5px;
 }
 
 .perk .pd {
+  grid-area: desc;
   color: var(--mist);
   font-size: 15px;
   line-height: 1.3;
 }
 
-/* (A house: what it is, then what it has, as two paragraphs and not one.) */
-.perk .pd + .pd {
-  margin-top: 6px;
+/* A house in the Hall of Heirs is the card it is on the setup (its banner, its name, what it is, what
+   it has), with its price along the foot. Every card is the same shape: the banners line up, the
+   names line up, the prices line up, whatever the length of a name. */
+.heir.house {
+  cursor: default;
+  display: flex;
+  flex-direction: column;
 }
 
-/* A house's card: its name has the whole width of the card, above its words and its price, so that
-   the longest of them (the Choir of the First Flame) stands on one line. */
-.perk.house {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  gap: 0 12px;
-  align-content: center;
+.heir.house .house-buy {
+  margin-top: auto;
+  padding-top: 14px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  min-height: 46px;
 }
 
-.perk.house > div:first-child {
-  display: contents;
+.heir.house .house-buy .dim {
+  font-size: 15px;
 }
 
-.perk.house .pn {
-  grid-column: 1 / -1;
-  white-space: nowrap;
+.heir.house .house-buy .good {
+  font-family: var(--display);
+  font-size: 10px;
+  letter-spacing: 0.04em;
 }
 
-.perk.house .pd {
-  grid-column: 1;
-}
-
-.perk.house > :last-child {
-  grid-column: 2;
-  grid-row: 2 / span 2;
-  align-self: center;
+.heir.house.owned .heir-art {
+  box-shadow: 0 0 0 var(--px) var(--hc);
 }
 
 .legacy-badge {

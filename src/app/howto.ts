@@ -9,18 +9,10 @@
  */
 import { VICTORIES } from '../game/data/victories';
 import type { VictoryId } from '../game/types';
-import { iconCanvas } from '../render/sprites';
 import { esc } from '../ui/format';
+import { iconPic } from './pics';
 
-const urls = new Map<string, string>();
-
-/** One of the game's icons as a picture for the page, at three times its size. */
-function pic(name: string): string {
-  const c = iconCanvas(name);
-  let u = urls.get(name);
-  if (!u) urls.set(name, (u = c.toDataURL()));
-  return `<img class="how-icon" src="${u}" width="${c.width * 3}" height="${c.height * 3}" alt="">`;
-}
+const pic = (name: string) => iconPic(name, 'how-icon');
 
 const art = (id: string) => `<canvas class="mode-art how-art" data-art="${id}" aria-hidden="true"></canvas>`;
 

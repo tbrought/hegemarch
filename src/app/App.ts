@@ -19,6 +19,7 @@ import { fmtTime, Renderer } from '../render/Renderer';
 import { Attract } from './Attract';
 import { drawHouseBanners, startingFleet } from './houseArt';
 import { howtoHtml } from './howto';
+import { iconPic, shipPic } from './pics';
 import { drawModeArt } from './modeArt';
 import { Screen } from '../render/Screen';
 import { groupBoons } from '../ui/boons';
@@ -56,6 +57,25 @@ const NO_MOUSE = typeof matchMedia === 'function' && matchMedia('(hover: none) a
 
 /** How long the fanfare of a run's end lasts, in seconds, with its last note left to ring (audio/Sfx.ts: 'victory', 'defeat'). */
 const FANFARE = 2.2;
+
+/**
+ * The picture of each thing the Hall of Heirs sells, drawn with the game's own icons: what it gives, at
+ * a glance (Embers, Lore, a Guardian, a Boon, a star, walls, the Hearth; a Pact, a crown).
+ */
+function perkPic(id: string): string {
+  switch (id) {
+    case 'oldCoin': return iconPic('ember');
+    case 'loreSeed': return iconPic('lore');
+    case 'escort': return shipPic('guardian', HEIR_BY_ID.concord.color);
+    case 'archivist': return iconPic('boon');
+    case 'luck': return iconPic('star');
+    case 'bastion': return iconPic('bastion');
+    case 'secondBreath': return iconPic('hearth');
+    case 'pacts': return iconPic('catPact', 'pic', PACT_COLOR);
+    case 'legendary': return iconPic('conquest');
+    default: return iconPic('star');
+  }
+}
 
 /** The moods of the music, as the list of tracks under Settings names them. */
 const MOODS: [Mood, string][] = [['title', 'Title screen'], ['night', 'Quiet night'], ['war', 'Battle'], ['cradle', 'Ages cradle']];
@@ -200,6 +220,7 @@ export class App {
         drawHouseBanners(this.ui, now / 1000);
         drawModeArt(this.ui, now / 1000);
       } else if (this.screen === 'howto') drawModeArt(this.ui, now / 1000);
+      else if (this.screen === 'hall') drawHouseBanners(this.ui, now / 1000);
       if (this.screen === 'menu') this.tickMenu();
       else if (this.screen === 'settings') this.syncTracks();
       this.syncSound();
@@ -1166,21 +1187,29 @@ export class App {
     const heirs = HEIRS.filter((h) => h.cost > 0)
       .map((h) => {
         const owned = p.heirs.includes(h.id);
-        return `<div class="perk house px-box"><div><div class="pn" style="color:${h.color}">${esc(h.name.toUpperCase())}</div><div class="pd">${glossHtml(h.desc)}</div>
-          <div class="pd">${h.bonuses.map((b) => glossHtml(b)).join(' · ')}</div></div>
-        ${owned ? '<span class="good">OWNED</span>' : `<button class="small ${p.legacy >= h.cost ? 'primary' : 'disabled'}" data-sa="unlock-heir:${h.id}">◆${h.cost}</button>`}</div>`;
+        // A house here is the card it is on the setup (its banner, its name, what it is, what it has), with
+        // its price along the foot: every card the same shape, whatever the length of a name.
+        const short = h.cost - p.legacy;
+        return `<div class="heir house px-box${owned ? ' owned' : ''}" style="--hc:${h.color}">
+          <canvas class="heir-art" data-heir="${h.id}" height="24" data-tip="${esc(`${h.name} starts with ${startingFleet(h)}${h.start.epicCard ? ', and a random Epic Boon' : ''}.`)}"></canvas>
+          <div class="hn${h.name.length > 20 ? ' long' : ''}">${esc(h.name.toUpperCase())}</div>
+          <div class="ht">${esc(h.title)}</div>
+          <div class="hd">${glossHtml(h.desc)}</div>
+          <ul>${h.bonuses.map((b) => `<li>${glossHtml(b)}</li>`).join('')}</ul>
+          <div class="house-buy">${owned ? '<span class="good">YOURS TO PLAY</span>' : `<span class="dim">${short > 0 ? `${short} more Legacy to go` : 'You have the Legacy for it'}</span><button class="small ${short > 0 ? 'disabled' : 'primary'}" data-sa="unlock-heir:${h.id}">◆${h.cost}</button>`}</div>
+        </div>`;
       })
       .join('');
     const perks = PERKS.map((pk) => {
       const rank = p.perks[pk.id] ?? 0;
       const max = pk.costs.length;
       const cost = pk.costs[rank];
-      return `<div class="perk px-box"><div><div class="pn">${esc(pk.name.toUpperCase())} <span class="dim">${rank}/${max}</span></div><div class="pd">${glossHtml(perkDesc(pk, rank))}</div></div>
+      return `<div class="perk px-box"><span class="perk-pic${rank ? ' has' : ''}">${perkPic(pk.id)}</span><div><div class="pn">${esc(pk.name.toUpperCase())} <span class="dim">${rank}/${max}</span></div><div class="pd">${glossHtml(perkDesc(pk, rank))}</div></div>
         ${rank >= max ? '<span class="good">MASTERED</span>' : `<button class="small ${p.legacy >= cost ? 'primary' : 'disabled'}" data-sa="perk:${pk.id}">◆${cost}</button>`}</div>`;
     }).join('');
     const unlocks = UNLOCKS.map((u) => {
       const owned = u.id === 'pacts' ? p.unlockPacts : p.unlockLegendary;
-      return `<div class="perk px-box"><div><div class="pn">${esc(u.name.toUpperCase())}</div><div class="pd">${glossHtml(u.desc)}</div></div>
+      return `<div class="perk px-box"><span class="perk-pic${owned ? ' has' : ''}">${perkPic(u.id)}</span><div><div class="pn">${esc(u.name.toUpperCase())}</div><div class="pd">${glossHtml(u.desc)}</div></div>
         ${owned ? '<span class="good">OWNED</span>' : `<button class="small ${p.legacy >= u.cost ? 'primary' : 'disabled'}" data-sa="unlock:${u.id}">◆${u.cost}</button>`}</div>`;
     }).join('');
     const hist = p.history.length
@@ -1196,7 +1225,7 @@ export class App {
     this.put('hall', `<div class="screen${this.crt()}"><div class="page">
       <h1>HALL OF HEIRS</h1>
       <div class="lead">Every heir who falls leaves a legacy for the next. Every run earns Legacy, win or lose; what you buy with it here is yours in every run after. <span class="gl" data-gl="legacy">Legacy</span>: <span class="legacy-badge">◆${p.legacy}</span> <span class="dim">(${p.totalLegacy} earned in all)</span></div>
-      <h2>HOUSES</h2><div class="perks">${heirs}</div>
+      <h2>HOUSES</h2><div class="heirs">${heirs}</div>
       <h2>INHERITANCE</h2><div class="perks">${perks}</div>
       <h2>FORBIDDEN KNOWLEDGE</h2><div class="perks">${unlocks}</div>
       <h2>CHRONICLE · ${p.runs} RUNS · ${p.wins} ${p.wins === 1 ? 'HEGEMARCH' : 'HEGEMARCHS'} CROWNED</h2><div class="px-box">${hist}</div>
