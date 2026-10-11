@@ -10,7 +10,7 @@ import { HOLD_FIELD } from '../game/constants';
 import { ECON, PLANETS, ROLES, ROLE_ORDER } from '../game/data/worlds';
 import type { Faction, GNode, Note, Unit, UnitType, VictoryId } from '../game/types';
 import { roman } from '../game/util';
-import { bigText, capHeight, fit, IC, paragraph, setVocabulary, text, textCenter, textOutline, textRight, textWidth, underlineMatches, wrap } from '../render/font';
+import { bigText, capHeight, fit, IC, tabularWidth, textTabular, paragraph, setVocabulary, text, textCenter, textOutline, textRight, textWidth, underlineMatches, wrap } from '../render/font';
 import { PAL, shade, UI } from '../render/palette';
 import { bar, box, frame, rect, ring, type Ctx } from '../render/pixel';
 import { drawSettlement } from '../render/ground';
@@ -367,13 +367,14 @@ export class Hud {
     this.embersShown = Math.abs(gap) < 1 ? p.embers : this.embersShown + gap * Math.min(1, this.ui.dt * 9);
     const rolling = Math.abs(gap) >= 5;
     icon(g, 'ember', 3, 3);
-    // The count and its rate read as one, the rate right after the count; what stands after them has a
-    // place of its own, as far on as their widest digits could reach, and keeps it while they count.
-    // (Placed at the end of the rate, the Lore bar and the buttons beside it shifted a pixel or two
-    // each time a 1 turned into an 8.)
+    // The count and its rate in tabular figures (every digit as wide as the widest): while the count has
+    // as many digits, neither it nor the rate after it moves as it rolls. What stands after them has a
+    // place of its own, as far on as their widest figures could reach, and keeps it. (In the font's own
+    // figures a 1 is narrower than an 8: the rate, the Lore bar and the buttons beside it shifted a
+    // pixel or two and back every few seconds.)
     const count = fmt(this.embersShown);
     const rate = fmtRate(p.income);
-    text(g, rate, text(g, count, 10, 3, rolling && gap > 0 ? PAL.bone : PAL.gold) + 3, 3, PAL.ember);
+    textTabular(g, rate, textTabular(g, count, 10, 3, rolling && gap > 0 ? PAL.bone : PAL.gold) + 3, 3, PAL.ember);
     let x = 10 + numberRoom(count, '8,888') + 3 + numberRoom(rate, '+88.8');
     let py = 15;
     for (const pop of this.emberPops) {
@@ -453,10 +454,11 @@ export class Hud {
     this.ui.iconButton(g, 'pause', rx, 1, 11, this.s.paused ? 'play' : 'pause', () => {
       this.s.paused = !this.s.paused;
     }, { tip: this.s.paused ? 'Resume (Space)' : 'Pause (Space)', selected: this.s.paused, pulse: this.s.paused });
+    // (The clock in tabular figures too: right-aligned, it shook as each second changed its width.)
     const clock = fmtTime(this.g.time);
-    rx -= textWidth(clock) + 5;
-    text(g, clock, rx, 3, PAL.bone);
-    this.ui.hit('clock', rx - 2, 0, textWidth(clock) + 4, 13, undefined, () =>
+    rx -= tabularWidth(clock) + 5;
+    textTabular(g, clock, rx, 3, PAL.bone);
+    this.ui.hit('clock', rx - 2, 0, tabularWidth(clock) + 4, 13, undefined, () =>
       this.g.time < ECON.wallsTime ? `Time in this run. Every Hearth's walls reach full strength at ${fmtTime(ECON.wallsTime)}.` : 'Time in this run.');
   }
 

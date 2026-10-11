@@ -323,6 +323,41 @@ export function text(g: Ctx, s: string, x: number, y: number, color: string, fon
   return cx;
 }
 
+/** The width of a digit's cell in tabular figures: the widest of the ten (the font is not monospaced). */
+function digitCell(font: FontId): number {
+  let w = 0;
+  for (const d of '0123456789') w = Math.max(w, charWidth(d, font));
+  return w;
+}
+
+/**
+ * A number in tabular figures: every digit in a cell as wide as the widest, centered in it, as the
+ * figures of a counter are. While it has as many digits a changing count keeps its width, and so it
+ * neither jitters itself nor moves what stands beside it. Returns the x after it, as `text` does.
+ */
+export function textTabular(g: Ctx, s: string, x: number, y: number, color: string, font: FontId = 'main'): number {
+  const cell = digitCell(font);
+  let cx = Math.round(x);
+  for (const ch of s) {
+    if (ch >= '0' && ch <= '9') {
+      text(g, ch, cx + Math.floor((cell - charWidth(ch, font)) / 2), y, color, font);
+      cx += cell;
+    } else {
+      text(g, ch, cx, y, color, font);
+      cx += charWidth(ch, font);
+    }
+  }
+  return cx;
+}
+
+/** The width of `textTabular`'s figures for this string. */
+export function tabularWidth(s: string, font: FontId = 'main'): number {
+  const cell = digitCell(font);
+  let w = 0;
+  for (const ch of s) w += ch >= '0' && ch <= '9' ? cell : charWidth(ch, font);
+  return Math.max(0, w - 1);
+}
+
 const bigCache = new Map<string, HTMLCanvasElement>();
 
 /** A title in the main font blown up by a whole number, with a drop shadow, centered on cx. */
