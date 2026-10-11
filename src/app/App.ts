@@ -13,7 +13,7 @@ import { TRAIT_BY_ID } from '../game/data/traits';
 import { VICTORIES } from '../game/data/victories';
 import { dailySeed, hashString, randomSeed } from '../game/rng';
 import type { Difficulty, GameConfig, MapSize } from '../game/types';
-import { applyRunToProfile, computeLegacy, perkDesc, PERKS, UNLOCKS, type LegacyReport } from '../meta/legacy';
+import { applyRunToProfile, computeLegacy, perkDesc, PERKS, perksSpent, UNLOCKS, type LegacyReport } from '../meta/legacy';
 import { clearRun, defaultProfile, hasRun, loadProfile, loadRun, saveProfile, saveRun, todayKey, type Profile } from '../meta/profile';
 import { fmtTime, Renderer } from '../render/Renderer';
 import { Attract } from './Attract';
@@ -743,6 +743,8 @@ export class App {
     this.sfx.play('ui', 0.5);
     const [a, b] = el.dataset.sa!.split(':');
     const st = this.setup;
+    // (REFUND ALL asks once; any other click and it asks again.)
+    if (a !== 'refund') this.refundAsked = false;
     switch (a) {
       case 'menu':
         this.showMenu();
@@ -856,6 +858,20 @@ export class App {
           saveProfile(this.profile);
           this.sfx.play('good', 0.7);
         }
+        this.showHall();
+        break;
+      }
+      case 'refund': {
+        // Every perk given back for the Legacy it cost, to buy again as the player likes. Asked twice:
+        // the first click only asks (a page in this frame cannot open a confirm box).
+        const back = perksSpent(this.profile.perks);
+        if (back > 0 && this.refundAsked) {
+          this.profile.legacy += back;
+          this.profile.perks = {};
+          saveProfile(this.profile);
+          this.sfx.play('good', 0.7);
+          this.refundAsked = false;
+        } else this.refundAsked = back > 0;
         this.showHall();
         break;
       }
@@ -1210,6 +1226,10 @@ export class App {
       return `<div class="perk px-box"><span class="perk-pic${rank ? ' has' : ''}">${perkPic(pk.id)}</span><div><div class="pn">${esc(pk.name.toUpperCase())} <span class="dim">${rank}/${max}</span></div><div class="pd">${glossHtml(perkDesc(pk, rank))}</div></div>
         ${rank >= max ? '<span class="good">MASTERED</span>' : `<button class="small ${p.legacy >= cost ? 'primary' : 'disabled'}" data-sa="perk:${pk.id}">◆${cost}</button>`}</div>`;
     }).join('');
+    const spent = perksSpent(p.perks);
+    const refund = spent
+      ? ` <button class="small${this.refundAsked ? ' primary' : ''}" data-sa="refund" data-tip="Give back every perk for the Legacy it cost (◆${spent}), to spend again as you like. Houses and Forbidden Knowledge are kept.">${this.refundAsked ? `SURE? REFUND ◆${spent}` : `REFUND ALL ◆${spent}`}</button>`
+      : '';
     const unlocks = UNLOCKS.map((u) => {
       const owned = u.id === 'pacts' ? p.unlockPacts : p.unlockLegendary;
       return `<div class="perk px-box"><span class="perk-pic${owned ? ' has' : ''}">${perkPic(u.id)}</span><div><div class="pn">${esc(u.name.toUpperCase())}</div><div class="pd">${glossHtml(u.desc)}</div></div>
@@ -1229,12 +1249,15 @@ export class App {
       <h1>HALL OF HEIRS</h1>
       <div class="lead">Every heir who falls leaves a legacy for the next. Every run earns Legacy, win or lose; what you buy with it here is yours in every run after. <span class="gl" data-gl="legacy">Legacy</span>: <span class="legacy-badge">◆${p.legacy}</span> <span class="dim">(${p.totalLegacy} earned in all)</span></div>
       <h2>HOUSES</h2><div class="heirs">${heirs}</div>
-      <h2>INHERITANCE</h2><div class="perks">${perks}</div>
+      <h2 class="h-with">INHERITANCE${refund}</h2><div class="perks">${perks}</div>
       <h2>FORBIDDEN KNOWLEDGE</h2><div class="perks">${unlocks}</div>
       <h2>CHRONICLE · ${p.runs} RUNS · ${p.wins} ${p.wins === 1 ? 'HEGEMARCH' : 'HEGEMARCHS'} CROWNED</h2><div class="px-box">${hist}</div>
       <div class="foot-actions"><button data-sa="menu">BACK</button><button class="primary" data-sa="setup">NEW RUN</button></div>
     </div></div>`);
   }
+
+  /** The Hall's REFUND ALL has been clicked once: the next click gives the perks back. */
+  private refundAsked = false;
 
   private showSettings() {
     const s = this.profile.settings;

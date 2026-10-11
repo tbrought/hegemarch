@@ -538,6 +538,15 @@ h2 {
   letter-spacing: 0.05em;
 }
 
+/* A heading with a button at its far end (the Hall's REFUND ALL). */
+h2.h-with {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
 .lead {
   color: var(--mist);
   font-size: 18px;

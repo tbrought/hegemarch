@@ -41,7 +41,7 @@ export const GLOSSARY: GlossEntry[] = [
   term('hearth', 'Hearth', 'hearths?', 'A house’s home world. It does every role at once. If yours falls, your house goes dark and the run is lost.'),
   term('walls', 'Hearth walls', 'walls', 'Every Hearth’s hull, shields and guns start at 45% and reach full strength at 12:00, so an early rush can work.'),
   term('role', 'Role', 'roles?', 'What a world does: Mine, Forge, Observatory or Bastion. A newly kindled world starts as a Mine, and the first role you give it costs no time. Changing it later takes 20 s.'),
-  term('natural', 'Natural fit', 'natural fit|good as an?', 'Each kind of planet suits one role. A world doing its natural role gets [+25%] at it.'),
+  term('natural', 'Natural fit', 'natural fit|good as an?', 'Each kind of planet suits one role. A world doing its natural role gets [+25%] at it; a Forge that suits its world builds its ships [15% cheaper].'),
   term('retool', 'Retooling', 'retool(?:s|ing|ed)?', 'A world changing its role works at neither job for 20 s. The first role given to a newly kindled world costs no time.'),
   term('mine', 'Mine', 'mines?', 'A world role: the world makes [75% more Embers].'),
   term('forge', 'Forge', 'forges?', 'A world role: builds ships. Higher levels build faster.'),
@@ -70,7 +70,7 @@ export const GLOSSARY: GlossEntry[] = [
   term('shields', 'Shields', 'shields?', 'Take damage before the hull, and recharge when out of combat.', true),
   term('armor', 'Armor', 'armou?r', 'Cuts the damage that gets through to the hull.'),
   term('starlane', 'Starlane', 'starlanes?|jumps?', 'The routes between stars and worlds. Ships jump onto a starlane to travel.'),
-  term('field', 'Anti-warp field', 'anti-warp fields?', 'Kept up by a Bastion, a Hearth and any world with a Starbase. Enemy ships there take [6 s longer] to jump away, so raiders must stand and fight.'),
+  term('field', 'Anti-warp field', 'anti-warp fields?', 'Kept up by a Bastion, a Hearth and any world with a Starbase. Enemy ships there take [6 s longer] to jump away, so raiders must stand and fight. A Bastion’s field reaches further as it rises: its system’s star at level II, the whole system at III.'),
   term('spool', 'Spool', 'spool(?:s|ing)?', 'Ships charge their drives for a few seconds before they jump onto a starlane. Under fire it takes twice as long.'),
   // The sector
   term('relic', 'Relic', 'relics?', 'An ancient treasure dug out of a guarded vault. Each relic gives its holder a bonus.'),

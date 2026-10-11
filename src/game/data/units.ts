@@ -90,9 +90,9 @@ const defs: UnitDef[] = [
   {
     id: 'dreadnought', name: 'Dreadnought', role: 'capital', armorClass: 'heavy',
     hull: 6000, shield: 2000, armor: 0.25, shieldRegen: 40, speed: 46, turn: 0.8, radius: 24,
-    cost: 850, buildTime: 60, hangar: 6, weapons: [W.beam, W.missiles], power: 16.7, buildable: true, blueprint: 'bpDread', xpValue: 200,
-    prefers: CORE_PREFS.capital, planetWeight: 0.3, short: 'Capital ship. Levels up. Max 2.',
-    desc: 'A capital warship that gains experience, levels up and learns abilities. You may field two.',
+    cost: 850, buildTime: 60, hangar: 0, weapons: [W.beam, W.missiles], power: 16.7, buildable: true, blueprint: 'bpDread', xpValue: 200,
+    prefers: CORE_PREFS.capital, planetWeight: 0.3, short: 'Capital ship. Levels up. Max 2. No hangar room.',
+    desc: 'A capital warship that gains experience, levels up and learns abilities. You may field two, and they take no hangar room.',
   },
   {
     id: 'starbase', name: 'Starbase', role: 'defense', armorClass: 'structure',

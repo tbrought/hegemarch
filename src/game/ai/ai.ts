@@ -349,7 +349,8 @@ function buildShips(g: Game, f: Faction, ctx: Ctx, max: number) {
   const types = Object.keys(W) as UnitType[];
   let built = 0;
   for (let i = 0; i < max * 3 && built < max; i++) {
-    const forge = [...ctx.forges].sort((a, b) => a.shipQ.length - b.shipQ.length)[0];
+    // (The shortest queue first; between equal queues, a Forge that fits its world: it builds cheaper.)
+    const forge = [...ctx.forges].sort((a, b) => a.shipQ.length - b.shipQ.length || +g.forgeFit(b) - +g.forgeFit(a))[0];
     if (forge.shipQ.length >= 3) break;
     // Pick by doctrine among ships we could field, then save up for it rather than settling for something cheaper.
     const type = g.rng.weighted(types, (t) => {

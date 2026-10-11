@@ -42,6 +42,12 @@ function numberRoom(s: string, least: string): number {
   return Math.max(room(s), room(least));
 }
 
+/** What a world that suits its role gets: a Forge builds cheaper, the other roles do more. */
+const FIT_TEXT = (role: string) => (role === 'forge' ? `its ships cost [${Math.round(ECON.forgeFitDiscount * 100)}% less]` : `[+${Math.round(ECON.affinity * 100)}%] at it`);
+
+/** How a Bastion's anti-warp field reaches further as its world rises. */
+const REACH_TIP = `A Bastion's anti-warp field reaches further as its world rises: at level I it covers its own world, at level II its system's star as well (where the starlanes meet), at level III every place in its system. Enemy ships there take ${HOLD_FIELD}s longer to jump away.`;
+
 /** How long a drive charges with nothing holding it, for the words of a tip. */
 const JUMP_CHARGE_TEXT = `${JUMP_CHARGE} s`;
 
@@ -1327,7 +1333,7 @@ export class Hud {
     const aff = this.g.affinityOf(n);
     const T = PLANETS[n.ptype ?? 'barren'];
     const parts = [this.sizeTip(n)];
-    if (aff) parts.push(`${T.name} worlds suit the ${ROLES[aff].name} role${n.role === aff ? ', and this one is doing it' : ''}: [+25%] at it.`);
+    if (aff) parts.push(`${T.name} worlds suit the ${ROLES[aff].name} role${n.role === aff ? ', and this one is doing it' : ''}: ${FIT_TEXT(aff)}.`);
     return { tip: parts.join(' '), terms: gloss(...(n.role ? [n.role] : []), 'natural') };
   }
 
@@ -1355,6 +1361,7 @@ export class Hud {
       const walls = n.capitalOf >= 0 && f.kind === 'empire' ? game.wallsOf(n) : 1;
       if (walls < 1) rows.push(this.line(`WALLS ${pct(walls)}: WEAKER NOW, FULL AT ${fmtTime(ECON.wallsTime)}`, PAL.ember, 'tiny', { terms: gloss('walls') }));
       if (visible && game.fieldAt(n)) rows.push(this.line(`ANTI-WARP FIELD: YOUR SHIPS JUMP AWAY ${HOLD_FIELD}S SLOWER`, PAL.violet, 'tiny', { terms: gloss('field') }));
+      if (visible && !game.cradle && game.fieldReach(n) > 1) rows.push(this.line(this.reachText(n), PAL.violet, 'tiny', { tip: REACH_TIP, terms: gloss('field') }));
       // (Ages: a house still on its way from the cradle holds its Hearth, and nothing can touch it until it arrives.)
       const away = game.asleep(f.id);
       if (away) rows.push(this.line(`ITS ARK HAS NOT ARRIVED: ${fmtTime(f.asleepUntil - game.time)} TO GO`, PAL.ember, 'tiny', { tip: `The ${f.name} are still on their way from the cradle. Until their Ark arrives nothing here can be hurt, and nothing here will fight.` }));
@@ -1371,7 +1378,7 @@ export class Hud {
     // A dark world.
     rows.push(this.header(n.name.toUpperCase(), PAL.mist, n, 'DARK', PAL.slate, { terms: gloss('dark', 'kindle') }));
     rows.push(this.line(`${n.size} ${T.name.toUpperCase()} WORLD · GOOD AS A ${(aff ?? 'mine').toUpperCase()}`, PAL.dusk, 'tiny', {
-      tip: `${this.sizeTip(n)} ${T.name} worlds suit the ${ROLES[aff ?? 'mine'].name} role: [+25%] at it once it is yours.`,
+      tip: `${this.sizeTip(n)} ${T.name} worlds suit the ${ROLES[aff ?? 'mine'].name} role: ${FIT_TEXT(aff ?? 'mine')} once it is yours.`,
       terms: gloss(aff ?? 'mine', 'natural'),
     }));
     const guards = visible ? game.buckets[n.id].filter((u) => !u.dead && u.owner !== p.id && game.factions[u.owner].kind !== 'empire' && u.type !== 'fighter') : [];
@@ -1450,6 +1457,7 @@ export class Hud {
     const walls = hearth ? game.wallsOf(n) : 1;
     if (walls < 1) rows.push(this.line(`WALLS ${pct(walls)} · FULL STRENGTH AT ${fmtTime(ECON.wallsTime)}`, PAL.ember, 'tiny', { terms: gloss('walls') }));
     if (game.fieldAt(n)) rows.push(this.line(`ANTI-WARP FIELD: ENEMIES JUMP AWAY ${HOLD_FIELD}S SLOWER`, PAL.violet, 'tiny', { terms: gloss('field') }));
+    if (!game.cradle && game.fieldReach(n) > 0) rows.push(this.line(this.reachText(n), PAL.violet, 'tiny', { tip: REACH_TIP, terms: gloss('field') }));
     rows.push({
       h: 10,
       draw: (x, y) => {
@@ -1484,7 +1492,7 @@ export class Hud {
             this.ui.iconButton(gx, 'role-' + r, bx, y, 12, r, () => this.actions.role(n.id, r), {
               selected: n.role === r,
               tipTitle: n.role === r ? `${ROLES[r].name} (current role)` : ROLES[r].name,
-              tip: `${ROLES[r].desc}${isAff ? ' This world is a natural fit: [+25%].' : ''}${n.role === r ? '' : n.fresh ? ' The first role you give a new world costs no time.' : ` Switching takes ${ECON.retoolTime}s, and the world works at neither role meanwhile.`}`,
+              tip: `${ROLES[r].desc}${isAff ? ` This world is a natural fit: ${FIT_TEXT(r)}.` : ''}${n.role === r ? '' : n.fresh ? ' The first role you give a new world costs no time.' : ` Switching takes ${ECON.retoolTime}s, and the world works at neither role meanwhile.`}`,
             });
             if (isAff) {
               gx.fillStyle = PAL.gold;
@@ -1521,7 +1529,7 @@ export class Hud {
           let bx = x;
           types.forEach((t, k) => {
             const why = game.checkShip(p.id, n.id, t);
-            const cost = game.shipCost(p, t);
+            const cost = game.shipCost(p, t, n);
             const id = 'build-' + t;
             const hot = this.ui.isHot(id);
             const blocked = !!why && why !== 'Not enough Embers' && why !== 'Hangar full' && why !== 'Queue full';
@@ -1664,7 +1672,19 @@ export class Hud {
       }
     }
     if (n.claim?.what === 'derelict') rows.push(this.para('A derelict Dreadnought drifts here. Hold this place alone for 15 seconds to claim it.', PAL.gold, innerW, { terms: gloss('dreadnought') }));
+    if (this.s.visible(n.id)) {
+      const over = game.fieldsOver(n);
+      const p = game.player;
+      if (over.includes(p.id)) rows.push(this.line(`YOUR BASTION'S FIELD: ENEMIES JUMP AWAY ${HOLD_FIELD}S SLOWER`, PAL.violet, 'tiny', { tip: REACH_TIP, terms: gloss('field') }));
+      if (over.some((h) => game.hostile(h, p.id))) rows.push(this.line(`AN ENEMY BASTION'S FIELD: YOU JUMP AWAY ${HOLD_FIELD}S SLOWER`, PAL.violet, 'tiny', { tip: REACH_TIP, terms: gloss('field') }));
+    }
     return rows;
+  }
+
+  /** How far a Bastion's field reaches, for its card. */
+  private reachText(n: GNode): string {
+    const r = this.g.fieldReach(n);
+    return r >= 3 ? 'ITS FIELD REACHES THE WHOLE SYSTEM' : r === 2 ? 'ITS FIELD REACHES THE STAR TOO (ALL AT III)' : 'AT LEVEL II ITS FIELD REACHES THE STAR';
   }
 
   private fleetRows(units: Unit[]): CardRow[] {

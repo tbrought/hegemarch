@@ -1,6 +1,7 @@
 import type { Game } from '../game/Game';
 import { LEGACY_MUL } from '../game/constants';
 import { AMBITION_BY_ID } from '../game/data/ambitions';
+import { PERK_EMBERS, PERK_HEARTH, PERK_HULL, PERK_LORE, PERK_WALLS } from './perks';
 import type { Profile } from './profile';
 
 export interface PerkDef {
@@ -14,15 +15,17 @@ export interface PerkDef {
  * How many Boon offers in a hundred hold an Epic Boon, by rank of Fortunate Stars: what the Hall of
  * Heirs tells the player the perk does. Measured, and kept true by a test (tests/playtest.test.ts).
  */
-export const EPIC_ODDS = [20, 28, 35, 41];
+export const EPIC_ODDS = [20, 27, 34, 40, 45, 50];
+
+const pc = (x: number) => `${Math.round(x * 100)}%`;
 
 export const PERKS: PerkDef[] = [
-  { id: 'oldCoin', name: 'Old Coin', desc: '[+100 starting Embers] per rank.', costs: [40, 80, 120] },
-  { id: 'loreSeed', name: 'Lorekeepers', desc: 'Start each run with [40 Lore] per rank, so your first Boon comes sooner.', costs: [50, 100] },
-  { id: 'escort', name: 'Veteran Escort', desc: 'Begin each run with [+1 Guardian] per rank.', costs: [60, 120] },
+  { id: 'oldCoin', name: 'Old Coin', desc: `[+${pc(PERK_EMBERS)} Embers] from every world, all run long, per rank.`, costs: [40, 80, 120] },
+  { id: 'loreSeed', name: 'Lorekeepers', desc: `[+${pc(PERK_LORE)} Lore] all run long per rank, so every Boon comes sooner.`, costs: [50, 100] },
+  { id: 'escort', name: 'Veteran Escort', desc: `Begin each run with [+1 Guardian], and every ship of yours has [+${pc(PERK_HULL)} hull], per rank.`, costs: [60, 120] },
   { id: 'archivist', name: 'Archivist', desc: '[+1 Boon reroll] per rank.', costs: [50, 100] },
-  { id: 'luck', name: 'Fortunate Stars', desc: 'Rarer Boons [appear more often] with each rank.', costs: [60, 100, 150] },
-  { id: 'bastion', name: 'Ancestral Walls', desc: 'Your Hearth gains [+25% hull] per rank.', costs: [40, 80] },
+  { id: 'luck', name: 'Fortunate Stars', desc: 'Rarer Boons [appear more often] with each rank.', costs: [60, 100, 150, 200, 260] },
+  { id: 'bastion', name: 'Ancestral Walls', desc: `Every world of yours gains [+${pc(PERK_WALLS)} hull] and your Hearth [+${pc(PERK_HEARTH)}] in all, per rank.`, costs: [40, 80] },
   { id: 'secondBreath', name: 'Second Breath', desc: 'Your Hearth’s Last Stand calls [twice the defenders].', costs: [70] },
 ];
 
@@ -42,6 +45,16 @@ export function perkDesc(pk: PerkDef, rank: number): string {
   const now = `An Epic is in [${EPIC_ODDS[rank]}%] of your Boon choices`;
   if (rank >= max) return `${pk.desc} ${now} (${EPIC_ODDS[0]}% without this).`;
   return `${pk.desc} ${now} now, [${EPIC_ODDS[rank + 1]}%] at ${rank ? 'the next rank' : `rank 1, ${EPIC_ODDS[max]}% at rank ${max}`}.`;
+}
+
+/** The Legacy spent on perks, all of which the Hall can give back (and then the perks are gone). */
+export function perksSpent(perks: Record<string, number>): number {
+  let sum = 0;
+  for (const pk of PERKS) {
+    const rank = Math.min(perks[pk.id] ?? 0, pk.costs.length);
+    for (let i = 0; i < rank; i++) sum += pk.costs[i];
+  }
+  return sum;
 }
 
 export interface LegacyReport {

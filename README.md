@@ -70,7 +70,8 @@ terms do the same.
   four. If it falls, your house goes dark and the run is over. The first role you give a newly
   kindled world costs no time; a later change takes 20 seconds.
 - **Making a fleet stand**: a Bastion, a Hearth and any world with a Starbase keep an anti-warp
-  field up (a violet ring): enemy ships there take 6 seconds longer to jump away. Under fire, every
+  field up (a violet ring): enemy ships there take 6 seconds longer to jump away. A Bastion's field
+  reaches its system's star at level II and every place in its system at level III. Under fire, every
   ship's drive spools at half speed. Raiders that keep running can be caught at a Bastion, or made
   to come home by going for their Hearth.
 - **Lore** fills over time. Each time it fills, choose a **Boon**: upgrades, economy tricks, Pacts,

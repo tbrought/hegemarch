@@ -8,7 +8,10 @@ import { FIRE_SPOOL, HOLD_FIELD, JUMP_CHARGE, TICK, UNDER_FIRE } from '../src/ga
 import { CARD_BY_ID, LEGENDARY_BY } from '../src/game/data/cards';
 import { GOAL_REWARD, GOALS } from '../src/game/data/goals';
 import type { GameConfig } from '../src/game/types';
-import { EPIC_ODDS, perkDesc, PERKS, UNLOCKS } from '../src/meta/legacy';
+import { EPIC_ODDS, perkDesc, PERKS, perksSpent, UNLOCKS } from '../src/meta/legacy';
+import { PERK_EMBERS, PERK_HEARTH, PERK_HULL, PERK_LORE, PERK_WALLS } from '../src/meta/perks';
+import { ECON } from '../src/game/data/worlds';
+import { HOLD_FIELD as FIELD } from '../src/game/constants';
 import { modDelta, modLines } from '../src/game/modstats';
 import { readRunData, runData } from '../src/app/rundata';
 import { GLOSS_BY_ID, termsIn } from '../src/ui/glossary';
@@ -741,8 +744,9 @@ describe('what the Hall of Heirs sells for rarer Boons can be felt', () => {
     expect(perkDesc(pk, 0)).toContain(`[${EPIC_ODDS[1]}%]`);
     expect(perkDesc(pk, 2)).toContain(`[${EPIC_ODDS[2]}%]`);
     expect(perkDesc(pk, 2)).toContain(`[${EPIC_ODDS[3]}%] at the next rank`);
-    expect(perkDesc(pk, 3)).toContain(`[${EPIC_ODDS[3]}%]`);
-    expect(perkDesc(pk, 3)).not.toContain('next rank');
+    const max = pk.costs.length;
+    expect(perkDesc(pk, max)).toContain(`[${EPIC_ODDS[max]}%]`);
+    expect(perkDesc(pk, max)).not.toContain('next rank');
     // (Every other perk says what it always said.)
     for (const other of PERKS) if (other.id !== 'luck') expect(perkDesc(other, 1)).toBe(other.desc);
     expect(UNLOCKS.find((u) => u.id === 'legendary')!.desc).toMatch(/at least one in every run/);
@@ -939,5 +943,118 @@ describe("a fleet's way (the third playtest)", () => {
     // And a place never charted is not known at all.
     const dark = g.nodes.find((n) => !p.explored[n.id] && !p.visible[n.id])!;
     expect(g.dangerKnown(p.id, dark.id)).toBe(false);
+  });
+});
+
+describe("a Bastion's field reaches further as it rises (the third playtest)", () => {
+  /** A system with a star and at least two planets; one of them a rival's Bastion, and a ship of the player's at each other place. */
+  function system() {
+    const g = mk({ size: 'medium' });
+    const p = g.player;
+    const rival = g.empires().find((f) => f.id !== p.id)!;
+    const sys = g.nodes.find((n) => n.kind === 'star' && g.systemNodes(n.system).filter((id) => g.nodes[id].kind === 'planet' && g.nodes[id].capitalOf < 0).length >= 2 && n.system !== g.nodes[p.capital].system && n.system !== g.nodes[rival.capital].system)!;
+    const [b, other] = g.systemNodes(sys.system).map((id) => g.nodes[id]).filter((n) => n.kind === 'planet' && n.capitalOf < 0);
+    for (const n of [b, other]) for (const u of [...g.buckets[n.id]]) g.killUnit(u, -1);
+    for (const u of [...g.buckets[sys.id]]) g.killUnit(u, -1);
+    g.kindleWorld(b, rival.id);
+    b.role = 'bastion';
+    b.retool = 0;
+    g.flushDeferred();
+    const atStar = g.spawnUnit('striker', p.id, sys.id);
+    const atOther = g.spawnUnit('striker', p.id, other.id);
+    const atBastion = g.spawnUnit('striker', p.id, b.id);
+    return { g, b, sys, other, atStar, atOther, atBastion };
+  }
+
+  it("level I: its own world; level II: its system's star too; level III: every place in its system", () => {
+    const { g, b, atStar, atOther, atBastion } = system();
+    g.setLevel(b, 1);
+    expect([g.holdAt(atBastion), g.holdAt(atStar), g.holdAt(atOther)]).toEqual([FIELD, 0, 0]);
+    g.setLevel(b, 2);
+    expect([g.holdAt(atBastion), g.holdAt(atStar), g.holdAt(atOther)]).toEqual([FIELD, FIELD, 0]);
+    g.setLevel(b, 3);
+    expect([g.holdAt(atBastion), g.holdAt(atStar), g.holdAt(atOther)]).toEqual([FIELD, FIELD, FIELD]);
+    // (Fields do not add up: one is one.)
+    expect(g.jumpChargeOf(atStar)).toBeLessThan(FIELD * 2);
+  });
+
+  it("it holds only the house's enemies, and a Hearth or a Starbase holds its own world only", () => {
+    const { g, b, sys, atStar } = system();
+    g.setLevel(b, 3);
+    const friend = g.spawnUnit('striker', b.owner, sys.id);
+    expect(g.holdAt(friend)).toBe(0);
+    expect(g.holdAt(atStar)).toBe(FIELD);
+    const hearth = g.nodes[g.player.capital];
+    hearth.level = 3;
+    expect(g.fieldReach(hearth)).toBe(0);
+    expect(g.fieldsOver(g.nodes[g.systemNodes(hearth.system).find((id) => g.nodes[id].kind === 'star')!])).not.toContain(g.playerId);
+  });
+});
+
+describe('a Forge that suits its world builds cheaper (the third playtest)', () => {
+  it('its ships cost 15% less there, and it builds no faster than another Forge', () => {
+    const g = mk({ size: 'medium' });
+    const p = g.player;
+    const fit = g.nodes.find((n) => n.kind === 'planet' && n.owner < 0 && g.affinityOf(n) === 'forge')!;
+    const plain = g.nodes.find((n) => n.kind === 'planet' && n.owner < 0 && n.size === fit.size && g.affinityOf(n) !== 'forge')!;
+    for (const n of [fit, plain]) {
+      g.kindleWorld(n, p.id);
+      n.role = 'forge';
+      n.retool = 0;
+      n.level = 1;
+    }
+    g.flushDeferred();
+    const base = g.shipCost(p, 'breaker');
+    expect(g.shipCost(p, 'breaker', fit)).toBe(Math.round(base * (1 - ECON.forgeFitDiscount)));
+    expect(g.shipCost(p, 'breaker', plain)).toBe(base);
+    expect(g.shipCost(p, 'breaker', g.nodes[p.capital])).toBe(base);
+    expect(g.forgeMul(fit)).toBe(g.forgeMul(plain));
+    // What the queue takes is what the button says.
+    p.embers = 5000;
+    p.hangarCap = 99;
+    g.cmdQueueShip(p.id, fit.id, 'breaker');
+    expect(5000 - p.embers).toBe(g.shipCost(p, 'breaker', fit));
+  });
+});
+
+describe('Dreadnoughts take no hangar room (the third playtest)', () => {
+  it('a house with two Dreadnoughts has the room it had without them', () => {
+    const g = mk();
+    const p = g.player;
+    g.spawnUnit('striker', p.id, p.capital);
+    g.recomputeMods(p);
+    const before = p.hangarUsed;
+    g.spawnUnit('dreadnought', p.id, p.capital);
+    g.spawnUnit('dreadnought', p.id, p.capital);
+    g.recomputeMods(p);
+    expect(p.hangarUsed).toBe(before);
+  });
+});
+
+describe('the Hall of Heirs: perks for the whole run, and a refund (the third playtest)', () => {
+  it('each perk is felt all run long, as its words say', () => {
+    const plain = mk().player.mods;
+    const g = mk({ perks: { oldCoin: 3, loreSeed: 2, escort: 2, bastion: 2 } });
+    const m = g.player.mods;
+    expect(m.embers - plain.embers).toBeCloseTo(3 * PERK_EMBERS);
+    expect(m.lore - plain.lore).toBeCloseTo(2 * PERK_LORE);
+    expect(m.hull - plain.hull).toBeCloseTo(2 * PERK_HULL);
+    expect(m.worldHp - plain.worldHp).toBeCloseTo(2 * PERK_WALLS);
+    expect(m.worldHp + m.hearthHp - plain.worldHp - plain.hearthHp).toBeCloseTo(2 * PERK_HEARTH);
+    // (Nothing at the start any more: Old Coin and Lorekeepers were spent in the first minute.)
+    expect(g.player.embers).toBe(mk().player.embers);
+    const words = (id: string) => PERKS.find((p) => p.id === id)!.desc;
+    expect(words('oldCoin')).toContain(`+${Math.round(PERK_EMBERS * 100)}% Embers`);
+    expect(words('loreSeed')).toContain(`+${Math.round(PERK_LORE * 100)}% Lore`);
+    expect(words('escort')).toContain(`+${Math.round(PERK_HULL * 100)}% hull`);
+    expect(words('bastion')).toContain(`+${Math.round(PERK_WALLS * 100)}% hull`);
+  });
+
+  it('REFUND ALL gives back what every rank cost', () => {
+    expect(perksSpent({})).toBe(0);
+    expect(perksSpent({ oldCoin: 2, luck: 1 })).toBe(40 + 80 + 60);
+    const all: Record<string, number> = {};
+    for (const pk of PERKS) all[pk.id] = pk.costs.length;
+    expect(perksSpent(all)).toBe(PERKS.reduce((s, pk) => s + pk.costs.reduce((a, c) => a + c, 0), 0));
   });
 });

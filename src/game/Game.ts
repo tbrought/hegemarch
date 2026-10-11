@@ -9,6 +9,7 @@ import { boonCost, ECON, PLANETS, ROLE_ORDER } from './data/worlds';
 import { RELICS, RELIC_BY_ID } from './data/relics';
 import { TRAITS, TRAIT_BY_ID } from './data/traits';
 import { ABILITY_LEVELS, DMG_TABLE, DREADNOUGHT_CAP, LEVEL_XP, MAX_LEVEL, UNITS } from './data/units';
+import { PERK_EMBERS, PERK_HEARTH, PERK_HULL, PERK_LORE, PERK_WALLS } from '../meta/perks';
 import { ASCENSION_BOONS, OPTIONAL_VICTORIES } from './data/victories';
 import {
   AI_INCOME, CRISIS_AWAKEN, CRISIS_OFFSET, JUMP_CHARGE, PHASE_SPEED, PIRATE_FIRST_RAID, HOLD_FIELD, QUEUE_MAX, SAVE_VERSION, TICK,
@@ -220,8 +221,6 @@ export class Game {
       f.rerolls = 1 + (heir.id === 'ashen' ? 2 : 0);
       let extraGuardians = 0;
       if (f.isPlayer || (config.autoplay && i === 0)) {
-        f.embers += 100 * (perks.oldCoin ?? 0);
-        f.lore += 40 * (perks.loreSeed ?? 0);
         f.rerolls += perks.archivist ?? 0;
         extraGuardians = perks.escort ?? 0;
       } else {
@@ -666,10 +665,18 @@ export class Game {
     return n.role === role && n.retool <= 0;
   }
 
-  /** Bonus multiplier for a role's main effect at this world (affinity + boons). */
+  /**
+   * Bonus multiplier for a role's main effect at this world (affinity + boons). A Forge's natural fit is
+   * not here: it makes its ships cheaper instead (`forgeFit`).
+   */
   roleBonus(n: GNode, role: WorldRole): number {
     const m = n.owner >= 0 ? this.factions[n.owner].mods : null;
-    return 1 + (this.affinityOf(n) === role && n.capitalOf < 0 ? ECON.affinity : 0) + (m ? m.role[role] : 0);
+    return 1 + (role !== 'forge' && this.affinityOf(n) === role && n.capitalOf < 0 ? ECON.affinity : 0) + (m ? m.role[role] : 0);
+  }
+
+  /** A Forge on a world that suits it (never the Hearth): its ships cost `ECON.forgeFitDiscount` less. */
+  forgeFit(n: GNode): boolean {
+    return n.capitalOf < 0 && n.role === 'forge' && this.affinityOf(n) === 'forge';
   }
 
   levelMulOf(n: GNode): number {
@@ -839,6 +846,48 @@ export class Game {
   }
 
   /**
+   * How far a Bastion's field reaches, by the world's level: 1, its own world; 2, its system's star as
+   * well (where the system's starlanes meet); 3, every place in its system. 0 for a world that is not a
+   * Bastion. (A Hearth and a Starbase hold their own world only. Among the stars only: the lands of the
+   * cradle are all one system.) Plan A of the third playtest's answer: a field across a whole system
+   * from the start was too strong, and a Bastion's level only made its guns hit harder.
+   */
+  fieldReach(n: GNode): number {
+    if (n.capitalOf >= 0 || !this.hasRole(n, 'bastion') || this.factions[n.owner].kind !== 'empire') return 0;
+    return this.cradle ? 1 : clamp(n.level, 1, 3);
+  }
+
+  /** The houses whose anti-warp fields cover a place: its own world's field, and the reach of the Bastions of its system. */
+  fieldsOver(n: GNode): number[] {
+    const out: number[] = [];
+    if (this.fieldAt(n)) out.push(n.owner);
+    for (const id of this.systemNodes(n.system)) {
+      const b = this.nodes[id];
+      if (b.id === n.id || b.owner < 0 || out.includes(b.owner)) continue;
+      const reach = this.fieldReach(b);
+      if (reach >= 3 || (reach >= 2 && n.kind === 'star')) out.push(b.owner);
+    }
+    return out;
+  }
+
+  /** The places of a system (worked out once from the map, which does not change). */
+  systemNodes(system: number): number[] {
+    if (!this.bySystem || this.bySystemOf !== this.nodes) {
+      this.bySystem = new Map();
+      this.bySystemOf = this.nodes;
+      for (const n of this.nodes) {
+        const list = this.bySystem.get(n.system);
+        if (list) list.push(n.id);
+        else this.bySystem.set(n.system, [n.id]);
+      }
+    }
+    return this.bySystem.get(system) ?? [];
+  }
+
+  private bySystem: Map<number, number[]> | null = null;
+  private bySystemOf: GNode[] | null = null;
+
+  /**
    * How many seconds longer a ship takes to jump away from where it is, because the house that holds
    * the world keeps it there: an anti-warp field (`fieldAt`), and the Gravity Anchors Boon at any of
    * that house's worlds.
@@ -846,8 +895,8 @@ export class Game {
   holdAt(u: Unit): number {
     if (u.node < 0) return 0;
     const n = this.nodes[u.node];
-    if (n.owner < 0 || !this.hostile(n.owner, u.owner)) return 0;
-    return (this.fieldAt(n) ? HOLD_FIELD : 0) + (this.anchoredAt(u) ? 4 : 0);
+    const held = this.fieldsOver(n).some((h) => this.hostile(h, u.owner));
+    return (held ? HOLD_FIELD : 0) + (this.anchoredAt(u) ? 4 : 0);
   }
 
   speedOf(u: Unit): number {
@@ -984,8 +1033,14 @@ export class Game {
         const perks = this.config.perks ?? {};
         out.push({
           label: 'Hall of Heirs',
+          // (What the perks give for the whole run: starting Embers and Lore were spent in the first
+          // minute, and a playtester did not find them worth the Legacy. See meta/legacy.ts.)
           apply: (m) => {
-            m.hearthHp += 0.25 * (perks.bastion ?? 0);
+            m.embers += PERK_EMBERS * (perks.oldCoin ?? 0);
+            m.lore += PERK_LORE * (perks.loreSeed ?? 0);
+            m.hull += PERK_HULL * (perks.escort ?? 0);
+            m.worldHp += PERK_WALLS * (perks.bastion ?? 0);
+            m.hearthHp += (PERK_HEARTH - PERK_WALLS) * (perks.bastion ?? 0);
             m.luck += perks.luck ?? 0;
           },
         });
@@ -2080,11 +2135,13 @@ export class Game {
 
   // ---- Production ----
 
-  shipCost(f: Faction, type: UnitType): number {
+  /** What a ship costs the house; at a Forge that fits its world (`at`), less (`forgeFit`). */
+  shipCost(f: Faction, type: UnitType, at?: GNode): number {
     const m = f.mods;
     const um = m.unit[type]?.cost ?? 0;
     const k = type === 'gate' || type === 'ark' ? mul(um, 0.2) : mul(m.shipCost + um, 0.2);
-    return Math.round(UNITS[type].cost * k);
+    const fit = at && UNITS[type].buildable && this.forgeFit(at) ? 1 - ECON.forgeFitDiscount : 1;
+    return Math.round(UNITS[type].cost * k * fit);
   }
 
   dreadnoughtCount(fid: number): number {
@@ -2118,14 +2175,14 @@ export class Game {
     if (type === 'dreadnought' && this.dreadnoughtCount(fid) >= DREADNOUGHT_CAP) return `Limit ${DREADNOUGHT_CAP} Dreadnoughts`;
     if (n.shipQ.length >= QUEUE_MAX) return 'Queue full';
     if (f.hangarUsed + def.hangar > f.hangarCap) return 'Hangar full';
-    if (f.embers < this.shipCost(f, type) - 1e-6) return 'Not enough Embers';
+    if (f.embers < this.shipCost(f, type, n) - 1e-6) return 'Not enough Embers';
     return null;
   }
 
   cmdQueueShip(fid: number, nodeId: number, type: UnitType): boolean {
     if (this.checkShip(fid, nodeId, type)) return false;
     const f = this.factions[fid];
-    const cost = this.shipCost(f, type);
+    const cost = this.shipCost(f, type, this.nodes[nodeId]);
     f.embers -= cost;
     this.nodes[nodeId].shipQ.push({ kind: 'ship', id: type, t: 0, total: UNITS[type].buildTime, cost });
     f.hangarUsed += UNITS[type].hangar;

@@ -59,7 +59,8 @@ the depth into the draft and the screen into a "one thing at a time" model.
 - Each world has one **role**: **Mine** (+75% Embers), **Forge** (builds ships, faster at higher
   levels), **Observatory** (Lore, and sees one starlane further) or **Bastion** (orbital guns, +50%
   hull and shields, repairs your ships, an anti-warp field). Each planet type has a natural role
-  (+25%). A newly kindled world starts as a Mine, and the **first role its house gives it costs no
+  (+25% at it; a **Forge** that fits its world builds its ships **15% cheaper** instead, `forgeFit`:
+  a Forge that built a quarter faster was hardly felt, the third playtest found). A newly kindled world starts as a Mine, and the **first role its house gives it costs no
   time** (`GNode.fresh`); a later change takes a 20-second retool. (Putting a world to the role it is
   good at used to cost those 20 seconds every time. Starting each world in its natural role instead
   would have cut the income of a player who never touches roles.) The **Hearth** does every role and
@@ -71,6 +72,15 @@ the depth into the draft and the screen into a "one thing at a time" model.
     role) and at any world with a Starbase, enemy ships take 6 seconds longer to jump away. The field
     shows as a violet ring inside the world's well, and the world's card says so, for its owner and
     for an attacker. The Gravity Anchors Boon adds its 4 seconds at every world of the house.
+    A **Bastion's field reaches further as the world rises** (`Game.fieldReach`, `fieldsOver`): at
+    level I it covers its own world, at level II its system's star as well (where the system's
+    starlanes meet), at level III every place in its system. A place it reaches has the same violet
+    ring, and its card says whose field it is. Fields do not add up: one is one. A Hearth and a
+    Starbase hold their own world only, and in the cradle a Bastion holds its own land only (the
+    lands are all one system). The third playtest found a Bastion on an isolated leg did nothing
+    for the way past it, and that its level only made its guns hit harder; a field across a whole
+    system from level I would have made every system a trap. In AI-only games the reach changed
+    nothing measurable (40 seeds: small 34 and medium 33 of 40 games decided, against 31 and 34).
   - **Under fire a drive spools at half speed** (`UNDER_FIRE`, `FIRE_SPOOL`): a ship hit in the last
     two seconds takes twice as long to get away. Running from a fight costs time.
   So a raid on a Bastion is a commitment, a Bastion is the buildable answer to raiders, and the
@@ -134,7 +144,8 @@ cracks medium hulls and worlds, **flak** (Guardians) tears through light craft a
 Ember fights between counters are decisive but not total (the winner keeps roughly 60–85% of its
 hull); mirror fights take 50–125 seconds. Breakers are the way to take worlds (siege ×2 against
 planets). Blueprint ships: **Carrier** (fighter wings, rebuilt in the hangar), **Lancer** (very long
-range, anti-heavy), **Dreadnought** (capital ship that levels up, max 2), **Starbase** (one fortress
+range, anti-heavy), **Dreadnought** (capital ship that levels up, max 2, and no hangar room: it is the
+house's flagship, not a slot in its fleet), **Starbase** (one fortress
 per world). The **Ark** levels up from damage and kills and learns an ability at levels 3, 5 and 7.
 
 Ships only passing through a world do not stop to besiege it, and scouts never shoot worlds.
@@ -203,10 +214,11 @@ skipping for Embers and "decide later" are available.
 Pacts ×0.55). An Epic is in about 20% of offers. Two things in the Hall of Heirs change that, and
 both now say in numbers what they do, because a playtester had bought every rank of both and seen
 nothing rarer than a Rare:
-- **Fortunate Stars** (three ranks) adds half again to the weight of Epic and Legendary Boons with
-  each rank (and moves a little from Common to Rare): an Epic in about 28%, 35% and 41% of offers
-  (`EPIC_ODDS`, kept true by a test that deals the offers). It used to make that 22%, 27% and 29%. The
-  Hall shows the odds at the rank held and at the next one.
+- **Fortunate Stars** (five ranks since 1.11) adds half again to the weight of Epic and Legendary
+  Boons with each rank (and moves a little from Common to Rare): an Epic in about 27%, 34%, 40%, 45%
+  and 50% of offers (`EPIC_ODDS`, measured over 300 runs and kept true by a test that deals the
+  offers). It used to make that 22%, 27% and 29%. The Hall shows the odds at the rank held and at
+  the next one.
 - **Legendary Lineage** lets Legendary Boons appear, and a run now shows at least one: if none has
   been offered by the fifth offer (`LEGENDARY_BY`), that offer holds one, in place of a Common Boon
   and never of a Blueprint. Left to their weight, four runs in five showed none at all. It is a
@@ -533,6 +545,12 @@ Measured with `npm run simulate` and `npm run balance:passive`. Speeds are ½×,
   perk or an unlock has a picture drawn with the game's own icons (Embers, Lore, a Guardian, a Boon, a
   star, walls, the Hearth; a Pact, a crown) in a frame that turns gold once the player has it; its
   name runs across the top of its card on one line, and the cards of a row start at the same height.
+  **Perks last the whole run** (third playtest: a flat start was spent in the first minute and not
+  worth the Legacy): Old Coin +4% Embers a rank, Lorekeepers +5% Lore a rank, Veteran Escort a
+  Guardian at the start and +4% hull on every ship a rank, Ancestral Walls +10% hull on every world
+  a rank (the Hearth +25% in all, as before), `meta/perks.ts`. **REFUND ALL** at the head of the perks
+  gives back every rank for the Legacy it cost, to buy again (it asks once; houses and Forbidden
+  Knowledge are kept).
 - **The small things** (the sweep of October 2026, `npm run test:qol`): the setup opens on the house,
   sector and difficulty chosen last time; Escape is BACK on every page behind the title screen; house
   cards and tick boxes are worked with the keyboard, and a page drawn again keeps the keyboard where

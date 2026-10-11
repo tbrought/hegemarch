@@ -358,8 +358,10 @@ export class Renderer {
 
     // Gravity well edge (where ships gather) for visible worlds at closer zoom.
     if (visible && z >= 0.05 && n.kind !== 'star') ring(ctx, x, y, wellR, this.ground ? PAL.indigo : PAL.night, 4);
-    // An anti-warp field (a Bastion, a Hearth, a Starbase): a second, violet ring just inside the edge.
-    if (visible && z >= 0.08 && this.game?.fieldAt(n)) ring(ctx, x, y, wellR - 3, PAL.violet, 8);
+    // An anti-warp field (a Bastion, a Hearth, a Starbase): a second, violet ring just inside the edge. A
+    // place that a Bastion's field reaches from another world of its system has the same ring: a violet
+    // ring is a field, wherever it comes from. (Clear of the place itself: a star's well is small.)
+    if (visible && z >= 0.08 && this.game && this.game.fieldsOver(n).length) ring(ctx, x, y, Math.max(wellR - 3, this.nodeR(n) * 2 + 6), PAL.violet, 8);
 
     if (n.kind === 'star') {
       const s = starSprite(r, n.starColor);
