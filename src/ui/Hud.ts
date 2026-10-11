@@ -45,6 +45,26 @@ function numberRoom(s: string, least: string): number {
 /** What a world that suits its role gets: a Forge builds cheaper, the other roles do more. */
 const FIT_TEXT = (role: string) => (role === 'forge' ? `its ships cost [${Math.round(ECON.forgeFitDiscount * 100)}% less]` : `[+${Math.round(ECON.affinity * 100)}%] at it`);
 
+/** A project of the Hearth (or a Starbase at any world), as a button of the world's card: see `Hud.drawProject`. */
+interface Project {
+  id: string;
+  label: string;
+  /** What it adds, after its name: "+5". */
+  plus?: string;
+  cost: number;
+  icon: string;
+  accent: string;
+  act: () => void;
+  tip: string;
+  dis?: string | null;
+  /** It is needed now (the hangar nearly full, the Ark lost): it blinks once it can be had. */
+  calls?: boolean;
+  /** What it still waits for, shown in place of its price. */
+  progress?: { have: number; need: number };
+  /** A spark runs round it once it can be raised. */
+  spark?: boolean;
+}
+
 /** How fields link, for the tips of the cards. */
 const LINK_TIP = `A Bastion alone holds only its own world. From level II its field links with another field of yours (a Bastion's, your Hearth's, a Starbase's) up to ${LINK_REACH[2]} jumps away, at level III up to ${LINK_REACH[3]}: every place on the starlanes between them is held too, and enemy ships there take ${HOLD_FIELD}s longer to jump away. Lose or retool one end and the link is gone.`;
 
@@ -411,13 +431,19 @@ export class Hud {
         x += 42;
       }
     }
-    // Hangar, only near the limit.
-    if (R.fleet && p.hangarCap > 0 && (p.hangarUsed >= p.hangarCap - 3 || p.hangarUsed / p.hangarCap >= 0.8)) {
+    // Hangar: always there (it showed only near the limit, and until then a player had to guess at the
+    // room that was left). Quiet while there is room, bright as it runs out, red when full; in figures of
+    // one width, with room for as many digits as the limit has, so what follows keeps its place.
+    if (R.fleet && p.hangarCap > 0) {
       x += 2;
-      icon(g, this.g.cradle ? 'supply' : 'hangar', x, this.g.cradle ? 4 : 3);
       const full = p.hangarUsed >= p.hangarCap;
-      const ex = text(g, `${p.hangarUsed}/${p.hangarCap}`, x + 7, 3, full ? PAL.red : PAL.mist);
-      this.barTip('hangar', x - 1, 0, ex - x + 2, 13, 'Hangar: room for your ships. Every world you hold adds room, and higher-level worlds add more. When it is full you cannot build. Hangar Bays at your Hearth add more.');
+      const near = p.hangarUsed >= p.hangarCap - 3 || p.hangarUsed / p.hangarCap >= 0.8;
+      const color = full ? PAL.red : near ? PAL.bone : PAL.dusk;
+      icon(g, this.g.cradle ? 'supply' : 'hangar', x, this.g.cradle ? 4 : 3, near ? undefined : PAL.dusk, !near);
+      const figures = `${p.hangarUsed}/${p.hangarCap}`;
+      textTabular(g, figures, x + 7, 3, color);
+      const ex = x + 7 + numberRoom(figures, `${p.hangarCap}/${p.hangarCap}`);
+      this.barTip('hangar', x - 1, 0, ex - x + 2, 13, () => `Hangar: ${p.hangarUsed} of ${p.hangarCap} used${full ? ', and full: you cannot build' : `, room for ${p.hangarCap - p.hangarUsed} more`}. Every world you hold adds room, and higher-level worlds add more. Hangar Bays at your Hearth add more.`);
       x = ex + 6;
     }
     // Forges that build nothing: how many, and a click (or Tab) to go to the next of them. A button and
@@ -1381,6 +1407,8 @@ export class Hud {
       tip: `${this.sizeTip(n)} ${T.name} worlds suit the ${ROLES[aff ?? 'mine'].name} role: ${FIT_TEXT(aff ?? 'mine')} once it is yours.`,
       terms: gloss(aff ?? 'mine', 'natural'),
     }));
+    // (A dark world on the way between two fields is held like any other place there.)
+    if (visible) rows.push(...this.linkRows(n));
     const guards = visible ? game.buckets[n.id].filter((u) => !u.dead && u.owner !== p.id && game.factions[u.owner].kind !== 'empire' && u.type !== 'fighter') : [];
     const seed = game.seedFor(p.id, n.id);
     if (guards.length) {
@@ -1576,25 +1604,36 @@ export class Hud {
         },
       });
     }
-    // Extras: Starbase, Ark, Gate, rally
-    const extras: { id: string; label: string; act: () => void; tip: string; dis?: string | null }[] = [];
+    // Projects: Starbase, Hangar Bay, the next age, the Ark, the Starfire Gate. (Then the rally point.)
+    const extras: Project[] = [];
     if (game.hasCard(p, 'bpStarbase') && game.starbaseAt(n) === 0) {
       const why = game.checkStarbase(p.id, n.id);
-      extras.push({ id: 'starbase', label: `STARBASE ${game.shipCost(p, 'starbase')}`, act: () => this.actions.starbase(n.id), tip: `Build a Starbase to guard ${n.name}. It also repairs your ships here.`, dis: why });
+      extras.push({ id: 'starbase', label: 'STARBASE', cost: game.shipCost(p, 'starbase'), icon: 'bastion', accent: PAL.sky, act: () => this.actions.starbase(n.id), tip: `Build a Starbase to guard ${n.name}. It also repairs your ships here.`, dis: why });
     }
     if (hearth && (p.hangarUsed >= p.hangarCap * 0.7 || (p.bays ?? 0) > 0) && game.checkBay(p.id) !== 'No room for more bays') {
-      extras.push({ id: 'bay', label: `HANGAR BAY +5 ${game.bayCost(p)}`, act: () => this.actions.bay(), tip: `Build a Hangar Bay at your Hearth: room for 5 more hangar space. Each bay costs more than the last.`, dis: game.checkBay(p.id) });
+      extras.push({
+        id: 'bay', label: 'HANGAR BAY', plus: `+${ECON.bayHangar}`, cost: game.bayCost(p), icon: 'hangar', accent: PAL.teal, act: () => this.actions.bay(),
+        tip: `Build a Hangar Bay at your Hearth: room for ${ECON.bayHangar} more hangar space. Each bay costs more than the last.`, dis: game.checkBay(p.id),
+        // (It asks to be seen when it is needed: the hangar nearly full.)
+        calls: p.hangarUsed >= p.hangarCap * 0.9,
+      });
     }
     if (hearth && game.cradle && p.era < SPACE && !p.advance) {
       const last = p.era >= LAST_CRADLE_ERA;
-      extras.push({ id: 'advance-card', label: `${last ? 'BUILD THE ARK' : `TO THE ${ERAS[p.era + 1].short} AGE`} ${ERAS[p.era].cost}`, act: () => this.actions.advance(), tip: this.advanceTip(), dis: game.checkAdvance(p.id) });
+      extras.push({ id: 'advance-card', label: last ? 'BUILD THE ARK' : `TO THE ${ERAS[p.era + 1].short} AGE`, cost: ERAS[p.era].cost, icon: 'up', accent: PAL.teal, act: () => this.actions.advance(), tip: this.advanceTip(), dis: game.checkAdvance(p.id) });
     }
     if (hearth && !game.cradle && game.checkArk(p.id) !== 'Your Ark still flies') {
-      extras.push({ id: 'ark', label: `REBUILD ARK ${game.shipCost(p, 'ark')}`, act: () => this.actions.ark(), tip: 'Rebuild your Ark. It keeps its levels and abilities.', dis: game.checkArk(p.id) });
+      extras.push({ id: 'ark', label: 'REBUILD ARK', cost: game.shipCost(p, 'ark'), icon: 'hearth', accent: PAL.gold, act: () => this.actions.ark(), tip: 'Rebuild your Ark. It keeps its levels and abilities.', dis: game.checkArk(p.id), calls: true });
     }
     if (hearth && game.victories.includes('ascension') && !p.gate) {
       const why = game.checkGate(p.id, n.id);
-      extras.push({ id: 'gate', label: `STARFIRE GATE ${game.shipCost(p, 'gate')}`, act: () => this.actions.gate(n.id), tip: `Raise the Starfire Gate. Protect it for ${GATE_CHARGE / 60} minutes to win by Ascension.`, dis: why });
+      const short = p.boons < ASCENSION_BOONS;
+      extras.push({
+        id: 'gate', label: 'STARFIRE GATE', cost: game.shipCost(p, 'gate'), icon: 'ascension', accent: PAL.pink, act: () => this.actions.gate(n.id),
+        tip: `Raise the Starfire Gate. Protect it for ${GATE_CHARGE / 60} minutes to win by Ascension.${short ? ` You have ${p.boons} of the ${ASCENSION_BOONS} Boons it takes.` : ''}`, dis: why,
+        // (Until it can be raised it counts the Boons it waits for; then a spark runs round it.)
+        progress: short ? { have: p.boons, need: ASCENSION_BOONS } : undefined, spark: true,
+      });
     }
     if (hearth && p.advance) {
       const adv = p.advance;
@@ -1610,17 +1649,30 @@ export class Hud {
       });
     }
     if (extras.length) {
+      // As wide as what they say, side by side, on a second line when the card is too narrow for them.
+      const lines: Project[][] = [[]];
+      let used = 0;
+      for (const e of extras) {
+        const bw = Math.min(innerW, this.projectWidth(e));
+        if (used && used + bw > innerW) {
+          lines.push([]);
+          used = 0;
+        }
+        lines[lines.length - 1].push(e);
+        used += bw + 2;
+      }
       rows.push(this.gap(2));
       rows.push({
-        h: 13,
+        h: lines.length * 14 - 1,
         draw: (x, y, w) => {
-          let bx = x;
-          for (const e of extras) {
-            const bw = Math.min(w - (bx - x), textWidth(e.label, 'tiny') + 10);
-            if (bw < 30) break;
-            this.ui.button(gx, e.id, bx, y, bw, 12, e.label, e.act, { font: 'tiny', disabled: !!e.dis, tip: e.tip + (e.dis ? ` (${e.dis})` : '') });
-            bx += bw + 2;
-          }
+          lines.forEach((ln, i) => {
+            let bx = x;
+            for (const e of ln) {
+              const bw = Math.min(w, this.projectWidth(e));
+              this.drawProject(e, bx, y + i * 14, bw);
+              bx += bw + 2;
+            }
+          });
         },
       });
     }
@@ -1634,8 +1686,65 @@ export class Hud {
         },
       });
     }
-    void innerW;
     return rows;
+  }
+
+  private projectRight(e: Project): string {
+    return e.progress ? `${IC.boon}${e.progress.have}/${e.progress.need}` : `${IC.ember}${e.cost}`;
+  }
+
+  private projectWidth(e: Project): number {
+    return 11 + textWidth(e.label, 'tiny') + (e.plus ? 3 + textWidth(e.plus, 'tiny') : 0) + 6 + textWidth(this.projectRight(e), 'tiny') + 3;
+  }
+
+  /**
+   * A project of the Hearth as a button: its picture, its name, its price. They were grey boxes of
+   * small text, the dullest thing on the busiest card. Each has its colour (the Hangar Bay teal like the
+   * hangar, the Starfire Gate the pink of Ascension), and each moves when it matters: the Hangar Bay
+   * blinks its "+5" when the hangar is nearly full, the Ark asks to be rebuilt, and the Starfire Gate
+   * counts the Boons it waits for and, once it can be raised, has a spark running round it.
+   */
+  private drawProject(e: Project, x: number, y: number, w: number) {
+    const g = this.s.screen.g;
+    const H = 12;
+    const poor = e.dis === 'Not enough Embers';
+    const locked = !!e.dis && !poor;
+    const ready = !e.dis;
+    const hot = this.ui.isHot(e.id) && !locked;
+    const beat = Math.floor(this.ui.time * 2.5) % 2 === 0;
+    box(g, x, y, w, H, hot ? PAL.indigo : PAL.night, locked ? PAL.indigo : hot ? PAL.bone : poor ? PAL.slate : e.accent);
+    // Its picture: in its own colours, lit up on the beat when the project calls or is ready to raise.
+    const lit = (ready && (e.calls || e.spark) && beat) || hot;
+    // (One that counts what it waits for is on its way, not merely shut: a shade brighter, its picture violet.)
+    const dim = e.progress ? PAL.dusk : PAL.slate;
+    icon(g, e.icon, x + 3, y + 3, locked ? (e.progress ? PAL.violet : PAL.slate) : lit ? PAL.bone : e.icon === 'hangar' ? e.accent : undefined, locked || lit || e.icon === 'hangar');
+    let tx = text(g, e.label, x + 10, y + 3, locked ? dim : hot || ready ? PAL.bone : PAL.mist, 'tiny');
+    if (e.plus) tx = text(g, e.plus, tx + 3, y + 3, locked ? PAL.slate : e.calls && ready && beat ? PAL.bone : e.accent, 'tiny');
+    const right = this.projectRight(e);
+    text(g, right, x + w - 3 - textWidth(right, 'tiny'), y + 3, e.progress ? PAL.violet : poor ? PAL.red : locked ? PAL.slate : PAL.gold, 'tiny');
+    // Waiting for Boons: how far, along the foot of the button.
+    if (e.progress) {
+      rect(g, x + 1, y + H - 2, w - 2, 1, PAL.indigo);
+      rect(g, x + 1, y + H - 2, Math.max(1, Math.round((w - 2) * Math.min(1, e.progress.have / e.progress.need))), 1, PAL.violet);
+    }
+    // Ready to raise: two sparks run round the frame, each with a tail that cools from white to ember.
+    if (e.spark && ready) {
+      const per = 2 * (w + H) - 4;
+      const head = Math.floor(this.ui.time * 44) % per;
+      for (const start of [head, head + (per >> 1)]) {
+        for (let k = 0; k < 9; k++) {
+          let d = (((start - k) % per) + per) % per;
+          let px = x;
+          let py = y;
+          if (d < w) px = x + d;
+          else if ((d -= w - 1) < H) [px, py] = [x + w - 1, y + d];
+          else if ((d -= H - 1) < w) [px, py] = [x + w - 1 - d, y + H - 1];
+          else [px, py] = [x, y + H - 1 - (d - (w - 1))];
+          rect(g, px, py, 1, 1, k < 2 ? PAL.bone : k < 6 ? PAL.gold : PAL.ember);
+        }
+      }
+    } else if (e.calls && ready && beat) box(g, x - 1, y - 1, w + 2, H + 2, null, e.accent);
+    this.ui.add({ id: e.id, x, y, w, h: H, onClick: e.act, disabled: locked, tip: e.tip + (e.dis ? ` [!${e.dis}.]` : '') });
   }
 
   private siteRows(n: GNode, innerW: number): CardRow[] {

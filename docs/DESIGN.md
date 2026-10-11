@@ -571,6 +571,21 @@ Measured with `npm run simulate` and `npm run balance:passive`. Speeds are ½×,
   number beside an anvil it read as one more rate, like the Embers'.) Tab, Q, Tab, W queues ships all over the
   house without the mouse. Control groups stay as they were (Ctrl+1 to 9 saves ships, 1 to 9 selects
   them, twice looks at them).
+- **The hangar is always in the top bar** once the fleet is ("14/20"). It used to appear only near
+  its limit, and until then a player had to guess at the room that was left. It is quiet while there
+  is room, bright from four fifths full (or three ships short), red when full, and drawn in figures
+  of one width with room for the limit's digits, so that what stands after it keeps its place. Its
+  tooltip says how many more ships there is room for.
+- **The Hearth's projects are buttons with some life** (`Hud.drawProject`): the Hangar Bay, the
+  Starfire Gate, a Starbase, the Ark to rebuild and the next age each have their picture, their
+  colour (the bay teal like the hangar, the Gate the pink of Ascension, a Starbase sky, the Ark gold)
+  and their price beside an Ember. They were grey boxes of small text, the dullest thing on the
+  busiest card. Each moves when it matters and is still otherwise: the bay blinks its "+5" and its
+  frame once the hangar is nine tenths full and the Embers are there, the Ark asks to be rebuilt, and
+  the Starfire Gate shows the Boons it waits for ("6/15", with a line that fills along its foot) and,
+  once it can be raised, has two sparks running round its frame. One that only lacks Embers shows
+  its price in red and can still be clicked (the refusal says why); they take a second line when
+  the card is too narrow for them.
 - **The Hall of Heirs** shows a house as the setup does: its banner (its Hearth and starting fleet,
   flying), its name, what it is, what it has in a list, and its price along the foot of the card, with
   how much Legacy is still missing. Every card is the same shape, whatever the length of a name. A

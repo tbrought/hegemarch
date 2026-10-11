@@ -327,6 +327,33 @@ const screen = (page) => ev(page, () => window.__app.screen);
   check(jump.n > 0 && /^Jumping in \d+ s/.test(jump.text ?? ''), `a fleet charging its drives says when it will jump (${jump.text})`);
   await page.waitForTimeout(300);
   await page.screenshot({ path: '.shots/qol-jump-charge.png' });
+  // The Hearth's projects are buttons with a picture and a price: a Hangar Bay to be had, a Starfire
+  // Gate that counts the Boons it waits for.
+  const proj = await ev(page, () => {
+    const app = window.__app;
+    const s = app.session;
+    const g = s.game;
+    const p = g.player;
+    if (!g.victories.includes('ascension')) g.victories[g.victories.length - 1] = 'ascension';
+    p.bays = Math.max(1, p.bays ?? 0);
+    p.boons = Math.min(p.boons, 6);
+    s.clearSelection();
+    s.selectNode(p.capital);
+    return { bays: p.bays, boons: p.boons };
+  });
+  await page.waitForTimeout(300);
+  const projects = await ev(page, () => {
+    const u = window.__app.hud.ui;
+    const card = u.rectOf('bay');
+    const gate = u.rectOf('gate');
+    return { bay: card ? [card.w, card.h, !card.disabled] : null, gate: gate ? [gate.w, gate.h, !!gate.disabled] : null, W: window.__app.hud.W };
+  });
+  check(projects.bay && projects.bay[2] && projects.gate && projects.gate[2], `the Hearth offers its Hangar Bay, and its Starfire Gate waits for Boons (bay ${projects.bay}, gate ${projects.gate})`);
+  check(await click('bay'), 'the Hangar Bay is a button');
+  const bought = await ev(page, () => window.__app.session.game.player.bays);
+  check(bought === proj.bays + 1, `and a click builds it (${proj.bays} > ${bought} bays)`);
+  await page.screenshot({ path: '.shots/qol-projects.png' });
+  await ev(page, () => window.__app.session.clearSelection());
   // (The third playtest.) Fields link: a Bastion at level II two jumps from the Hearth, and its card and
   // the card of the place between them say so.
   const linked = await ev(page, () => {
