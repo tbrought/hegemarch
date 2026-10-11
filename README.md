@@ -39,13 +39,20 @@ at a time:
 3. **Choose your first Boon.**
 4. **Repel a pirate raider:** click your fleet's badge, then the world.
 5. **Send your Scout exploring:** click your fleet's badge, then EXPLORE.
-6. **Meet your three Destinies,** the ways this run can be won.
+6. **Meet your three Destinies,** the ways this run can be won. You do not choose one: reaching
+   any one of them wins.
+
+Each step says what its words mean. In the First Night the first three Boons on offer and the three
+Destinies (Conquest, Dominion, Ascension) are always the same, so that nothing in a first game
+needs knowledge you do not have yet.
 
 The screen starts almost empty and reveals more as you go (the Lore meter, fleet badges, the
 Destinies, the minimap). When the guide is done, a card says so and offers MAIN MENU (start a run
-of your own; this one stays saved) or KEEP PLAYING. From then on, a short tip
-card appears the first time something new happens. Press LATER to put it away (a flashing ★ TIP
-button brings it back), and find every tip again under How to Play (H) → TIPS. From your second
+of your own; this one stays saved) or KEEP PLAYING. From then on a small box at the right names a
+**first goal** to try (a role for a world, a level, a fleet, your first capture), each worth 40
+Embers the first time you reach it. A short tip card appears the first time something new happens,
+and the game waits while you read it: OK (or Space) goes on, LATER puts it away (a flashing ★ TIP
+button brings it back). Every tip is under How to Play (H) → TIPS. From your second
 run on, the full screen is there from the start, and the guide can be switched on again in the run
 setup.
 

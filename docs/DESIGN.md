@@ -220,9 +220,11 @@ Measured with `npm run simulate` and `npm run balance:passive`. Speeds are ½×,
   and says so when an ignored raider leaves.
 - **Firsts**: a short tip card the first time something happens (raid, anomaly, an anomaly on the
   map after the first minute, Blueprint, the Hollow, Ark level-up, nearly full hangar), once per
-  profile. Its 22-second clock only runs while it can be read (not behind a dialog, not while
-  paused, not under the pointer). LATER, or running out, parks it behind a flashing ★ TIP button on
-  the right; How to Play (H) has a TIPS tab with all of them.
+  profile. With auto-pause on (the default) the card **holds the game** until it is answered: OK
+  (or Space), or LATER, which keeps it behind a flashing ★ TIP button. Nothing happens behind a
+  card that is being read. With auto-pause off the card has a 22-second clock that only runs while
+  it can be read (not behind a dialog, not while paused, not under the pointer). Every tip can be
+  read again under How to Play (H) → TIPS.
 - **Hover help** (`src/ui/glossary.ts`): about 70 glossary entries (game terms plus every Ark
   ability) are matched in any text. Hovering a Boon card shows boxes for its terms beside the card;
   event choices, abilities, omens, Destinies, Boons-screen entries, tray tiles and the world and
