@@ -456,7 +456,8 @@ Measured with `npm run simulate` and `npm run balance:passive`. Speeds are ½×,
   three), bass, drums and the wave that sings. `tests/music.test.ts` checks the writing (every note in
   its key or its chord, no long note a semitone above a chord tone, no leap over an octave) and plays
   half an hour into a list; `npm run test:music` plays every part of every track through the real
-  sound engine.
+  sound engine. **Settings lists every track** by mood: a click plays it from where its tune comes
+  in (and turns the sound on, if it was off), and the one that is playing is marked.
 - **Sound that says where it is.** A browser plays nothing before the first click or key on a page,
   so the title screen used to be silent and the music came from nowhere at the first button pressed.
   The sound engine is now made when the page opens: where the browser allows it, the title theme

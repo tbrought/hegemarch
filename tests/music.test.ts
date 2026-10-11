@@ -284,6 +284,28 @@ describe('played through', () => {
     expect(r.music.title).toBe(battle);
   });
 
+  it('a track picked from the list plays from where its tune comes in, and its mood goes on from it', () => {
+    for (const t of TRACKS) {
+      const r = rig();
+      r.music.play('title');
+      r.run(5);
+      r.music.playTrack(t.name);
+      expect(r.music.title).toBe(t.name);
+      expect(r.music.playing).toBe(t.mood);
+      expect(t.form[r.inner.seg][1], t.name).toContain('l');
+      r.played.length = 0;
+      r.run(12);
+      // (The tune is heard within seconds, not after a pass of bass alone.)
+      expect(r.played.some((x) => x.w === t.leadWave && Math.abs(x.vol - t.leadVol) < 1e-9), t.name).toBe(true);
+      r.run(trackSeconds(t) + 15);
+      expect(r.heard[r.heard.length - 1]).not.toBe(t.name);
+      expect(TRACKS.find((x) => x.name === r.music.title)!.mood).toBe(t.mood);
+    }
+    const r = rig();
+    r.music.playTrack('no such track');
+    expect(r.music.playing).toBeNull();
+  });
+
   it('asked for the mood it is in, it plays on; asked for none, it stops', () => {
     const r = rig();
     r.music.play('night');

@@ -106,7 +106,33 @@ const state = (page) =>
   await page.click('#sound');
   await page.waitForTimeout(250);
   check(await page.evaluate(() => document.querySelector('[data-sa="sound:off"]').classList.contains('active')), 'and the corner button moves the switch in Settings');
-  await page.click('#sound');
+  // Settings lists every track; a click plays one, also when the sound was off.
+  const listed = await page.evaluate(() => [...document.querySelectorAll('[data-sa^="track:"]')].map((b) => b.dataset.sa.slice(6)));
+  check(listed.length >= 11 && new Set(listed).size === listed.length, `Settings lists the tracks (${listed.length})`);
+  const now = () =>
+    page.evaluate(() => ({
+      title: window.__app.music.title,
+      mood: window.__app.music.playing,
+      muted: window.__app.profile.settings.muted,
+      active: [...document.querySelectorAll('[data-sa^="track:"].active')].map((b) => b.dataset.sa.slice(6)).join(),
+    }));
+  for (const name of ['Starlanes', 'Last Stand', 'First Fires']) {
+    await page.click(`[data-sa="track:${name}"]`);
+    await page.waitForTimeout(400);
+    const t = await now();
+    check(t.title === name && t.active === name && !t.muted, `a click on ${name} plays it, and marks it (${t.mood}: ${t.title}, marked ${t.active}, sound ${t.muted ? 'off' : 'on'})`);
+  }
+  // The music moves on by itself: the mark follows it.
+  await page.evaluate(() => window.__app.music.skip());
+  await page.waitForTimeout(300);
+  let t = await now();
+  check(t.title !== 'First Fires' && t.active === t.title, `when the music moves on, the mark moves with it (${t.title})`);
+  await page.screenshot({ path: '.shots/sound-tracks.png', fullPage: false });
+  await page.click('[data-sa="menu"]');
+  await page.waitForTimeout(300);
+  t = await now();
+  check(t.mood === 'title', `back on the title screen, the title music plays again (${t.title})`);
+  await page.click('[data-sa="settings"]');
   await browser.close();
 }
 

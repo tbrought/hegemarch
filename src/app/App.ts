@@ -1,4 +1,4 @@
-import { Music, type SongId } from '../audio/Music';
+import { Music, TRACKS, type Mood, type SongId } from '../audio/Music';
 import { playBattleSounds } from '../audio/battleSounds';
 import { Sfx } from '../audio/Sfx';
 import { Game } from '../game/Game';
@@ -51,6 +51,9 @@ interface ResultsData {
 declare const __GAME_VERSION__: string;
 const GAME_VERSION = __GAME_VERSION__;
 
+/** The moods of the music, as the list of tracks under Settings names them. */
+const MOODS: [Mood, string][] = [['title', 'Title screen'], ['night', 'Quiet night'], ['war', 'Battle'], ['cradle', 'Ages cradle']];
+
 const PIXEL_TIPS = {
   small: 'Small pixels: see more of the sector at once (640×360 game pixels).',
   auto: 'Fit the window: at least 480×270 game pixels, scaled up in whole steps.',
@@ -93,6 +96,8 @@ export class App {
   /** The sound button in the corner of every menu screen, and what it says now (see `syncSound`). */
   private soundBtn: HTMLButtonElement;
   private soundState = '';
+  /** The track the list under Settings shows as playing (see `syncTracks`). */
+  private trackShown: string | null = null;
   /** Was the sound still asleep when the click or key now being handled began? Then that click woke it. */
   private gestureWoke = false;
 
@@ -166,6 +171,7 @@ export class App {
         drawModeArt(this.ui, now / 1000);
       } else if (this.screen === 'howto') drawModeArt(this.ui, now / 1000);
       if (this.screen === 'menu') this.tickMenu();
+      else if (this.screen === 'settings') this.syncTracks();
       this.syncSound();
     } catch (err) {
       console.error(err);
@@ -510,6 +516,14 @@ export class App {
     b.innerHTML = `<svg viewBox="0 0 9 9" shape-rendering="crispEdges" aria-hidden="true"><path d="M0 3h2v3H0zM2 2h1v5H2zM3 1h1v7H3z"/>${marks}</svg><span>${say}</span>`;
   }
 
+  /** Settings lists every track: the one that is playing is marked, also when the music moves on by itself. */
+  private syncTracks() {
+    const now = this.music.title;
+    if (now === this.trackShown) return;
+    this.trackShown = now;
+    for (const el of this.ui.querySelectorAll<HTMLElement>('[data-sa^="track:"]')) el.classList.toggle('active', el.dataset.sa === `track:${now}`);
+  }
+
   private toggleSound() {
     const st = this.profile.settings;
     // (The click that woke the sound has turned it on: it is not also a click to turn it off.)
@@ -764,6 +778,12 @@ export class App {
       }
       case 'sound':
         this.setMuted(b === 'off');
+        this.showSettings();
+        break;
+      case 'track':
+        // (Someone who picks a track wants to hear it.)
+        if (this.profile.settings.muted) this.setMuted(false);
+        this.music.playTrack(b);
         this.showSettings();
         break;
       case 'pixels':
@@ -1117,6 +1137,11 @@ export class App {
         ${tog('explainTerms', 'Explain game terms (Kindle, Hangar…) beside tooltips', s.explainTerms)}
         ${tog('crt', 'Scanline (CRT) filter', s.crt)}
         ${tog('edgePan', 'Scroll the map at the screen edge', s.edgePan)}
+      </div>
+      <h2>MUSIC</h2>
+      <div class="help">${TRACKS.length} tracks. A run plays the ones that fit the moment, a new one each time; here you can hear any of them.</div>
+      <div class="kv" style="margin-top:12px">
+        ${MOODS.map(([m, label]) => `<b>${label}</b><div class="row">${TRACKS.filter((t) => t.mood === m).map((t) => `<button class="small ${this.music.title === t.name ? 'active' : ''}" data-sa="track:${esc(t.name)}">${esc(t.name.toUpperCase())}</button>`).join('')}</div>`).join('')}
       </div>
       <h2>PROGRESS</h2>
       <div class="row"><button class="small" data-sa="replay-tutorial" data-tip="Your next new run starts with the guided First Night again, and the first-time tips come back.">REPLAY THE FIRST NIGHT</button>

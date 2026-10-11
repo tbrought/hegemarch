@@ -363,6 +363,27 @@ export class Music {
     if (mood) this.ensureTimer();
   }
 
+  /**
+   * Play this track, whatever the mood (the list of tracks under Settings); its mood goes on from it.
+   * It starts where its tune comes in: someone who picks a track from a list wants to hear the track,
+   * not the bars of bass that lead up to it.
+   */
+  playTrack(name: string) {
+    const t = TRACKS.find((x) => x.name === name);
+    if (!t) return;
+    if (this.mood && this.track && this.mood !== t.mood) this.held[this.mood] = { track: this.track, seg: this.seg };
+    this.mood = t.mood;
+    this.cut();
+    this.track = t;
+    this.last[t.mood] = t.name;
+    // (It has had its turn in this round of its mood: the round does not bring it straight back.)
+    const bag = this.bags[t.mood];
+    if (bag?.includes(t)) bag.splice(bag.indexOf(t), 1);
+    this.seg = Math.max(0, t.form.findIndex(([, voices]) => voices.includes('l')));
+    this.step = 0;
+    this.ensureTimer();
+  }
+
   /** On to the next track of the mood, now. */
   skip() {
     if (!this.mood) return;
