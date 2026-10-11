@@ -309,12 +309,13 @@ try {
   await page.keyboard.press('b');
   await wait(300);
   check('B opens the Boons screen when no draft waits', await ev(() => window.__app.session.modal?.kind === 'status' && window.__app.hud.modals.statusTab === 'boons'));
-  const zoom0 = await ev(() => window.__app.renderer.cam.zoom);
+  // (The zoom the map is heading for: the wheel moves it, a camera still gliding from the last step does not.)
+  const zoom0 = await ev(() => window.__app.renderer.cam.tzoom);
   const mid = await toPage(240, 135);
   await page.mouse.move(mid[0], mid[1]);
   await page.mouse.wheel(0, 300);
   await wait(200);
-  check('the wheel scrolls the Boons screen, not the map', (await ev(() => window.__app.renderer.cam.zoom)) === zoom0);
+  check('the wheel scrolls the Boons screen, not the map', (await ev(() => window.__app.renderer.cam.tzoom)) === zoom0);
   await page.keyboard.press('b');
   await wait(200);
   check('B closes the Boons screen', await ev(() => window.__app.session.modal === null));
