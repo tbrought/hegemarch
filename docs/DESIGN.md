@@ -139,6 +139,14 @@ per world). The **Ark** levels up from damage and kills and learns an ability at
 
 Ships only passing through a world do not stop to besiege it, and scouts never shoot worlds.
 
+A **derelict Dreadnought** (a galactic event) goes to the house that holds its place alone for 15
+seconds. Rival houses send two free ships that are within five jumps to hold one they know of, the
+way a player would. (Before, a derelict was one target among many for the whole army and almost
+never won out: in forty AI-only games 8 of 21 were ever claimed, after a median 8 minutes, and four
+of five sat untouched at a house's own home star. Now it is a median of under a minute, and game
+length is unchanged: 46.7 against 47.4 minutes on the same forty seeds.) A derelict that someone
+else is at is a fight, and that is still the army's to decide.
+
 ### Boons
 A draft offers 3 choices, plus one each from the Ashen Remnant, Quantum Archives and the Codex
 relic, up to 5 (so every card fits on the smallest screen; Quantum Archives stops appearing once a

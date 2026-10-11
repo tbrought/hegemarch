@@ -366,6 +366,9 @@ function buildShips(g: Game, f: Faction, ctx: Ctx, max: number) {
 // Military
 // ---------------------------------------------------------------------------
 
+/** How many jumps a rival's free ships will go to hold a drifting derelict. */
+const DERELICT_REACH = 5;
+
 function sendIfNeeded(g: Game, f: Faction, units: Unit[], node: number) {
   const ids: number[] = [];
   for (const u of units) {
@@ -501,6 +504,27 @@ function military(g: Game, f: Faction, ctx: Ctx) {
       for (const u of send) assigned.add(u.id);
       if (isHearth && ai.mode !== 'build') ai.mode = 'build';
     }
+  }
+
+  // ---- A drifting derelict is worth a detour ----
+  // A derelict Dreadnought goes to the house that holds its place alone for a few seconds. As a target
+  // for the whole army it almost never won out, so derelicts sat unclaimed for minutes, even at a
+  // house's own home star. Now two ships that are near and free go and hold it. If someone else is
+  // there, it is a fight, and that is the army's business as before.
+  for (const n of g.nodes) {
+    if (n.claim?.what !== 'derelict' || !f.explored[n.id] || g.hostilePowerAt(n.id, f.id) > 0) continue;
+    const holding = all.filter((u) => !assigned.has(u.id) && (u.node === n.id || u.dest === n.id));
+    if (holding.length) {
+      for (const u of holding) assigned.add(u.id);
+      continue;
+    }
+    const free = all
+      .filter((u) => !assigned.has(u.id) && u.type !== 'ark' && !u.lane && u.node >= 0 && u.lastHit > 6 && g.hops(u.node, n.id) <= DERELICT_REACH)
+      .sort((x, y) => g.pathLen(x.node, n.id) - g.pathLen(y.node, n.id))
+      .slice(0, 2);
+    if (!free.length) continue;
+    g.cmdMove(f.id, free.map((u) => u.id), n.id);
+    for (const u of free) assigned.add(u.id);
   }
 
   const army = all.filter((u) => !assigned.has(u.id));

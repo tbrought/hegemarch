@@ -652,3 +652,44 @@ describe('an Ark never loses an ability it has earned', () => {
     expect(inPool()).toBe(false);
   });
 });
+
+describe('a rival house wants a derelict too', () => {
+  /** A derelict Dreadnought drifting at an empty place the house knows, as near its Hearth as there is one. */
+  function derelictNear(g: Game, fid: number) {
+    const f = g.factions[fid];
+    const n = g.nodes
+      .filter((x) => (x.kind === 'star' || (x.kind === 'planet' && x.owner < 0)) && !x.claim && !x.hazard && x.id !== f.capital && g.hostilePowerAt(x.id, fid) === 0 && g.buckets[x.id].length === 0)
+      .sort((a, b) => g.hops(a.id, f.capital) - g.hops(b.id, f.capital))[0];
+    n.claim = { what: 'derelict', f: -1, t: 0 };
+    f.explored[n.id] = 1;
+    return n;
+  }
+
+  it('two of its free ships go and hold one that drifts within reach, and the Dreadnought is theirs', () => {
+    const g = mk({ size: 'medium' });
+    const rival = g.empires().find((f) => f.id !== g.playerId)!;
+    const n = derelictNear(g, rival.id);
+    expect(g.hops(n.id, rival.capital)).toBeLessThanOrEqual(3);
+    for (let i = 0; i < 6; i++) g.spawnUnit('striker', rival.id, rival.capital);
+    run(g, 8);
+    const sent = g.unitsOf(rival.id).filter((u) => u.dest === n.id || u.node === n.id);
+    expect(sent.length).toBeGreaterThanOrEqual(1);
+    run(g, 90);
+    expect(n.claim).toBeNull();
+    expect(g.unitsOf(rival.id).some((u) => u.type === 'dreadnought')).toBe(true);
+  });
+
+  it('one that is held by someone else is not a detour: that is a fight, and the army decides it', () => {
+    const g = mk({ size: 'medium' });
+    const rival = g.empires().find((f) => f.id !== g.playerId)!;
+    const n = derelictNear(g, rival.id);
+    for (let i = 0; i < 6; i++) g.spawnUnit('striker', rival.id, rival.capital);
+    for (let i = 0; i < 12; i++) g.spawnUnit('breaker', g.playerId, n.id);
+    g.step();
+    const before = g.unitsOf(rival.id).filter((u) => u.dest === n.id).length;
+    run(g, 4);
+    // (Whatever the army makes of it, it is not the two-ship errand: that never flies into guns.)
+    const errand = g.unitsOf(rival.id).filter((u) => u.dest === n.id);
+    expect(errand.length === 0 || errand.length > 2 || before > 0).toBe(true);
+  });
+});
