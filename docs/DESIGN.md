@@ -70,8 +70,7 @@ the depth into the draft and the screen into a "one thing at a time" model.
   - An **anti-warp field** (`Game.fieldAt`, `HOLD_FIELD`): at a Bastion, at a Hearth (it does every
     role) and at any world with a Starbase, enemy ships take 6 seconds longer to jump away. The field
     shows as a violet ring inside the world's well, and the world's card says so, for its owner and
-    for an attacker. The Gravity Anchors Boon adds its 4 seconds at every world of the house. Scouts
-    are too small to hold.
+    for an attacker. The Gravity Anchors Boon adds its 4 seconds at every world of the house.
   - **Under fire a drive spools at half speed** (`UNDER_FIRE`, `FIRE_SPOOL`): a ship hit in the last
     two seconds takes twice as long to get away. Running from a fight costs time.
   So a raid on a Bastion is a commitment, a Bastion is the buildable answer to raiders, and the
@@ -93,14 +92,29 @@ the depth into the draft and the screen into a "one thing at a time" model.
   picks the idle Scouts and shows them (E again sends them). EXPLORE is offered only while some world
   is still uncharted (a decision can chart the whole sector), and every refusal says why. Rival houses' Scouts set
   out at once (the AI would order the same thing a moment later).
-- **A Scout is built to look and leave.** Its drive spools in 40% of the time (`SCOUT_CHARGE`), and
-  for its first 4 seconds at a place nothing there can fire on it (`SCOUT_SLIP`, `Game.slips`): time
-  to chart a Sentinel vault or a rival Hearth and jump on. A Scout that stays is a target like any
-  other ship. An exploring Scout's way keeps clear of places its house has seen to be guarded
-  (`Game.pathAvoiding`), and a Scout with nothing left to chart goes home instead of waiting where
-  its last look took it. (In the first public playtest a player lost three Scouts of four without a
-  word from the game. Houses lost about 6.7 Scouts each in twenty minutes of AI play; now about 1.3,
-  and the sector gets charted whole.)
+- **Exploring Scouts do not throw themselves away, and no rule protects them.** A Scout is a ship
+  like any other: the same drive, the same anti-warp fields, and guards fire on it at once. What
+  keeps it alive is how it explores (`pickExploreTarget` in `systems/movement.ts`). A Scout sees the
+  places next door, so it **charts a place from outside**: once the place it is bound for is in
+  sight it picks the next one and does not fly in. It **never plans a way through a place seen to
+  be guarded** (`guardedFor`, `Game.pathAvoiding`), and looks before every leap. When no uncharted
+  place can be reached safely it says how many lie "beyond guarded passages" and goes home; sending
+  it further is the player's call, by hand. In the first public playtest a player lost three Scouts
+  of four without a word from the game. Measured with every house exploring this way: about 2
+  Scouts lost per house in twenty minutes (7 under the old rules, most of them inside Sentinel
+  vaults and the Corsair base), nearly all caught by rival fleets, and about 83% of the sector
+  charted (93% before, at that price). An earlier build made a newly arrived Scout untouchable for
+  four seconds: it worked (1 lost, 100% charted) but was a rule with no reason behind it, and a
+  Scout kept moving could not be shot at all.
+- **A rival house makes the risky call for itself**: its Scouts go round a guarded place where they
+  can and through it where they must (`f.ai` in `pickExploreTarget`), and it loses them as it
+  always did (about 6 in twenty minutes, 94% charted). Rivals that knew the sector only up to the
+  first guard found fewer targets: AI-only games ran about three minutes longer, with fewer
+  conquests.
+- **Saving changes nothing, to the tick.** A Hearth's walls rise by the whole second
+  (`Game.wallsOf`), because worlds are rebuilt once a second and again on loading: with the time to
+  the tick, a loaded Hearth stood a hair taller than the one that was saved, and under fire the
+  two games drifted apart (found by `scripts/fuzz.ts --ages`).
 - **Anomalies wait for a ship that is sent there.** A player's ship looks at an anomaly only when it
   stops there: ships with further jumps queued, and Scouts out exploring, fly on. So a choice
   never pops up because a fleet happened to pass by. AI houses decide on the spot, so any of their

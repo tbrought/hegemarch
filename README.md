@@ -84,8 +84,9 @@ terms do the same.
 - **Scouts** wait for your order. Select one and press EXPLORE (or **E**), and it charts the dark
   world after world by itself. An **anomaly** (a violet swirl) waits until you send a ship to stop
   there; then you choose what to do. Ships only passing through, and Scouts out exploring, fly on.
-  Nothing can fire on a Scout in its first seconds at a place, so it can look at a guarded place and
-  leave. Every ship you lose is reported in the log, with the place and who destroyed it.
+  A Scout sees the places next door, so while exploring it charts a guarded place from outside and
+  keeps out of it; when the rest lies behind guards it says so and comes home. Every ship you lose
+  is reported in the log, with the place and who destroyed it.
 - **The hangar** limits your fleet. Hold more worlds and raise their level for more room.
 - **Destinies**: Conquest plus two of Dominion, Ascension, Relic Hunt, Ember Hoard and Purge the Void
   (the house that lands the killing blow on the Rift Heart wins it).

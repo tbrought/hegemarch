@@ -12,10 +12,6 @@ export const HOLD_FIELD = 6;
 export const UNDER_FIRE = 2;
 /** ...and its drive spools at this share of its speed: running from a fight costs time. */
 export const FIRE_SPOOL = 0.5;
-/** A Scout's drive spools in this share of the time. */
-export const SCOUT_CHARGE = 0.4;
-/** Seconds a Scout that has just arrived at a place cannot be fired on: time to look, and to leave. */
-export const SCOUT_SLIP = 4;
 export const RELIC_CLAIM_TIME = 45;
 export const DERELICT_CLAIM_TIME = 15;
 export const QUEUE_MAX = 5;

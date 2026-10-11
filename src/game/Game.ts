@@ -11,7 +11,7 @@ import { TRAITS, TRAIT_BY_ID } from './data/traits';
 import { ABILITY_LEVELS, DMG_TABLE, DREADNOUGHT_CAP, LEVEL_XP, MAX_LEVEL, UNITS } from './data/units';
 import { ASCENSION_BOONS, OPTIONAL_VICTORIES } from './data/victories';
 import {
-  AI_INCOME, CRISIS_AWAKEN, CRISIS_OFFSET, JUMP_CHARGE, PHASE_SPEED, PIRATE_FIRST_RAID, HOLD_FIELD, QUEUE_MAX, SAVE_VERSION, SCOUT_CHARGE, SCOUT_SLIP, TICK,
+  AI_INCOME, CRISIS_AWAKEN, CRISIS_OFFSET, JUMP_CHARGE, PHASE_SPEED, PIRATE_FIRST_RAID, HOLD_FIELD, QUEUE_MAX, SAVE_VERSION, TICK,
 } from './constants';
 import { computePaths, EMPIRES_BY_SIZE, generateCradle, generateMap, type SystemInfo } from './mapgen';
 import { baseMods, mul } from './mods';
@@ -529,6 +529,17 @@ export class Game {
     return this.pathHops[a * this.nodes.length + b];
   }
 
+  /** How long a way is: the jumps from `from` through `way`, each with its spool (as `pathLen` counts them). */
+  wayLen(from: number, way: number[]): number {
+    let d = 0;
+    let at = from;
+    for (const to of way) {
+      d += this.pathLen(at, to);
+      at = to;
+    }
+    return d;
+  }
+
   /**
    * The way from `a` to `b` (the places to jump to, in order) that keeps clear of trouble: every place
    * on the way counts as `extra(place)` further than it is, so the way goes round a place with a high
@@ -660,7 +671,11 @@ export class Game {
   /** How far a Hearth's walls have risen (0.45 at the start, 1 after 12 minutes). Other worlds: 1. */
   wallsOf(n: GNode): number {
     if (n.capitalOf < 0) return 1;
-    return Math.min(1, ECON.wallsStart + (1 - ECON.wallsStart) * (this.time / ECON.wallsTime));
+    // By the whole second: a Hearth's walls are rebuilt once a second (economyTick), and a game saved
+    // between two seconds must come back with the walls it had. (Loading rebuilds every world, so with
+    // the time to the tick a loaded Hearth stood a hair taller than the one that was saved.)
+    const seconds = Math.floor(this.tick * TICK + 1e-6);
+    return Math.min(1, ECON.wallsStart + (1 - ECON.wallsStart) * (seconds / ECON.wallsTime));
   }
 
   worldGun(n: GNode): { dmg: number; cd: number; range: number } | null {
@@ -784,10 +799,10 @@ export class Game {
   /**
    * How many seconds longer a ship takes to jump away from where it is, because the house that holds
    * the world keeps it there: an anti-warp field (`fieldAt`), and the Gravity Anchors Boon at any of
-   * that house's worlds. A Scout is too small to hold.
+   * that house's worlds.
    */
   holdAt(u: Unit): number {
-    if (u.node < 0 || UNITS[u.type].role === 'scout') return 0;
+    if (u.node < 0) return 0;
     const n = this.nodes[u.node];
     if (n.owner < 0 || !this.hostile(n.owner, u.owner)) return 0;
     return (this.fieldAt(n) ? HOLD_FIELD : 0) + (this.anchoredAt(u) ? 4 : 0);
@@ -802,21 +817,9 @@ export class Game {
     return s;
   }
 
-  /**
-   * A Scout that has just arrived at a place slips in unseen: for a few seconds nothing there can fire
-   * on it. With its quick drive that is time to chart a guarded place and leave it alive; a Scout that
-   * stays is a target like any other ship.
-   */
-  slips(u: Unit): boolean {
-    return this.time - u.arrivedAt < SCOUT_SLIP && UNITS[u.type].role === 'scout';
-  }
-
   jumpChargeOf(u: Unit): number {
     const m = this.factions[u.owner].mods;
-    let t = JUMP_CHARGE * mul(m.jumpCharge, 0.2);
-    // A Scout is built to look and leave: its drive spools in less than half the time.
-    if (UNITS[u.type].role === 'scout') t *= SCOUT_CHARGE;
-    return t + this.holdAt(u);
+    return JUMP_CHARGE * mul(m.jumpCharge, 0.2) + this.holdAt(u);
   }
 
   laneSpeedOf(u: Unit): number {

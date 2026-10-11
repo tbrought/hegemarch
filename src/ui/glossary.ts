@@ -57,7 +57,7 @@ export const GLOSSARY: GlossEntry[] = [
   term('striker', 'Striker', 'strikers?', 'A fast, cheap gunship. Beats Breakers; Guardians shred it.'),
   term('guardian', 'Guardian', 'guardians?', 'A sturdy escort with flak. Beats Strikers and Fighters; Breakers outgun it.'),
   term('breaker', 'Breaker', 'breakers?', 'A siege ship. Cracks Guardians and is the best way to take a world; Strikers run it down.'),
-  term('scout', 'Scout', 'scouts?', 'A fast explorer. Select it and press EXPLORE (E), and it charts the dark by itself. Nothing can fire on it in its first seconds at a place, and its drive spools fast, so it can look at a guarded place and leave. It never fights worlds.'),
+  term('scout', 'Scout', 'scouts?', 'A fast explorer. Select it and press EXPLORE (E), and it charts the dark by itself. It sees the places next door, so it charts a guarded place from outside and keeps out of it. It never fights worlds.'),
   term('carrier', 'Carrier', 'carriers?', 'Launches a wing of Fighters; lost Fighters are rebuilt. Needs its Blueprint.'),
   term('fighter', 'Fighter', 'fighters?', 'Small craft launched by Carriers. Strong against big hulls, weak to flak.'),
   term('lancer', 'Lancer', 'lancers?', 'A long-range lance that kills big ships. Needs its Blueprint.'),
@@ -70,7 +70,7 @@ export const GLOSSARY: GlossEntry[] = [
   term('shields', 'Shields', 'shields?', 'Take damage before the hull, and recharge when out of combat.', true),
   term('armor', 'Armor', 'armou?r', 'Cuts the damage that gets through to the hull.'),
   term('starlane', 'Starlane', 'starlanes?|jumps?', 'The routes between stars and worlds. Ships jump onto a starlane to travel.'),
-  term('field', 'Anti-warp field', 'anti-warp fields?', 'Kept up by a Bastion, a Hearth and any world with a Starbase. Enemy ships there take [6 s longer] to jump away, so raiders must stand and fight. Scouts slip through.'),
+  term('field', 'Anti-warp field', 'anti-warp fields?', 'Kept up by a Bastion, a Hearth and any world with a Starbase. Enemy ships there take [6 s longer] to jump away, so raiders must stand and fight.'),
   term('spool', 'Spool', 'spool(?:s|ing)?', 'Ships charge their drives for a few seconds before they jump onto a starlane. Under fire it takes twice as long.'),
   // The sector
   term('relic', 'Relic', 'relics?', 'An ancient treasure dug out of a guarded vault. Each relic gives its holder a bonus.'),

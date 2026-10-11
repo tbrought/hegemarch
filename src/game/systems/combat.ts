@@ -98,7 +98,7 @@ function pickTarget(g: Game, u: Unit, b: Unit[], node: GNode) {
   let best = 0;
   let bs = 0;
   for (const o of b) {
-    if (o.dead || o.lane || !g.hostile(u.owner, o.owner) || g.slips(o)) continue;
+    if (o.dead || o.lane || !g.hostile(u.owner, o.owner)) continue;
     const od = UNITS[o.type];
     if (DMG_TABLE[primary][od.armorClass] <= 0.01) continue;
     const d = dist(u.x, u.y, o.x, o.y) - od.radius;
@@ -230,7 +230,7 @@ function planetGunTick(g: Game, node: GNode, b: Unit[], dt: number) {
   let best: Unit | null = null;
   let bd = Infinity;
   for (const o of b) {
-    if (o.dead || o.lane || !g.hostile(node.owner, o.owner) || g.slips(o)) continue;
+    if (o.dead || o.lane || !g.hostile(node.owner, o.owner)) continue;
     const d = dist(node.x, node.y, o.x, o.y);
     if (d < gun.range && d < bd) {
       bd = d;

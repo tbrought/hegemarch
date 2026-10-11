@@ -333,7 +333,7 @@ export class Tutorial {
         return { text: `${stepOf(4)} · A pirate raids your new world! Click your fleet's badge ${IC.fleet}, then the world.`, color: PAL.ember, badge: this.hud.fleetLabel(this.biggestFleet()), sub: 'Ships fight by themselves once they are where the enemy is.' };
       }
       case 5: {
-        const why = 'A Scout charts the dark, world after world. Nothing can fire on it in its first seconds at a place.';
+        const why = 'A Scout charts the dark, world after world. It keeps out of places it can see are guarded.';
         if (this.scoutPicked()) return { text: `${stepOf(5)} · Press EXPLORE (or E): your Scout ${IC.scout} will chart the dark by itself.`, color: PAL.gold, sub: why };
         const sc = this.scouts()[0];
         return {

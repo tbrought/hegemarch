@@ -3,7 +3,7 @@ import { FIRE_SPOOL, UNDER_FIRE } from '../constants';
 import { ECON } from '../data/worlds';
 import { UNITS } from '../data/units';
 import { mul } from '../mods';
-import type { Unit, UnitDef } from '../types';
+import type { Faction, Unit, UnitDef } from '../types';
 import { clamp, dist, turnToward } from '../util';
 
 /** Deterministic per-unit pseudo random in [0,1). */
@@ -53,6 +53,17 @@ export function movementTick(g: Game, dt: number) {
       continue;
     }
     u.wellTime += dt;
+    if (u.order === 'explore' && u.path.length > 0) {
+      const f = g.factions[u.owner];
+      // A Scout sees the places next door. Once the place it is bound for is in sight, it is
+      // charted: the Scout does not fly in, it picks the next one. And it looks before the leap:
+      // if the next place on its way is guarded now, it thinks again (even with its drive spooling).
+      if (f.explored[u.dest] || (!f.ai && guardedFor(g, f, u.path[0]))) {
+        u.path = [];
+        u.dest = -1;
+        u.charge = -1;
+      }
+    }
     if (u.order === 'explore' && u.path.length === 0 && u.charge < 0) pickExploreTarget(g, u);
     if (u.path.length > 0) {
       if (u.charge < 0) u.charge = g.jumpChargeOf(u);
@@ -344,29 +355,56 @@ function kindleStep(g: Game, u: Unit, dt: number) {
   }
 }
 
+/**
+ * Is this a place the house has seen to be guarded? An exploring Scout neither flies into such a place
+ * nor through it: it has no business under a Sentinel's guns, and it can chart a place from next door.
+ */
+function guardedFor(g: Game, f: Faction, nodeId: number): boolean {
+  return !!f.explored[nodeId] && g.hostilePowerAt(nodeId, f.id) > 1;
+}
+
+/**
+ * Where an exploring Scout goes next: the nearest uncharted place it can reach without passing through
+ * a place seen to be guarded. When there is none, it has done what can be done safely: it says how
+ * much is left behind guards, and goes home. (Sending it further is the player's call, by hand.)
+ *
+ * A rival house makes that call for itself: its Scouts go round a guarded place where they can and
+ * through it where they must, and some are lost. A rival that only knew the sector up to the first
+ * guard found fewer targets, and its wars dragged.
+ */
 function pickExploreTarget(g: Game, u: Unit) {
   const f = g.factions[u.owner];
   const from = u.node;
   let best = -1;
   let bd = Infinity;
+  let bestWay: number[] = [];
   for (const n of g.nodes) {
     if (f.explored[n.id] || n.id === from) continue;
-    let d = g.pathLen(from, n.id);
-    if (!isFinite(d)) continue;
+    if (!isFinite(g.pathLen(from, n.id))) continue;
+    const way = g.pathAvoiding(from, n.id, (id) => (guardedFor(g, f, id) ? 1e7 : 0));
+    if (!way.length || (!f.ai && way.slice(0, -1).some((id) => guardedFor(g, f, id)))) continue;
+    let d = g.wayLen(from, way);
     for (const o of g.unitList) if (o !== u && !o.dead && o.owner === u.owner && o.order === 'explore' && o.dest === n.id) d += 6000;
     if (d < bd) {
       bd = d;
       best = n.id;
+      bestWay = way;
     }
   }
   if (best < 0) {
     u.order = 'idle';
-    if (!f.warned.scouted) {
-      f.warned.scouted = g.time;
-      g.notify(u.owner, 'Scouting complete: the whole sector has been charted. Your Scouts are coming home.', 'info');
+    const left = f.explored.filter((e) => !e).length;
+    if (left === 0) {
+      if (!f.warned.scouted) {
+        f.warned.scouted = g.time;
+        g.notify(u.owner, 'Scouting complete: the whole sector has been charted. Your Scouts are coming home.', 'info');
+      }
+    } else if (g.time - (f.warned.scoutedSafe ?? -999) > 30) {
+      // (Said again when the player sends Scouts out once more and there is still no safe way on.)
+      f.warned.scoutedSafe = g.time;
+      g.notify(u.owner, `Scouting done as far as it is safe: ${left} place${left === 1 ? ' lies' : 's lie'} beyond guarded passages. Clear the way, or send a Scout there yourself. Your Scouts are coming home.`, 'info');
     }
-    // Nothing is left to chart: the Scout goes home. It does not wait where its last look took it,
-    // which is as often as not under someone's guns.
+    // The Scout goes home. It does not wait where its last look took it.
     if (g.nodes[from].owner !== u.owner) {
       let home = -1;
       let hd = Infinity;
@@ -387,9 +425,5 @@ function pickExploreTarget(g: Game, u: Unit) {
     return;
   }
   u.dest = best;
-  // The way there keeps clear of places the house has seen to be guarded: a Scout does not survive a
-  // second look at a Sentinel vault, a Corsair base or a rival Hearth.
-  const target = best;
-  const way = g.pathAvoiding(from, target, (id) => (f.explored[id] && g.hostilePowerAt(id, f.id) > 1 ? 40000 : 0));
-  u.path = way.length ? way : g.pathTo(from, target);
+  u.path = bestWay;
 }

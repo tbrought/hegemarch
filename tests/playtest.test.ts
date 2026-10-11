@@ -4,7 +4,7 @@
  */
 import { describe, expect, it } from 'vitest';
 import { Game } from '../src/game/Game';
-import { FIRE_SPOOL, HOLD_FIELD, JUMP_CHARGE, SCOUT_CHARGE, SCOUT_SLIP, TICK, UNDER_FIRE } from '../src/game/constants';
+import { FIRE_SPOOL, HOLD_FIELD, JUMP_CHARGE, TICK, UNDER_FIRE } from '../src/game/constants';
 import { GOAL_REWARD, GOALS } from '../src/game/data/goals';
 import type { GameConfig } from '../src/game/types';
 import { GLOSS_BY_ID, termsIn } from '../src/ui/glossary';
@@ -80,37 +80,94 @@ describe('no ship is lost silently', () => {
   });
 });
 
-describe('Scouts are built to look and leave', () => {
-  it('a Scout\'s drive spools in less than half the time of any other ship\'s', () => {
-    const g = mk();
-    const p = g.player;
-    const scout = g.spawnUnit('scout', p.id, p.capital);
-    const striker = g.spawnUnit('striker', p.id, p.capital);
-    expect(g.jumpChargeOf(striker)).toBeCloseTo(JUMP_CHARGE, 5);
-    expect(g.jumpChargeOf(scout)).toBeCloseTo(JUMP_CHARGE * SCOUT_CHARGE, 5);
-    expect(SCOUT_CHARGE).toBeLessThan(0.5);
-  });
+describe('Scouts explore without throwing themselves away', () => {
+  /** Enough of a rival's ships at a place for it to count as guarded, and the place in the player's sight. */
+  function guard(g: Game, nodeId: number) {
+    const rival = g.empires().find((f) => f.id !== g.playerId)!;
+    for (let i = 0; i < 4; i++) g.spawnUnit('striker', rival.id, nodeId);
+    g.player.explored[nodeId] = 1;
+  }
 
-  it('nothing can fire on a Scout in its first seconds at a place; one that stays is a target', () => {
+  it('a Scout is a ship like any other: no quicker drive, and guards fire on it at once', () => {
     const g = mk();
     const p = g.player;
     const rival = g.empires().find((f) => f.id !== p.id)!;
     const scout = g.spawnUnit('scout', p.id, rival.capital);
-    const striker = g.spawnUnit('striker', p.id, rival.capital);
-    scout.arrivedAt = g.time;
-    striker.arrivedAt = g.time;
-    expect(g.slips(scout)).toBe(true);
-    expect(g.slips(striker)).toBe(false);
-    // Under a rival Hearth's guns and fleet, the Scout is untouched while it slips...
+    const striker = g.spawnUnit('striker', p.id, p.capital);
+    expect(g.jumpChargeOf(g.spawnUnit('scout', p.id, p.capital))).toBeCloseTo(g.jumpChargeOf(striker), 5);
+    expect(g.jumpChargeOf(striker)).toBeCloseTo(JUMP_CHARGE, 5);
+    // At a rival Hearth it is held by the anti-warp field like any ship, and shot at from the start.
+    expect(g.holdAt(scout)).toBe(HOLD_FIELD);
     const hp = scout.hp + scout.sh;
-    run(g, SCOUT_SLIP - 0.5);
-    expect(scout.dead).toBe(false);
-    expect(scout.hp + scout.sh).toBeGreaterThanOrEqual(hp);
-    // ...and fired on once that is over.
-    scout.path = [];
-    run(g, 25);
-    expect(g.slips(scout)).toBe(false);
+    scout.arrivedAt = g.time;
+    run(g, 3);
     expect(scout.dead || scout.hp + scout.sh < hp).toBe(true);
+  });
+
+  it('an exploring Scout charts a place from next door: once the place is in sight it does not fly in', () => {
+    const g = mk();
+    const p = g.player;
+    const scout = g.unitsOf(p.id).find((u) => u.type === 'scout') ?? g.spawnUnit('scout', p.id, p.capital);
+    g.cmdExplore(p.id, [scout.id]);
+    g.step();
+    const first = scout.dest;
+    expect(first).toBeGreaterThanOrEqual(0);
+    expect(p.explored[first]).toBeFalsy();
+    expect(scout.path[scout.path.length - 1]).toBe(first);
+    // The place comes into sight (as it does when the Scout reaches the place next door).
+    p.explored[first] = 1;
+    g.step();
+    expect(scout.dest).not.toBe(first);
+    expect(scout.path).not.toContain(first);
+    expect(scout.order).toBe('explore');
+  });
+
+  it('it never plans a way through a place it has seen to be guarded, and looks before every leap', () => {
+    const g = mk({ size: 'medium' });
+    const p = g.player;
+    const scout = g.unitsOf(p.id).find((u) => u.type === 'scout') ?? g.spawnUnit('scout', p.id, p.capital);
+    g.cmdExplore(p.id, [scout.id]);
+    g.step();
+    expect(scout.path.length).toBeGreaterThan(1);
+    const through = scout.path[0];
+    // A rival fleet turns up at the next place on its way: the Scout thinks again, at once.
+    guard(g, through);
+    g.step();
+    expect(scout.path).not.toContain(through);
+    // Whatever it picks from now on, no guarded place is on the way (the last stop is the uncharted goal).
+    for (let i = 0; i < 6; i++) {
+      scout.path = [];
+      scout.dest = -1;
+      scout.charge = -1;
+      g.step();
+      const onTheWay = scout.path.slice(0, -1);
+      expect(onTheWay.some((id) => p.explored[id] && g.hostilePowerAt(id, p.id) > 1)).toBe(false);
+      if (scout.dest >= 0) p.explored[scout.dest] = 1;
+    }
+  });
+
+  it('with no safe way on, it says how much lies beyond guards and goes home', () => {
+    const g = mk();
+    const p = g.player;
+    const rival = g.empires().find((f) => f.id !== p.id)!;
+    // Everything is charted but one place, and every way to that one is guarded.
+    const far = g.nodes.filter((n) => n.owner !== p.id && g.hops(p.capital, n.id) >= 3).sort((a, b) => g.hops(p.capital, b.id) - g.hops(p.capital, a.id))[0];
+    p.explored.fill(1);
+    p.explored[far.id] = 0;
+    for (const nb of far.lanes) guard(g, nb);
+    const start = g.nodes.find((n) => n.kind === 'planet' && n.owner === -1 && !far.lanes.includes(n.id) && n.id !== far.id && !g.buckets[n.id].length)!;
+    const scout = g.spawnUnit('scout', p.id, start.id);
+    g.cmdExplore(p.id, [scout.id]);
+    g.step();
+    expect(scout.order).toBe('idle');
+    const note = g.notes[g.notes.length - 1].text;
+    expect(note).toMatch(/Scouting done as far as it is safe: 1 place lies beyond guarded passages/);
+    expect(g.nodes[scout.dest].owner).toBe(p.id);
+    // By hand it still goes wherever it is sent: that is the player's call.
+    g.cmdMove(p.id, [scout.id], far.id);
+    expect(scout.dest).toBe(far.id);
+    expect(scout.path.length).toBeGreaterThan(0);
+    void rival;
   });
 
   it('a Scout with nothing left to chart goes home', () => {
@@ -119,7 +176,6 @@ describe('Scouts are built to look and leave', () => {
     const rival = g.empires().find((f) => f.id !== p.id)!;
     p.explored.fill(1);
     const scout = g.spawnUnit('scout', p.id, rival.capital);
-    scout.arrivedAt = g.time;
     g.cmdExplore(p.id, [scout.id]);
     g.step();
     expect(scout.order).toBe('idle');
@@ -434,8 +490,8 @@ describe('a fleet can be made to stand', () => {
     g.spawnUnit('starbase', p.id, other.id);
     expect(g.fieldAt(other)).toBe(true);
     expect(g.holdAt(raider2)).toBe(HOLD_FIELD);
-    // A Scout is too small to hold, and a dark world holds no one.
-    expect(g.holdAt(g.spawnUnit('scout', rival.id, plain.id))).toBe(0);
+    // A Scout is held like any other ship, and a dark world holds no one.
+    expect(g.holdAt(g.spawnUnit('scout', rival.id, plain.id))).toBe(HOLD_FIELD);
     const dark = g.nodes.find((n) => n.kind === 'planet' && n.owner === -1)!;
     expect(g.fieldAt(dark)).toBe(false);
     expect(g.holdAt(g.spawnUnit('striker', rival.id, dark.id))).toBe(0);
@@ -474,5 +530,25 @@ describe('a fleet can be made to stand', () => {
     expect(FIRE_SPOOL).toBe(0.5);
     expect(UNDER_FIRE).toBeGreaterThan(0);
     expect((tShot - 0) / (tCalm - 0)).toBeGreaterThan(1.6);
+  });
+});
+
+describe('saving changes nothing', () => {
+  it('a Hearth comes back from a save with the walls it had, also between two seconds', () => {
+    const g = mk();
+    run(g, 100.45);
+    const again = Game.load(JSON.parse(JSON.stringify(g.serialize())));
+    for (const f of g.empires()) {
+      const a = g.nodes[f.capital];
+      const b = again.nodes[f.capital];
+      expect(b.maxHp).toBe(a.maxHp);
+      expect(b.maxSh).toBe(a.maxSh);
+      expect(again.wallsOf(b)).toBe(g.wallsOf(a));
+    }
+    // And they go on growing in step.
+    run(g, 5.2);
+    run(again, 5.2);
+    for (const f of g.empires()) expect(again.nodes[f.capital].maxHp).toBe(g.nodes[f.capital].maxHp);
+    expect(g.wallsOf(g.nodes[g.player.capital])).toBeGreaterThan(0.45);
   });
 });
