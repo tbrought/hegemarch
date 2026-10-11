@@ -440,9 +440,23 @@ Measured with `npm run simulate` and `npm run balance:passive`. Speeds are ½×,
   directions with 4×4 supersampled nearest-neighbour sampling, tinted per house, with a 1-px shadow.
 - **Text**: two bitmap fonts drawn from tinted atlases: a variable-width 5×7 font with lowercase and
   a 3×5 caps font for the map.
-- **Sound**: Web Audio pulse waves (12.5/25/50% duty), triangle and LFSR noise; a sequencer plays a
-  title theme, a calm "night" loop and a "war" loop when your worlds or fleets are fighting; a
-  jingle plays when a world is kindled.
+- **Sound**: Web Audio pulse waves (12.5/25/50% duty), triangle and LFSR noise; a jingle plays when a
+  world is kindled.
+- **Music** (`src/audio/Music.ts`) is asked for by mood, and every mood has several tracks: the title
+  screen (Hegemarch, The Empty Throne), a quiet night (Night Watch, Embers, Starlanes, Deep Field), a
+  battle, while your worlds or fleets are fighting (To Arms, Breakers, Last Stand), and the cradle of
+  an Ages run (First Fires, Long Road). It was one part of eight bars per mood, round and round: 15
+  to 25 seconds, for a run of an hour. A track is now two parts played in an order, its form, with
+  voices coming and going from pass to pass (the tune held back for the first, an echo behind it
+  later, the drums in or out), and lasts 80 to 150 seconds. When it is over it comes home to its first
+  chord, the night is silent for a few seconds, and another track of the mood begins: every track
+  once, in a new order each round, never the same twice running. A battle does not wait between its
+  tracks. A mood that is interrupted picks its track up at the part it had reached, so a skirmish does
+  not send the night back to its beginning. The tracks differ in key, tempo, metre (Starlanes is in
+  three), bass, drums and the wave that sings. `tests/music.test.ts` checks the writing (every note in
+  its key or its chord, no long note a semitone above a chord tone, no leap over an octave) and plays
+  half an hour into a list; `npm run test:music` plays every part of every track through the real
+  sound engine.
 - **Sound that says where it is.** A browser plays nothing before the first click or key on a page,
   so the title screen used to be silent and the music came from nowhere at the first button pressed.
   The sound engine is now made when the page opens: where the browser allows it, the title theme

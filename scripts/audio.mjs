@@ -87,6 +87,33 @@ const check = (name, ok, detail = '') => {
 check('the battle music plays', r.song === 'war' && r.notes > 40, `${r.song}, ${r.notes} notes`);
 check('every music note is in tune during the battle', r.offPitch === 0, `${r.offPitch} off, worst ${r.worstCents} cents`);
 check('the mix never clips', r.clippedFrames === 0, `peak ${r.peak}`);
+// A battle has more than one track: each of them in turn, in tune, and none twice running.
+const tracks = [];
+for (let i = 0; i < 4; i++) {
+  tracks.push(
+    await page.evaluate(() => {
+      const m = window.__app.music;
+      const was = { title: m.title, mood: m.playing };
+      window.__notes.length = 0;
+      m.skip();
+      return was;
+    }),
+  );
+  await page.waitForTimeout(2500);
+  const n = await page.evaluate(() => ({
+    notes: window.__notes.length,
+    off: window.__notes.filter((f) => {
+      const k = 69 + 12 * Math.log2(f / 440);
+      return Math.abs(k - Math.round(k)) * 100 > 1;
+    }).length,
+    now: window.__app.music.title,
+  }));
+  tracks[i].next = n.now;
+  tracks[i].ok = n.notes > 10 && n.off === 0;
+}
+const names = [...tracks.map((t) => t.title), tracks[tracks.length - 1].next];
+check('the battle music has several tracks, and the next is never the one before', new Set(names).size >= 3 && names.every((t, i) => i === 0 || t !== names[i - 1]), names.join(' > '));
+check('each of them plays, in tune', tracks.every((t) => t.ok && t.mood === 'war'));
 check('no errors', errors.length === 0, errors.join(' | '));
 console.log(failures ? `\n${failures} FAILED` : '\nALL PASSED');
 await browser.close();

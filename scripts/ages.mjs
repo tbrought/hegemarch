@@ -97,6 +97,7 @@ try {
   await clickUi('cradle-begin');
   st = await state();
   check('BEGIN closes it', st.modal === '');
+  check('the cradle has music of its own', await ev(() => window.__app.music.playing === 'cradle' && ['First Fires', 'Long Road'].includes(window.__app.music.title)), await ev(() => `${window.__app.music.playing}: ${window.__app.music.title}`));
   check('there is no Ark yet, and no siege unit', st.units.every((u) => /^(striker|guardian|scout):0$/.test(u)), st.units.join(','));
   await ev(() => (window.__app.session.profile.settings.autoPause = false));
 
@@ -226,6 +227,7 @@ try {
       saved: JSON.parse(localStorage.getItem('hegemarch.run.v1') ?? 'null')?.config?.stage,
     };
   });
+  check('among the stars the music is the music of the stars', await ev(() => ['night', 'war'].includes(window.__app.music.playing) && !['First Fires', 'Long Road'].includes(window.__app.music.title)), await ev(() => `${window.__app.music.playing}: ${window.__app.music.title}`));
   check('the run goes on among the stars', !st.cradle && st.stage === 'stars' && st.era === 5 && stars.ark === 'ark' && stars.eras.join() === '5', JSON.stringify({ stage: st.stage, era: st.era }));
   check('the Boons of the ages came along, and Lore makes Boons again', st.cards.length >= 2 && st.drafts === 1, JSON.stringify({ cards: st.cards.length, drafts: st.drafts }));
   check('the rival that left earlier has been playing; the other is still on its way', stars.arrival > 200 && stars.rivals.some((r) => !r.asleep && r.worlds >= 1) && stars.rivals.some((r) => r.asleep), JSON.stringify(stars));

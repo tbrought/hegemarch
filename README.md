@@ -177,6 +177,7 @@ npm run test:shots         # plays the First Night and saves screenshots to .sho
 npm run test:gallery       # stages every panel (and hover states) for a visual review
 npm run test:tutorial      # the First Night end to end, plus its edge cases and the tip cards
 npm run test:audio         # a big battle on screen: the music stays exactly in tune, the mix never clips
+npm run test:music         # every part of all eleven tracks, played through the real sound engine
 npm run test:menus         # screenshots of every menu screen over the live sector
 npm run test:ages          # an Ages run end to end: cradle, ages, Ark, the crossing, arrival, saves
 npm run test:layouts       # every dialog at the smallest and largest screens, biggest offers and texts

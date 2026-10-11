@@ -217,7 +217,10 @@ export class App {
     }
   }
 
-  /** Night music normally; war music while the player's worlds or fleets are fighting. */
+  /**
+   * The music of a quiet night (on the cradle of an Ages run, the cradle's own); the music of battle
+   * while the player's worlds or fleets are fighting. Each is a mood with several tracks (audio/Music.ts).
+   */
   private pickMusic(g: Game, dt: number) {
     const p = g.player;
     let fighting = false;
@@ -229,7 +232,7 @@ export class App {
       this.warHeat = fighting ? Math.min(30, this.warHeat + 3) : this.warHeat;
     }
     this.warHeat = Math.max(0, this.warHeat - dt * 0.6);
-    const want: SongId = this.warHeat > 8 ? 'war' : 'night';
+    const want: SongId = this.warHeat > 8 ? 'war' : g.cradle ? 'cradle' : 'night';
     if (this.music.playing !== want && (want === 'war' || this.warHeat <= 0.5)) this.music.play(want);
   }
 
@@ -414,7 +417,7 @@ export class App {
       s.modal = { kind: 'omens' };
       g.ui.arrived = 1;
     }
-    this.music.play('night');
+    this.music.play(g.cradle ? 'cradle' : 'night');
     this.canvas.focus();
   }
 
