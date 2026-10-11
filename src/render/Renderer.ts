@@ -26,10 +26,12 @@ export interface ViewState {
   orderMode: boolean;
   /** A world to point out (tutorial). */
   highlightNode: number;
+  /** Seconds the way of the last order is still drawn bright (Actions.ROUTE_FLASH). */
+  route: number;
 }
 
 export function emptyView(reveal = false): ViewState {
-  return { selected: new Set(), selectedNode: -1, hoverUnit: 0, hoverNode: -1, box: null, markers: [], reveal, orderMode: false, highlightNode: -1 };
+  return { selected: new Set(), selectedNode: -1, hoverUnit: 0, hoverNode: -1, box: null, markers: [], reveal, orderMode: false, highlightNode: -1, route: 0 };
 }
 
 interface BgStar {
@@ -150,6 +152,7 @@ export class Renderer {
       this.drawSystemHalos(ctx, g, explored);
     }
     this.drawLanes(ctx, g, explored, vis, view);
+    if (!backdrop) this.drawRoutes(ctx, g, view, dt);
     for (const n of g.nodes) {
       if (!explored(n.id)) continue;
       this.drawNode(ctx, g, n, vis(n.id), ownerShown(n), view, dt);
@@ -281,6 +284,67 @@ export class Renderer {
       }
     }
     void view;
+  }
+
+  /**
+   * The way the selected ships of ours will take, from where they are to where they are bound, stop by
+   * stop: bright for a moment after an order, then dim while they stay selected. A leg into a place the
+   * house knows to be dangerous (`Game.dangerKnown`) is red: a playtester sent fleets through an enemy
+   * fleet he could have seen, because nothing showed him the way they would go.
+   */
+  private drawRoutes(ctx: Ctx, g: Game, view: ViewState, dt: number) {
+    view.route = Math.max(0, view.route - dt);
+    if (!view.selected.size) return;
+    const legs = new Map<string, [number, number]>();
+    const ends = new Set<number>();
+    for (const id of view.selected) {
+      const u = g.units.get(id);
+      if (!u || u.dead || u.owner !== g.playerId || (!u.lane && !u.path.length)) continue;
+      let at = u.node;
+      if (u.lane) {
+        legs.set(u.lane.from + '>' + u.lane.to, [u.lane.from, u.lane.to]);
+        at = u.lane.to;
+      }
+      for (const nx of u.path) {
+        legs.set(at + '>' + nx, [at, nx]);
+        at = nx;
+      }
+      if (u.dest >= 0) ends.add(u.dest);
+    }
+    if (!legs.size) return;
+    const bright = view.route > 0;
+    // (Fading out over the last half second of the flash: every other dot first.)
+    const step = bright ? (view.route > 0.5 ? 1 : 2) : 3;
+    const phase = Math.floor(this.time * 8);
+    for (const [a, b] of legs.values()) {
+      const seg = this.laneSeg(g.nodes[a], g.nodes[b]);
+      if (!seg) continue;
+      const danger = g.dangerKnown(g.playerId, b);
+      const c = danger ? (bright ? PAL.red : PAL.wine) : bright ? PAL.teal : PAL.sea;
+      line(ctx, seg[0], seg[1], seg[2], seg[3], c, step, -phase);
+    }
+    for (const id of ends) {
+      const n = g.nodes[id];
+      const r = this.nodeR(n) + 5;
+      ring(ctx, this.sx(n.x), this.sy(n.y), r, bright ? PAL.teal : PAL.sea, bright ? 1 : 3);
+    }
+  }
+
+  /** The part of the line between two places that lies outside both of them, on the screen (null: none). */
+  private laneSeg(A: GNode, B: GNode): number[] | null {
+    const ax = this.sx(A.x);
+    const ay = this.sy(A.y);
+    const bx = this.sx(B.x);
+    const by = this.sy(B.y);
+    const dx = bx - ax;
+    const dy = by - ay;
+    const d = Math.hypot(dx, dy) || 1;
+    const ra = this.nodeR(A) + 3;
+    const rb = this.nodeR(B) + 3;
+    if (d < ra + rb + 2) return null;
+    const ux = dx / d;
+    const uy = dy / d;
+    return clipSeg(ax + ux * ra, ay + uy * ra, bx - ux * rb, by - uy * rb, -2, -2, this.cam.w + 2, this.cam.h + 2);
   }
 
   private drawNode(ctx: Ctx, g: Game, n: GNode, visible: boolean, owner: number, view: ViewState, dt: number) {

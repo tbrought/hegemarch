@@ -1842,13 +1842,41 @@ export class Game {
     }
   }
 
+  /** One more stop: the way from where the ship is bound to `dest`, after the way it has. */
+  private queuePath(u: Unit, dest: number) {
+    const leg = this.pathTo(u.dest, dest);
+    if (!leg.length) return;
+    u.path.push(...leg);
+    u.dest = dest;
+  }
+
+  /**
+   * Is a place dangerous to pass through, as far as the house knows? Enemy ships or guns it sees there
+   * now; a world it last saw held by a house it is at war with (guns, maybe an anti-warp field); or,
+   * charted and out of sight, a place guarded by monsters or Corsairs, who stay where they are. (Rival
+   * fleets out of sight are not known: they may have gone, or come.)
+   */
+  dangerKnown(fid: number, id: number): boolean {
+    const f = this.factions[fid];
+    if (f.visible[id]) return this.hostilePowerAt(id, fid) > 0.5;
+    if (!f.explored[id]) return false;
+    const owner = f.seenOwner[id];
+    if (owner >= 0 && owner !== fid && this.hostile(fid, owner)) return true;
+    return this.buckets[id].some((u) => !u.dead && this.factions[u.owner].kind !== 'empire' && this.hostile(fid, u.owner));
+  }
+
   /** A world by id, or null when the id is not a world (commands never trust their input). */
   nodeAt(id: number): GNode | null {
     return Number.isInteger(id) && id >= 0 && id < this.nodes.length ? this.nodes[id] : null;
   }
 
-  /** `avoid`: places the ships would rather not pass through, each counted as that much further (see `pathAvoiding`). */
-  cmdMove(fid: number, ids: number[], dest: number, x?: number, y?: number, avoid?: (nodeId: number) => number) {
+  /**
+   * `avoid`: places the ships would rather not pass through, each counted as that much further (see
+   * `pathAvoiding`). `queue`: the place is one more stop after the one a moving ship is bound for (Shift
+   * with the order): its way there is added to the way it has, and a drive that is charging goes on
+   * charging. A ship that is not on its way somewhere simply goes.
+   */
+  cmdMove(fid: number, ids: number[], dest: number, x?: number, y?: number, avoid?: (nodeId: number) => number, queue = false) {
     const n = this.nodeAt(dest);
     if (!n) return;
     const units = ids.map((id) => this.units.get(id)).filter((u): u is Unit => !!u && !u.dead && u.owner === fid && !UNITS[u.type].isStatic);
@@ -1858,6 +1886,7 @@ export class Game {
     units.sort((a, b) => UNITS[b.type].radius - UNITS[a.type].radius);
     units.forEach((u, i) => {
       if (u.type === 'fighter') return;
+      const onward = queue && u.order === 'move' && u.dest >= 0 && u.dest !== dest && (!!u.lane || u.path.length > 0);
       u.order = 'move';
       u.orderTarget = -1;
       u.target = 0;
@@ -1878,7 +1907,8 @@ export class Game {
         u.ox = NaN;
         u.oy = NaN;
       }
-      this.orderPath(u, dest, avoid);
+      if (onward) this.queuePath(u, dest);
+      else this.orderPath(u, dest, avoid);
       if (u.node === dest && !u.lane) {
         u.order = 'idle';
         if (!isNaN(u.ox)) {

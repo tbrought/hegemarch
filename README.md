@@ -105,7 +105,8 @@ terms do the same.
 | --- | --- |
 | Left-click | Select a world, a ship or a fleet badge. With ships selected, click a world to send them |
 | Drag · Shift-click · double-click | Box-select ships · add to selection · all ships of a type here |
-| Right-click | Send selected ships, attack a ship. With a world selected: set its rally point |
+| Right-click | Send selected ships (their way shows, red where you know of danger), attack a ship. With a world selected: set its rally point |
+| Shift+right-click | One more stop on the way for the selected ships |
 | Wheel · arrows · right/middle-drag | Zoom · pan · pan |
 | Space · + / − | Pause · game speed |
 | B · U · H · L | Boons (the draft when one is waiting) · status · help · comms log |

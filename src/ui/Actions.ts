@@ -8,6 +8,9 @@ import { PAL } from '../render/palette';
  * Player commands with feedback (sound, markers, a short reason when something can't be done).
  * Every order the player can give goes through here, and none is taken once the run is over.
  */
+/** Seconds the way of an order is drawn bright (then it stays, dim, while the ships are selected). */
+export const ROUTE_FLASH = 1.6;
+
 export class Actions {
   constructor(private s: Session) {}
 
@@ -263,14 +266,18 @@ export class Actions {
     return true;
   }
 
-  /** Send the selected ships to a world. Seed ships kindle it if it is dark. */
-  orderAt(nodeId: number, wx?: number, wy?: number): boolean {
+  /**
+   * Send the selected ships to a world. Seed ships kindle it if it is dark. `queue` (Shift): ships on
+   * their way somewhere go on there first, and then here (a stop on the way, as many as wanted).
+   */
+  orderAt(nodeId: number, wx?: number, wy?: number, queue = false): boolean {
     if (!this.ready()) return false;
     const g = this.g;
     const units = this.s.commandable().filter((u) => !UNITS[u.type].isStatic && u.type !== 'fighter');
     if (!units.length) return false;
     const n = g.nodes[nodeId];
-    const from = units[0].lane ? units[0].lane.to : units[0].node;
+    const lead = units[0];
+    const from = queue && lead.order === 'move' && lead.dest >= 0 && (lead.lane || lead.path.length) ? lead.dest : lead.lane ? lead.lane.to : lead.node;
     if (from >= 0 && !isFinite(g.pathLen(from, nodeId))) {
       this.fail('No starlane leads there');
       return false;
@@ -281,11 +288,13 @@ export class Actions {
     this.ordered(units, () => {
       if (seeds.length && n.kind === 'planet' && n.owner === -1 && !g.seedFor(this.pid, nodeId)) {
         kindled = g.cmdSendSeed(this.pid, seeds[0].id, nodeId);
-        if (seeds.length > 1) g.cmdMove(this.pid, seeds.slice(1).map((u) => u.id), nodeId);
-      } else if (seeds.length && !seeds.every((u) => u.order === 'kindle' && u.orderTarget === nodeId)) g.cmdMove(this.pid, seeds.map((u) => u.id), nodeId);
-      if (rest.length) g.cmdMove(this.pid, rest.map((u) => u.id), nodeId, wx, wy);
+        if (seeds.length > 1) g.cmdMove(this.pid, seeds.slice(1).map((u) => u.id), nodeId, undefined, undefined, undefined, queue);
+      } else if (seeds.length && !seeds.every((u) => u.order === 'kindle' && u.orderTarget === nodeId)) g.cmdMove(this.pid, seeds.map((u) => u.id), nodeId, undefined, undefined, undefined, queue);
+      if (rest.length) g.cmdMove(this.pid, rest.map((u) => u.id), nodeId, wx, wy, undefined, queue);
     });
     this.s.marker(wx ?? n.x, wy ?? n.y, kindled ? PAL.gold : PAL.teal);
+    // The way they will take, bright for a moment: red where the house knows of danger on it.
+    this.s.view.route = ROUTE_FLASH;
     this.s.sfx.play('order', 0.6);
     return true;
   }

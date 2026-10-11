@@ -392,6 +392,14 @@ Measured with `npm run simulate` and `npm run balance:passive`. Speeds are ½×,
   had each shown its own share, and War Economy seemed to replace Salvage Crews). The screen stops
   shaking while paused (the shake was wound down by the game's clock, so a Dreadnought's upgrade
   dialog shook for as long as it was open).
+- **The way a fleet will go** (third playtest). An order draws the way the ships will take, stop
+  by stop, bright for a moment and then dim for as long as they are selected; a leg into a place
+  the house knows to be dangerous is red (`Game.dangerKnown`: enemy ships or guns it sees there
+  now, a world it last saw held by a rival, or a charted place guarded by monsters or Corsairs; a
+  rival fleet out of sight is not known). The playtester had sent fleets through an enemy fleet
+  that sat on a star he could see, because nothing showed him the way they would go.
+  **Shift+right-click** (or Shift with the click of a MOVE order) adds a stop after the one the
+  ships are bound for, as many as wanted; a drive that is charging goes on charging.
 - **What a choice affects, as pictures** (`src/ui/subjects.ts`): every Boon card, event choice and
   ability choice shows the ship type (drawn as on the map, in the house color), resource or part of
   the realm it touches. Boons are read from the modifiers they really change, then from their text

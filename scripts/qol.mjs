@@ -327,6 +327,56 @@ const screen = (page) => ev(page, () => window.__app.screen);
   check(jump.n > 0 && /^Jumping in \d+ s/.test(jump.text ?? ''), `a fleet charging its drives says when it will jump (${jump.text})`);
   await page.waitForTimeout(300);
   await page.screenshot({ path: '.shots/qol-jump-charge.png' });
+  // (The third playtest.) A right-click shows the way for a moment; Shift+right-click adds a stop.
+  const way = await ev(page, () => {
+    const app = window.__app;
+    const s = app.session;
+    const g = s.game;
+    const p = g.player;
+    const units = s.fleetAt(p.capital).filter((u) => u.type !== 'ark');
+    g.cmdStop(p.id, units.map((u) => u.id));
+    s.selectUnits(units.map((u) => u.id));
+    const near = g.nodes.find((n) => g.hops(n.id, p.capital) === 1);
+    const far = g.nodes.find((n) => p.explored[n.id] && g.hops(n.id, near.id) === 1 && g.hops(n.id, p.capital) === 2) ?? g.nodes.find((n) => g.hops(n.id, near.id) === 1 && g.hops(n.id, p.capital) === 2);
+    p.explored[far.id] = 1;
+    // (The Hearth, the stop and the place beyond it, all on the screen.)
+    const cam = app.renderer.cam;
+    const span = Math.max(...[p.capital, near.id, far.id].map((id) => Math.hypot(g.nodes[id].x - (g.nodes[p.capital].x + far.x) / 2, g.nodes[id].y - (g.nodes[p.capital].y + far.y) / 2)));
+    cam.zoom = cam.tzoom = Math.min(0.12, (cam.h * 0.35) / Math.max(1, span));
+    cam.x = cam.tx = (g.nodes[p.capital].x + far.x) / 2;
+    cam.y = cam.ty = (g.nodes[p.capital].y + far.y) / 2;
+    return { ids: units.map((u) => u.id), near: near.id, far: far.id };
+  });
+  await page.waitForTimeout(200);
+  const at = (id) => ev(page, (id) => {
+    const c = document.getElementById('game').getBoundingClientRect();
+    const app = window.__app;
+    const n = app.session.game.nodes[id];
+    const cam = app.renderer.cam;
+    const [x, y] = cam.worldToScreen(n.x, n.y);
+    return { x: c.left + (x * c.width) / app.hud.W, y: c.top + (y * c.height) / app.hud.H };
+  }, id);
+  let pt = await at(way.near);
+  await page.mouse.click(pt.x, pt.y, { button: 'right' });
+  await page.waitForTimeout(150);
+  const flash = await ev(page, () => window.__app.session.view.route);
+  check(flash > 0.8, `a right-click order shows the way the ships will take, for a moment (${flash.toFixed(2)} s left)`);
+  pt = await at(way.far);
+  await page.keyboard.down('Shift');
+  await page.mouse.click(pt.x, pt.y, { button: 'right' });
+  await page.keyboard.up('Shift');
+  await page.waitForTimeout(150);
+  const queued = await ev(page, (w) => {
+    const g = window.__app.session.game;
+    const u = g.units.get(w.ids[0]);
+    return { dest: u.dest, path: [...u.path], near: w.near, far: w.far };
+  }, way);
+  check(queued.dest === queued.far && queued.path.includes(queued.near) && queued.path[queued.path.length - 1] === queued.far, `Shift+right-click adds a stop on the way (bound for ${queued.far} by way of ${queued.near}: ${queued.path.join(' > ')})`);
+  await page.screenshot({ path: '.shots/qol-route.png' });
+  await ev(page, (w) => {
+    const s = window.__app.session;
+    s.game.cmdStop(s.game.playerId, w.ids);
+  }, way);
   // A shake that began before a pause dies down while paused (it went on as long as the pause did).
   await ev(page, () => {
     const app = window.__app;

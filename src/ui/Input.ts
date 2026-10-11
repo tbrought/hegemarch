@@ -134,7 +134,7 @@ export class Input {
     }
     if (d.moved) return;
     if (d.button === 0) this.leftClick(x, y, e.shiftKey);
-    else if (d.button === 2) this.rightClick(x, y);
+    else if (d.button === 2) this.rightClick(x, y, e.shiftKey);
   }
 
   private leftClick(x: number, y: number, shift: boolean) {
@@ -157,7 +157,8 @@ export class Input {
         if (n) {
           const [wx, wy] = r.cam.screenToWorld(x, y);
           const inWell = Math.hypot(wx - n.x, wy - n.y) <= n.well;
-          if (this.hud.actions.orderAt(n.id, inWell ? wx : undefined, inWell ? wy : undefined)) v.orderMode = false;
+          // (With Shift the order is a stop on the way, and the next click can add another.)
+          if (this.hud.actions.orderAt(n.id, inWell ? wx : undefined, inWell ? wy : undefined, shift) && !shift) v.orderMode = false;
           return;
         }
         v.orderMode = false;
@@ -189,7 +190,7 @@ export class Input {
     s.clearSelection();
   }
 
-  private rightClick(x: number, y: number) {
+  private rightClick(x: number, y: number, shift = false) {
     const s = this.s;
     const g = this.g;
     const r = s.renderer;
@@ -205,7 +206,7 @@ export class Input {
       if (n) {
         const [wx, wy] = r.cam.screenToWorld(x, y);
         const inWell = Math.hypot(wx - n.x, wy - n.y) <= n.well;
-        this.hud.actions.orderAt(n.id, inWell ? wx : undefined, inWell ? wy : undefined);
+        this.hud.actions.orderAt(n.id, inWell ? wx : undefined, inWell ? wy : undefined, shift);
         s.view.orderMode = false;
       }
       return;

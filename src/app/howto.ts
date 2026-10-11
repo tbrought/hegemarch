@@ -56,7 +56,8 @@ export function howtoHtml(): string {
     <div class="how-controls">
       <ul class="how-keys">
         <li><kbd>Click</kbd> Select a world, a ship, or a fleet badge <span class="fleet-badge">3</span> (all your ships there)</li>
-        <li><kbd>Click</kbd> or <kbd>Right-click</kbd> a world: send the selected ships</li>
+        <li><kbd>Click</kbd> or <kbd>Right-click</kbd> a world: send the selected ships (their way shows, red where you know of danger)</li>
+        <li><kbd>Shift</kbd>+<kbd>Right-click</kbd> One more stop on the way</li>
         <li><kbd>Drag</kbd> Select ships in a box</li>
         <li><kbd>Wheel</kbd> Zoom</li>
         <li><kbd>Right-drag</kbd> <kbd>Arrows</kbd> Move the view</li>

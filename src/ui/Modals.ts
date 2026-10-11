@@ -950,7 +950,7 @@ export class Modals {
         : this.helpTab === 'controls'
           ? [
               `Left-click: select a world, a ship or a fleet badge (${IC.fleet}, the number of ships beside a world). Drag: select ships.`,
-              'With ships selected, click a world (or right-click) to send them. Right-click an enemy ship to attack it.',
+              'With ships selected, click a world (or right-click) to send them; their way shows for a moment, red where you know of danger. Shift+right-click: one more stop on the way. Right-click an enemy ship to attack it.',
               'Wheel: zoom. Right- or middle-drag, or the arrow keys: move the view. C: look at your Hearth.',
               'Space: pause. Paused, you can still look around and give orders; the game goes on when you press Space again. The ½ 1 2 3 buttons at the top right (or + and -): game speed.',
               'Q W E R T Y: with a Forge (or your Hearth) selected, build its ships, in the order of its buttons. Shift: five.',
