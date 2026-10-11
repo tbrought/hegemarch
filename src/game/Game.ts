@@ -8,7 +8,7 @@ import { CRISIS_COLOR, GUARDIAN_COLOR, heirIdNow, HEIRS, HEIR_BY_ID, houseShort,
 import { boonCost, ECON, PLANETS, ROLE_ORDER } from './data/worlds';
 import { RELICS, RELIC_BY_ID } from './data/relics';
 import { TRAITS, TRAIT_BY_ID } from './data/traits';
-import { ABILITY_LEVELS, DMG_TABLE, DREADNOUGHT_CAP, LEVEL_XP, MAX_LEVEL, UNITS } from './data/units';
+import { ABILITY_LEVELS, DMG_TABLE, DREADNOUGHT_CAP, isWarship, LEVEL_XP, MAX_LEVEL, UNITS } from './data/units';
 import { PERK_EMBERS, PERK_HEARTH, PERK_HULL, PERK_LORE, PERK_WALLS } from '../meta/perks';
 import { ASCENSION_BOONS, OPTIONAL_VICTORIES } from './data/victories';
 import {
@@ -74,7 +74,21 @@ export interface SaveData {
   promptId: number;
   ui: Record<string, number>;
   ascended?: boolean;
+  history?: HistorySample[];
 }
+
+/**
+ * How the houses stood at one moment of the run, for the graphs of the results (`Game.history`):
+ * for each house still in it, its Ember income per second (e), worlds (w), fleet strength (s: what its
+ * warships are worth in battle, as the AI counts it) and Boons (b).
+ */
+export interface HistorySample {
+  t: number;
+  h: { f: number; e: number; w: number; s: number; b: number }[];
+}
+
+/** Seconds of game time between two samples of `Game.history`. */
+export const HISTORY_EVERY = 30;
 
 /** A reason a command cannot be carried out, or null when it can. */
 export type QueueCheck = string | null;
@@ -132,6 +146,8 @@ export class Game {
   private sleepers = 0;
   /** Ages, cradle stage: the player's Ark has left for the stars. The game stands still; the client takes the run on. */
   ascended = false;
+  /** How the houses stood, every `HISTORY_EVERY` seconds and at the end (the results draw it). */
+  history: HistorySample[] = [];
 
   /** An Ages run still on its cradle world: the houses climb through the ages, and the rules of the ages hold. */
   get cradle(): boolean {
@@ -370,6 +386,7 @@ export class Game {
     g.promptId = data.promptId;
     g.ui = data.ui ?? {};
     g.ascended = data.ascended ?? false;
+    g.history = data.history ?? [];
     g.countSleepers();
     g.derive();
     for (const f of g.factions) g.recomputeMods(f);
@@ -418,6 +435,7 @@ export class Game {
       promptId: this.promptId,
       ui: this.ui,
       ascended: this.ascended || undefined,
+      history: this.history,
     };
   }
 
@@ -1659,6 +1677,26 @@ export class Game {
     if (this.outcome) return;
     const playerWon = fid === this.playerId && !this.config.autoplay;
     this.outcome = { winner: fid, victory, time: this.time, playerWon, reason };
+    this.sampleHistory();
+  }
+
+  /**
+   * One sample of `history`. A house that is out of the game has one last sample with nothing in it,
+   * where its line ends, and no more.
+   */
+  sampleHistory() {
+    if (this.cradle) return;
+    const last = this.history[this.history.length - 1];
+    if (last && Math.abs(last.t - this.time) < 1) return;
+    const h: HistorySample['h'] = [];
+    for (const f of this.empires()) {
+      if (!f.alive && !(last ? last.h.some((x) => x.f === f.id && x.w > 0) : false)) continue;
+      let s = 0;
+      if (f.alive) for (const u of this.unitList) if (!u.dead && u.owner === f.id && isWarship(u.type)) s += this.unitPower(u);
+      const round = (x: number) => Math.round(x * 10) / 10;
+      h.push({ f: f.id, e: f.alive ? round(f.income) : 0, w: f.alive ? this.worldsOf(f.id).length : 0, s: Math.round(s), b: f.boons });
+    }
+    this.history.push({ t: Math.round(this.time), h });
   }
 
   // =====================================================================
@@ -2516,6 +2554,8 @@ export class Game {
     if (this.sleepers > 0 && this.tick % 20 === 0) for (const f of this.factions) if (f.asleepUntil > 0 && this.time >= f.asleepUntil) this.wake(f);
     for (const f of this.factions) if (f.ai && f.alive && !this.asleep(f.id)) aiTick(this, f, dt);
     if (this.tick % 20 === 0) victoryTick(this);
+    // (The graphs start where the run does: at its first tick, once the houses' incomes are counted.)
+    if (!this.history.length || this.tick % Math.round(HISTORY_EVERY / TICK) === 0) this.sampleHistory();
     this.flushDeferred();
     if (this.tick % 20 === 0 || this.unitList.length > 4000) this.cleanup();
   }

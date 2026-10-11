@@ -336,9 +336,11 @@ const screen = (page) => ev(page, () => window.__app.screen);
     const units = s.fleetAt(p.capital).filter((u) => u.type !== 'ark');
     g.cmdStop(p.id, units.map((u) => u.id));
     s.selectUnits(units.map((u) => u.id));
-    const near = g.nodes.find((n) => g.hops(n.id, p.capital) === 1);
-    const far = g.nodes.find((n) => p.explored[n.id] && g.hops(n.id, near.id) === 1 && g.hops(n.id, p.capital) === 2) ?? g.nodes.find((n) => g.hops(n.id, near.id) === 1 && g.hops(n.id, p.capital) === 2);
+    // (A place two jumps away, and the stop on the way to it.)
+    const far = g.nodes.find((n) => p.explored[n.id] && g.hops(n.id, p.capital) === 2) ?? g.nodes.find((n) => g.hops(n.id, p.capital) === 2);
+    const near = g.nodes[g.pathTo(p.capital, far.id)[0]];
     p.explored[far.id] = 1;
+    p.explored[near.id] = 1;
     // (The Hearth, the stop and the place beyond it, all on the screen.)
     const cam = app.renderer.cam;
     const span = Math.max(...[p.capital, near.id, far.id].map((id) => Math.hypot(g.nodes[id].x - (g.nodes[p.capital].x + far.x) / 2, g.nodes[id].y - (g.nodes[p.capital].y + far.y) / 2)));
@@ -407,8 +409,14 @@ const screen = (page) => ev(page, () => window.__app.screen);
       if (dest === music.bus) window.__notes.push(rest[3]);
       return tone(dest, ...rest);
     };
-    window.__ended = sfx.ctx.currentTime;
     const g = app.session.game;
+    // (Three minutes of the run first, so that its results have something to draw.)
+    for (let i = 0; i < 3 * 60 * 20 && !g.outcome; i++) {
+      g.step();
+      g.fx.length = 0;
+    }
+    app.session.modal = null;
+    window.__ended = sfx.ctx.currentTime;
     g.declareWinner(g.playerId, 'conquest', 'Every rival Hearth is dark.');
   });
   await page.waitForTimeout(1200);
@@ -421,6 +429,55 @@ const screen = (page) => ev(page, () => window.__app.screen);
   await page.waitForTimeout(3200);
   const playing = await ev(page, () => ({ notes: window.__notes.filter((t) => t > window.__ended + 2.1).length, early: window.__notes.filter((t) => t > window.__ended + 0.35 && t < window.__ended + 2.1).length }));
   check(playing.notes > 5 && playing.early === 0, `and then plays (${playing.notes} notes, none before the fanfare was over)`);
+  // (The third playtest.) The results draw the run, minute by minute.
+  await ev(page, () => document.querySelector('#run-charts')?.scrollIntoView({ block: 'center' }));
+  await page.waitForTimeout(300);
+  const charts = await ev(page, () => {
+    const app = window.__app;
+    const g = app.session.game;
+    const box = document.querySelector('#run-charts');
+    if (!box) return null;
+    return {
+      houses: g.empires().length,
+      samples: g.history.length,
+      charts: [...box.querySelectorAll('.rc-chart')].map((f) => ({ key: f.dataset.key, lines: f.querySelectorAll('path.rc-line').length, lit: f.querySelectorAll('path.rc-line:not(.rest)').length, ends: f.querySelectorAll('text.rc-end').length, w: f.querySelector('svg')?.getBoundingClientRect().width ?? 0, room: f.getBoundingClientRect().width })),
+      picks: box.querySelectorAll('.rc-pick').length,
+      pressed: box.querySelectorAll('.rc-pick[aria-pressed="true"]').length,
+      tables: box.querySelectorAll('.rc-table table').length,
+      rows: box.querySelector('.rc-table table').rows.length,
+      wide: document.documentElement.scrollWidth > innerWidth,
+    };
+  });
+  check(charts && charts.charts.length === 4 && charts.charts.every((c) => c.lines === charts.houses && c.lit === 2 && c.ends >= 1 && c.w > 100 && c.w <= c.room + 1), `the results draw four charts, a line for every house, the player and one rival in colour (${charts ? charts.charts.map((c) => `${c.key}: ${c.lines} lines`).join(', ') : 'no charts'}; ${charts?.samples} samples)`);
+  check(charts && charts.picks === charts.houses - 1 && charts.pressed === 1 && !charts.wide, `with a button for every rival, one of them compared (${charts?.picks} rivals)`);
+  check(charts && charts.tables === 4 && charts.rows >= 3, `and the figures as a table (${charts?.tables} tables, ${charts?.rows} rows each)`);
+  const plot = page.locator('.rc-chart[data-key="e"] .rc-plot');
+  const pb = await plot.boundingBox();
+  await page.mouse.move(pb.x + 60, pb.y - 30);
+  await page.mouse.move(pb.x + 100, pb.y + 50, { steps: 4 });
+  await page.mouse.move(pb.x + 120, pb.y + 60, { steps: 4 });
+  await page.waitForTimeout(200);
+  const readout = await ev(page, () => {
+    const host = document.querySelector('.rc-chart[data-key="e"] .rc-plot');
+    const b = host.getBoundingClientRect();
+    const under = document.elementFromPoint(b.left + 120, b.top + 60);
+    return { hidden: document.querySelector('.rc-tip').hidden, rows: document.querySelectorAll('.rc-tip-row').length, head: document.querySelector('.rc-tip-head')?.textContent, cross: document.querySelectorAll('.rc-cross').length, under: under ? `${under.tagName}.${under.getAttribute('class') ?? ''}#${under.id}` : 'nothing', box: [Math.round(b.left), Math.round(b.top), Math.round(b.width), Math.round(b.height)] };
+  });
+  check(!readout.hidden && readout.rows === charts.houses && readout.cross === 4, `the pointer reads every house at a moment of the run, on all four charts (${readout.head}: ${readout.rows} houses; under the pointer: ${readout.under}, plot at ${readout.box})`);
+  await page.screenshot({ path: '.shots/qol-charts.png' });
+  await page.mouse.move(5, 5);
+  const other = await ev(page, () => {
+    const b = [...document.querySelectorAll('.rc-pick')].find((x) => x.getAttribute('aria-pressed') === 'false');
+    if (!b) return null;
+    const before = document.querySelector('.rc-chart path.rc-line:not(.rest)').getAttribute('stroke');
+    b.click();
+    return { pressed: b.getAttribute('aria-pressed'), before, after: document.querySelector('.rc-chart path.rc-line:not(.rest)').getAttribute('stroke'), one: document.querySelectorAll('.rc-pick[aria-pressed="true"]').length };
+  });
+  check(!other || (other.pressed === 'true' && other.one === 1 && other.before !== other.after), `another rival's button compares that rival instead (${other ? `${other.before} > ${other.after}` : 'one rival only'})`);
+  await plot.focus();
+  await page.keyboard.press('ArrowLeft');
+  const keyed = await ev(page, () => ({ hidden: document.querySelector('.rc-tip').hidden, head: document.querySelector('.rc-tip-head')?.textContent, screen: window.__app.screen }));
+  check(!keyed.hidden && keyed.screen === 'results', `and the arrow keys read the charts too (${keyed.head})`);
   await browser.close();
 }
 

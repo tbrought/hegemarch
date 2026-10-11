@@ -506,6 +506,21 @@ Measured with `npm run simulate` and `npm run balance:passive`. Speeds are ½×,
   shown to select), and a last line, `Data:`, that is the same and more for a machine to read: JSON
   in base64, so that no chat mangles it (`app/rundata.ts`: perks, relics, the player's figures and
   where every house stood).
+- **The run, minute by minute** (third playtest: "economy graphs"). The game samples every house
+  each half minute and at the end (`Game.history`, kept in the save): its Embers per second, its
+  worlds, its fleet strength (what its warships are worth in battle, as the AI counts it) and its
+  Boons. The results draw them as four small line charts on one time axis (`app/charts.ts`), one
+  figure a chart: no chart has two scales. A house that was put out ends at zero where it fell.
+  A large sector has six houses, and six house colours cannot all be told apart on one chart: gold,
+  ember and red fall together for a colour-blind reader at any lightness the page could give them
+  (measured: the best case is below the least difference that can be told). So the charts use
+  emphasis: the player's house in its colour, one rival in its colour (the house that won, or the one
+  that held the most worlds; a row of buttons above the charts picks another), the other houses grey.
+  The two coloured lines are named where they end, the pointer (or the arrow keys) reads every house
+  at a moment of the run on all four charts at once, and THE FIGURES AS A TABLE has it all in numbers,
+  so nothing is told by colour alone. The colours are the houses' own, unchanged: they are what the
+  player knows a house by, they are far enough apart in pairs for full colour vision, and stepped to
+  an even lightness they either merged or stopped looking like their houses.
 - **Text is never drawn through a pattern.** A dither (every other pixel) over or under the
   1-pixel-wide font scrambles it, so: dialogs dim what is behind them with a flat dark shade and
   leave the top bar (Embers, Lore) bright; the comms log sits on a flat shade; the drag-select box
@@ -641,8 +656,8 @@ src/render/    pixel canvas: Screen (scaling), Camera, Renderer, worlds, sprites
 src/ui/        immediate-mode HUD: Ui toolkit, Hud, Modals, Actions, Input, Tutorial, Tips
 src/audio/     Sfx (synth) and Music (sequencer)
 src/app/       App (menus, loop, results), Attract (the sector that plays itself behind the menus
-               and on the website), houseArt and modeArt (the pictures the menus draw) and Session
-               (one run's shared UI state)
+               and on the website), houseArt and modeArt (the pictures the menus draw), charts (the
+               graphs of the results), rundata and Session (one run's shared UI state)
 src/site/      the website's script: the live sector, houses, fleet, Boon draft (see "The website")
 src/meta/      profile, settings and Legacy
 ```

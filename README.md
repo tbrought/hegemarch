@@ -90,6 +90,9 @@ terms do the same.
   keeps out of it; when the rest lies behind guards it says so and comes home. Every ship you lose
   is reported in the log, with the place and who destroyed it.
 - **The hangar** limits your fleet. Hold more worlds and raise their level for more room.
+  Dreadnoughts take none.
+- **After a run** the results draw it minute by minute: every house's Embers per second, worlds,
+  fleet strength and Boons, your house beside a rival of your choosing.
 - **Destinies**: Conquest plus two of Dominion, Ascension, Relic Hunt, Ember Hoard and Purge the Void
   (the house that lands the killing blow on the Rift Heart wins it).
 - **Rushing** is allowed from the first second, and it is all or nothing. Every Hearth's walls

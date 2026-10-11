@@ -3,7 +3,7 @@
  * what a player sees must be what happened.
  */
 import { describe, expect, it } from 'vitest';
-import { Game } from '../src/game/Game';
+import { Game, HISTORY_EVERY } from '../src/game/Game';
 import { FIRE_SPOOL, HOLD_FIELD, JUMP_CHARGE, TICK, UNDER_FIRE } from '../src/game/constants';
 import { CARD_BY_ID, LEGENDARY_BY } from '../src/game/data/cards';
 import { GOAL_REWARD, GOALS } from '../src/game/data/goals';
@@ -13,6 +13,7 @@ import { PERK_EMBERS, PERK_HEARTH, PERK_HULL, PERK_LORE, PERK_WALLS } from '../s
 import { ECON } from '../src/game/data/worlds';
 import { HOLD_FIELD as FIELD } from '../src/game/constants';
 import { modDelta, modLines } from '../src/game/modstats';
+import { scale } from '../src/app/charts';
 import { readRunData, runData } from '../src/app/rundata';
 import { GLOSS_BY_ID, termsIn } from '../src/ui/glossary';
 
@@ -1056,5 +1057,59 @@ describe('the Hall of Heirs: perks for the whole run, and a refund (the third pl
     const all: Record<string, number> = {};
     for (const pk of PERKS) all[pk.id] = pk.costs.length;
     expect(perksSpent(all)).toBe(PERKS.reduce((s, pk) => s + pk.costs.reduce((a, c) => a + c, 0), 0));
+  });
+});
+
+describe("the run, minute by minute (the third playtest's graphs)", () => {
+  it('every house is sampled at the start, every half minute and at the end', () => {
+    const g = mk();
+    run(g, 95);
+    expect(g.history.map((s) => s.t)).toEqual([0, 30, 60, 90]);
+    for (const s of g.history) expect(s.h.map((x) => x.f)).toEqual(g.empires().map((f) => f.id));
+    const first = g.history[0].h.find((x) => x.f === g.playerId)!;
+    expect(first.e).toBeGreaterThan(0);
+    expect(first.w).toBe(1);
+    expect(first.s).toBeGreaterThan(0);
+    g.declareWinner(g.playerId, 'conquest', 'Every rival Hearth is dark.');
+    expect(g.history[g.history.length - 1].t).toBe(95);
+    expect(HISTORY_EVERY).toBe(30);
+  });
+
+  it('a house that is put out has one last sample with nothing in it, and its line ends there', () => {
+    const g = mk();
+    run(g, 31);
+    const rival = g.empires().find((f) => f.id !== g.playerId)!;
+    g.planetDefeated(g.nodes[rival.capital], g.playerId);
+    g.flushDeferred();
+    run(g, 60);
+    const of = (i: number) => g.history[i].h.find((x) => x.f === rival.id);
+    expect(of(1)!.w).toBeGreaterThan(0);
+    expect(of(2)).toMatchObject({ w: 0, s: 0, e: 0 });
+    expect(of(3)).toBeUndefined();
+  });
+
+  it('the charts count in round numbers, and in whole ones what is counted', () => {
+    expect(scale(27)).toEqual({ max: 30, step: 10 });
+    expect(scale(11.4)).toEqual({ max: 15, step: 5 });
+    expect(scale(1, true)).toEqual({ max: 1, step: 1 });
+    expect(scale(4, true)).toEqual({ max: 4, step: 2 });
+    expect(scale(7, true)).toEqual({ max: 10, step: 5 });
+    expect(scale(0)).toEqual({ max: 1, step: 1 });
+    for (let v = 1; v < 400; v += 7) {
+      const s = scale(v, true);
+      expect(Number.isInteger(s.step)).toBe(true);
+      expect(s.max).toBeGreaterThanOrEqual(v);
+      expect(s.max / s.step).toBeLessThanOrEqual(4);
+    }
+  });
+
+  it('a saved run keeps its history', () => {
+    const g = mk();
+    run(g, 65);
+    const back = Game.load(JSON.parse(JSON.stringify(g.serialize())));
+    expect(back.history).toEqual(g.history);
+    run(g, 30);
+    run(back, 30);
+    expect(back.history).toEqual(g.history);
   });
 });

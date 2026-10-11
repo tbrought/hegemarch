@@ -29,6 +29,7 @@ import { esc, fmt } from '../ui/format';
 import { glossHtml } from '../ui/glossary';
 import { Hud } from '../ui/Hud';
 import { Input } from '../ui/Input';
+import { chartsHtml, mountCharts, runCharts, type RunCharts } from './charts';
 import { runData } from './rundata';
 import { Session } from './Session';
 
@@ -47,6 +48,8 @@ interface ResultsData {
   ambition: string;
   /** The run in one paragraph, for a bug report: version, seed, setup, how it ended. */
   details: string;
+  /** How every house stood, minute by minute, for the graphs (null: a run too short to draw). */
+  charts: RunCharts | null;
 }
 
 /** Shown on the title screen: package.json's version, put in by Vite (vite.config.ts). */
@@ -697,6 +700,7 @@ export class App {
       relics: [...p.relics],
       heir: p.heir,
       ambition: g.ambition,
+      charts: runCharts(g),
       details: [
         `Hegemarch v${GAME_VERSION}`,
         `${g.config.mode === 'ages' ? 'Ages run' : g.config.daily ? 'Daily run' : g.config.tutorial ? 'First Night' : 'Classic run'}, seed ${g.config.seed}, ${g.config.size}, ${DIFFICULTY_NAMES[g.config.difficulty]}, ${HEIR_BY_ID[p.heir]?.name ?? p.heir}`,
@@ -1352,12 +1356,14 @@ export class App {
       </div>
       <div class="px-box" style="margin-top:16px"><h3>BOONS</h3><div class="chips">${cards || '<span class="dim">None</span>'}</div>
         ${relics ? `<h3 style="margin-top:12px">RELICS</h3><div class="chips">${relics}</div>` : ''}</div>
+      ${r.charts ? chartsHtml(r.charts) : ''}
       <div class="run-details">
         <button class="small" data-sa="copy-run" data-tip="Copies this run's version, seed, setup and outcome, to send with a bug report or to play the same sector again.">COPY RUN DETAILS</button>
         <textarea id="run-details" readonly hidden rows="6">${esc(r.details)}</textarea>
       </div>
       <div class="foot-actions"><button class="${afford.length ? 'primary' : ''}" data-sa="results-hall">${afford.length ? 'SPEND LEGACY IN THE HALL OF HEIRS' : 'HALL OF HEIRS'}</button><button class="${afford.length ? '' : 'primary'}" data-sa="results-again">NEW RUN</button></div>
     </div></div>`;
+    if (r.charts) mountCharts(this.ui, r.charts);
     // The Legacy total counts up like a score.
     const el = this.ui.querySelector('#legacy-total');
     const total = r.report.total;

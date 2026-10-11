@@ -1063,6 +1063,244 @@ table.stats tr.total td {
   margin: -4px 0 20px;
 }
 
+/* The graphs of a run (app/charts.ts): four small charts on one time axis. The player's house and one
+   rival wear their colours, the other houses are grey; text is never in a series colour. */
+.run-charts {
+  position: relative;
+  margin-top: 16px;
+}
+
+.rc-legend {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+  margin-bottom: 12px;
+  color: var(--mist);
+  font-size: 16px;
+}
+
+.rc-legend .rc-with {
+  font-family: var(--display);
+  font-size: 9px;
+  color: var(--dusk);
+  margin-left: 8px;
+}
+
+.rc-legend .rc-rest {
+  color: var(--dusk);
+}
+
+.rc-key {
+  display: inline-block;
+  width: 16px;
+  height: 0;
+  border-top: 3px solid var(--c, var(--slate));
+  margin-right: 6px;
+  vertical-align: middle;
+}
+
+.rc-key.rest {
+  border-top-color: var(--slate);
+}
+
+/* (A rival that is not compared is a grey line on the charts, and so is its key.) */
+.rc-pick[aria-pressed='false'] .rc-key {
+  border-top-color: var(--slate);
+}
+
+.rc-pick[aria-pressed='true'] {
+  color: var(--bone);
+  box-shadow:
+    0 calc(var(--px) * -1) 0 0 var(--gold),
+    0 var(--px) 0 0 var(--gold),
+    calc(var(--px) * -1) 0 0 0 var(--gold),
+    var(--px) 0 0 0 var(--gold);
+}
+
+.rc-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px 24px;
+}
+
+@media (max-width: 700px) {
+  .rc-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.rc-chart {
+  margin: 0;
+  min-width: 0;
+}
+
+.rc-chart figcaption {
+  font-family: var(--display);
+  font-size: 9px;
+  color: var(--mist);
+  margin-bottom: 4px;
+  width: fit-content;
+}
+
+.rc-plot {
+  width: 100%;
+  cursor: crosshair;
+  outline: none;
+  touch-action: pan-y;
+}
+
+.rc-plot:focus-visible {
+  box-shadow: 0 0 0 2px var(--gold);
+}
+
+.rc-plot svg {
+  display: block;
+  overflow: visible;
+}
+
+.rc-grid-line {
+  stroke: var(--indigo);
+  stroke-width: 1;
+}
+
+.rc-tick {
+  fill: var(--dusk);
+  font-family: var(--body);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+
+.rc-line {
+  fill: none;
+  stroke-width: 2;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+}
+
+.rc-line.rest {
+  stroke: var(--slate);
+  stroke-width: 1.5;
+}
+
+.rc-dot {
+  stroke: var(--night);
+  stroke-width: 2;
+}
+
+.rc-end {
+  fill: var(--mist);
+  font-family: var(--body);
+  font-size: 13px;
+}
+
+.rc-end.you {
+  fill: var(--bone);
+}
+
+.rc-cross {
+  stroke: var(--dusk);
+  stroke-width: 1;
+}
+
+.rc-tip {
+  position: absolute;
+  z-index: 3;
+  pointer-events: none;
+  background: var(--void);
+  box-shadow:
+    0 -2px 0 0 var(--dusk),
+    0 2px 0 0 var(--dusk),
+    -2px 0 0 0 var(--dusk),
+    2px 0 0 0 var(--dusk);
+  padding: 8px 10px;
+  min-width: 150px;
+  font-size: 15px;
+  color: var(--mist);
+}
+
+.rc-tip-head {
+  font-family: var(--display);
+  font-size: 8px;
+  color: var(--dusk);
+  margin-bottom: 6px;
+}
+
+.rc-tip-row {
+  display: grid;
+  grid-template-columns: auto 3.2em 1fr;
+  align-items: center;
+  gap: 0 4px;
+  white-space: nowrap;
+}
+
+.rc-tip-row b {
+  color: var(--bone);
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  margin-right: 6px;
+}
+
+.rc-tables {
+  margin-top: 12px;
+}
+
+.rc-tables summary {
+  cursor: pointer;
+  font-family: var(--display);
+  font-size: 9px;
+  color: var(--dusk);
+  width: fit-content;
+}
+
+.rc-tables summary:hover,
+.rc-tables summary:focus-visible {
+  color: var(--bone);
+}
+
+.rc-tables-in {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 320px), 1fr));
+  gap: 14px 20px;
+  margin-top: 10px;
+}
+
+.rc-table {
+  overflow-x: auto;
+  min-width: 0;
+}
+
+.rc-table table {
+  border-collapse: collapse;
+  font-size: 15px;
+  color: var(--mist);
+  font-variant-numeric: tabular-nums;
+}
+
+.rc-table caption {
+  font-family: var(--display);
+  font-size: 8px;
+  color: var(--mist);
+  text-align: left;
+  margin-bottom: 4px;
+}
+
+.rc-table th,
+.rc-table td {
+  padding: 1px 10px 1px 0;
+  text-align: right;
+  white-space: nowrap;
+}
+
+.rc-table th {
+  color: var(--dusk);
+  font-weight: normal;
+}
+
+.rc-table th[scope='row'] {
+  text-align: left;
+}
+
 /* What the run leaves behind, as the headline of its results: the Legacy earned, what Legacy is, what it
    buys right now (or how far the next thing is), and the way to spend it. */
 .legacy-hero {
