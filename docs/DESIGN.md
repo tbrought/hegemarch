@@ -359,6 +359,16 @@ Measured with `npm run simulate` and `npm run balance:passive`. Speeds are ½×,
   light when the player's Legacy would buy something there. The setup page carries the same three
   modes as tabs, so a change of mind costs one click. In a window too short for it the title screen
   scrolls from the top; under 760 px wide the cards stack, each with its picture beside its words.
+- **How to Play** (`src/app/howto.ts`), the page behind the title screen, is for someone who has not
+  played yet and will give it half a minute. It was ten paragraphs, opened and not read. It is now
+  the game in five moves, each a picture and a sentence (kindle worlds, give each a role, build a
+  fleet, choose Boons, take the crown), then what is coming on one line of time (0:00 quiet, 10:00
+  Corsairs, 12:00 rivals, 18:00 the Hollow), the controls as keys to look up, and what an Ages run
+  is. Three of the pictures move, drawn with the game's sprites like the title screen's: a seed ship
+  lights a world, each ship of the line fires on the one it beats, Lore fills and one Boon of three
+  is taken. They stand still for a player who asks for less motion. What the old page said beyond
+  this is taught in a run: by the First Night, the tips, and How to Play there (H). `npm run
+  test:howto` checks the page at four sizes.
 - **House banners** (`src/app/houseArt.ts`): each house card on the setup page (and the banner of
   the title screen) carries a small canvas drawn with the game's sprites at three screen pixels per pixel: the
   house's Hearth at the left, ringed in its color, and the fleet it really starts with (its Ark and

@@ -9,17 +9,24 @@
  *   color of its house (`data-color`).
  * - `daily`: the chart of today's sector. It is the real one: the map every player is dealt today.
  *
+ * And three for How to Play (app/howto.ts), each one move of the game in a few seconds:
+ * - `kindle`: a seed ship lights a dark world, and the world starts to earn.
+ * - `fleet`: the three ships of the line; each in turn fires on the one it beats.
+ * - `boons`: Lore fills, three Boons are dealt, one is taken.
+ *
  * A picture runs faster under the pointer.
  */
 import { Game } from '../game/Game';
+import { RARITY_COLOR } from '../game/data/cards';
 import { LAST_CRADLE_ERA, SPACE } from '../game/data/eras';
 import { HEIRS } from '../game/data/heirs';
 import { dailySeed } from '../game/rng';
 import { PAL, SHADE } from '../render/palette';
-import { ctx2d, line, px, type Ctx } from '../render/pixel';
-import { ICONS, pixelCanvas, shipSprite, silhouette } from '../render/sprites';
+import { bar, box, ctx2d, line, px, rect, type Ctx } from '../render/pixel';
+import { iconCanvas, ICONS, pixelCanvas, shipSprite, silhouette } from '../render/sprites';
 
 const SCALE = 3;
+const HOW_SCALE = 4;
 /** The player asked for less motion: the pictures stand still. */
 const calm = typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches;
 
@@ -29,8 +36,10 @@ const clocks = new WeakMap<HTMLCanvasElement, { c: number; last: number }>();
 /** Draw every such picture on the page (call once a frame while a menu shows). */
 export function drawModeArt(root: HTMLElement, t: number) {
   root.querySelectorAll<HTMLCanvasElement>('canvas.mode-art').forEach((el) => {
-    const w = Math.max(48, Math.round(el.clientWidth / SCALE));
-    const h = Math.max(12, Math.round(el.clientHeight / SCALE));
+    // (The pictures of How to Play are of single ships and worlds: they are shown larger.)
+    const scale = el.classList.contains('how-art') ? HOW_SCALE : SCALE;
+    const w = Math.max(48, Math.round(el.clientWidth / scale));
+    const h = Math.max(12, Math.round(el.clientHeight / scale));
     if (el.width !== w || el.height !== h) {
       el.width = w;
       el.height = h;
@@ -45,6 +54,9 @@ export function drawModeArt(root: HTMLElement, t: number) {
     const art = el.dataset.art;
     if (art === 'sector') sector(g, w, h, calm ? STILL : k.c);
     else if (art === 'daily') daily(g, w, h, calm ? -1 : k.c);
+    else if (art === 'kindle') kindle(g, w, h, calm ? -1 : k.c);
+    else if (art === 'fleet') fleet(g, w, h, calm ? -1 : k.c);
+    else if (art === 'boons') boons(g, w, h, calm ? -1 : k.c);
     else ages(g, w, h, calm ? 0 : k.c, el.dataset.era ? parseInt(el.dataset.era, 10) : -1, el.dataset.color ?? PAL.gold);
   });
 }
@@ -263,4 +275,118 @@ function daily(g: Ctx, w: number, h: number, c: number) {
     g.fillRect(Math.floor(sweep), 0, 1, h);
     g.globalAlpha = 1;
   }
+}
+
+// ---------------------------------------------------------------------------
+// How to Play: one move of the game each (`c` below zero: the picture stands still)
+// ---------------------------------------------------------------------------
+
+/** A few sparks round a point, new ones every beat. */
+function sparks(g: Ctx, x: number, y: number, r: number, beat: number, n: number) {
+  for (let j = 0; j < n; j++) {
+    const a = hash(beat * 7 + j) * Math.PI * 2;
+    const d = r + 1 + hash(beat * 3 + j + 40) * 2;
+    px(g, Math.round(x + Math.cos(a) * d), Math.round(y + Math.sin(a) * d), j % 2 === 0 ? PAL.bone : beat % 2 === 0 ? PAL.gold : PAL.ember);
+  }
+}
+
+/** Kindling: a seed ship leaves a lit world for a dark one and lights it, and the new world starts to earn. */
+function kindle(g: Ctx, w: number, h: number, c: number) {
+  const T = 5.4;
+  const u = c < 0 ? 3.6 : c % T;
+  const me = HEIRS[0].color;
+  const y = Math.round(h / 2) + 2;
+  const x0 = Math.round(w * 0.16);
+  const x1 = Math.round(w * 0.8);
+  sky(g, w, h, 410, Math.max(0, c), Math.round((w * h) / 90));
+  g.globalAlpha = c < 0 ? 1 : Math.max(0, Math.min(1, u / 0.4, (T - u) / 0.5));
+  const lit = u >= 2.6;
+  line(g, x0, y, x1, y, lit ? PAL.slate : PAL.indigo, 2);
+  orb(g, x0, y, 3, me, false);
+  orb(g, x1, y, 3, lit ? me : null, lit && u < 3.3 && Math.floor(u * 10) % 2 === 0);
+  if (u >= 0.7 && u < 2.6) {
+    const p = (u - 0.7) / 1.9;
+    const e = p * p * (3 - 2 * p);
+    const spr = shipSprite('seed', me, 0, Math.floor(u * 10) % 2 === 0, SPACE);
+    g.drawImage(spr, Math.round(x0 + 6 + (x1 - x0 - 12) * e) - (spr.width >> 1), y - (spr.height >> 1));
+  }
+  if (lit && u < 3.1) sparks(g, x1, y, 3, Math.floor(u * 14), 5);
+  // What a lit world is for: Embers.
+  if (u >= 3.2) {
+    const em = pixelCanvas('ember', ICONS.ember);
+    g.drawImage(em, x1 - (em.width >> 1), y - 5 - em.height - Math.min(2, Math.floor((u - 3.2) * 4)));
+  }
+  g.globalAlpha = 1;
+}
+
+const LINE = ['striker', 'breaker', 'guardian'] as const;
+
+/** The triangle: each ship of the line in turn (the names stand under them) fires on the one it beats. */
+function fleet(g: Ctx, w: number, h: number, c: number) {
+  const BEAT = 1.8;
+  const k = c < 0 ? 0 : Math.floor(c / BEAT) % 3;
+  const u = c < 0 ? 0.5 : (c % BEAT) / BEAT;
+  const prey = (k + 1) % 3;
+  const X = (i: number) => Math.round((w * (i + 0.5)) / 3);
+  const y = Math.round(h / 2) + 1;
+  const right = prey > k;
+  sky(g, w, h, 520, Math.max(0, c), Math.round((w * h) / 110));
+  const struck = u > 0.5;
+  for (let i = 0; i < 3; i++) {
+    const dir = i === k ? (right ? 0 : 8) : i === prey ? (right ? 8 : 0) : 0;
+    let spr: HTMLCanvasElement;
+    if (i === k) spr = shipSprite(LINE[i], HEIRS[0].color, dir, Math.floor(u * 16) % 2 === 0, SPACE);
+    else if (i !== prey) spr = silhouette(LINE[i], PAL.slate, dir, SPACE);
+    else if (struck && Math.floor(u * 20) % 2 === 0) spr = silhouette(LINE[i], PAL.bone, dir, SPACE);
+    else spr = shipSprite(LINE[i], HEIRS[2].color, dir, false, SPACE);
+    g.drawImage(spr, X(i) - (spr.width >> 1), y - (spr.height >> 1));
+  }
+  // Its shots cross to the ship it beats (the Guardian's go over the Breaker between them, back to the Striker).
+  const from = X(k) + (right ? 7 : -7);
+  const to = X(prey) + (right ? -6 : 6);
+  if (u > 0.08 && u < 0.92) {
+    for (let j = 0; j < 3; j++) {
+      const p = (u * 2.4 + j / 3) % 1;
+      const over = right ? 0 : Math.round(Math.sin(p * Math.PI) * Math.min(8, y - 2));
+      px(g, Math.round(from + (to - from) * p), y - over + (right ? j - 1 : 0), j === 1 ? PAL.bone : PAL.gold);
+    }
+  }
+  if (struck) sparks(g, X(prey), y, 3, Math.floor(u * 22), 4);
+}
+
+/** Boons: Lore fills, three Boons are dealt, the pointer goes over them and one is taken. */
+function boons(g: Ctx, w: number, h: number, c: number) {
+  const T = 6.2;
+  const u = c < 0 ? 3.5 : c % T;
+  const taken = u >= 4.3;
+  // Lore, along the top: it fills, and is spent on the choice.
+  const lore = iconCanvas('lore');
+  const bw = Math.min(w - 16, 48);
+  const bx = (w - bw - lore.width - 2) >> 1;
+  g.drawImage(lore, bx, 0);
+  bar(g, bx + lore.width + 2, 3, bw, 2, taken ? 0 : u / 1.4, PAL.violet, PAL.night, PAL.indigo);
+  if (u < 1.4) return;
+  const cw = 15;
+  const gap = 4;
+  const top = 9;
+  const ch = Math.max(10, h - top - 1);
+  const x0 = (w - cw * 3 - gap * 2) >> 1;
+  const rarity = ['common', 'rare', 'epic'] as const;
+  const cats = ['catWealth', 'catWar', 'catLore'];
+  const picked = 2;
+  const over = u < 2.5 ? 0 : u < 3.3 ? 1 : picked;
+  for (let i = 0; i < 3; i++) {
+    const rise = Math.max(0, Math.min(1, (u - 1.4 - i * 0.12) / 0.25));
+    if (rise <= 0) continue;
+    const col = RARITY_COLOR[rarity[i]];
+    const x = x0 + i * (cw + gap);
+    const y = top + Math.round((1 - rise) * ch) - (i === over && !taken ? 1 : 0);
+    g.globalAlpha = taken && i !== picked ? Math.max(0.15, 1 - (u - 4.3) * 2.5) : 1;
+    const flash = taken && i === picked && u < 5.1 && Math.floor(u * 10) % 2 === 0;
+    box(g, x, y, cw, ch, PAL.night, flash ? PAL.bone : i === over ? PAL.gold : col);
+    g.drawImage(iconCanvas(cats[i], col), x + ((cw - 5) >> 1), y + 2);
+    for (let l = 0; l < 3 && y + 9 + l * 2 < top + ch - 2; l++) rect(g, x + 2, y + 9 + l * 2, cw - 4 - (l === 2 ? 4 : l), 1, PAL.slate);
+  }
+  g.globalAlpha = 1;
+  if (taken && u < 4.9) sparks(g, x0 + picked * (cw + gap) + (cw >> 1), top + (ch >> 1), 8, Math.floor(u * 14), 5);
 }

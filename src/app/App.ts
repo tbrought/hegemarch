@@ -18,6 +18,7 @@ import { clearRun, defaultProfile, hasRun, loadProfile, loadRun, saveProfile, sa
 import { fmtTime, Renderer } from '../render/Renderer';
 import { Attract } from './Attract';
 import { drawHouseBanners, startingFleet } from './houseArt';
+import { howtoHtml } from './howto';
 import { drawModeArt } from './modeArt';
 import { Screen } from '../render/Screen';
 import { groupBoons } from '../ui/boons';
@@ -55,18 +56,6 @@ const PIXEL_TIPS = {
   auto: 'Fit the window: at least 480×270 game pixels, scaled up in whole steps.',
   large: 'Large pixels: bigger text and ships (400×225 game pixels).',
 } as const;
-
-const HOWTO = `
-<p>The last <b>Hegemarch</b> fell, and the sector went dark. Your house lights it back up, one world at a time. Follow one of your three <b>Destinies</b> and be crowned the next Hegemarch.</p>
-<p><b>Kindle:</b> click a grey world and press KINDLE. You pay for a seed ship, which flies out, lights the world in your color and is used up. If it is destroyed on the way, the Embers are lost and you kindle again. Each world costs a few more Embers than the last.</p>
-<p><b>Scouts:</b> your Scout waits at your Hearth for orders. Select it (click the fleet badge) and press EXPLORE, or E, and it charts the dark world after world by itself. To look inside an <b>anomaly</b> (a violet swirl), send any ship there.</p>
-<p><b>Worlds:</b> every world earns <b>Embers</b>, your only currency, and has one role. MINE: more Embers. FORGE: builds ships. OBSERVATORY: makes Lore and sees further. BASTION: guns, armor and repairs. Raise worlds to level II and III for more of everything.</p>
-<p><b>Ships:</b> Strikers beat Breakers. Breakers beat Guardians and take worlds. Guardians beat Strikers. Carriers, Lancers, Dreadnoughts and Starbases come as Blueprint Boons.</p>
-<p><b>Boons:</b> when your <b>Lore</b> fills, choose a Boon. Every run's choices are different.</p>
-<p><b>Danger:</b> any house may attack at any time. Corsairs raid from about ten minutes in, rivals attack from about twelve (on Hard and Brutal, warlike houses rush sooner), and the Hollow may wake. If your <b>Hearth</b> falls, your house goes dark.</p>
-<p><b>Rushing:</b> every Hearth's walls start at half strength and reach full strength at 12:00. Take a rival's Hearth and you win its worlds, half its hoard and a free Boon. Fail, and your rivals will make you pay.</p>
-<p><b>Ages runs</b> are a longer game. Every house starts in the Stone Age on one cradle world: gather Lore, advance through five ages (each brings stronger units and a Boon), then build your Ark and carry what you have won to the stars, where the run goes on as above.</p>
-<p><b>Controls:</b> click to select (a world, a ship, or the fleet badge <span class="fleet-badge">3</span> beside a world, which selects all your ships there), click a world to send selected ships (or right-click). Drag to select ships. Wheel to zoom, right-drag or arrow keys to move. Space pauses; E sends selected Scouts exploring; B for Boons, U for status, H for help. In a run, How to Play (H) lists every control and every tip. While the game is paused you can look around and read, but not give orders: press Space again first.</p>`;
 
 export class App {
   private canvas: HTMLCanvasElement;
@@ -176,7 +165,7 @@ export class App {
       if (this.screen === 'menu' || this.screen === 'setup') {
         drawHouseBanners(this.ui, now / 1000);
         drawModeArt(this.ui, now / 1000);
-      }
+      } else if (this.screen === 'howto') drawModeArt(this.ui, now / 1000);
       if (this.screen === 'menu') this.tickMenu();
       this.syncSound();
     } catch (err) {
@@ -683,7 +672,7 @@ export class App {
         break;
       case 'howto':
         this.screen = 'howto';
-        this.ui.innerHTML = `<div class="screen${this.crt()}"><div class="page px-box howto" style="max-width:760px"><h1>HOW TO PLAY</h1>${HOWTO}<div class="foot-actions"><button data-sa="menu">BACK</button></div></div></div>`;
+        this.ui.innerHTML = `<div class="screen${this.crt()}"><div class="page px-box howto" style="max-width:820px"><h1>HOW TO PLAY</h1>${howtoHtml()}<div class="foot-actions"><button data-sa="menu">BACK</button><button class="primary" data-sa="setup">NEW RUN</button></div></div></div>`;
         break;
       case 'settings':
         this.confirmReset = false;

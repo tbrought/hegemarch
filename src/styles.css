@@ -1046,16 +1046,303 @@ table.stats tr.total td {
   background: repeating-linear-gradient(90deg, var(--gold) 0 6px, var(--ember) 6px 9px);
 }
 
+/* ------------------------------------------------------------------ how to play */
+
+/* The game in five moves, each a picture and a sentence (app/howto.ts); then two things to look up. */
 .howto p {
   color: var(--mist);
-  line-height: 1.45;
-  font-size: 17px;
-  margin: 0 0 12px;
+  line-height: 1.4;
+  font-size: 16px;
+  margin: 0;
 }
 
 .howto b {
   color: var(--gold);
   font-weight: 600;
+}
+
+.howto .how-lede {
+  font-size: 19px;
+  color: var(--bone);
+  margin: 0 0 16px;
+}
+
+.how-steps {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 10px;
+}
+
+.how-step {
+  display: grid;
+  grid-template-columns: 252px minmax(0, 1fr);
+  gap: 18px;
+  align-items: center;
+}
+
+/* (Every picture is the same size, so the five titles stand in one line down the page.) */
+.how-pic {
+  height: 96px;
+  background: var(--void);
+  box-shadow: 0 0 0 var(--px) var(--indigo);
+  margin: var(--px);
+  display: grid;
+  align-content: center;
+  overflow: hidden;
+}
+
+.how-art {
+  width: 100%;
+  height: 96px;
+}
+
+.how-pic .how-art:not(:only-child) {
+  height: 72px;
+}
+
+.how-names {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  text-align: center;
+  font-family: var(--display);
+  font-size: 8px;
+  letter-spacing: 0.03em;
+  color: var(--dusk);
+  height: 24px;
+}
+
+/* (Two columns, each as wide as its longest name, so none of them wraps.) */
+.how-tiles {
+  display: grid;
+  grid-template-columns: max-content max-content;
+  justify-content: space-evenly;
+  gap: 8px 10px;
+  padding: 0 8px;
+  white-space: nowrap;
+}
+
+/* (Six Destinies: a picture and a name each.) */
+.how-tiles.names {
+  gap: 7px 10px;
+}
+
+.how-tiles.names .how-tile {
+  font-size: 13px;
+}
+
+.how-tile {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  min-width: 0;
+  font-size: 13px;
+  line-height: 1.05;
+  color: var(--mist);
+}
+
+.how-tile b {
+  display: block;
+  font-family: var(--display);
+  font-size: 8px;
+  font-weight: normal;
+  letter-spacing: 0.03em;
+  margin-bottom: 4px;
+}
+
+
+.how-icon {
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+  flex: none;
+}
+
+.how-tiles.names .how-icon {
+  width: 15px;
+  height: 21px;
+}
+
+.how-say h3,
+.how-ages h3 {
+  font-family: var(--display);
+  font-size: 12px;
+  font-weight: normal;
+  letter-spacing: 0.04em;
+  color: var(--gold);
+  margin: 0 0 8px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.how-n {
+  flex: none;
+  width: 22px;
+  height: 22px;
+  display: grid;
+  place-items: center;
+  color: var(--void);
+  background: var(--gold);
+  font-size: 11px;
+  padding-left: 2px;
+}
+
+kbd {
+  font-family: var(--display);
+  font-size: 8px;
+  letter-spacing: 0.03em;
+  color: var(--bone);
+  background: var(--indigo);
+  padding: 4px 6px 3px;
+  box-shadow:
+    0 0 0 2px var(--slate),
+    0 4px 0 0 var(--void);
+  margin: 0 3px;
+  white-space: nowrap;
+  vertical-align: 2px;
+}
+
+.howto h2 {
+  margin: 24px 0 14px;
+}
+
+/* What is coming, on one line of time. */
+.how-clock {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0 16px;
+  border-top: var(--px) solid var(--indigo);
+  margin-top: 4px;
+}
+
+.how-clock > div {
+  position: relative;
+  padding-top: 12px;
+  display: grid;
+  gap: 6px;
+  align-content: start;
+}
+
+.how-clock > div::before {
+  content: '';
+  position: absolute;
+  top: -9px;
+  left: 0;
+  width: 15px;
+  height: 15px;
+  background: var(--red);
+  box-shadow: 0 0 0 var(--px) var(--night);
+}
+
+.how-clock > .calm::before {
+  background: var(--teal);
+}
+
+.how-clock b {
+  font-family: var(--display);
+  font-size: 11px;
+  font-weight: normal;
+  color: var(--bone);
+}
+
+.how-clock span {
+  color: var(--mist);
+  font-size: 15px;
+  line-height: 1.3;
+}
+
+.howto .how-note {
+  margin-top: 14px;
+  font-size: 15px;
+  color: var(--dusk);
+}
+
+.how-controls {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px 28px;
+}
+
+.how-keys {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 12px;
+  align-content: start;
+  color: var(--mist);
+  font-size: 15px;
+  line-height: 1.5;
+}
+
+.how-keys kbd:first-child {
+  margin-left: 2px;
+}
+
+.how-ages {
+  display: grid;
+  grid-template-columns: 252px minmax(0, 1fr);
+  gap: 18px;
+  align-items: center;
+  margin-top: 26px;
+  padding-top: 18px;
+  border-top: var(--px) solid var(--indigo);
+}
+
+.how-ages .mode-art {
+  width: calc(100% - var(--px) * 2);
+  height: 54px;
+  margin: var(--px);
+  background: var(--void);
+  box-shadow: 0 0 0 var(--px) var(--indigo);
+}
+
+.how-ages h3 {
+  color: var(--ember);
+}
+
+@media (max-width: 700px) {
+  .how-step,
+  .how-ages {
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+
+  /* (One column: the number and the name of a move come first, then its picture, then the sentence.) */
+  .how-say {
+    display: contents;
+  }
+
+  .how-say h3 {
+    order: -1;
+    margin: 0;
+  }
+
+  .how-steps {
+    gap: 22px;
+  }
+
+  .how-clock {
+    grid-template-columns: 1fr;
+    border-top: none;
+    border-left: var(--px) solid var(--indigo);
+    gap: 14px;
+    margin-left: 7px;
+  }
+
+  .how-clock > div {
+    padding: 0 0 0 18px;
+  }
+
+  .how-clock > div::before {
+    top: 0;
+    left: -9px;
+  }
+
+  .how-controls {
+    grid-template-columns: 1fr;
+  }
 }
 
 .kv {
