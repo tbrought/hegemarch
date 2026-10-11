@@ -429,6 +429,16 @@ Measured with `npm run simulate` and `npm run balance:passive`. Speeds are ½×,
   that sat on a star he could see, because nothing showed him the way they would go.
   **Shift+right-click** (or Shift with the click of a MOVE order) adds a stop after the one the
   ships are bound for, as many as wanted; a drive that is charging goes on charging.
+- **An offering takes a ship that can be offered.** The Whispering Rift asks for "the ship that found
+  it", which is the first of a fleet to be counted there; when that was the Ark (never offered), the
+  choice was greyed with six other ships standing by, and its tooltip said "You cannot afford this".
+  Now the finder is taken unless it is the Ark or gone, and then the least costly of the house's
+  other ships there (`offering`); the card names the ship ("Lose a Scout (your Ark found it, and an
+  Ark is never offered)"); and a choice greyed for another reason than its price says the reason
+  (`EventChoice.why`): with only the Ark there, to send a ship and choose then, the decision waiting
+  behind its "!" meanwhile. And an anomaly waits for the rest of a fleet of the player's that is on
+  the last starlane to it (`ANOMALY_WAIT`, half a minute at most): the decision may stop the game,
+  and ships a second behind the first would then never arrive to be offered.
 - **What a choice affects, as pictures** (`src/ui/subjects.ts`): every Boon card, event choice and
   ability choice shows the ship type (drawn as on the map, in the house color), resource or part of
   the realm it touches. Boons are read from the modifiers they really change, then from their text
@@ -585,7 +595,12 @@ Measured with `npm run simulate` and `npm run balance:passive`. Speeds are ½×,
   the Starfire Gate shows the Boons it waits for ("6/15", with a line that fills along its foot) and,
   once it can be raised, has two sparks running round its frame. One that only lacks Embers shows
   its price in red and can still be clicked (the refusal says why); they take a second line when
-  the card is too narrow for them.
+  the card is too narrow for them. **The Hangar Bay is always there**, from the first second to the
+  last bay ("10/10"): it used to appear at seven tenths of the hangar and go when all were built,
+  and a button that comes and goes by rules nobody was told is bad to use. A player should know
+  from the start where more room for ships comes from. (The rule for the whole HUD: a control is
+  there or greyed with its reason, and does not appear and vanish on a condition the player cannot
+  see.)
 - **The Hall of Heirs** shows a house as the setup does: its banner (its Hearth and starting fleet,
   flying), its name, what it is, what it has in a list, and its price along the foot of the card, with
   how much Legacy is still missing. Every card is the same shape, whatever the length of a name. A

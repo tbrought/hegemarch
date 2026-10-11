@@ -427,13 +427,15 @@ export class Modals {
     const ctx = { node: p.node, unit: p.unit };
     const done = this.result && this.result.promptId === promptId;
     const resultLines = done ? wrap(this.result!.text, inner, 'main') : [];
+    // (A hint that depends on the house and the place, such as which ship an offering takes.)
+    const hints = ev.choices.map((c) => c.hintFor?.(this.g, f, ctx) ?? c.hint);
     // What each choice touches, as pictures at the right of its row.
     const subs = ev.choices.map((c) => c.icons ?? subjectsIn(c.hint));
     const look: Look = { color: f.color, scale: 2, turn: true };
     const subSize = subs.map((s) => subjectsSize(s, look));
     const subW = subSize.map((z) => (z.w ? z.w + 8 : 0));
     // A row is at least as tall as its pictures (a turning Dreadnought needs room).
-    const choiceH = ev.choices.map((c, i) => Math.max(14 + richLines(c.hint, inner - 8 - subW[i]) * 10, subSize[i].h + 6));
+    const choiceH = ev.choices.map((_c, i) => Math.max(14 + richLines(hints[i], inner - 8 - subW[i]) * 10, subSize[i].h + 6));
     const h = 30 + textLines.length * 10 + 6 + (done ? resultLines.length * 10 + 26 : choiceH.reduce((a, b) => a + b + 3, 0)) + 4;
     const { x, y } = this.frame(g, w, h, ev.title.toUpperCase(), PAL.violet);
     const where = p.node >= 0 ? this.g.nodes[p.node].name.toUpperCase() : '';
@@ -463,14 +465,14 @@ export class Modals {
       box(g, x + 8, ly, inner, hh, hot ? PAL.indigo : PAL.night, ok ? (hot ? PAL.bone : PAL.slate) : PAL.indigo);
       text(g, `${i + 1}. ${c.label}`, x + 12, ly + 3, ok ? PAL.bone : PAL.slate);
       const dim = PAL.indigo;
-      drawRich(g, c.hint, x + 12, ly + 13, inner - 8 - subW[i], ok ? { body: PAL.dusk } : { body: dim, gain: dim, loss: dim, kw: dim });
+      drawRich(g, hints[i], x + 12, ly + 13, inner - 8 - subW[i], ok ? { body: PAL.dusk } : { body: dim, gain: dim, loss: dim, kw: dim });
       if (subs[i].length) {
         // Alive while it can be chosen (livelier under the pointer); dim and still when it cannot.
         g.globalAlpha = ok ? 1 : 0.3;
         drawSubjects(g, subs[i], x + 8 + inner - 6, ly + 3, hh - 6, ok ? { ...look, t: this.ui.time, lively: hot } : look, 'right');
         g.globalAlpha = 1;
       }
-      this.ui.add({ id, x: x + 8, y: ly, w: inner, h: hh, onClick: () => this.resolve(promptId, i), disabled: !ok, tip: ok ? undefined : 'You cannot afford this right now.', terms: termsIn(c.hint) });
+      this.ui.add({ id, x: x + 8, y: ly, w: inner, h: hh, onClick: () => this.resolve(promptId, i), disabled: !ok, tip: ok ? undefined : (c.why?.(this.g, f, ctx) ?? 'You cannot afford this right now.'), terms: termsIn(c.hint) });
       ly += hh + 3;
     });
     this.closeButton(g, x, y, w);

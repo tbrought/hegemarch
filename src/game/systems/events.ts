@@ -2,6 +2,9 @@ import type { Game } from '../Game';
 import { EVENT_BY_ID, type EventCtx } from '../data/events';
 import type { Faction, Unit } from '../types';
 
+/** Seconds an anomaly waits for the rest of a fleet of the player's that is on the last starlane to it. */
+export const ANOMALY_WAIT = 30;
+
 export function eventsTick(g: Game, _dt: number) {
   if (g.tick % 10 === 5) anomalyCheck(g);
   if (g.time >= g.nextGalactic) {
@@ -26,6 +29,16 @@ function anomalyCheck(g: Game) {
       if (!chosen || (f.isPlayer && !g.factions[chosen.owner].isPlayer)) chosen = u;
     }
     if (!chosen) continue;
+    // A fleet of the player's arrives ship by ship, and the game may stop for the decision: the place
+    // waits for the ships that are on the last starlane to it (half a minute at most), so that what
+    // the decision offers is there to be offered when it opens.
+    if (g.factions[chosen.owner].isPlayer) {
+      const owner = chosen.owner;
+      let first = Infinity;
+      for (const u of b) if (!u.dead && u.owner === owner && u.type !== 'fighter') first = Math.min(first, u.arrivedAt ?? 0);
+      const coming = g.unitList.some((u) => !u.dead && u.owner === owner && u.type !== 'fighter' && !!u.lane && u.lane.to === n.id && u.path.length === 0);
+      if (coming && g.time - first < ANOMALY_WAIT) continue;
+    }
     const evId = n.anomaly;
     n.anomaly = null;
     const f = g.factions[chosen.owner];

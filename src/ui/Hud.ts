@@ -61,6 +61,8 @@ interface Project {
   calls?: boolean;
   /** What it still waits for, shown in place of its price. */
   progress?: { have: number; need: number };
+  /** Words in place of its price (all of it is built: "10/10"). */
+  right?: string;
   /** A spark runs round it once it can be raised. */
   spark?: boolean;
 }
@@ -1610,10 +1612,16 @@ export class Hud {
       const why = game.checkStarbase(p.id, n.id);
       extras.push({ id: 'starbase', label: 'STARBASE', cost: game.shipCost(p, 'starbase'), icon: 'bastion', accent: PAL.sky, act: () => this.actions.starbase(n.id), tip: `Build a Starbase to guard ${n.name}. It also repairs your ships here.`, dis: why });
     }
-    if (hearth && (p.hangarUsed >= p.hangarCap * 0.7 || (p.bays ?? 0) > 0) && game.checkBay(p.id) !== 'No room for more bays') {
+    // The Hangar Bay is always on the Hearth's card, from the first second to the last bay. (It used to
+    // appear at seven tenths of the hangar and go when all were built: a button that comes and goes by
+    // rules nobody was told is bad to use, and a player should know from the start where more room for
+    // ships comes from.)
+    if (hearth) {
+      const bays = p.bays ?? 0;
+      const all = bays >= ECON.bayMax;
       extras.push({
-        id: 'bay', label: 'HANGAR BAY', plus: `+${ECON.bayHangar}`, cost: game.bayCost(p), icon: 'hangar', accent: PAL.teal, act: () => this.actions.bay(),
-        tip: `Build a Hangar Bay at your Hearth: room for ${ECON.bayHangar} more hangar space. Each bay costs more than the last.`, dis: game.checkBay(p.id),
+        id: 'bay', label: 'HANGAR BAY', plus: all ? undefined : `+${ECON.bayHangar}`, cost: game.bayCost(p), right: all ? `${bays}/${ECON.bayMax}` : undefined, icon: 'hangar', accent: PAL.teal, act: () => this.actions.bay(),
+        tip: `Build a Hangar Bay at your Hearth: room for ${ECON.bayHangar} more hangar space. Each bay costs more than the last. You have built ${bays} of ${ECON.bayMax}.`, dis: all ? 'Every bay is built' : game.checkBay(p.id),
         // (It asks to be seen when it is needed: the hangar nearly full.)
         calls: p.hangarUsed >= p.hangarCap * 0.9,
       });
@@ -1690,7 +1698,7 @@ export class Hud {
   }
 
   private projectRight(e: Project): string {
-    return e.progress ? `${IC.boon}${e.progress.have}/${e.progress.need}` : `${IC.ember}${e.cost}`;
+    return e.right ?? (e.progress ? `${IC.boon}${e.progress.have}/${e.progress.need}` : `${IC.ember}${e.cost}`);
   }
 
   private projectWidth(e: Project): number {

@@ -335,11 +335,11 @@ const screen = (page) => ev(page, () => window.__app.screen);
     const g = s.game;
     const p = g.player;
     if (!g.victories.includes('ascension')) g.victories[g.victories.length - 1] = 'ascension';
-    p.bays = Math.max(1, p.bays ?? 0);
+    // (No bay yet, and a hangar with plenty of room: the button is there all the same.)
     p.boons = Math.min(p.boons, 6);
     s.clearSelection();
     s.selectNode(p.capital);
-    return { bays: p.bays, boons: p.boons };
+    return { bays: p.bays ?? 0, boons: p.boons, used: p.hangarUsed, cap: p.hangarCap };
   });
   await page.waitForTimeout(300);
   const projects = await ev(page, () => {
@@ -348,10 +348,23 @@ const screen = (page) => ev(page, () => window.__app.screen);
     const gate = u.rectOf('gate');
     return { bay: card ? [card.w, card.h, !card.disabled] : null, gate: gate ? [gate.w, gate.h, !!gate.disabled] : null, W: window.__app.hud.W };
   });
-  check(projects.bay && projects.bay[2] && projects.gate && projects.gate[2], `the Hearth offers its Hangar Bay, and its Starfire Gate waits for Boons (bay ${projects.bay}, gate ${projects.gate})`);
+  check(proj.bays === 0 && projects.bay && projects.bay[2] && projects.gate && projects.gate[2], `the Hearth offers its Hangar Bay from the start (${proj.used}/${proj.cap} of the hangar used, no bay yet), and its Starfire Gate waits for Boons (bay ${projects.bay}, gate ${projects.gate})`);
   check(await click('bay'), 'the Hangar Bay is a button');
   const bought = await ev(page, () => window.__app.session.game.player.bays);
   check(bought === proj.bays + 1, `and a click builds it (${proj.bays} > ${bought} bays)`);
+  // With every bay built the button stays, and says so.
+  const allBuilt = await ev(page, async () => {
+    const app = window.__app;
+    const p = app.session.game.player;
+    const before = p.bays;
+    p.bays = 10;
+    await new Promise((r) => setTimeout(r, 250));
+    const r = app.hud.ui.rectOf('bay');
+    const out = r ? { there: true, disabled: !!r.disabled, tip: typeof r.tip === 'function' ? r.tip() : r.tip } : { there: false };
+    p.bays = before;
+    return out;
+  });
+  check(allBuilt.there && allBuilt.disabled && /Every bay is built/.test(allBuilt.tip ?? ''), `with every bay built it is still there, greyed, with the reason (${(allBuilt.tip ?? '').slice(-40)})`);
   await page.screenshot({ path: '.shots/qol-projects.png' });
   await ev(page, () => window.__app.session.clearSelection());
   // (The third playtest.) Fields link: a Bastion at level II two jumps from the Hearth, and its card and

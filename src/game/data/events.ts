@@ -1,5 +1,6 @@
-import type { Faction } from '../types';
+import type { Faction, Unit } from '../types';
 import type { Game } from '../Game';
+import { UNITS } from './units';
 
 export interface EventCtx {
   node: number;
@@ -11,7 +12,11 @@ export interface EventChoice {
   hint: string;
   /** What the choice affects, as picture ids (ui/subjects.ts), when its hint would show it wrong. */
   icons?: string[];
+  /** The hint as it stands for this house at this place, when it depends on them (which ship is taken). */
+  hintFor?: (g: Game, f: Faction, ctx: EventCtx) => string | null;
   cond?: (g: Game, f: Faction, ctx: EventCtx) => boolean;
+  /** Why the choice cannot be made, when `cond` says no for another reason than its price. */
+  why?: (g: Game, f: Faction, ctx: EventCtx) => string | null;
   run: (g: Game, f: Faction, ctx: EventCtx) => string;
   /** AI never picks options with this flag unless nothing else is available. */
   passive?: boolean;
@@ -27,6 +32,30 @@ export interface EventDef {
 
 const leave = (text = 'You leave it undisturbed.'): EventChoice => ({ label: 'Move on', hint: 'Nothing happens.', passive: true, run: () => text });
 const afford = (n: number) => (_g: Game, f: Faction) => f.embers >= n;
+
+/**
+ * The ship an offering takes: the one that found the place, unless that is the Ark, which is never
+ * offered; then the least costly of the house's other ships that are there. Null when there is none.
+ * (The one that "found" a place is the first of a fleet to be counted there. When that was the Ark, the
+ * offering could not be made at all, with six other ships standing by.)
+ */
+/** Was the place found by an Ark (which still flies)? */
+const byArk = (g: Game, ctx: EventCtx) => {
+  const u = g.units.get(ctx.unit);
+  return !!u && !u.dead && u.type === 'ark';
+};
+
+export function offering(g: Game, f: Faction, ctx: EventCtx): Unit | null {
+  const fit = (u: Unit | undefined): u is Unit => !!u && !u.dead && u.owner === f.id && u.type !== 'ark' && u.type !== 'fighter' && !UNITS[u.type].isStatic;
+  const finder = g.units.get(ctx.unit);
+  if (fit(finder)) return finder;
+  let best: Unit | null = null;
+  for (const u of g.unitList) {
+    if (!fit(u) || u.node !== ctx.node || u.lane) continue;
+    if (!best || UNITS[u.type].cost < UNITS[best.type].cost || (UNITS[u.type].cost === UNITS[best.type].cost && u.id < best.id)) best = u;
+  }
+  return best;
+}
 
 export const EVENTS: EventDef[] = [
   {
@@ -86,15 +115,23 @@ export const EVENTS: EventDef[] = [
     choices: [
       {
         label: 'Offer the ship', hint: '[!Lose the ship that found it]. Gain [a random Epic Boon].',
-        cond: (g, _f, ctx) => {
-          const u = g.units.get(ctx.unit);
-          return !!u && u.type !== 'ark';
+        // (The card names the ship: the player should know what the rift will take.)
+        hintFor: (g, f, ctx) => {
+          const u = offering(g, f, ctx);
+          if (!u) return null;
+          const name = UNITS[u.type].name;
+          if (u.id === ctx.unit) return `[!Lose the ${name} that found it]. Gain [a random Epic Boon].`;
+          return `[!Lose a ${name}] (${byArk(g, ctx) ? 'your Ark found it, and an Ark is never offered' : 'the ship that found it is gone'}). Gain [a random Epic Boon].`;
         },
+        cond: (g, f, ctx) => !!offering(g, f, ctx),
+        why: (g, _f, ctx) => `${byArk(g, ctx) ? 'Your Ark is never offered' : 'The ship that found it is gone'}, and no other ship of yours is here. Close this, send a ship here and choose then: the rift will wait behind the ! at the edge of the screen.`,
         run: (g, f, ctx) => {
-          const u = g.units.get(ctx.unit);
-          if (u) g.killUnit(u, -1);
+          const u = offering(g, f, ctx);
+          if (!u) return 'The rift falls silent.';
+          const name = UNITS[u.type].name;
+          g.killUnit(u, -1);
           const c = g.grantRandomCard(f, ['epic']);
-          return c ? `The ship vanishes into the dark. In its place: ${c.name}.` : 'The ship vanishes. The rift falls silent.';
+          return c ? `The ${name} vanishes into the dark. In its place: ${c.name}.` : `The ${name} vanishes. The rift falls silent.`;
         },
       },
       { label: 'Seal the rift', hint: '[+120 Lore].', run: (g, f) => (g.addLore(f, 120), 'Your scholars study the rift as it closes.') },
@@ -214,6 +251,7 @@ export const EVENTS: EventDef[] = [
       {
         label: 'Recruit their captain', hint: '[!Costs 150 Embers]. Your Ark gains [a level].',
         cond: (g, f) => f.embers >= 150 && g.units.has(f.ark),
+        why: (g, f) => (g.units.has(f.ark) ? null : 'Your Ark is lost: there is no bridge for a captain to join. Rebuild it at your Hearth first.'),
         run: (g, f) => {
           g.addEmbers(f, -150);
           const ark = g.units.get(f.ark);
