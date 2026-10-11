@@ -907,14 +907,21 @@ select optgroup {
 .perk .pn {
   font-family: var(--display);
   font-size: 10px;
+  /* (A long name, the Choir of the First Flame, takes two lines here: they must not touch.) */
+  line-height: 1.5;
   color: var(--gold);
-  margin-bottom: 4px;
+  margin-bottom: 5px;
 }
 
 .perk .pd {
   color: var(--mist);
   font-size: 15px;
   line-height: 1.3;
+}
+
+/* (A house: what it is, then what it has, as two paragraphs and not one.) */
+.perk .pd + .pd {
+  margin-top: 6px;
 }
 
 .legacy-badge {
