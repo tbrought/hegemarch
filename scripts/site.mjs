@@ -245,6 +245,18 @@ try {
   const dest = await page.$$eval('#destiny-list h3', (els) => els.map((e) => e.textContent));
   check('six Destinies, Conquest first', dest.length === 6 && dest[0] === 'CONQUEST', dest.join(', '));
   await page.screenshot({ path: '.shots/site-destinies.png' });
+  // The Ages run has its section: the climb the game's title screen draws, with the six ages named under it.
+  await scrollTo(page, '#ages');
+  await page.waitForTimeout(600);
+  const ages = await page.evaluate(() => {
+    const c = document.querySelector('#ages canvas.mode-art');
+    const d = c.getContext('2d').getImageData(0, 0, c.width, c.height).data;
+    let n = 0;
+    for (let i = 3; i < d.length; i += 4) if (d[i] > 0) n++;
+    return { names: [...document.querySelectorAll('#ages .ages-names li')].map((x) => x.textContent).join(' '), drawn: n };
+  });
+  check('the Ages run has its section: the climb, with the six ages named', ages.names === 'STONE BRONZE IRON POWDER MACHINE SPACE' && ages.drawn > 50, `${ages.names}; ${ages.drawn} pixels`);
+  await page.screenshot({ path: '.shots/site-ages.png' });
   await scrollTo(page, '#play');
   check('the Daily Run clock counts down', /^\d\d:\d\d:\d\d$/.test(await page.textContent('[data-daily-clock]')), await page.textContent('[data-daily-clock]'));
   check('every section is lit by the end', (await page.$$eval('.band', (els) => els.every((e) => e.classList.contains('lit')))) === true);
@@ -253,6 +265,22 @@ try {
   check('the page offers the game', links >= 2, `${links} links`);
   check('the game and the download are where the links point', (await fetch(base + 'play/')).ok && (await fetch(base + 'hegemarch.zip')).ok);
   check('the footer shows the version', /Hegemarch v\d+\.\d+\.\d+/.test(await page.textContent('footer')), await page.textContent('footer'));
+  const foot = await page.$$eval('footer a', (els) => els.map((e) => e.getAttribute('href')));
+  check('the footer leads to itch.io and to the source', foot.includes('https://hegemarch.itch.io/hegemarch') && foot.includes('https://github.com/tbrought/hegemarch'), foot.join(' '));
+  // The page carries its own typefaces: it asks nothing of another site.
+  const asked = await page.evaluate(async () => {
+    await document.fonts.ready;
+    return {
+      fonts: document.fonts.check('12px "Press Start 2P"') && document.fonts.check('16px "Pixelify Sans"'),
+      outside: performance.getEntriesByType('resource').map((e) => e.name).filter((u) => !u.startsWith(location.origin) && !u.startsWith('data:')),
+    };
+  });
+  check('its typefaces come with it, and it asks nothing of another site', asked.fonts && asked.outside.length === 0, asked.outside.join(' '));
+  check("the sound button is the game's: a speaker and the words", (await page.$('.sound svg')) !== null && /^SOUND (ON|OFF)$/.test((await page.textContent('.sound')).trim()), (await page.textContent('.sound')).trim());
+  const lost = await (await fetch(base + '404.html')).text();
+  check('an address with nothing at it has a page of its own, with the way back', /THIS WORLD IS DARK/.test(lost) && /href="\/play\/"/.test(lost) && !lost.includes('{{'));
+  const game = await (await fetch(base + 'play/')).text();
+  check("the game's page says what it is to a link, and says so with scripts off", /<noscript>/.test(game) && /name="description"/.test(game) && /theme-color/.test(game) && !/fonts\.googleapis/.test(game));
   check('nothing runs off the side', await noSideScroll(page));
   await page.screenshot({ path: '.shots/site-full.png', fullPage: true });
   check('no errors on the page', errors.length === 0, errors.slice(0, 3).join(' | '));
@@ -271,7 +299,7 @@ try {
       return { play: play.bottom <= hero.bottom + 1 && play.top >= 0, logo: logo.right <= window.innerWidth && logo.left >= 0, clear: logo.bottom < live.top && (live.bottom <= play.top + 1 || live.right <= play.left + 1) };
     });
     check(`${name}: the title, the live panel and PLAY all fit the opening screen`, fits.play && fits.logo && fits.clear, JSON.stringify(fits));
-    for (const sel of ['#run', '#houses', '#ships', '#boons', '#destinies', '#play']) await scrollTo(o.page, sel);
+    for (const sel of ['#run', '#houses', '#ships', '#boons', '#destinies', '#ages', '#play']) await scrollTo(o.page, sel);
     check(`${name}: nothing runs off the side`, await noSideScroll(o.page));
     check(`${name}: every section lit`, await o.page.$$eval('.band', (els) => els.every((e) => e.classList.contains('lit'))));
     await o.page.screenshot({ path: `.shots/site-${name}-full.png`, fullPage: true });

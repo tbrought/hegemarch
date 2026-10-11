@@ -208,7 +208,9 @@ export class Hero {
     } else this.music?.play(null);
     const btn = this.$('.sound');
     if (btn) {
-      btn.textContent = this.sound ? 'SOUND: ON' : 'SOUND: OFF';
+      // (The game's own sound button: a speaker, with waves or a cross, and the words.)
+      const marks = this.sound ? '<path d="M5 3h1v3H5zM7 2h1v5H7z"/>' : '<path d="M5 3h1v1H5zM7 3h1v1H7zM6 4h1v1H6zM5 5h1v1H5zM7 5h1v1H7z"/>';
+      btn.innerHTML = `<svg viewBox="0 0 9 9" shape-rendering="crispEdges" aria-hidden="true"><path d="M0 3h2v3H0zM2 2h1v5H2zM3 1h1v7H3z"/>${marks}</svg><span>${this.sound ? 'SOUND ON' : 'SOUND OFF'}</span>`;
       btn.setAttribute('aria-pressed', String(this.sound));
     }
   }

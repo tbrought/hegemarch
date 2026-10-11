@@ -1,3 +1,24 @@
+/* The game's two typefaces travel with it (src/fonts): the single file a player downloads looks the
+   same with no connection, and nothing is asked of another site. Both are under the SIL Open Font
+   License 1.1 (src/fonts/OFL-*.txt):
+   Pixelify Sans, Copyright 2021 The Pixelify Sans Project Authors (https://github.com/eifetx/Pixelify-Sans).
+   Press Start 2P, Copyright 2012 The Press Start 2P Project Authors (cody@zone38.net), with Reserved Font Name "Press Start 2P". */
+@font-face {
+  font-family: 'Pixelify Sans';
+  font-style: normal;
+  font-weight: 400 700;
+  font-display: swap;
+  src: url('./fonts/pixelify-sans.woff2') format('woff2');
+}
+
+@font-face {
+  font-family: 'Press Start 2P';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url('./fonts/press-start-2p.woff2') format('woff2');
+}
+
 /* Hegemarch: DOM menus in the Ember-16 palette. The game itself is a pixel canvas. */
 :root {
   color-scheme: dark;

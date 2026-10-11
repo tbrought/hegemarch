@@ -114,6 +114,8 @@ try {
   console.log(errors.length ? 'errors:\n' + errors.join('\n') : 'no errors');
 } catch (e) {
   console.error(e);
+  // (On the same stream as the rest: a failure that comes and goes must leave its reason behind.)
+  console.log(`FAILED: ${e?.message ?? e}`);
   console.log(errors.join('\n'));
   await shot('failure');
 } finally {

@@ -101,9 +101,12 @@ fs.mkdirSync(path.join(out, 'itch'), { recursive: true });
 // The website: the landing page (and anything beside it in site/), the game, the download.
 for (const f of fs.readdirSync('site')) {
   const from = path.join('site', f);
-  if (f === 'index.html') fs.writeFileSync(path.join(out, 'site', f), fs.readFileSync(from, 'utf8').replaceAll('{{VERSION}}', version));
+  if (f.endsWith('.html')) fs.writeFileSync(path.join(out, 'site', f), fs.readFileSync(from, 'utf8').replaceAll('{{VERSION}}', version));
   else fs.copyFileSync(from, path.join(out, 'site', f));
 }
+// The typefaces, and their licences (the game carries its own copies inside its one file).
+fs.mkdirSync(path.join(out, 'site', 'fonts'), { recursive: true });
+for (const f of fs.readdirSync(path.join('src', 'fonts'))) fs.copyFileSync(path.join('src', 'fonts', f), path.join(out, 'site', 'fonts', f));
 fs.copyFileSync(siteScript, path.join(out, 'site', 'site.js'));
 fs.writeFileSync(path.join(out, 'site', 'play', 'index.html'), game);
 const download = zip([

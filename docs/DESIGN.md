@@ -481,7 +481,18 @@ Measured with `npm run simulate` and `npm run balance:passive`. Speeds are ½×,
 - **Ships**: character-art sprites (from the proposal mockup plus new hulls), rotated into 16
   directions with 4×4 supersampled nearest-neighbour sampling, tinted per house, with a 1-px shadow.
 - **Text**: two bitmap fonts drawn from tinted atlases: a variable-width 5×7 font with lowercase and
-  a 3×5 caps font for the map.
+  a 3×5 caps font for the map. The menus are set in Pixelify Sans and Press Start 2P, and the game
+  carries its own copies (`src/fonts`, under the Open Font License): they are inside the one file a
+  player downloads, so it looks the same with no connection, and the website serves them itself, so
+  neither asks anything of another site.
+- **The small things** (the sweep of October 2026, `npm run test:qol`): the setup opens on the house,
+  sector and difficulty chosen last time; Escape is BACK on every page behind the title screen; house
+  cards and tick boxes are worked with the keyboard, and a page drawn again keeps the keyboard where
+  it was; Settings has fullscreen (where the browser offers it) and, in a run, the track that plays
+  with NEXT; a hidden tab is silent, the music stopping with the game; the dialogs that are read
+  (Status, How to Play, the Comms Log) are one size; How to Play in a run is the same five numbered
+  moves as on the title screen; the goal card names its goal in full; on a screen that is touched
+  and has no mouse, the title says the game needs one.
 - **Sound**: Web Audio pulse waves (12.5/25/50% duty), triangle and LFSR noise; a jingle plays when a
   world is kindled.
 - **Music** (`src/audio/Music.ts`) is asked for by mood, and every mood has several tracks: the title
@@ -536,9 +547,16 @@ and not pictures of it, and it cannot drift from the rules.
 - **The draft is the game's draft.** A real, unplayed run of the chosen house deals the choices by
   the game's rules (rarities, Blueprints, Pacts, the Ashen Remnant's fourth choice), with rerolls;
   after four picks it sends the visitor to the game.
+- **The Ages run** has a section of its own: the climb the game's title screen draws for that mode
+  (the swift line of each age marching toward an Ark), with the six ages named under it.
 - **Nothing moves unasked** for a visitor who prefers reduced motion (a still picture and a button
   stand in for the live sector), the sector waits while it is off screen, and with scripts off the
   page is the picture, the pitch and the PLAY button.
+- **Round the page**: a footer with the ways on (the game, itch.io, the source) and the licence of the
+  typefaces; a page of its own for an address with nothing at it (`site/404.html`: a dark world and
+  the way back); what a link to the site or to the game shows when it is shared (title, a line, the
+  picture); the color of the browser round it on a phone. The game's own page says it needs
+  JavaScript to a browser that has it off, where it used to be blank.
 
 ## 7. Architecture
 

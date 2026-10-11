@@ -3,6 +3,7 @@
  * that what the page shows is the game and not a picture of it. `npm run package` builds this file
  * into release/site/site.js; the page itself is site/index.html.
  */
+import { startAges } from './ages';
 import { Draft } from './draft';
 import { startFleet } from './fleet';
 import { Hero } from './hero';
@@ -34,6 +35,8 @@ function boot() {
   const draft = draftEl && part('draft', () => new Draft(draftEl));
   const destinies = byId('destiny-list');
   if (destinies) part('destinies', () => startDestinies(destinies));
+  const agesEl = byId('ages-art');
+  const ages = agesEl && part('ages', () => startAges(agesEl));
   part('lane', startLane);
   part('pictures', startPictures);
   part('daily', startDailyClock);
@@ -47,6 +50,7 @@ function boot() {
     try {
       hero?.frame(dt);
       houses?.frame(dt, now / 1000);
+      ages?.(now / 1000);
       drawStages(now / 1000);
     } catch (err) {
       console.error(err);

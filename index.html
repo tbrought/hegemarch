@@ -4,14 +4,23 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Hegemarch</title>
+    <meta name="description" content="Hegemarch: an 8-bit real-time space strategy roguelite. Light up a dark sector, world by world, and be crowned the next Hegemarch." />
+    <meta name="theme-color" content="#0b0a1a" />
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Play Hegemarch" />
+    <meta property="og:description" content="An 8-bit real-time space strategy roguelite, free in your browser. Light up a dark sector, world by world." />
+    <meta property="og:image" content="https://hegemarch.com/screenshot.png" />
+    <meta name="twitter:card" content="summary_large_image" />
     <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 8 8%27 shape-rendering=%27crispEdges%27%3E%3Crect width=%278%27 height=%278%27 fill=%27%230b0a1a%27/%3E%3Crect x=%273%27 y=%271%27 width=%272%27 height=%271%27 fill=%27%23ff8a1f%27/%3E%3Crect x=%272%27 y=%272%27 width=%274%27 height=%274%27 fill=%27%23ff8a1f%27/%3E%3Crect x=%273%27 y=%273%27 width=%272%27 height=%272%27 fill=%27%23ffd23f%27/%3E%3Crect x=%273%27 y=%276%27 width=%272%27 height=%271%27 fill=%27%23ff8a1f%27/%3E%3C/svg%3E" />
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Pixelify+Sans:wght@400;600&family=Press+Start+2P&display=swap" />
   </head>
   <body>
     <canvas id="game"></canvas>
     <div id="ui"></div>
+    <noscript>
+      <p style="position: fixed; inset: 0; margin: 0; display: grid; place-items: center; padding: 24px; background: #0b0a1a; color: #c8cbe6; font: 18px/1.5 system-ui, sans-serif; text-align: center">
+        Hegemarch is a game that runs in your browser, and it needs JavaScript to run. Turn JavaScript on for this page and load it again.
+      </p>
+    </noscript>
     <script type="module" src="/src/main.ts"></script>
   </body>
 </html>

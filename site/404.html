@@ -1,0 +1,139 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Nothing here · Hegemarch</title>
+    <meta name="robots" content="noindex" />
+    <meta name="theme-color" content="#0b0a1a" />
+    <link rel="icon" href="/favicon.ico" sizes="32x32" />
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <style>
+      /* The page for an address where there is nothing: a dark world, and the way back. It stands
+         alone (any address may be answered with it), so its paths begin at the root of the site. */
+      @font-face {
+        font-family: 'Pixelify Sans';
+        font-weight: 400 700;
+        font-display: swap;
+        src: url('/fonts/pixelify-sans.woff2') format('woff2');
+      }
+      @font-face {
+        font-family: 'Press Start 2P';
+        font-weight: 400;
+        font-display: swap;
+        src: url('/fonts/press-start-2p.woff2') format('woff2');
+      }
+      :root {
+        --void: #0b0a1a;
+        --night: #1b1838;
+        --indigo: #2f2a5c;
+        --slate: #4b4f8a;
+        --dusk: #7f86c4;
+        --mist: #c8cbe6;
+        --bone: #fff4e0;
+        --gold: #ffd23f;
+        --wine: #8c1d40;
+        --display: 'Press Start 2P', 'Courier New', monospace;
+        --body: 'Pixelify Sans', 'Trebuchet MS', system-ui, sans-serif;
+        --px: 3px;
+        color-scheme: dark;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      html,
+      body {
+        height: 100%;
+      }
+      body {
+        margin: 0;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 18px;
+        padding: 32px 16px;
+        background: var(--void);
+        color: var(--mist);
+        font: 19px/1.5 var(--body);
+        text-align: center;
+      }
+      .logo {
+        font-family: var(--display);
+        font-size: clamp(22px, 6vw, 44px);
+        letter-spacing: 0.06em;
+        color: var(--gold);
+        text-decoration: none;
+        text-shadow: 3px 3px 0 var(--wine);
+      }
+      svg {
+        width: 96px;
+        height: 96px;
+      }
+      h1 {
+        margin: 0;
+        font-family: var(--display);
+        font-size: 14px;
+        font-weight: normal;
+        letter-spacing: 0.05em;
+        color: var(--bone);
+      }
+      p {
+        margin: 0;
+        max-width: 40ch;
+      }
+      .actions {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: center;
+        gap: 14px;
+        margin-top: 8px;
+      }
+      .btn {
+        font-family: var(--display);
+        font-size: 12px;
+        letter-spacing: 0.04em;
+        color: var(--bone);
+        background: var(--night);
+        text-decoration: none;
+        padding: 14px 16px 13px;
+        margin: var(--px);
+        box-shadow:
+          0 calc(var(--px) * -1) 0 0 var(--slate),
+          0 var(--px) 0 0 var(--slate),
+          calc(var(--px) * -1) 0 0 0 var(--slate),
+          var(--px) 0 0 0 var(--slate);
+      }
+      .btn.primary {
+        color: var(--gold);
+        background: var(--wine);
+        box-shadow:
+          0 calc(var(--px) * -1) 0 0 var(--gold),
+          0 var(--px) 0 0 var(--gold),
+          calc(var(--px) * -1) 0 0 0 var(--gold),
+          var(--px) 0 0 0 var(--gold);
+      }
+      .btn:hover,
+      .btn:focus-visible {
+        background: var(--indigo);
+        color: var(--bone);
+      }
+      footer {
+        margin-top: 12px;
+        font-size: 15px;
+        color: var(--slate);
+      }
+    </style>
+  </head>
+  <body>
+    <a class="logo" href="/">HEGEMARCH</a>
+    <svg viewBox="0 0 16 16" shape-rendering="crispEdges" aria-hidden="true"><g fill="#4b4f8a"><rect x="7" y="2" width="3" height="1"/><rect x="5" y="3" width="7" height="1"/><rect x="4" y="4" width="9" height="1"/><rect x="3" y="5" width="11" height="1"/><rect x="3" y="6" width="11" height="1"/><rect x="2" y="7" width="13" height="1"/><rect x="2" y="8" width="13" height="1"/><rect x="2" y="9" width="13" height="1"/><rect x="3" y="10" width="11" height="1"/><rect x="3" y="11" width="11" height="1"/><rect x="4" y="12" width="9" height="1"/><rect x="5" y="13" width="7" height="1"/><rect x="7" y="14" width="3" height="1"/></g><g fill="#2f2a5c"><rect x="9" y="11" width="4" height="1"/><rect x="11" y="9" width="2" height="2"/><rect x="5" y="12" width="5" height="1"/><rect x="4" y="5" width="2" height="1"/></g></svg>
+    <h1>THIS WORLD IS DARK</h1>
+    <p>There is nothing at this address. The sector is this way.</p>
+    <div class="actions">
+      <a class="btn primary" href="/play/">▶ PLAY</a>
+      <a class="btn" href="/">THE WEBSITE</a>
+    </div>
+    <footer>Hegemarch v{{VERSION}}</footer>
+  </body>
+</html>
