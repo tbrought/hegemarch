@@ -688,6 +688,25 @@ try {
   check('continue restores the run', Math.abs((await ev(() => window.__app.session.game.time)) - t0) < 2);
   check('restored run starts paused', await ev(() => window.__app.session.paused));
 
+  // ---- A Destiny that runs on a clock shows the clock, a rival's too ----
+  const clk = await ev(() => {
+    const a = window.__app;
+    const g = a.session.game;
+    const rival = g.aliveEmpires().find((f) => f.id !== g.playerId);
+    const v = ['domination', 'relics', 'treasury'].find((x) => g.victories.includes(x));
+    if (!v || !rival) return null;
+    const key = v === 'domination' ? 'holdTimer' : v === 'relics' ? 'relicTimer' : 'treasuryTimer';
+    const was = rival[key];
+    rival[key] = 30;
+    const mine = g.player[key];
+    g.player[key] = 10;
+    const c = a.hud.destinyClocks();
+    rival[key] = was;
+    g.player[key] = mine;
+    return { texts: c.map((x) => x.text), mine: c.map((x) => x.mine), left: c.map((x) => x.left) };
+  });
+  check('houses on the clock for a Destiny are countdowns, the soonest first', !clk || (clk.texts.length === 2 && clk.texts.every((t) => / IN \d+:\d\d$/.test(t)) && clk.left[0] <= clk.left[1] && clk.mine.includes(true) && clk.mine.includes(false) && clk.texts.some((t) => /YOURS IN/.test(t))), JSON.stringify(clk));
+
   // ---- Abandon and results ----
   await ev(() => window.__app.hud.modals.open({ kind: 'menu' }));
   await wait(150);

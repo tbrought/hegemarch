@@ -584,6 +584,14 @@ export class Renderer {
     }
   }
 
+  /** A world's level as three pips in a triangle: lit up to the level; the next one blinks while it is being raised. */
+  private levelPips(ctx: Ctx, x: number, y: number, n: GNode, color: string, mine: boolean) {
+    rect(ctx, x - 1, y - 1, 8, 7, PAL.void);
+    const rising = mine && n.buildQ.some((q) => q.kind === 'upgrade') && Math.floor(this.time * 3) % 2 === 0;
+    const at = [[0, 3], [4, 3], [2, 0]];
+    at.forEach(([px, py], i) => rect(ctx, x + px, y + py, 2, 2, i < n.level ? color : i === n.level && rising ? PAL.bone : PAL.slate));
+  }
+
   private drawLabels(ctx: Ctx, g: Game, explored: (i: number) => boolean, vis: (i: number) => boolean, ownerShown: (n: GNode) => number, view: ViewState) {
     const z = this.cam.zoom;
     if (z < STRATEGIC_ZOOM) {
@@ -606,10 +614,15 @@ export class Renderer {
       const near = z >= 0.11;
       const focus = view.selectedNode === n.id || view.hoverNode === n.id;
       if (!near && !focus && n.kind === 'planet' && owner < 0 && z < 0.05) continue;
-      const c = owner >= 0 ? g.factions[owner].color : n.kind === 'planet' ? PAL.dusk : n.kind === 'anomaly' ? PAL.violet : n.kind === 'relic' ? PAL.sky : n.kind === 'pirate' ? PAL.mist : PAL.pink;
+      // (A place with nothing left in it has its name in grey: no need to fly there again.)
+      const c = owner >= 0 ? g.factions[owner].color : g.siteSpent(n) ? PAL.slate : n.kind === 'planet' ? PAL.dusk : n.kind === 'anomaly' ? PAL.violet : n.kind === 'relic' ? PAL.sky : n.kind === 'pirate' ? PAL.mist : PAL.pink;
       let label = n.name.toUpperCase();
       if (!near) label = fit(label, 60, 'tiny');
-      textOutline(ctx, label, x - Math.round(textWidth(label, 'tiny') / 2), y, c, PAL.void, 'tiny');
+      const lx = x - Math.round(textWidth(label, 'tiny') / 2);
+      textOutline(ctx, label, lx, y, c, PAL.void, 'tiny');
+      // How far a world has been raised: three pips beside its name, lit up to its level, at any zoom
+      // that shows the name (so the worlds still to raise can be found without clicking through them).
+      if (n.kind === 'planet' && owner >= 0 && (owner === g.playerId || vis(n.id))) this.levelPips(ctx, lx - 9, y - 1, n, c, owner === g.playerId);
       if (near && n.kind === 'planet' && vis(n.id)) {
         const sub = owner >= 0 ? `${'I'.repeat(n.level)}${n.capitalOf >= 0 ? ' HEARTH' : n.role ? ' ' + n.role.toUpperCase() : ''}` : this.ground ? 'WILD LAND' : `${n.size} WORLD`;
         textOutline(ctx, sub, x - Math.round(textWidth(sub, 'tiny') / 2), y + 6, owner >= 0 ? shade(c) === PAL.indigo ? PAL.dusk : light(shade(c)) : PAL.slate, PAL.void, 'tiny');

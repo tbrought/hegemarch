@@ -5,7 +5,7 @@ import { CARD_BY_ID } from '../game/data/cards';
 import { ERAS, LAST_CRADLE_ERA, LINE_SHORT, SPACE } from '../game/data/eras';
 import { RELIC_BY_ID } from '../game/data/relics';
 import { isWarship, UNITS } from '../game/data/units';
-import { ASCENSION_BOONS, DOMINATION_SHARE, GATE_CHARGE, relicsRequired, treasuryTarget, VICTORIES } from '../game/data/victories';
+import { ASCENSION_BOONS, DOMINATION_HOLD, DOMINATION_SHARE, GATE_CHARGE, RELIC_HOLD, relicsRequired, TREASURY_HOLD, treasuryTarget, VICTORIES } from '../game/data/victories';
 import { HOLD_FIELD } from '../game/constants';
 import { ECON, PLANETS, ROLES, ROLE_ORDER } from '../game/data/worlds';
 import type { Faction, GNode, Note, Unit, UnitType, VictoryId } from '../game/types';
@@ -813,9 +813,47 @@ export class Hud {
   // Right-side indicators: decisions waiting, Ark level-ups
   // ---------------------------------------------------------------------
 
+  /**
+   * The houses that are on the clock for a Destiny right now, soonest first: holding 60% of the worlds,
+   * holding the relics, holding the hoard, charging the Gate. Each is a countdown on screen, the
+   * player's own and, more to the point, a rival's that has to be broken in time.
+   */
+  destinyClocks(): { id: string; left: number; mine: boolean; text: string; tip: string; node: number }[] {
+    const g = this.g;
+    const out: { id: string; left: number; mine: boolean; text: string; tip: string; node: number }[] = [];
+    const has = (v: VictoryId) => g.victories.includes(v);
+    for (const f of g.aliveEmpires()) {
+      const mine = f.id === g.playerId;
+      const add = (v: VictoryId, left: number, own: string, rival: string, node: number) => {
+        const name = VICTORIES[v].name.toUpperCase();
+        out.push({
+          id: `clock-${f.id}-${v}`, left: Math.max(0, left), mine, node,
+          text: mine ? `${name} · YOURS IN ${fmtTime(Math.max(0, left))}` : `${f.name.toUpperCase()} · ${name} IN ${fmtTime(Math.max(0, left))}`,
+          tip: mine ? own : `${f.name} win by ${VICTORIES[v].name} when this runs out. ${rival}`,
+        });
+      };
+      if (has('domination') && f.holdTimer > 0) add('domination', DOMINATION_HOLD - f.holdTimer, `You hold ${Math.round(DOMINATION_SHARE * 100)}% of all worlds. Keep them until this runs out and the crown is yours.`, 'Take worlds from them, or kindle more of your own, to break their hold.', f.capital);
+      if (has('relics') && f.relicTimer > 0) add('relics', RELIC_HOLD - f.relicTimer, 'You hold most of the relics. Keep your Hearth until this runs out and the crown is yours.', 'Take their Hearth: its relics go to whoever takes it.', f.capital);
+      if (has('treasury') && f.treasuryTimer > 0) add('treasury', TREASURY_HOLD - f.treasuryTimer, 'Your hoard is full. Keep it until this runs out and the crown is yours.', 'Take their worlds: each one seizes part of their hoard.', f.capital);
+      if (has('ascension') && f.gate) add('ascension', GATE_CHARGE - f.gate.charge, 'Your Starfire Gate is charging. Protect it until this runs out and the crown is yours.', 'Destroy their Starfire Gate before it is charged.', f.gate.node);
+    }
+    return out.sort((a, b) => a.left - b.left);
+  }
+
   private drawIndicators() {
     const g = this.s.screen.g;
     let y = 31;
+    for (const c of this.destinyClocks().slice(0, 3)) {
+      const w = textWidth(c.text, 'tiny') + 10;
+      const x = this.W - 3 - w;
+      const b = this.bannerRect;
+      if (b.w > 0 && x < b.x + b.w + 2 && y < b.y + b.h + 2) y = b.y + b.h + 2;
+      const seen = c.node >= 0 && this.s.explored(c.node);
+      this.ui.button(g, c.id, x, y, w, 11, c.text, () => seen && this.s.focusNode(c.node), {
+        font: 'tiny', color: c.mine ? PAL.gold : PAL.red, primary: !c.mine, pulse: c.left < 30, tip: `${c.tip}${seen ? ' Click to look.' : ''}`,
+      });
+      y += 13;
+    }
     y = this.goals.draw(g, this.W - 3, y, this.bannerRect);
     const pending = this.g.prompts.filter((x) => x.result === undefined);
     if (pending.length) {
@@ -1503,13 +1541,15 @@ export class Hud {
         let bx = x;
         for (const [t, c] of counts) {
           const label = `×${c}`;
-          const bw = 13 + textWidth(label, 'tiny');
+          // (The chip is as wide as its ship: a Dreadnought is wider than the rest, and used to get no picture at all.)
+          const spr = shipSprite(t, p.color, 0);
+          const iw = Math.max(12, spr.width + 2);
+          const bw = iw + 1 + textWidth(label, 'tiny');
           if (bx + bw > x + w) break;
           const id = 'comp-' + t;
           box(gx, bx, y, bw, 12, this.ui.isHot(id) ? PAL.indigo : PAL.night, PAL.indigo);
-          const spr = shipSprite(t, p.color, 0);
-          if (spr.width <= 12) gx.drawImage(spr, bx + 6 - (spr.width >> 1), y + 6 - (spr.height >> 1));
-          text(gx, label, bx + 12, y + 4, PAL.mist, 'tiny');
+          gx.drawImage(spr, bx + Math.round(iw / 2) - (spr.width >> 1), y + 6 - (spr.height >> 1));
+          text(gx, label, bx + iw, y + 4, PAL.mist, 'tiny');
           this.ui.add({ id, x: bx, y, w: bw, h: 12, onClick: () => this.s.selectType(t), tipTitle: `${UNITS[t].name} ×${c}`, tip: `${GLOSS_BY_ID[t]?.text ?? UNITS[t].short} Click to select only these.` });
           bx += bw + 2;
         }

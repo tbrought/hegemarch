@@ -529,6 +529,19 @@ export class Game {
     return this.pathHops[a * this.nodes.length + b];
   }
 
+  /**
+   * Is this a place with nothing left in it: an anomaly that has been looked into, a vault whose relic
+   * is gone, the Corsair base once it is destroyed, the Maw once the Hollow are purged? (The map writes
+   * the name of such a place in grey.)
+   */
+  siteSpent(n: GNode): boolean {
+    if (n.kind === 'anomaly') return !n.anomaly;
+    if (n.kind === 'relic') return !n.relic;
+    if (n.kind === 'pirate') return !this.pirates.alive;
+    if (n.kind === 'rift') return !!this.crisis?.dead;
+    return false;
+  }
+
   /** Has this house seen that place to be guarded (by anything that would fire on its ships)? */
   seenGuarded(f: Faction, nodeId: number): boolean {
     return !!f.explored[nodeId] && this.hostilePowerAt(nodeId, f.id) > 1;

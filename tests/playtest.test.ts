@@ -568,3 +568,22 @@ describe('saving changes nothing', () => {
     expect(g.wallsOf(g.nodes[g.player.capital])).toBeGreaterThan(0.45);
   });
 });
+
+describe('the map says what is left', () => {
+  it('a place with nothing left in it is known as spent: an opened anomaly, an empty vault, a dead Corsair base, a purged Maw', () => {
+    const g = mk({ size: 'medium', forcedVictories: ['conquest', 'crisis', 'relics'] });
+    const anomaly = g.nodes.find((n) => n.kind === 'anomaly' && n.anomaly)!;
+    const vault = g.nodes.find((n) => n.kind === 'relic' && n.relic)!;
+    const base = g.nodes.find((n) => n.kind === 'pirate')!;
+    const maw = g.nodes.find((n) => n.kind === 'rift')!;
+    for (const n of [anomaly, vault, base, maw]) expect(g.siteSpent(n)).toBe(false);
+    anomaly.anomaly = null;
+    vault.relic = null;
+    g.pirates.alive = false;
+    g.crisis!.dead = true;
+    for (const n of [anomaly, vault, base, maw]) expect(g.siteSpent(n)).toBe(true);
+    // A world or a star is never "spent".
+    expect(g.siteSpent(g.nodes[g.player.capital])).toBe(false);
+    expect(g.siteSpent(g.nodes.find((n) => n.kind === 'star')!)).toBe(false);
+  });
+});

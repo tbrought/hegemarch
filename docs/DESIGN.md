@@ -275,6 +275,17 @@ Measured with `npm run simulate` and `npm run balance:passive`. Speeds are ½×,
   In the game, the words that pointing at a text would explain carry the same dotted underline
   (tooltips, tip cards, the banner, Boon cards): `Ui.termsFor` picks the terms, the text marks exactly
   those (`marksOf`), so every marked word has its box and every box its mark.
+- **What the map and the HUD did not show** (second round of the first playtest): a world's **level**
+  is three pips beside its name, lit up to the level, at any zoom that shows the name, and the next
+  pip blinks while the world is being raised (the level used to be small text, zoomed in only, so
+  finding the worlds not yet at III meant clicking through them). A place with **nothing left in
+  it** has its name in grey (`Game.siteSpent`: an opened anomaly, an empty vault, the Corsair base
+  once destroyed, the Maw once purged). A house that is **on the clock for a Destiny** is a
+  countdown in the right-hand column (`Hud.destinyClocks`): "DOMINION · YOURS IN 1:32" in gold,
+  "VAEL IMPERIUM · DOMINION IN 1:32" in red, pulsing in the last half minute, with what to do about
+  it in its tooltip and a click that looks at the place; before, a hold was one line in the log and
+  a tooltip that counted up. And the fleet card's chips are as wide as their ship, so a
+  **Dreadnought** has its picture (it was the one ship too wide for the chip, and got none).
 - **What the player sees is what happened.** A ship of the player's is never lost silently: the log
   says "Lost at Cinder to Ancient Sentinels: 2 Scouts, 1 Striker", one line per place that counts up
   while more are lost there (`Note.loss`), with an alarm only when the place is off screen. A shield
