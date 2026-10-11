@@ -1,6 +1,6 @@
 import { ABILITY_BY_ID, LEARNABLE_ABILITIES } from './data/abilities';
 import { AMBITIONS } from './data/ambitions';
-import { BLUEPRINT_IDS, CARDS, CARD_BY_ID, RARITY_LUCK, RARITY_WEIGHT, type CardDef } from './data/cards';
+import { BLUEPRINT_IDS, CARDS, CARD_BY_ID, LEGENDARY_BY, RARITY_LUCK, RARITY_WEIGHT, type CardDef } from './data/cards';
 import { ERAS, LAST_CRADLE_ERA, SPACE, UPGRADE_MAX, UPGRADE_SPREAD } from './data/eras';
 import { GOAL_BY_ID, GOAL_REWARD } from './data/goals';
 import { EVENT_BY_ID, ANOMALY_EVENTS, OFFER_EVENTS } from './data/events';
@@ -1619,6 +1619,22 @@ export class Game {
       }
     } else if (hasBp) f.bpPity = 0;
     else f.bpPity++;
+    // Legendary Lineage: a run shows at least one Legendary (see `LEGENDARY_BY`). It takes the place of
+    // a Common Boon if there is one, and never of a Blueprint.
+    if (f.isPlayer && this.config.unlockLegendary && !this.cradle && out.length) {
+      this.ui.offersDealt = (this.ui.offersDealt ?? 0) + 1;
+      if (out.some((id) => CARD_BY_ID[id].rarity === 'legendary')) this.ui.legendarySeen = 1;
+      else if (!this.ui.legendarySeen && this.ui.offersDealt >= LEGENDARY_BY) {
+        const legends = pool.filter((c) => c.rarity === 'legendary');
+        const spare = (id: string) => CARD_BY_ID[id].cat !== 'blueprint';
+        let at = out.findIndex((id) => spare(id) && CARD_BY_ID[id].rarity === 'common');
+        if (at < 0) at = out.findIndex(spare);
+        if (legends.length && at >= 0) {
+          out[at] = this.rng.pick(legends).id;
+          this.ui.legendarySeen = 1;
+        }
+      }
+    }
     return out;
   }
 

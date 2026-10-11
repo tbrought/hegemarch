@@ -5,8 +5,10 @@
 import { describe, expect, it } from 'vitest';
 import { Game } from '../src/game/Game';
 import { FIRE_SPOOL, HOLD_FIELD, JUMP_CHARGE, TICK, UNDER_FIRE } from '../src/game/constants';
+import { CARD_BY_ID, LEGENDARY_BY } from '../src/game/data/cards';
 import { GOAL_REWARD, GOALS } from '../src/game/data/goals';
 import type { GameConfig } from '../src/game/types';
+import { EPIC_ODDS, perkDesc, PERKS, UNLOCKS } from '../src/meta/legacy';
 import { GLOSS_BY_ID, termsIn } from '../src/ui/glossary';
 
 function mk(opts: Partial<GameConfig> = {}): Game {
@@ -691,5 +693,96 @@ describe('a rival house wants a derelict too', () => {
     // (Whatever the army makes of it, it is not the two-ship errand: that never flies into guns.)
     const errand = g.unitsOf(rival.id).filter((u) => u.dest === n.id);
     expect(errand.length === 0 || errand.length > 2 || before > 0).toBe(true);
+  });
+});
+
+describe('what the Hall of Heirs sells for rarer Boons can be felt', () => {
+  /** A run's first Boon offers for a player who takes the first card of each. */
+  function offers(g: Game, n: number): string[][] {
+    const out: string[][] = [];
+    for (let i = 0; i < n; i++) {
+      g.player.pendingDrafts = 1;
+      const offer = g.ensureOffer(g.player)!;
+      out.push(offer);
+      g.cmdChooseCard(g.playerId, offer[offer.length - 1]);
+    }
+    return out;
+  }
+  const has = (offer: string[], rarity: string) => offer.some((id) => CARD_BY_ID[id].rarity === rarity);
+
+  it('Fortunate Stars: an Epic Boon is in as many offers as the Hall says, at every rank', () => {
+    const max = PERKS.find((p) => p.id === 'luck')!.costs.length;
+    expect(EPIC_ODDS.length).toBe(max + 1);
+    const seen: number[] = [];
+    for (let rank = 0; rank <= max; rank++) {
+      let all = 0;
+      let epic = 0;
+      for (let seed = 1; seed <= 90; seed++) {
+        for (const offer of offers(mk({ seed: 700 + seed * 13, perks: { luck: rank }, unlockLegendary: seed % 2 === 0, unlockPacts: seed % 3 === 0 }), 9)) {
+          all++;
+          if (has(offer, 'epic')) epic++;
+        }
+      }
+      seen.push((100 * epic) / all);
+      expect(Math.abs(seen[rank] - EPIC_ODDS[rank])).toBeLessThan(4);
+    }
+    // Each rank can be felt: several more offers in a hundred, and twice as many at the last rank as with none.
+    for (let rank = 1; rank <= max; rank++) expect(seen[rank] - seen[rank - 1]).toBeGreaterThan(3);
+    expect(seen[max]).toBeGreaterThan(seen[0] * 1.8);
+  });
+
+  it('the Hall says the odds at the rank the player holds, and what the next rank brings', () => {
+    const pk = PERKS.find((p) => p.id === 'luck')!;
+    expect(perkDesc(pk, 0)).toContain(`[${EPIC_ODDS[0]}%]`);
+    expect(perkDesc(pk, 0)).toContain(`[${EPIC_ODDS[1]}%]`);
+    expect(perkDesc(pk, 2)).toContain(`[${EPIC_ODDS[2]}%]`);
+    expect(perkDesc(pk, 2)).toContain(`[${EPIC_ODDS[3]}%] at the next rank`);
+    expect(perkDesc(pk, 3)).toContain(`[${EPIC_ODDS[3]}%]`);
+    expect(perkDesc(pk, 3)).not.toContain('next rank');
+    // (Every other perk says what it always said.)
+    for (const other of PERKS) if (other.id !== 'luck') expect(perkDesc(other, 1)).toBe(other.desc);
+    expect(UNLOCKS.find((u) => u.id === 'legendary')!.desc).toMatch(/at least one in every run/);
+  });
+
+  it('Legendary Lineage: every run shows a Legendary Boon by the fifth offer, in place of a Common one', () => {
+    let forced = 0;
+    for (let seed = 1; seed <= 40; seed++) {
+      const g = mk({ seed: 900 + seed * 7 });
+      const dealt = offers(g, LEGENDARY_BY);
+      expect(dealt.some((o) => has(o, 'legendary'))).toBe(true);
+      if (!dealt.slice(0, LEGENDARY_BY - 1).some((o) => has(o, 'legendary'))) {
+        forced++;
+        // The fifth offer is as big as any other: the Legendary took a card's place, it did not add one.
+        expect(dealt[LEGENDARY_BY - 1].length).toBeGreaterThanOrEqual(3);
+        expect(dealt[LEGENDARY_BY - 1].length).toBeLessThanOrEqual(5);
+        expect(new Set(dealt[LEGENDARY_BY - 1]).size).toBe(dealt[LEGENDARY_BY - 1].length);
+      }
+      // Once is the promise: after it the odds are the odds again.
+      expect(g.ui.legendarySeen).toBe(1);
+    }
+    // (Left to chance, most runs would have shown none in five offers.)
+    expect(forced).toBeGreaterThan(20);
+  });
+
+  it('without it no Legendary is dealt, and a rival house is promised nothing', () => {
+    for (let seed = 1; seed <= 12; seed++) {
+      const g = mk({ seed: 900 + seed * 7, unlockLegendary: false });
+      expect(offers(g, 8).some((o) => has(o, 'legendary'))).toBe(false);
+      expect(g.ui.offersDealt).toBeUndefined();
+    }
+    const g = mk();
+    const rival = g.empires().find((f) => f.id !== g.playerId)!;
+    for (let i = 0; i < 8; i++) g.generateOffer(rival);
+    expect(g.ui.offersDealt).toBeUndefined();
+  });
+
+  it('the promise is kept across a save: the count of offers is part of the run', () => {
+    const g = mk({ seed: 907 });
+    const first = offers(g, 3);
+    const again = Game.load(JSON.parse(JSON.stringify(g.serialize())));
+    expect(again.ui.offersDealt).toBe(g.ui.offersDealt);
+    const rest = offers(again, LEGENDARY_BY - 3);
+    expect([...first, ...rest].some((o) => has(o, 'legendary'))).toBe(true);
+    expect(offers(g, LEGENDARY_BY - 3)).toEqual(rest);
   });
 });

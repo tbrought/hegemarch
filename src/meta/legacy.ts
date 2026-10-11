@@ -10,20 +10,39 @@ export interface PerkDef {
   costs: number[];
 }
 
+/**
+ * How many Boon offers in a hundred hold an Epic Boon, by rank of Fortunate Stars: what the Hall of
+ * Heirs tells the player the perk does. Measured, and kept true by a test (tests/playtest.test.ts).
+ */
+export const EPIC_ODDS = [20, 28, 35, 41];
+
 export const PERKS: PerkDef[] = [
   { id: 'oldCoin', name: 'Old Coin', desc: '[+100 starting Embers] per rank.', costs: [40, 80, 120] },
   { id: 'loreSeed', name: 'Lorekeepers', desc: 'Start each run with [40 Lore] per rank, so your first Boon comes sooner.', costs: [50, 100] },
   { id: 'escort', name: 'Veteran Escort', desc: 'Begin each run with [+1 Guardian] per rank.', costs: [60, 120] },
   { id: 'archivist', name: 'Archivist', desc: '[+1 Boon reroll] per rank.', costs: [50, 100] },
-  { id: 'luck', name: 'Fortunate Stars', desc: 'Rare, Epic and Legendary Boons [appear more often] (per rank).', costs: [60, 100, 150] },
+  { id: 'luck', name: 'Fortunate Stars', desc: 'Rarer Boons [appear more often] with each rank.', costs: [60, 100, 150] },
   { id: 'bastion', name: 'Ancestral Walls', desc: 'Your Hearth gains [+25% hull] per rank.', costs: [40, 80] },
   { id: 'secondBreath', name: 'Second Breath', desc: 'Your Hearth’s Last Stand calls [twice the defenders].', costs: [70] },
 ];
 
 export const UNLOCKS = [
   { id: 'pacts', name: 'Forbidden Archives', desc: '[Every double-edged Pact] can appear among your Boons.', cost: 80 },
-  { id: 'legendary', name: 'Legendary Lineage', desc: '[Legendary Boons] can appear among your choices.', cost: 120 },
+  { id: 'legendary', name: 'Legendary Lineage', desc: '[Legendary Boons] can appear among your choices: [at least one in every run], by your fifth choice at the latest.', cost: 120 },
 ] as const;
+
+/**
+ * A perk's text in the Hall of Heirs at the rank the player holds. A perk whose effect is a chance says
+ * the chance, now and at the next rank: "more often" alone cannot be checked by playing, and a player
+ * who has paid for it should not have to wonder whether it did anything.
+ */
+export function perkDesc(pk: PerkDef, rank: number): string {
+  if (pk.id !== 'luck') return pk.desc;
+  const max = pk.costs.length;
+  const now = `An Epic is in [${EPIC_ODDS[rank]}%] of your Boon choices`;
+  if (rank >= max) return `${pk.desc} ${now} (${EPIC_ODDS[0]}% without this).`;
+  return `${pk.desc} ${now} now, [${EPIC_ODDS[rank + 1]}%] at ${rank ? 'the next rank' : `rank 1, ${EPIC_ODDS[max]}% at rank ${max}`}.`;
+}
 
 export interface LegacyReport {
   lines: [string, number][];

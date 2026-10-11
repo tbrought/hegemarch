@@ -13,7 +13,7 @@ import { TRAIT_BY_ID } from '../game/data/traits';
 import { VICTORIES } from '../game/data/victories';
 import { dailySeed, hashString, randomSeed } from '../game/rng';
 import type { Difficulty, GameConfig, MapSize } from '../game/types';
-import { applyRunToProfile, computeLegacy, PERKS, UNLOCKS, type LegacyReport } from '../meta/legacy';
+import { applyRunToProfile, computeLegacy, perkDesc, PERKS, UNLOCKS, type LegacyReport } from '../meta/legacy';
 import { clearRun, defaultProfile, hasRun, loadProfile, loadRun, saveProfile, saveRun, todayKey, type Profile } from '../meta/profile';
 import { fmtTime, Renderer } from '../render/Renderer';
 import { Attract } from './Attract';
@@ -1002,7 +1002,7 @@ export class App {
       const rank = p.perks[pk.id] ?? 0;
       const max = pk.costs.length;
       const cost = pk.costs[rank];
-      return `<div class="perk px-box"><div><div class="pn">${esc(pk.name.toUpperCase())} <span class="dim">${rank}/${max}</span></div><div class="pd">${glossHtml(pk.desc)}</div></div>
+      return `<div class="perk px-box"><div><div class="pn">${esc(pk.name.toUpperCase())} <span class="dim">${rank}/${max}</span></div><div class="pd">${glossHtml(perkDesc(pk, rank))}</div></div>
         ${rank >= max ? '<span class="good">MASTERED</span>' : `<button class="small ${p.legacy >= cost ? 'primary' : 'disabled'}" data-sa="perk:${pk.id}">◆${cost}</button>`}</div>`;
     }).join('');
     const unlocks = UNLOCKS.map((u) => {

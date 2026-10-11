@@ -157,6 +157,19 @@ About 60 Boons in four rarities across War, Wealth, Growth, Lore, Ward, Blueprin
 three minutes. If four drafts pass without a Blueprint, the next one always shows one. Rerolls,
 skipping for Embers and "decide later" are available.
 
+**Rarity.** A card is drawn by weight: Common 62, Rare 27, Epic 9, Legendary 2.2 (Blueprints ×1.6,
+Pacts ×0.55). An Epic is in about 20% of offers. Two things in the Hall of Heirs change that, and
+both now say in numbers what they do, because a playtester had bought every rank of both and seen
+nothing rarer than a Rare:
+- **Fortunate Stars** (three ranks) adds half again to the weight of Epic and Legendary Boons with
+  each rank (and moves a little from Common to Rare): an Epic in about 28%, 35% and 41% of offers
+  (`EPIC_ODDS`, kept true by a test that deals the offers). It used to make that 22%, 27% and 29%. The
+  Hall shows the odds at the rank held and at the next one.
+- **Legendary Lineage** lets Legendary Boons appear, and a run now shows at least one: if none has
+  been offered by the fifth offer (`LEGENDARY_BY`), that offer holds one, in place of a Common Boon
+  and never of a Blueprint. Left to their weight, four runs in five showed none at all. It is a
+  promise to the player only; a rival house draws as before.
+
 How Boons read:
 - **Effect text** is marked up in the data: `[gain]` draws teal, `[!drawback]` red, `{keyword}`
   gold, and game terms (ship types, roles, Embers, Lore, Hearth…) are found and drawn gold
