@@ -101,6 +101,11 @@ export class App {
   private savedLegacy: number | null = null;
   /** The day (UTC) the title screen was drawn for: when it turns, the daily run is a new one. */
   private menuDay = '';
+  /** The sound button in the corner of every menu screen, and what it says now (see `syncSound`). */
+  private soundBtn: HTMLButtonElement;
+  private soundState = '';
+  /** Was the sound still asleep when the click or key now being handled began? Then that click woke it. */
+  private gestureWoke = false;
 
   constructor() {
     this.canvas = document.getElementById('game') as HTMLCanvasElement;
@@ -114,12 +119,26 @@ export class App {
     this.music = new Music(this.sfx);
     this.setup.guided = !this.profile.tutorialDone;
     if (!this.profile.heirs.includes(this.setup.heir)) this.setup.heir = this.profile.heirs[0];
-    const unlock = () => {
+    // Sound starts with the page where the browser lets it: for a visitor who clicked PLAY on the site
+    // the click carries over, and the title music is there with the title. Everywhere else a browser
+    // plays nothing before the first click or key on the page; that click, wherever it lands, starts
+    // it, and until then the sound button says so. (It used to start at the first click and say
+    // nothing: a silent title screen, and music from nowhere at the first button pressed.)
+    this.sfx.unlock();
+    this.music.play('title');
+    const unlock = (e: Event) => {
+      if (e.type === 'pointerdown' || e.type === 'keydown') this.gestureWoke = !this.sfx.live;
       this.sfx.unlock();
       if (!this.music.playing) this.music.play(this.screen === 'game' ? 'night' : 'title');
     };
-    window.addEventListener('pointerdown', unlock, { capture: true });
-    window.addEventListener('keydown', unlock, { capture: true });
+    // (A touch counts as the player's say-so when the finger lifts, not when it lands.)
+    for (const ev of ['pointerdown', 'keydown', 'pointerup', 'click']) window.addEventListener(ev, unlock, { capture: true });
+    this.soundBtn = document.createElement('button');
+    this.soundBtn.id = 'sound';
+    this.soundBtn.className = 'small';
+    this.soundBtn.hidden = true;
+    this.soundBtn.addEventListener('click', () => this.toggleSound());
+    document.body.appendChild(this.soundBtn);
     this.ui.addEventListener('click', (e) => this.onScreenAction(e));
     window.addEventListener('keydown', (e) => {
       if (e.code === 'Escape' && this.screen === 'setup' && this.setup.confirm) {
@@ -159,6 +178,7 @@ export class App {
         drawModeArt(this.ui, now / 1000);
       }
       if (this.screen === 'menu') this.tickMenu();
+      this.syncSound();
     } catch (err) {
       console.error(err);
     }
@@ -462,6 +482,50 @@ export class App {
     saveRun(s.game.serialize());
   }
 
+  /**
+   * The sound button: in the corner of every menu screen (in a run, sound is under Menu, Settings). It
+   * says what is heard: on, off, or waiting for the browser, which plays nothing before the first
+   * click on a page.
+   */
+  private syncSound() {
+    const b = this.soundBtn;
+    if (this.screen === 'game' || this.screen === 'loading') {
+      this.soundState = '';
+      b.hidden = true;
+      return;
+    }
+    const state = this.profile.settings.muted ? 'off' : this.sfx.live ? 'on' : 'asleep';
+    if (state === this.soundState) return;
+    this.soundState = state;
+    b.hidden = false;
+    const say = { on: 'SOUND ON', off: 'SOUND OFF', asleep: 'CLICK FOR SOUND' }[state];
+    const tip = {
+      on: 'Music and sound effects are on. Click to turn them off. (Volumes are under Settings.)',
+      off: 'Music and sound effects are off. Click to turn them on.',
+      asleep: 'A browser plays no sound before your first click on a page. Click anywhere and the music starts.',
+    }[state];
+    const marks = state === 'off' ? '<path d="M5 3h1v1H5zM7 3h1v1H7zM6 4h1v1H6zM5 5h1v1H5zM7 5h1v1H7z"/>' : '<path d="M5 3h1v3H5zM7 2h1v5H7z"/>';
+    b.dataset.state = state;
+    b.dataset.tip = tip;
+    b.setAttribute('aria-label', `${say}. ${tip}`);
+    b.setAttribute('aria-pressed', String(state !== 'off'));
+    b.innerHTML = `<svg viewBox="0 0 9 9" shape-rendering="crispEdges" aria-hidden="true"><path d="M0 3h2v3H0zM2 2h1v5H2zM3 1h1v7H3z"/>${marks}</svg><span>${say}</span>`;
+  }
+
+  private toggleSound() {
+    const st = this.profile.settings;
+    // (The click that woke the sound has turned it on: it is not also a click to turn it off.)
+    if (this.gestureWoke && !st.muted) return;
+    this.setMuted(!st.muted);
+  }
+
+  private setMuted(muted: boolean) {
+    this.profile.settings.muted = muted;
+    saveProfile(this.profile);
+    this.sfx.apply(this.profile.settings);
+    if (!muted) this.sfx.play('ui', 0.5);
+  }
+
   private applySettings() {
     this.sfx.apply(this.profile.settings);
     this.screenObj.setPixelSize(this.profile.settings.pixelSize);
@@ -698,6 +762,10 @@ export class App {
         this.showSettings();
         break;
       }
+      case 'sound':
+        this.setMuted(b === 'off');
+        this.showSettings();
+        break;
       case 'pixels':
         this.profile.settings.pixelSize = b as 'small' | 'auto' | 'large';
         saveProfile(this.profile);
@@ -1037,6 +1105,7 @@ export class App {
     this.put('settings', `<div class="screen${this.crt()}"><div class="page px-box" style="max-width:620px">
       <h1>SETTINGS</h1>
       <div class="kv">
+        <b>Sound</b><div class="row"><button class="small ${s.muted ? '' : 'active'}" data-sa="sound:on">ON</button><button class="small ${s.muted ? 'active' : ''}" data-sa="sound:off">OFF</button></div>
         <b>Volume</b><input type="range" min="0" max="1" step="0.05" value="${s.master}" data-setting="master">
         <b>Effects</b><input type="range" min="0" max="1" step="0.05" value="${s.sfx}" data-setting="sfx">
         <b>Music</b><input type="range" min="0" max="1" step="0.05" value="${s.music}" data-setting="music">

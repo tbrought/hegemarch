@@ -15,6 +15,8 @@ export interface RunRecord {
 }
 
 export interface Settings {
+  /** Sound off: nothing is heard, whatever the volumes below say (the sound button on every menu screen). */
+  muted: boolean;
   master: number;
   sfx: number;
   music: number;
@@ -62,7 +64,7 @@ const KEY = 'hegemarch.profile.v1';
 const RUN_KEY = 'hegemarch.run.v1';
 
 export function defaultSettings(): Settings {
-  return { master: 0.7, sfx: 0.8, music: 0.5, edgePan: false, tips: true, autoPause: true, crt: false, pixelSize: 'auto', explainTerms: true };
+  return { muted: false, master: 0.7, sfx: 0.8, music: 0.5, edgePan: false, tips: true, autoPause: true, crt: false, pixelSize: 'auto', explainTerms: true };
 }
 
 export function defaultProfile(): Profile {

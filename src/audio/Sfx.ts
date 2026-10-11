@@ -33,7 +33,18 @@ export class Sfx {
     this.settings = settings;
   }
 
-  /** Audio can only start after a user gesture. */
+  /**
+   * Is sound coming out? In most browsers none may start before the first click or key on the page
+   * (a visitor who came from a click on the same site is the exception: the click carries over).
+   */
+  get live(): boolean {
+    return this.ctx?.state === 'running';
+  }
+
+  /**
+   * Make the sound engine, or wake it. Called when the page opens, where it plays at once if the
+   * browser lets it, and at every click and key, the first of which starts it everywhere else.
+   */
   unlock() {
     if (this.ctx) {
       if (this.ctx.state === 'suspended') void this.ctx.resume();
@@ -79,7 +90,7 @@ export class Sfx {
     this.settings = s;
     if (!this.ctx || !this.master || !this.sfxGain || !this.musicGain) return;
     const t = this.ctx.currentTime;
-    this.master.gain.setTargetAtTime(s.master * 0.6, t, 0.02);
+    this.master.gain.setTargetAtTime(s.muted ? 0 : s.master * 0.6, t, 0.02);
     this.sfxGain.gain.setTargetAtTime(s.sfx, t, 0.02);
     this.musicGain.gain.setTargetAtTime(s.music * 0.5, t, 0.05);
   }

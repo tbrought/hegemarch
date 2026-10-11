@@ -433,6 +433,14 @@ Measured with `npm run simulate` and `npm run balance:passive`. Speeds are ½×,
 - **Sound**: Web Audio pulse waves (12.5/25/50% duty), triangle and LFSR noise; a sequencer plays a
   title theme, a calm "night" loop and a "war" loop when your worlds or fleets are fighting; a
   jingle plays when a world is kindled.
+- **Sound that says where it is.** A browser plays nothing before the first click or key on a page,
+  so the title screen used to be silent and the music came from nowhere at the first button pressed.
+  The sound engine is now made when the page opens: where the browser allows it, the title theme
+  plays with the title; everywhere else the first click or key, wherever it lands, starts it. A
+  **sound button** in the corner of every menu screen says which: SOUND ON, SOUND OFF, or CLICK FOR
+  SOUND while the browser waits. One click on it turns everything off or on (`settings.muted`, kept
+  apart from the volumes); the click that woke the sound does not also turn it off. Settings has the
+  same switch, on the menus and in a run. `npm run test:sound` checks it under both browser rules.
 
 ### The website
 
@@ -502,6 +510,8 @@ the same game with or without rendering, and a saved run continues identically.
   NaN, no negative Embers, hull within bounds, every unit somewhere, every living house holding its
   Hearth…) and every 8 minutes the game is saved, loaded and run on next to the original, which must
   stay byte-identical. `--ai` lets the AI play every house to reach late wars and every victory.
+- `test:sound`: the sound button and the first click, with a browser that waits for one and with one
+  that does not, at desktop and phone widths.
 - `test:uifuzz`, `test:layouts`, `test:menus`: random play through the real UI (fails on any error or
   a dialog that cannot be left), every dialog at the extremes of screen size and content, and every
   menu over the live sector.

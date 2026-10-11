@@ -62,6 +62,57 @@ body {
   pointer-events: auto;
 }
 
+/* ------------------------------------------------------------------ sound */
+
+/* One button in the corner of every menu screen: what is heard, and a click to change it. It fits in
+   the margin above a page, so it covers nothing. */
+#sound {
+  position: fixed;
+  top: 0;
+  right: 4px;
+  z-index: 30;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 7px;
+  font-size: 9px;
+  color: var(--mist);
+}
+
+#sound[hidden] {
+  display: none;
+}
+
+#sound svg {
+  width: 12px;
+  height: 12px;
+  fill: currentColor;
+  flex: none;
+}
+
+#sound[data-state='off'] {
+  color: var(--dusk);
+}
+
+/* (Waiting for the browser: it asks for the click that starts the music.) */
+#sound[data-state='asleep'] {
+  color: var(--gold);
+  animation: sound-call 1.4s steps(2, jump-none) infinite;
+}
+
+@keyframes sound-call {
+  50% {
+    color: var(--bone);
+  }
+}
+
+@media (max-width: 900px) {
+  #sound:not([data-state='asleep']) span {
+    display: none;
+  }
+}
+
+
 /* ------------------------------------------------------------------ screens */
 
 .screen {
@@ -1015,8 +1066,9 @@ table.stats tr.total td {
 }
 
 @media (max-width: 560px) {
+  /* (The top margin keeps room for the sound button in the corner.) */
   .screen {
-    padding: 18px 16px 30px;
+    padding: 30px 16px 30px;
   }
   .kv {
     grid-template-columns: 1fr;
@@ -1032,6 +1084,10 @@ table.stats tr.total td {
   }
 
   .pip {
+    animation: none;
+  }
+
+  #sound[data-state='asleep'] {
     animation: none;
   }
 }

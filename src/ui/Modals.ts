@@ -830,7 +830,7 @@ export class Modals {
   private settings(g: Ctx) {
     const st = this.s.profile.settings;
     const w = 220;
-    const h = 150;
+    const h = 164;
     const { x, y } = this.frame(g, w, h, 'SETTINGS');
     this.closeButton(g, x, y, w);
     const save = () => {
@@ -838,6 +838,11 @@ export class Modals {
       this.s.hooks.applySettings();
     };
     let ly = y + 20;
+    this.ui.button(g, 'tg-sound', x + 10, ly, w - 20, 12, 'Sound', () => {
+      st.muted = !st.muted;
+      save();
+    }, { right: st.muted ? 'OFF' : 'ON', rightColor: st.muted ? PAL.slate : PAL.teal, align: 'left', tip: 'Music and sound effects, on or off. The volumes below are kept.' });
+    ly += 15;
     const vol = (label: string, key: 'master' | 'sfx' | 'music') => {
       text(g, label, x + 10, ly, PAL.mist);
       this.ui.slider(g, 'vol-' + key, x + 90, ly + 1, w - 104, st[key], (v) => {

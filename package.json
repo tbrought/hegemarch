@@ -29,6 +29,7 @@
     "test:ages": "node scripts/ages.mjs",
     "test:layouts": "node scripts/layouts.mjs",
     "test:stopped": "node scripts/stopped.mjs",
+    "test:sound": "node scripts/sound.mjs",
     "test:uifuzz": "node scripts/uifuzz.mjs",
     "test:fuzz": "tsx scripts/fuzz.ts"
   },
