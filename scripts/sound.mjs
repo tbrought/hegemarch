@@ -106,32 +106,62 @@ const state = (page) =>
   await page.click('#sound');
   await page.waitForTimeout(250);
   check(await page.evaluate(() => document.querySelector('[data-sa="sound:off"]').classList.contains('active')), 'and the corner button moves the switch in Settings');
-  // Settings lists every track; a click plays one, also when the sound was off.
-  const listed = await page.evaluate(() => [...document.querySelectorAll('[data-sa^="track:"]')].map((b) => b.dataset.sa.slice(6)));
-  check(listed.length >= 11 && new Set(listed).size === listed.length, `Settings lists the tracks (${listed.length})`);
+  // Settings has one row for the tracks: a selector, grouped by mood, and NEXT. Picking one plays it,
+  // also when the sound was off (it is, here).
+  const listed = await page.evaluate(() => ({
+    tracks: [...document.querySelectorAll('select[data-track] option')].map((o) => o.value),
+    groups: [...document.querySelectorAll('select[data-track] optgroup')].map((o) => o.label),
+    old: document.querySelectorAll('[data-sa^="track:"]').length,
+    box: (() => {
+      const r = document.querySelector('select[data-track]').getBoundingClientRect();
+      const pg = document.querySelector('.page').getBoundingClientRect();
+      return r.left >= pg.left && r.right <= pg.right && r.height < 40;
+    })(),
+  }));
+  check(listed.tracks.length >= 11 && new Set(listed.tracks).size === listed.tracks.length && listed.groups.length === 4 && listed.old === 0 && listed.box, `Settings has the tracks in one selector (${listed.tracks.length} tracks, ${listed.groups.join(', ')})`);
   const now = () =>
     page.evaluate(() => ({
       title: window.__app.music.title,
       mood: window.__app.music.playing,
       muted: window.__app.profile.settings.muted,
-      active: [...document.querySelectorAll('[data-sa^="track:"].active')].map((b) => b.dataset.sa.slice(6)).join(),
+      shown: document.querySelector('select[data-track]')?.value,
+      switchOn: document.querySelector('[data-sa="sound:on"]')?.classList.contains('active'),
     }));
-  for (const name of ['Starlanes', 'Last Stand', 'First Fires']) {
-    await page.click(`[data-sa="track:${name}"]`);
-    await page.waitForTimeout(400);
-    const t = await now();
-    check(t.title === name && t.active === name && !t.muted, `a click on ${name} plays it, and marks it (${t.mood}: ${t.title}, marked ${t.active}, sound ${t.muted ? 'off' : 'on'})`);
+  await page.selectOption('select[data-track]', 'Starlanes');
+  await page.waitForTimeout(400);
+  let t = await now();
+  check(t.title === 'Starlanes' && t.shown === 'Starlanes' && !t.muted && t.switchOn, `picking Starlanes plays it and turns the sound on (${t.mood}: ${t.title}, shown ${t.shown}, sound ${t.muted ? 'off' : 'on'})`);
+  for (const name of ['Last Stand', 'First Fires']) {
+    await page.selectOption('select[data-track]', name);
+    await page.waitForTimeout(300);
+    t = await now();
+    check(t.title === name && t.shown === name, `picking ${name} plays it (${t.mood}: ${t.title})`);
   }
-  // The music moves on by itself: the mark follows it.
+  // With the keyboard on the selector, the arrow keys go through the tracks.
+  await page.focus('select[data-track]');
+  await page.keyboard.press('ArrowDown');
+  await page.waitForTimeout(300);
+  t = await now();
+  check(t.title === 'Long Road' && t.shown === 'Long Road', `the arrow keys go through them (${t.title})`);
+  // NEXT goes on down the list, and round to the top.
+  await page.click('[data-sa="track-next"]');
+  await page.waitForTimeout(300);
+  t = await now();
+  check(t.title === 'Hegemarch' && t.shown === 'Hegemarch', `NEXT plays the next in the list, round to the first (${t.title})`);
+  await page.click('[data-sa="track-next"]');
+  await page.waitForTimeout(300);
+  t = await now();
+  check(t.title === 'The Empty Throne' && t.shown === 'The Empty Throne', `and the one after (${t.title})`);
+  // The music moves on by itself: the selector follows it.
   await page.evaluate(() => window.__app.music.skip());
   await page.waitForTimeout(300);
-  let t = await now();
-  check(t.title !== 'First Fires' && t.active === t.title, `when the music moves on, the mark moves with it (${t.title})`);
+  t = await now();
+  check(t.title !== 'The Empty Throne' && t.shown === t.title, `when the music moves on, the selector shows what plays (${t.title})`);
   await page.screenshot({ path: '.shots/sound-tracks.png', fullPage: false });
   await page.click('[data-sa="menu"]');
   await page.waitForTimeout(300);
   t = await now();
-  check(t.mood === 'title', `back on the title screen, the title music plays again (${t.title})`);
+  check(t.mood === 'title', `back on the title screen, the title music plays (${t.title})`);
   await page.click('[data-sa="settings"]');
   await browser.close();
 }

@@ -786,6 +786,47 @@ input[type='range'] {
   accent-color: var(--gold);
 }
 
+/* A selector, in the frame of a small button. */
+select {
+  font-family: var(--display);
+  font-size: 10px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--bone);
+  background: var(--night);
+  border: none;
+  padding: 8px 10px 7px;
+  margin: var(--px);
+  min-width: 0;
+  max-width: calc(100% - var(--px) * 2);
+  cursor: pointer;
+  box-shadow:
+    0 calc(var(--px) * -1) 0 0 var(--slate),
+    0 var(--px) 0 0 var(--slate),
+    calc(var(--px) * -1) 0 0 0 var(--slate),
+    var(--px) 0 0 0 var(--slate),
+    inset 0 calc(var(--px) * -1) 0 0 var(--indigo);
+}
+
+select:hover {
+  background: var(--indigo);
+}
+
+select:focus-visible {
+  outline: 2px dashed var(--gold);
+  outline-offset: 6px;
+}
+
+select option {
+  background: var(--night);
+  color: var(--bone);
+}
+
+select optgroup {
+  background: var(--night);
+  color: var(--dusk);
+}
+
 .check {
   display: flex;
   gap: 10px;

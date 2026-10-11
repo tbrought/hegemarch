@@ -96,7 +96,7 @@ export class App {
   /** The sound button in the corner of every menu screen, and what it says now (see `syncSound`). */
   private soundBtn: HTMLButtonElement;
   private soundState = '';
-  /** The track the list under Settings shows as playing (see `syncTracks`). */
+  /** The track the selector under Settings shows as playing (see `syncTracks`). */
   private trackShown: string | null = null;
   /** Was the sound still asleep when the click or key now being handled began? Then that click woke it. */
   private gestureWoke = false;
@@ -516,12 +516,24 @@ export class App {
     b.innerHTML = `<svg viewBox="0 0 9 9" shape-rendering="crispEdges" aria-hidden="true"><path d="M0 3h2v3H0zM2 2h1v5H2zM3 1h1v7H3z"/>${marks}</svg><span>${say}</span>`;
   }
 
-  /** Settings lists every track: the one that is playing is marked, also when the music moves on by itself. */
+  /** Settings has a selector of every track: it shows the one that is playing, also when the music moves on by itself. */
   private syncTracks() {
     const now = this.music.title;
     if (now === this.trackShown) return;
     this.trackShown = now;
-    for (const el of this.ui.querySelectorAll<HTMLElement>('[data-sa^="track:"]')) el.classList.toggle('active', el.dataset.sa === `track:${now}`);
+    const sel = this.ui.querySelector<HTMLSelectElement>('select[data-track]');
+    if (sel && now) sel.value = now;
+  }
+
+  /** Play a track picked under Settings. (Someone who picks a track wants to hear it: the sound comes on.) */
+  private pickTrack(name: string) {
+    const wasMuted = this.profile.settings.muted;
+    if (wasMuted) this.setMuted(false);
+    this.music.playTrack(name);
+    this.trackShown = null;
+    // (Drawn again only if the Sound switch has moved: the selector keeps the keyboard otherwise, and
+    // the arrow keys go through the tracks one by one.)
+    if (wasMuted && this.screen === 'settings') this.showSettings();
   }
 
   private toggleSound() {
@@ -625,6 +637,7 @@ export class App {
   private onScreenInput(e: Event) {
     const t = e.target as HTMLInputElement;
     if (t.id === 'seed-input') this.setup.seed = t.value;
+    if (t.dataset.track !== undefined) this.pickTrack(t.value);
     const key = t.dataset.setting as 'master' | 'sfx' | 'music' | undefined;
     if (key) {
       this.profile.settings[key] = parseFloat(t.value);
@@ -780,12 +793,11 @@ export class App {
         this.setMuted(b === 'off');
         this.showSettings();
         break;
-      case 'track':
-        // (Someone who picks a track wants to hear it.)
-        if (this.profile.settings.muted) this.setMuted(false);
-        this.music.playTrack(b);
-        this.showSettings();
+      case 'track-next': {
+        const i = TRACKS.findIndex((t) => t.name === this.music.title);
+        this.pickTrack(TRACKS[(i + 1) % TRACKS.length].name);
         break;
+      }
       case 'pixels':
         this.profile.settings.pixelSize = b as 'small' | 'auto' | 'large';
         saveProfile(this.profile);
@@ -1129,6 +1141,7 @@ export class App {
         <b>Volume</b><input type="range" min="0" max="1" step="0.05" value="${s.master}" data-setting="master">
         <b>Effects</b><input type="range" min="0" max="1" step="0.05" value="${s.sfx}" data-setting="sfx">
         <b>Music</b><input type="range" min="0" max="1" step="0.05" value="${s.music}" data-setting="music">
+        <b>Track</b><div class="row"><select data-track aria-label="The track that is playing" data-tip="${TRACKS.length} tracks. A run plays the ones that fit the moment, a new one each time; here you can hear any of them.">${MOODS.map(([m, label]) => `<optgroup label="${label}">${TRACKS.filter((t) => t.mood === m).map((t) => `<option value="${esc(t.name)}"${this.music.title === t.name ? ' selected' : ''}>${esc(t.name)}</option>`).join('')}</optgroup>`).join('')}</select><button class="small" data-sa="track-next" data-tip="Play the next track in the list.">NEXT</button></div>
         <b>Pixel size</b><div class="row">${(['small', 'auto', 'large'] as const).map((k) => `<button class="small ${s.pixelSize === k ? 'active' : ''}" data-sa="pixels:${k}" data-tip="${PIXEL_TIPS[k]}">${k.toUpperCase()}</button>`).join('')}</div>
       </div>
       <div style="display:grid;gap:12px;margin-top:20px">
@@ -1137,11 +1150,6 @@ export class App {
         ${tog('explainTerms', 'Explain game terms (Kindle, Hangar…) beside tooltips', s.explainTerms)}
         ${tog('crt', 'Scanline (CRT) filter', s.crt)}
         ${tog('edgePan', 'Scroll the map at the screen edge', s.edgePan)}
-      </div>
-      <h2>MUSIC</h2>
-      <div class="help">${TRACKS.length} tracks. A run plays the ones that fit the moment, a new one each time; here you can hear any of them.</div>
-      <div class="kv" style="margin-top:12px">
-        ${MOODS.map(([m, label]) => `<b>${label}</b><div class="row">${TRACKS.filter((t) => t.mood === m).map((t) => `<button class="small ${this.music.title === t.name ? 'active' : ''}" data-sa="track:${esc(t.name)}">${esc(t.name.toUpperCase())}</button>`).join('')}</div>`).join('')}
       </div>
       <h2>PROGRESS</h2>
       <div class="row"><button class="small" data-sa="replay-tutorial" data-tip="Your next new run starts with the guided First Night again, and the first-time tips come back.">REPLAY THE FIRST NIGHT</button>
