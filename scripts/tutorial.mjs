@@ -238,6 +238,8 @@ try {
   check('OK moves on to the next tip', await ev((id) => window.__app.hud.tips.current?.id !== id, tipId));
   check('a tip read with OK leaves no TIP button', !(await uiRect('tip-reopen')));
   await ev(() => {
+    // (A tip waits for free hands: nothing picked, no order pending.)
+    window.__app.session.clearSelection();
     const t = window.__app.hud.tips;
     if (!t.current) t.showFirst('hangar');
   });
@@ -265,7 +267,9 @@ try {
     s.modal = null;
     s.paused = false;
     while (a.hud.tips.current) a.hud.tips.dismiss();
-    s.profile.seenTips = s.profile.seenTips.filter((id) => id !== 'blueprint');
+    // (Every other tip counts as read, so that none comes up behind this one and holds the game again.)
+    s.profile.seenTips = ['role', 'raid', 'anomaly', 'anomalySeen', 'crisis', 'arkLevel', 'hangar', 'boonReady', 'fleet', 'lostWorld'];
+    a.hud.tips.queue.length = 0;
     a.hud.tips.showFirst('blueprint');
   });
   await tick(0.2);
@@ -278,12 +282,14 @@ try {
   await page.keyboard.press('Space');
   await wait(200);
   check('Space answers it (it does not pause on top of the hold)', await ev(() => window.__app.hud.tips.current?.id !== 'blueprint' && !window.__app.session.paused));
-  // (Other tips may have been waiting behind it: answer those too.)
+  // (Other tips may have been waiting behind it: put those away too, or the next one holds the game again.)
   await ev(() => {
-    while (window.__app.hud.tips.current) window.__app.hud.tips.dismiss();
+    const t = window.__app.hud.tips;
+    t.queue.length = 0;
+    while (t.current) t.dismiss();
   });
   await wait(600);
-  check('and the game goes on', await ev((t) => !window.__app.session.tipHold && window.__app.session.game.time > t, held.t));
+  check('and the game goes on', await ev((t) => !window.__app.session.tipHold && window.__app.session.game.time > t, held.t), await ev(() => JSON.stringify({ hold: window.__app.session.tipHold, paused: window.__app.session.paused, modal: window.__app.session.modal?.kind, tip: window.__app.hud.tips.current?.id, out: !!window.__app.session.game.outcome, t: window.__app.session.game.time })));
   await ev(() => (window.__app.session.profile.settings.autoPause = false));
 
   // ---- After the guide, a small box names a first goal; reaching it pays, and the box moves on ----

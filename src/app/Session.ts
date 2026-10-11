@@ -92,6 +92,24 @@ export class Session {
     return !!this.modal && this.modal.kind !== 'log';
   }
 
+  /**
+   * What the player may do right now. Everything that takes input asks this one question, so that a
+   * new way of stopping the game cannot forget to stop the orders too.
+   *  - 'play': everything.
+   *  - 'look': the game stands still (paused by the player, paused by an alarm, or held by a tip
+   *    card). The player may look around, pick things to read their cards, and open and answer
+   *    dialogs. No orders: a stopped game is not a place to queue up moves (the pause of an RTS, not
+   *    of a tactics game).
+   *  - 'none': the run is over.
+   */
+  get mode(): 'play' | 'look' | 'none' {
+    if (this.game.outcome) return 'none';
+    return this.paused || this.tipHold ? 'look' : 'play';
+  }
+
+  /** When an order was last refused because the game stands still (real seconds): what stops it flashes then. */
+  refusedAt = -99;
+
   reveal(): Reveal {
     const g = this.game;
     const p = g.player;
@@ -145,14 +163,15 @@ export class Session {
     if (picked.some((u) => !this.onMission(u))) for (const u of picked) if (this.onMission(u)) this.view.selected.delete(u.id);
     if (ids.length) this.view.selectedNode = -1;
     const own = this.ownSelected();
-    this.view.orderMode = order && own.some((u) => !UNITS[u.type].isStatic);
+    // (Picked while the game stands still, ships are looked at, not about to be sent.)
+    this.view.orderMode = order && this.mode === 'play' && own.some((u) => !UNITS[u.type].isStatic);
   }
 
   toggleUnit(id: number) {
     if (this.view.selected.has(id)) this.view.selected.delete(id);
     else this.view.selected.add(id);
     this.view.selectedNode = -1;
-    this.view.orderMode = this.ownSelected().length > 0;
+    this.view.orderMode = this.mode === 'play' && this.ownSelected().length > 0;
   }
 
   selectNode(id: number) {

@@ -181,6 +181,12 @@ export class Hud {
     this.tutorial.update(dt);
     this.tips.update(dt);
     this.goals.update(dt);
+    // While the game stands still nothing is about to be sent anywhere: clicks pick things to look at.
+    // When it goes on, ships that are still selected are ready for their order again.
+    const look = s.mode !== 'play';
+    if (look) s.view.orderMode = false;
+    else if (this.wasLook && !s.modal && s.ownSelected().some((u) => !UNITS[u.type].isStatic)) s.view.orderMode = true;
+    this.wasLook = look;
     this.nudge();
   }
 
@@ -299,6 +305,8 @@ export class Hud {
   private drawPaused() {
     const g = this.s.screen.g;
     const t = 'PAUSED · SPACE TO RESUME';
+    // (An order was just refused: this is why.)
+    const flash = performance.now() / 1000 - this.s.refusedAt < 1.2 && Math.floor(performance.now() / 110) % 2 === 0;
     const w = textWidth(t, 'tiny') + 10;
     let x = Math.round(this.W / 2 - w / 2);
     if (this.cardRect.w > 0 && x < this.cardRect.x + this.cardRect.w + 4) x = this.cardRect.x + this.cardRect.w + 6;
@@ -307,8 +315,8 @@ export class Hud {
     const right = this.minimapRect.w > 0 ? this.minimapRect.x - 4 : this.W - 3;
     if (x + w > right) x = Math.max(3, right - w);
     const y = this.H - 13;
-    box(g, x, y, w, 9, PAL.night, PAL.gold);
-    text(g, t, x + 5, y + 2, PAL.gold, 'tiny');
+    box(g, x, y, w, 9, flash ? PAL.wine : PAL.night, flash ? PAL.bone : PAL.gold);
+    text(g, t, x + 5, y + 2, flash ? PAL.bone : PAL.gold, 'tiny');
   }
 
   // ---------------------------------------------------------------------
@@ -452,6 +460,9 @@ export class Hud {
     const n = node >= 0 ? this.s.fleetAt(node).length : 0;
     return n > 0 ? String(n) : '';
   }
+
+  /** Did the game stand still at the last update (see `Session.mode`)? */
+  private wasLook = false;
 
   /** Where the banner was drawn this frame (the right-hand column keeps clear of it). */
   private bannerRect = { x: 0, y: 0, w: 0, h: 0 };

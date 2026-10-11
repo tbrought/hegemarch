@@ -4,7 +4,10 @@ import { UNITS } from '../game/data/units';
 import type { Unit, UnitType, WorldRole } from '../game/types';
 import { PAL } from '../render/palette';
 
-/** Player commands with feedback (sound, markers, a short reason when something can't be done). */
+/**
+ * Player commands with feedback (sound, markers, a short reason when something can't be done).
+ * Every order the player can give goes through here, and none is taken while the game stands still.
+ */
 export class Actions {
   constructor(private s: Session) {}
 
@@ -21,7 +24,23 @@ export class Actions {
     this.s.showToast(reason, PAL.red, 2.5);
   }
 
+  /**
+   * May an order be given right now? Not while the game stands still (see `Session.mode`). Every order
+   * below asks first; a refusal says why, and makes whatever stops the game flash.
+   */
+  private ready(): boolean {
+    const mode = this.s.mode;
+    if (mode === 'play') return true;
+    if (mode === 'look') {
+      this.s.sfx.play('error', 0.4);
+      this.s.showToast(this.s.tipHold ? 'The game waits while you read: OK or Space to go on.' : 'The game is paused: press Space, then give your orders.', PAL.ember, 2.5);
+      this.s.refusedAt = performance.now() / 1000;
+    }
+    return false;
+  }
+
   kindle(nodeId: number): boolean {
+    if (!this.ready()) return false;
     const why = this.g.checkKindle(this.pid, nodeId);
     if (why) {
       this.fail(why);
@@ -52,6 +71,7 @@ export class Actions {
 
   /** Ages: take the step to the next age (from the last age of the cradle: build the Ark). */
   advance(): boolean {
+    if (!this.ready()) return false;
     const p = this.g.player;
     const why = this.g.checkAdvance(this.pid);
     if (why) {
@@ -68,6 +88,7 @@ export class Actions {
 
   /** Queue a ship (Shift: five, or as many as fit). */
   build(nodeId: number, type: UnitType): boolean {
+    if (!this.ready()) return false;
     const why = this.g.checkShip(this.pid, nodeId, type);
     if (why) {
       this.fail(why);
@@ -80,6 +101,7 @@ export class Actions {
   }
 
   upgrade(nodeId: number): boolean {
+    if (!this.ready()) return false;
     const why = this.g.checkUpgrade(this.pid, nodeId);
     if (why) {
       this.fail(why);
@@ -91,6 +113,7 @@ export class Actions {
   }
 
   role(nodeId: number, role: WorldRole): boolean {
+    if (!this.ready()) return false;
     const why = this.g.checkRole(this.pid, nodeId, role);
     if (why) {
       if (why !== 'Already its role') this.fail(why);
@@ -102,6 +125,7 @@ export class Actions {
   }
 
   starbase(nodeId: number): boolean {
+    if (!this.ready()) return false;
     const why = this.g.checkStarbase(this.pid, nodeId);
     if (why) {
       this.fail(why);
@@ -113,6 +137,7 @@ export class Actions {
   }
 
   gate(nodeId: number): boolean {
+    if (!this.ready()) return false;
     const why = this.g.checkGate(this.pid, nodeId);
     if (why) {
       this.fail(why);
@@ -124,6 +149,7 @@ export class Actions {
   }
 
   ark(): boolean {
+    if (!this.ready()) return false;
     const why = this.g.checkArk(this.pid);
     if (why) {
       this.fail(why);
@@ -135,6 +161,7 @@ export class Actions {
   }
 
   bay(): boolean {
+    if (!this.ready()) return false;
     const why = this.g.checkBay(this.pid);
     if (why) {
       this.fail(why);
@@ -147,10 +174,12 @@ export class Actions {
   }
 
   cancel(nodeId: number, queue: 'ship' | 'build', index: number) {
+    if (!this.ready()) return;
     if (this.g.cmdCancel(this.pid, nodeId, queue, index)) this.s.sfx.play('ui', 0.4);
   }
 
   stop() {
+    if (!this.ready()) return;
     const units = this.s.commandable();
     if (!units.length) return;
     this.ordered(units, () => this.g.cmdStop(this.pid, units.map((u) => u.id)));
@@ -158,6 +187,7 @@ export class Actions {
   }
 
   retreat() {
+    if (!this.ready()) return;
     const units = this.s.commandable();
     if (!units.length) return;
     this.ordered(units, () => this.g.cmdRetreat(this.pid, units.map((u) => u.id)));
@@ -171,6 +201,7 @@ export class Actions {
    * them); pressing it again sends them.
    */
   explore(): boolean {
+    if (!this.ready()) return false;
     const g = this.g;
     const view = this.s.view;
     if (!g.hasUncharted(g.player)) {
@@ -217,6 +248,7 @@ export class Actions {
 
   /** Send the selected ships to a world. Seed ships kindle it if it is dark. */
   orderAt(nodeId: number, wx?: number, wy?: number): boolean {
+    if (!this.ready()) return false;
     const g = this.g;
     const units = this.s.commandable().filter((u) => !UNITS[u.type].isStatic && u.type !== 'fighter');
     if (!units.length) return false;
@@ -242,6 +274,7 @@ export class Actions {
   }
 
   attack(unitId: number): boolean {
+    if (!this.ready()) return false;
     const t = this.g.units.get(unitId);
     if (!t || t.dead) return false;
     const ids = this.s.commandable().filter((u) => u.type !== 'seed').map((u) => u.id);
@@ -253,6 +286,7 @@ export class Actions {
   }
 
   rally(fromNode: number, toNode: number) {
+    if (!this.ready()) return;
     if (this.g.cmdSetRally(this.pid, fromNode, toNode)) {
       const n = this.g.nodes[toNode];
       this.s.marker(n.x, n.y, PAL.sky);

@@ -254,7 +254,8 @@ export class Tutorial {
       case 5: {
         // Send the Scout out. Nothing to teach once one explores, with no Scout left, or with nothing left to chart.
         const scouts = this.scouts();
-        if (scouts.some((u) => u.order === 'explore') || !scouts.length || !g.hasUncharted(p)) {
+        // (`ui.scouted`: the order was given. A Scout with no safe way on is home again within a tick.)
+        if (scouts.some((u) => u.order === 'explore') || g.ui.scouted || !scouts.length || !g.hasUncharted(p)) {
           this.step = 6;
           break;
         }

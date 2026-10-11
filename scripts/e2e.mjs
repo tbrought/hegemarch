@@ -190,13 +190,14 @@ try {
     ev(() => {
       const g = window.__app.session.game;
       const mine = g.unitList.filter((u) => !u.dead && u.type === 'scout' && u.owner === g.playerId);
-      const rivals = g.unitList.filter((u) => !u.dead && u.type === 'scout' && u.owner !== g.playerId && g.factions[u.owner].kind === 'empire');
+      // (In a sector that an omen has charted for every house, a rival's Scout has nothing to explore and stays home.)
+      const rivals = g.unitList.filter((u) => !u.dead && u.type === 'scout' && u.owner !== g.playerId && g.factions[u.owner].kind === 'empire' && g.hasUncharted(g.factions[u.owner]));
       return { mine: mine.map((u) => u.order), rivals: rivals.map((u) => u.order) };
     });
   await wait(1500);
   let so = await scoutOrders();
   check('your Scout waits at the Hearth for orders', so.mine.length > 0 && so.mine.every((o) => o === 'idle'), so.mine.join(','));
-  check('rival Scouts set out at once', so.rivals.length > 0 && so.rivals.every((o) => o === 'explore'));
+  check('rival Scouts set out at once', so.rivals.every((o) => o === 'explore'), so.rivals.join(','));
   check('no decision pops up on its own at the start', await ev(() => window.__app.session.game.prompts.length === 0 && window.__app.session.modal === null));
   check('the banner says how to send the Scout (after the first Boon), with the real count on its badge', await ev(() => {
     const app = window.__app;
@@ -479,7 +480,9 @@ try {
       u.vx = 0;
       u.vy = 0;
     }
-    app.session.paused = true;
+    // (Hold the world still without pausing: a paused game takes no orders, and this is about orders.)
+    g.heldStep = g.step;
+    g.step = () => {};
     app.renderer.cam.focus(n.x, n.y - 100, 0.2);
     app.renderer.cam.update(10);
     return { a: a.id, b: b.id, ax: app.renderer.sx(a.x), ay: app.renderer.sy(a.y), bx: app.renderer.sx(b.x), by: app.renderer.sy(b.y) };
@@ -500,8 +503,9 @@ try {
     return own.length === 1 && own[0].id === b && first.path.length === 0 && first.node === capId && isNaN(first.ox);
   }, [pair.a, pair.b, cap]), await ev(() => window.__app.session.ownSelected().map((u) => u.type).join(',')));
   await ev(() => {
+    const g = window.__app.session.game;
     window.__app.session.clearSelection();
-    window.__app.session.paused = false;
+    g.step = g.heldStep;
   });
 
   // ---- Drag-select: the box shows while dragging, and selects what it covers ----

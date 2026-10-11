@@ -66,7 +66,7 @@ const HOWTO = `
 <p><b>Danger:</b> any house may attack at any time. Corsairs raid from about ten minutes in, rivals attack from about twelve (on Hard and Brutal, warlike houses rush sooner), and the Hollow may wake. If your <b>Hearth</b> falls, your house goes dark.</p>
 <p><b>Rushing:</b> every Hearth's walls start at half strength and reach full strength at 12:00. Take a rival's Hearth and you win its worlds, half its hoard and a free Boon. Fail, and your rivals will make you pay.</p>
 <p><b>Ages runs</b> are a longer game. Every house starts in the Stone Age on one cradle world: gather Lore, advance through five ages (each brings stronger units and a Boon), then build your Ark and carry what you have won to the stars, where the run goes on as above.</p>
-<p><b>Controls:</b> click to select (a world, a ship, or the fleet badge <span class="fleet-badge">3</span> beside a world, which selects all your ships there), click a world to send selected ships (or right-click). Drag to select ships. Wheel to zoom, right-drag or arrow keys to move. Space pauses; E sends selected Scouts exploring; B for Boons, U for status, H for help. In a run, How to Play (H) lists every control and every tip.</p>`;
+<p><b>Controls:</b> click to select (a world, a ship, or the fleet badge <span class="fleet-badge">3</span> beside a world, which selects all your ships there), click a world to send selected ships (or right-click). Drag to select ships. Wheel to zoom, right-drag or arrow keys to move. Space pauses; E sends selected Scouts exploring; B for Boons, U for status, H for help. In a run, How to Play (H) lists every control and every tip. While the game is paused you can look around and read, but not give orders: press Space again first.</p>`;
 
 export class App {
   private canvas: HTMLCanvasElement;
@@ -317,6 +317,12 @@ export class App {
     let g: Game;
     try {
       g = Game.create(config);
+      // The First Night leaves little to chance: now and then (one sector in a hundred) every way out of
+      // the home system is guarded, and a Scout sent exploring would have nowhere safe to go. Deal again.
+      for (let i = 0; i < 8 && config.tutorial && !config.daily && g.chartable(g.playerId) < 6; i++) {
+        config = { ...config, seed: randomSeed() };
+        g = Game.create(config);
+      }
     } catch (e) {
       console.error(e);
       this.showMenu();

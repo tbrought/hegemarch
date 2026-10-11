@@ -3,7 +3,7 @@ import { FIRE_SPOOL, UNDER_FIRE } from '../constants';
 import { ECON } from '../data/worlds';
 import { UNITS } from '../data/units';
 import { mul } from '../mods';
-import type { Faction, Unit, UnitDef } from '../types';
+import type { Unit, UnitDef } from '../types';
 import { clamp, dist, turnToward } from '../util';
 
 /** Deterministic per-unit pseudo random in [0,1). */
@@ -58,7 +58,7 @@ export function movementTick(g: Game, dt: number) {
       // A Scout sees the places next door. Once the place it is bound for is in sight, it is
       // charted: the Scout does not fly in, it picks the next one. And it looks before the leap:
       // if the next place on its way is guarded now, it thinks again (even with its drive spooling).
-      if (f.explored[u.dest] || (!f.ai && guardedFor(g, f, u.path[0]))) {
+      if (f.explored[u.dest] || (!f.ai && g.seenGuarded(f, u.path[0]))) {
         u.path = [];
         u.dest = -1;
         u.charge = -1;
@@ -356,14 +356,6 @@ function kindleStep(g: Game, u: Unit, dt: number) {
 }
 
 /**
- * Is this a place the house has seen to be guarded? An exploring Scout neither flies into such a place
- * nor through it: it has no business under a Sentinel's guns, and it can chart a place from next door.
- */
-function guardedFor(g: Game, f: Faction, nodeId: number): boolean {
-  return !!f.explored[nodeId] && g.hostilePowerAt(nodeId, f.id) > 1;
-}
-
-/**
  * Where an exploring Scout goes next: the nearest uncharted place it can reach without passing through
  * a place seen to be guarded. When there is none, it has done what can be done safely: it says how
  * much is left behind guards, and goes home. (Sending it further is the player's call, by hand.)
@@ -381,8 +373,9 @@ function pickExploreTarget(g: Game, u: Unit) {
   for (const n of g.nodes) {
     if (f.explored[n.id] || n.id === from) continue;
     if (!isFinite(g.pathLen(from, n.id))) continue;
-    const way = g.pathAvoiding(from, n.id, (id) => (guardedFor(g, f, id) ? 1e7 : 0));
-    if (!way.length || (!f.ai && way.slice(0, -1).some((id) => guardedFor(g, f, id)))) continue;
+    // (A rival's Scout goes round a guarded place where it can, and through it where it must.)
+    const way = f.ai ? g.pathAvoiding(from, n.id, (id) => (g.seenGuarded(f, id) ? 1e7 : 0)) : g.safeWay(f, from, n.id);
+    if (!way.length) continue;
     let d = g.wayLen(from, way);
     for (const o of g.unitList) if (o !== u && !o.dead && o.owner === u.owner && o.order === 'explore' && o.dest === n.id) d += 6000;
     if (d < bd) {

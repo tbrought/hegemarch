@@ -170,6 +170,22 @@ describe('Scouts explore without throwing themselves away', () => {
     void rival;
   });
 
+  it('the game knows how much a Scout could chart safely from home', () => {
+    const g = mk();
+    const p = g.player;
+    const open = g.chartable(p.id);
+    expect(open).toBeGreaterThan(3);
+    // Guard every place next to the house's worlds: nothing can be reached safely any more.
+    const rival = g.empires().find((f) => f.id !== p.id)!;
+    for (const n of g.nodes) {
+      if (!p.explored[n.id] || n.owner === p.id) continue;
+      for (let i = 0; i < 4; i++) g.spawnUnit('striker', rival.id, n.id);
+    }
+    expect(g.chartable(p.id)).toBe(0);
+    const far = g.nodes.find((n) => !p.explored[n.id])!;
+    expect(g.safeWay(p, p.capital, far.id)).toEqual([]);
+  });
+
   it('a Scout with nothing left to chart goes home', () => {
     const g = mk();
     const p = g.player;

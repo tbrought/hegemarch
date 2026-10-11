@@ -242,6 +242,12 @@ export class Input {
     const g = this.g;
     const code = e.code;
     s.idleSince = g.time;
+    // The run is over: no key does anything but show its results.
+    if (s.mode === 'none') {
+      e.preventDefault();
+      if (code === 'Enter' || code === 'Space' || code === 'Escape') s.hooks.showResults?.();
+      return;
+    }
     if (code === 'Escape') {
       e.preventDefault();
       if (s.modal) this.hud.modals.close();
@@ -328,7 +334,7 @@ export class Input {
         if (g.player.capital >= 0) s.focusNode(g.player.capital);
         break;
       case 'KeyM':
-        s.view.orderMode = s.ownSelected().length > 0 && !s.view.orderMode;
+        s.view.orderMode = s.mode === 'play' && s.ownSelected().length > 0 && !s.view.orderMode;
         break;
     }
   }

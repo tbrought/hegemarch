@@ -529,6 +529,29 @@ export class Game {
     return this.pathHops[a * this.nodes.length + b];
   }
 
+  /** Has this house seen that place to be guarded (by anything that would fire on its ships)? */
+  seenGuarded(f: Faction, nodeId: number): boolean {
+    return !!f.explored[nodeId] && this.hostilePowerAt(nodeId, f.id) > 1;
+  }
+
+  /**
+   * A way from `from` to `to` on which nothing is guarded as far as the house has seen (the last
+   * stop itself may be anything: it is the place to find out about). Empty if there is none.
+   */
+  safeWay(f: Faction, from: number, to: number): number[] {
+    const way = this.pathAvoiding(from, to, (id) => (this.seenGuarded(f, id) ? 1e7 : 0));
+    return way.length && !way.slice(0, -1).some((id) => this.seenGuarded(f, id)) ? way : [];
+  }
+
+  /** How many places the house has not charted and a Scout could reach safely from its Hearth. */
+  chartable(fid: number): number {
+    const f = this.factions[fid];
+    if (!f || f.capital < 0) return 0;
+    let n = 0;
+    for (const node of this.nodes) if (!f.explored[node.id] && this.safeWay(f, f.capital, node.id).length) n++;
+    return n;
+  }
+
   /** How long a way is: the jumps from `from` through `way`, each with its spool (as `pathLen` counts them). */
   wayLen(from: number, way: number[]): number {
     let d = 0;

@@ -928,7 +928,7 @@ export class Modals {
               `Left-click: select a world, a ship or a fleet badge (${IC.fleet}, the number of ships beside a world). Drag: select ships.`,
               'With ships selected, click a world (or right-click) to send them. Right-click an enemy ship to attack it.',
               'Wheel: zoom. Right- or middle-drag, or the arrow keys: move the view. C: look at your Hearth.',
-              'Space: pause. The ½ 1 2 3 buttons at the top right (or + and -): game speed.',
+              'Space: pause. While the game is paused you can look around and read, but not give orders: press Space again first. The ½ 1 2 3 buttons at the top right (or + and -): game speed.',
               'B: Boons. U: status. L: comms log. F: select all warships. K: kindle the selected world. S: stop. R: retreat.',
               'E: send the selected Scouts exploring. With no Scout selected, E picks your idle Scouts first: press it again to send them.',
               'Shift-click a ship button: queue five. Shift-click ships: add to the selection. Double-click a ship: select all of its kind nearby.',

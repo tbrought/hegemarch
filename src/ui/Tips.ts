@@ -32,6 +32,8 @@ export const TIPS: Record<string, string> = {
   ageGone: 'An Ark has left. That house is ahead of you among the stars now. The lands it held here lie dark: kindle them, and climb faster.',
 };
 
+/** The longest a tip waits for the player's hands to be free (real seconds). */
+const HANDS_WAIT = 8;
 /** Seconds a tip stays up (counted only while it can be read). */
 const TIP_TIME = 22;
 /** How long the "missed tip" button flashes, and how long it waits to be clicked (real seconds). */
@@ -44,6 +46,8 @@ export class Tips {
   /** Tips that ran out unread or were put off with LATER, newest last: the ★ TIP button brings them back. */
   private missed: string[] = [];
   private missedAt = -999;
+  /** Seconds the next tip has waited for the player to finish what they are doing. */
+  private handsBusy = 0;
 
   constructor(private hud: Hud) {}
 
@@ -102,8 +106,15 @@ export class Tips {
       if (!this.s.modal && !this.s.paused && !reading && !this.s.tipHold) this.current.t -= dt;
       if (this.current.t <= 0) this.putOff();
     } else if (this.queue.length && !this.s.modal && !this.hud.tutorial.busy() && !this.hud.tutorial.quiet()) {
-      const id = this.queue.shift()!;
-      this.current = { id, t: TIP_TIME };
+      // A card that holds the game waits until the player's hands are free: not in the middle of an
+      // order (ships picked, destination still to come) or of dragging a box. At most a few seconds.
+      const busy = this.s.view.orderMode || !!this.s.view.box;
+      this.handsBusy = busy ? this.handsBusy + dt : 0;
+      if (!busy || this.handsBusy > HANDS_WAIT) {
+        this.handsBusy = 0;
+        const id = this.queue.shift()!;
+        this.current = { id, t: TIP_TIME };
+      }
     }
     if (this.missed.length && this.hud.ui.time - this.missedAt > MISSED_KEEP) this.missed = [];
   }
@@ -186,7 +197,9 @@ export class Tips {
       const room = w - (textWidth(all, 'tiny') + 14) - (okW + textWidth('LATER', 'tiny') + 22);
       if (textWidth(held, 'tiny') <= room) text(g, held, x + textWidth(all, 'tiny') + 14 + Math.floor((room - textWidth(held, 'tiny')) / 2), fy + 3, PAL.dusk, 'tiny');
     }
-    this.hud.ui.button(g, 'tip-ok', x + w - okW - 5, fy, okW, 10, ok, () => this.dismiss(), { font: 'tiny', tip: 'Got it.' });
+    // (An order was just refused because this card holds the game: the way on flashes.)
+    const flash = performance.now() / 1000 - this.s.refusedAt < 1.2;
+    this.hud.ui.button(g, 'tip-ok', x + w - okW - 5, fy, okW, 10, ok, () => this.dismiss(), { font: 'tiny', tip: 'Got it.', primary: flash, pulse: flash });
     const later = 'LATER';
     const laterW = textWidth(later, 'tiny') + 10;
     this.hud.ui.button(g, 'tip-later', x + w - okW - laterW - 8, fy, laterW, 10, later, () => this.putOff(), {

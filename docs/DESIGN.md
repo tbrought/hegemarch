@@ -101,7 +101,7 @@ the depth into the draft and the screen into a "one thing at a time" model.
   keeps it alive is how it explores (`pickExploreTarget` in `systems/movement.ts`). A Scout sees the
   places next door, so it **charts a place from outside**: once the place it is bound for is in
   sight it picks the next one and does not fly in. It **never plans a way through a place seen to
-  be guarded** (`guardedFor`, `Game.pathAvoiding`), and looks before every leap. When no uncharted
+  be guarded** (`Game.seenGuarded`, `Game.safeWay`), and looks before every leap. When no uncharted
   place can be reached safely it says how many lie "beyond guarded passages" and goes home; sending
   it further is the player's call, by hand. In the first public playtest a player lost three Scouts
   of four without a word from the game. Measured with every house exploring this way: about 2
@@ -115,6 +115,10 @@ the depth into the draft and the screen into a "one thing at a time" model.
   always did (about 6 in twenty minutes, 94% charted). Rivals that knew the sector only up to the
   first guard found fewer targets: AI-only games ran about three minutes longer, with fewer
   conquests.
+- **Boxed in.** In one to three sectors of a hundred every way out of the player's home system is
+  guarded, and a careful Scout has nowhere to go until a fleet clears one (it says so and stays
+  home). The First Night is not dealt such a sector (`Game.chartable`, checked in `App.startRun`),
+  and its Scout step counts the order as given whatever the Scout found.
 - **Saving changes nothing, to the tick.** A Hearth's walls rise by the whole second
   (`Game.wallsOf`), because worlds are rebuilt once a second and again on loading: with the time to
   the tick, a loaded Hearth stood a hair taller than the one that was saved, and under fire the
@@ -256,7 +260,9 @@ Measured with `npm run simulate` and `npm run balance:passive`. Speeds are ½×,
   map after the first minute, Blueprint, the Hollow, Ark level-up, nearly full hangar), once per
   profile. With auto-pause on (the default) the card **holds the game** until it is answered: OK
   (or Space), or LATER, which keeps it behind a flashing ★ TIP button. Nothing happens behind a
-  card that is being read. With auto-pause off the card has a 22-second clock that only runs while
+  card that is being read, and no order is taken either. A card waits until the player's hands are
+  free (no ships picked with their destination still to come, no box being dragged; eight seconds
+  at most), so that it never comes up in the middle of an order. With auto-pause off the card has a 22-second clock that only runs while
   it can be read (not behind a dialog, not while paused, not under the pointer). Every tip can be
   read again under How to Play (H) → TIPS.
 - **Hover help** (`src/ui/glossary.ts`): about 70 glossary entries (game terms plus every Ark
@@ -332,6 +338,20 @@ Measured with `npm run simulate` and `npm run balance:passive`. Speeds are ½×,
   Hall of Heirs, settings) keep their scroll position (`App.put`).
 - **Auto-pause** (setting) for anomalies (when a ship you sent reaches one), visitors, the first
   raid and a Hearth under siege.
+- **Stopped means stopped.** While the game stands still no order goes through: not while it is
+  paused (by the player or by an alarm), not while a tip card holds it, not after the run has ended.
+  A pause is a moment to look and to read, as in the RTS games this one is modelled on, not a moment
+  to queue up moves. The player can still pan and zoom, pick worlds and ships to read their cards
+  (ships picked during a stop are not "waiting for a destination", and are again when the game goes
+  on), open the status screens, and answer a dialog the game has put up (choosing a Boon is not an
+  order). Everything that takes input asks one question, `Session.mode` ('play', 'look' or 'none'),
+  and every order the player can give goes through `ui/Actions.ts`, which asks it first: a new way
+  of stopping the game cannot forget to stop the orders. A refused order says why ("The game is
+  paused: press Space, then give your orders") and makes whatever stops the game flash: the PAUSED
+  label, or a tip card's OK button. (Before, every order worked in every pause: with a tip card up,
+  KINDLE spent its Embers and launched a seed ship into a game that stood still, and after the run
+  had ended hotkeys still acted on it: K spent Embers, B opened a Boon choice over the ending.)
+  `npm run test:stopped` tries keys and buttons in each stopped state.
   Closing a decision without choosing parks it behind a "! DECISION" button.
 
 ## 6. Presentation
