@@ -674,7 +674,7 @@ export class Hud {
     this.ui.hit('ages', x, y, w, h, () => this.modals.open({ kind: 'status' }), () =>
       'The climb: ' +
       houses
-        .map((f) => `${f.isPlayer ? 'you' : f.name}: ${f.launchedAt >= 0 ? 'gone to the stars' : !f.alive ? 'Hearth dark' : ERAS[f.era].name + (f.advance && f.era >= LAST_CRADLE_ERA ? ', building its Ark' : '')}`)
+        .map((f) => `${f.isPlayer ? 'you' : this.g.shortName(f)}: ${f.launchedAt >= 0 ? 'gone to the stars' : !f.alive ? 'Hearth dark' : ERAS[f.era].name + (f.advance && f.era >= LAST_CRADLE_ERA ? ', building its Ark' : '')}`)
         .join(' · ') +
       '. Click for details.');
   }
@@ -842,7 +842,7 @@ export class Hud {
         const name = VICTORIES[v].name.toUpperCase();
         out.push({
           id: `clock-${f.id}-${v}`, left: Math.max(0, left), mine, node,
-          text: mine ? `${name} · YOURS IN ${fmtTime(Math.max(0, left))}` : `${f.name.toUpperCase()} · ${name} IN ${fmtTime(Math.max(0, left))}`,
+          text: mine ? `${name} · YOURS IN ${fmtTime(Math.max(0, left))}` : `${g.shortName(f).toUpperCase()} · ${name} IN ${fmtTime(Math.max(0, left))}`,
           tip: mine ? own : `${f.name} win by ${VICTORIES[v].name} when this runs out. ${rival}`,
         });
       };
@@ -1208,7 +1208,7 @@ export class Hud {
       const f = game.factions[owner];
       rows.push(this.header(n.name.toUpperCase(), f.color, n, n.capitalOf >= 0 ? 'HEARTH' : `LEVEL ${roman(n.level)}`, f.color,
         n.capitalOf >= 0 ? { terms: gloss('hearth', 'fealty') } : { tip: `Level ${roman(n.level)} of III.`, terms: gloss('level') }));
-      rows.push(this.line(`${f.name.toUpperCase()} · ${n.size} WORLD${n.role ? ' · ' + n.role.toUpperCase() : ''}`, PAL.dusk, 'tiny', this.roleTip(n)));
+      rows.push(this.line(`${game.shortName(f).toUpperCase()} · ${n.size} WORLD${n.role ? ' · ' + n.role.toUpperCase() : ''}`, PAL.dusk, 'tiny', this.roleTip(n)));
       if (visible) rows.push(this.hpRow(n));
       const walls = n.capitalOf >= 0 && f.kind === 'empire' ? game.wallsOf(n) : 1;
       if (walls < 1) rows.push(this.line(`WALLS ${pct(walls)}: WEAKER NOW, FULL AT ${fmtTime(ECON.wallsTime)}`, PAL.ember, 'tiny', { terms: gloss('walls') }));
@@ -1628,7 +1628,7 @@ export class Hud {
     const game = this.g;
     const f = game.factions[units[0].owner];
     const rows: CardRow[] = [];
-    rows.push(this.header(f.name.toUpperCase(), f.color, null, `${units.length} ${units.length === 1 ? 'SHIP' : 'SHIPS'}`));
+    rows.push(this.header(game.shortName(f).toUpperCase(), f.color, null, `${units.length} ${units.length === 1 ? 'SHIP' : 'SHIPS'}`));
     rows.push(this.para(this.fleetSummary(units) + '.', PAL.mist, 200));
     if (units.length === 1) rows.push(this.para(unitDesc(units[0].type, units[0].era), PAL.dusk, 200, { terms: termsIn(unitDesc(units[0].type, units[0].era), { exclude: UNITS[units[0].type].name }) }));
     rows.push(this.line('SELECT YOUR FLEET, THEN RIGHT-CLICK THEM TO ATTACK', PAL.dusk));

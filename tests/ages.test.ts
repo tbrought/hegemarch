@@ -77,7 +77,7 @@ describe('the cradle world', () => {
   });
 
   it('starts every house in the Stone Age: no Ark, no siege units, one Boon to choose', () => {
-    for (const heir of ['concord', 'vael', 'wayfarer', 'nyx', 'ironclad', 'ashen']) {
+    for (const heir of ['concord', 'vael', 'wayfarer', 'lyceum', 'choir', 'ashen']) {
       const g = cradle({ heir });
       expect(g.cradle).toBe(true);
       expect(g.victories).toEqual(['conquest']);

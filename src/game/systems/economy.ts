@@ -8,7 +8,8 @@ export function recomputeHangar(g: Game, f: Faction) {
   if (f.kind !== 'empire') return;
   f.hangarCap = g.hangarCapOf(f);
   let used = 0;
-  for (const u of g.unitList) if (!u.dead && u.owner === f.id && !u.temp) used += UNITS[u.type].hangar;
+  // (A ship that came over from another house was never built here: it takes no room.)
+  for (const u of g.unitList) if (!u.dead && u.owner === f.id && !u.temp && !u.guest) used += UNITS[u.type].hangar;
   for (const n of g.nodes) {
     if (n.owner !== f.id) continue;
     for (const q of n.shipQ) if (q.kind === 'ship') used += UNITS[q.id as UnitType].hangar;

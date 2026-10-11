@@ -1,5 +1,6 @@
 import type { SaveData } from '../game/Game';
 import type { Difficulty, MapSize } from '../game/types';
+import { heirIdNow } from '../game/data/heirs';
 
 export interface RunRecord {
   date: string;
@@ -105,6 +106,15 @@ export function loadProfile(): Profile {
     if (!raw) return defaultProfile();
     const p = JSON.parse(raw) as Partial<Profile>;
     const d = defaultProfile();
+    // Houses renamed or replaced since the profile was saved go by what they are now (data/heirs.ts):
+    // what a player unlocked, won with and played stays theirs.
+    if (p.heirs) p.heirs = [...new Set(p.heirs.map(heirIdNow))];
+    if (p.winsByHeir) {
+      const wins: Record<string, number> = {};
+      for (const [id, n] of Object.entries(p.winsByHeir)) wins[heirIdNow(id)] = (wins[heirIdNow(id)] ?? 0) + n;
+      p.winsByHeir = wins;
+    }
+    if (p.history) p.history = p.history.map((r) => ({ ...r, heir: heirIdNow(r.heir) }));
     return {
       ...d,
       ...p,

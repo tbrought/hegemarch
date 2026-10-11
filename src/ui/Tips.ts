@@ -23,6 +23,7 @@ export const TIPS: Record<string, string> = {
   boonReady: 'Your Lore is full: press B, or the BOON button at the top, to choose a Boon.',
   fleet: `Ships gather in fleets. The badge beside a world (like ${IC.fleet}) counts your ships there: click it to select them, then click a world to send them.`,
   lostWorld: 'You lost a world. Take it back with Breakers, or protect your others with Bastions and a Starbase. An enemy that keeps running stands and fights at a Bastion: it cannot jump away quickly there.',
+  converted: 'The Choir’s Ark talks ships round: your weakest ships near it change sides, and fight for it. Destroy that Ark, or keep damaged ships out of its reach.',
   // Ages runs, on the cradle.
   ageReady: 'The Lore of your age is gathered. Press the button at the top (or A) to begin the next age. It takes Embers too, and a little time at your Hearth.',
   ageNew: 'A new age! Every unit you have is upgraded to it: watch the change spread out from your Hearth. Your Forges build the new units from now on.',
@@ -76,6 +77,7 @@ export class Tips {
     else if (/is kindled/.test(t)) this.show('role');
     else if (/Lore is full/.test(t)) this.show('boonReady');
     else if (/has fallen to|devoured by the Hollow/.test(t)) this.show('lostWorld');
+    else if (/^Gone over to /.test(t)) this.show('converted');
     else if (/^The .* Age begins!/.test(t)) {
       const era = this.s.game.player.era;
       this.show(era === 1 ? 'ageSiege' : era >= LAST_CRADLE_ERA ? 'ageArk' : 'ageNew');

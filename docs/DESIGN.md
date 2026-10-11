@@ -147,6 +147,48 @@ of five sat untouched at a house's own home star. Now it is a median of under a 
 length is unchanged: 46.7 against 47.4 minutes on the same forty seeds.) A derelict that someone
 else is at is a fight, and that is still the army's to decide.
 
+### Houses
+Six houses (`src/game/data/heirs.ts`). The player plays one; the others are dealt as rivals.
+
+| House | What it is | What it has |
+| --- | --- | --- |
+| **Solar Concord** | steady and rich | +10% Embers, sturdier worlds and shields. Ark: Aegis Field |
+| **Vael Imperium** | war | +15% damage, cheaper ships, less Lore. Ark: Missile Barrage |
+| **Wayfarer Clans** | speed | fast on the lanes and off them, cheap kindling, a second Scout. Ark: Nanite Cloud |
+| **Lyceum Collective** | learning, and the swarm | +25% Lore, cheap Strikers, more Fighters, thin hulls. Ark: Strike Wing |
+| **Choir of the First Flame** | faith: it converts | see below. Ark: Conversion |
+| **Ashen Remnant** | fate | a fourth Boon to choose from, rerolls, an Epic Boon to start, fewer Embers. Ark: Ember Lance |
+
+**The Choir of the First Flame** took the place of the Ironclad Dominion, the one house without a
+character of its own: its fortress was the Concord's sturdiness, more of it, and slow. The Choir is
+the house that takes and does not destroy.
+- **Conversion** (its Ark, and no other ship ever learns it): the weakest enemy ships in range change
+  sides, 1000 hull of them (two Strikers, or a Guardian) and 150 more for each level of the Ark, every
+  36 s. Never an Ark, a Dreadnought, a Carrier, a seed ship or anything of the Hollow; a Corsair can
+  be talked round. A ship that goes over forgets its orders, is dazed for a moment, and is from then
+  on a ship of its new house, whatever its kind (so the Choir can come by ships it has no Blueprint
+  for). The weakest go over first, so each is patched up to half its hull, and it takes no room in
+  its new house's hangar (`Unit.guest`): without those two, an AI Choir turned 32 ships a game, gained
+  mostly wrecks that kept it from building, and won 3 games in 32. No ship of the player's goes over
+  silently: the log says which, and a tip the first time.
+- **Captured worlds keep their level and Glow.** Any other house sacks a world it takes (a level
+  lost, the Glow back to a quarter).
+- **Zeal**: each ship the Choir loses at a world makes the rest of its ships there deal 5% more
+  damage, up to 25%, until 10 s after the last loss. It is said over the place where the ship died,
+  for both sides to see.
+- **It does not run**: its drives take 25% longer to charge a jump.
+
+As a rival it is neither weak nor strong: in 48 AI-only games it won 6 of the 32 it was dealt into
+(the Ironclad Dominion: 7 of 32; the Ashen Remnant 6 of 30, the Lyceum 6 of 28, the Wayfarers 5 of
+26). The Dominion was the one house that sat behind its walls, and outlasted wars it did not win;
+without it AI-only games are a few minutes shorter (a mean of 42 minutes against 46).
+
+Its name is longer than a state's, and meant to be. Where there is no room for it (a countdown
+button, a line of a panel, the table of houses) it is **The Choir** (`HeirDef.short`,
+`Game.shortName`). The **Lyceum Collective** was the Nyx Collective: Nyx is night, and the house is
+scholars. A profile or a run saved under the old names loads under the new ones (`heirIdNow`): what a
+player unlocked, won with and played stays theirs.
+
 ### Boons
 A draft offers 3 choices, plus one each from the Ashen Remnant, Quantum Archives and the Codex
 relic, up to 5 (so every card fits on the smallest screen; Quantum Archives stops appearing once a
@@ -431,7 +473,7 @@ Measured with `npm run simulate` and `npm run balance:passive`. Speeds are ½×,
   480×270 game pixels (a pixel-size setting picks 640×360 or 400×225 instead). CSS upscales with
   `image-rendering: pixelated`.
 - **Palette**: Ember-16 (void, night, indigo, slate, dusk, mist, bone, gold, ember, red, wine, sea,
-  teal, sky, violet, pink). Houses: Concord gold, Vael red, Wayfarer teal, Nyx violet, Ironclad sky,
+  teal, sky, violet, pink). Houses: Concord gold, Vael red, Wayfarer teal, Lyceum violet, Choir sky,
   Ashen ember. Corsairs mist, ancient guardians dusk, the Hollow pink.
 - **Worlds**: per-world lat/long noise textures mapped onto spheres lit from the upper left and
   quantized to the terrain ramp with a 4×4 Bayer matrix. Dark worlds use the cold ramp; kindling

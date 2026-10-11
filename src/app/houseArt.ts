@@ -18,7 +18,7 @@ const SCALE = 3;
 const H = 24;
 
 /** The kind of world each house calls home (for the banner only; in a run the map decides). */
-const HEARTH: Record<string, PlanetType> = { concord: 'terran', vael: 'volcanic', wayfarer: 'ocean', nyx: 'ice', ironclad: 'barren', ashen: 'desert' };
+const HEARTH: Record<string, PlanetType> = { concord: 'terran', vael: 'volcanic', wayfarer: 'ocean', lyceum: 'ice', choir: 'gas', ashen: 'desert' };
 
 /** Where escorts fly, relative to the Ark (the first of each kind takes the first place). */
 const PLACES: Record<string, [number, number][]> = {

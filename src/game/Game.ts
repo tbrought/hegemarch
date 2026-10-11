@@ -1,10 +1,10 @@
-import { ABILITY_BY_ID, LEARNABLE_ABILITIES } from './data/abilities';
+import { ABILITY_BY_ID, CONVERT_MEND, LEARNABLE_ABILITIES } from './data/abilities';
 import { AMBITIONS } from './data/ambitions';
 import { BLUEPRINT_IDS, CARDS, CARD_BY_ID, LEGENDARY_BY, RARITY_LUCK, RARITY_WEIGHT, type CardDef } from './data/cards';
 import { ERAS, LAST_CRADLE_ERA, SPACE, UPGRADE_MAX, UPGRADE_SPREAD } from './data/eras';
 import { GOAL_BY_ID, GOAL_REWARD } from './data/goals';
 import { EVENT_BY_ID, ANOMALY_EVENTS, OFFER_EVENTS } from './data/events';
-import { CRISIS_COLOR, GUARDIAN_COLOR, HEIRS, HEIR_BY_ID, PIRATE_COLOR } from './data/heirs';
+import { CRISIS_COLOR, GUARDIAN_COLOR, heirIdNow, HEIRS, HEIR_BY_ID, houseShort, PIRATE_COLOR, ZEAL_MAX, ZEAL_TIME } from './data/heirs';
 import { boonCost, ECON, PLANETS, ROLE_ORDER } from './data/worlds';
 import { RELICS, RELIC_BY_ID } from './data/relics';
 import { TRAITS, TRAIT_BY_ID } from './data/traits';
@@ -311,7 +311,9 @@ export class Game {
   static load(data: SaveData): Game {
     if (data.v !== SAVE_VERSION) throw new Error('Incompatible save version');
     const g = new Game();
-    g.config = data.config;
+    // (A house renamed or replaced since the run was saved goes by what it is now: data/heirs.ts.)
+    g.config = { ...data.config, heir: heirIdNow(data.config.heir) };
+    if (g.config.aiHeirs) g.config.aiHeirs = g.config.aiHeirs.map(heirIdNow);
     g.rng = new RNG(data.rng);
     g.time = data.time;
     g.tick = data.tick;
@@ -322,6 +324,10 @@ export class Game {
     g.factions = data.factions.map((f) => ({ ...f, mods: baseMods() }) as Faction);
     // Saves from earlier builds lack newer fields: give them their starting values.
     for (const f of g.factions) {
+      if (heirIdNow(f.heir) !== f.heir) {
+        f.heir = heirIdNow(f.heir);
+        f.name = HEIR_BY_ID[f.heir].name;
+      }
       f.bays ??= 0;
       f.era ??= SPACE;
       f.advance ??= null;
@@ -884,6 +890,8 @@ export class Game {
     const m = f.mods;
     let bonus = m.dmg + m.dmgT[type] + (this.umod(u).dmg ?? 0);
     if (this.hasBuff(u, 'rally')) bonus += 0.25;
+    const zeal = m.flags.zeal ?? 0;
+    if (zeal > 0) for (const b of u.buffs) if (b.id === 'zeal') bonus += zeal * b.v;
     const ps = m.flags.phaseStrike ?? 0;
     if (ps > 0 && this.time - u.arrivedAt < 12) bonus += ps;
     const hm = m.flags.hivemind ?? 0;
@@ -1173,6 +1181,83 @@ export class Game {
     note.text = `Lost ${where}${L.by >= 0 ? ` to ${this.factions[L.by].name}` : ''}: ${list}.`;
   }
 
+  /**
+   * Ships change sides, there and then (Conversion, the Ark ability of the Choir of the First Flame).
+   * A ship that goes over forgets its orders, takes a moment to find its feet, and is from then on a
+   * ship of its new house like any other, whatever its kind: a house can come by ships it has no
+   * Blueprint for this way. It is patched up, and takes no room in its new house's hangar (`guest`). Shots in flight between it and its new friends are lost. And as no ship of
+   * the player's is lost silently, none goes over silently.
+   */
+  convertUnits(list: Unit[], to: number, by: Unit | null) {
+    const gainer = this.factions[to];
+    const from = new Map<number, Unit[]>();
+    const ids = new Set<number>();
+    for (const u of list) {
+      if (u.dead || u.owner === to) continue;
+      let l = from.get(u.owner);
+      if (!l) from.set(u.owner, (l = []));
+      l.push(u);
+      ids.add(u.id);
+      u.owner = to;
+      u.order = 'idle';
+      u.orderTarget = -1;
+      u.dest = -1;
+      u.path = [];
+      u.charge = -1;
+      u.target = 0;
+      u.retarget = 0;
+      u.ox = NaN;
+      u.oy = NaN;
+      u.ax = u.x;
+      u.ay = u.y;
+      u.buffs = [];
+      u.snare = 0;
+      u.stun = Math.max(u.stun, 1.5);
+      u.lastHitBy = -1;
+      u.parent = 0;
+      u.guest = true;
+      delete u.rearm;
+      this.refreshUnitStats(u);
+      // (Patched up, and under its new house's shields: the weakest go over first, and a wreck is no gain.)
+      u.hp = Math.max(u.hp, u.maxHp * CONVERT_MEND);
+      u.sh = u.maxSh;
+      if (by) this.addXp(by, UNITS[u.type].xpValue);
+      if (this.fxEnabled) this.fx.push({ k: 'upgrade', x: u.x, y: u.y, r: UNITS[u.type].radius + 8, color: gainer.color, node: u.node });
+    }
+    if (ids.size === 0) return;
+    for (let i = this.projectiles.length - 1; i >= 0; i--) {
+      const p = this.projectiles[i];
+      if (ids.has(p.src) || (ids.has(p.tgt) && !this.hostile(p.owner, to))) this.projectiles.splice(i, 1);
+    }
+    // (A Corsair that goes over is no longer part of its raid.)
+    for (const r of this.pirates.raids) r.units = r.units.filter((id) => !ids.has(id));
+    recomputeHangar(this, gainer);
+    const node = by ? by.node : list[0].node;
+    const place = node >= 0 ? this.nodes[node].name : 'the dark';
+    const say = (l: Unit[]) => {
+      const counts: Record<string, number> = {};
+      for (const u of l) counts[u.type] = (counts[u.type] ?? 0) + 1;
+      return Object.entries(counts)
+        .map(([t, c]) => `${c} ${UNITS[t as UnitType].name}${c > 1 ? 's' : ''}`)
+        .join(', ');
+    };
+    const all: Unit[] = [];
+    for (const [was, l] of from) {
+      const loser = this.factions[was];
+      loser.stats.shipsLost += l.length;
+      recomputeHangar(this, loser);
+      all.push(...l);
+      if (loser.isPlayer) this.notify(was, `Gone over to ${gainer.name} at ${place}: ${say(l)}.`, 'bad', node >= 0 ? node : undefined);
+    }
+    if (gainer.isPlayer) this.notify(to, `Converted at ${place}: ${say(all)}. They are yours now.`, 'good', node >= 0 ? node : undefined);
+    if (by && this.fxEnabled) this.fx.push({ k: 'text', x: by.x, y: by.y - 24, text: `CONVERTED ${ids.size}`, color: gainer.color, node: by.node });
+  }
+
+  /** A house's name where room is short ("The Choir" for the Choir of the First Flame). */
+  shortName(f: Faction): string {
+    return houseShort(f.heir, f.name);
+  }
+
   killUnit(u: Unit, byFaction: number, src: Unit | null = null) {
     if (u.dead) return;
     u.dead = true;
@@ -1204,6 +1289,20 @@ export class Game {
       }
     }
     void src;
+    // Zeal (the Choir of the First Flame): a ship lost is a martyr to the rest of its house at that world.
+    const zeal = owner.mods.flags.zeal ?? 0;
+    if (zeal > 0 && isShip && u.node >= 0 && !u.lane) {
+      let risen = 0;
+      for (const o of this.buckets[u.node]) {
+        if (o === u || o.dead || o.lane || o.owner !== u.owner || UNITS[o.type].role === 'fighter') continue;
+        let b = o.buffs.find((x) => x.id === 'zeal');
+        if (!b) o.buffs.push((b = { id: 'zeal', t: ZEAL_TIME, v: 0 }));
+        if (b.v < ZEAL_MAX) risen = Math.max(risen, ++b.v);
+        b.t = ZEAL_TIME;
+      }
+      // (Said where the ship died, each time the zeal rises: both sides can see what the loss has cost.)
+      if (risen > 0 && this.fxEnabled) this.fx.push({ k: 'text', x: u.x, y: u.y - 14, text: `ZEAL +${Math.round(risen * zeal * 100)}%`, color: owner.color, node: u.node });
+    }
     // Martyr Cores
     const martyr = owner.mods.flags.martyr ?? 0;
     if (martyr > 0 && u.node >= 0 && isShip) {
@@ -1393,10 +1492,13 @@ export class Game {
     this.refundQueues(n);
     n.owner = byFaction;
     n.capitalOf = -1;
-    n.level = Math.max(1, n.level - 1);
+    // A world that is taken is sacked: it loses a level, and starts again from a low Glow. Not by the
+    // Choir of the First Flame, which converts it: the world goes on as it was, under a new house.
+    const sacked = !(att.mods.flags.convert ?? 0);
+    if (sacked) n.level = Math.max(1, n.level - 1);
     if (!n.role) n.role = 'forge';
     n.retool = 0;
-    n.glow = ECON.glowStart;
+    if (sacked) n.glow = ECON.glowStart;
     n.lastStand = true;
     this.refreshWorld(n);
     n.hp = n.maxHp * 0.3;

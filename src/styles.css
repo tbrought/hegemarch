@@ -691,11 +691,18 @@ button.small {
 .heir .hn {
   font-family: var(--display);
   font-size: 12px;
+  line-height: 1.35;
   color: var(--hc);
   margin-bottom: 6px;
   display: flex;
   align-items: center;
   gap: 8px;
+}
+
+/* (A long name, the Choir of the First Flame, is set a little smaller, to stand on one line of a card.) */
+.heir .hn.long {
+  font-size: 11px;
+  letter-spacing: 0;
 }
 
 .heir .swatch {
@@ -933,6 +940,7 @@ table.stats tr.total td {
   font-size: 11px;
   color: var(--ember);
   margin: 0 0 10px;
+  line-height: 1.4;
 }
 
 .results .reason {

@@ -7,7 +7,19 @@ export interface AbilityDef {
   color: string;
   /** Boss-only abilities are never offered to player or AI capital ships. */
   boss?: boolean;
+  /** The mark of one house: its Ark has it from the start, and no other ship ever learns it. */
+  own?: boolean;
 }
+
+/**
+ * Conversion: how much hull an Ark turns in one casting (hull as built, before any bonus), at level 1
+ * and for each level above it. 1000 is two Strikers, or a Guardian; a Breaker from level 2. The
+ * weakest go over first, so a ship that goes over is patched up to `CONVERT_MEND` of its hull: a house
+ * that gained only wrecks gained nothing (as an AI house the Choir turned 32 ships a game, and lost).
+ */
+export const CONVERT_HULL = 1000;
+export const CONVERT_HULL_PER_LEVEL = 150;
+export const CONVERT_MEND = 0.5;
 
 export const ABILITIES: AbilityDef[] = [
   { id: 'aegis', name: 'Aegis Field', desc: 'Nearby allies take [30% less damage] and recharge shields [twice as fast] for 8s.', cd: 28, range: 480, color: '#ffd23f' },
@@ -15,6 +27,7 @@ export const ABILITIES: AbilityDef[] = [
   { id: 'nanite', name: 'Nanite Cloud', desc: 'Repairs nearby allies by [18% of their hull] over 6s.', cd: 24, range: 520, color: '#2fd5a6' },
   { id: 'strikewing', name: 'Strike Wing', desc: 'Launches [6 Fighters] for 25s.', cd: 32, range: 600, color: '#b05cff' },
   { id: 'emp', name: 'EMP Burst', desc: 'Drains [900 shields] from enemies in range and [stuns small craft] for 3s.', cd: 26, range: 420, color: '#3fa7ff' },
+  { id: 'conversion', name: 'Conversion', desc: 'The weakest enemy ships in range [join your house]: 1000 hull of them, more as the Ark rises. They are patched up to half their hull and take [no room in your hangar]. Never an Ark, a Dreadnought, a Carrier or the Hollow.', cd: 36, range: 520, color: '#3fa7ff', own: true },
   { id: 'phaselance', name: 'Ember Lance', desc: 'Fires a [900-damage lance] at the biggest enemy in range.', cd: 18, range: 780, color: '#ff8a1f' },
   { id: 'overdrive', name: 'Overdrive', desc: 'Fires [70% faster] for 8s.', cd: 22, range: 600, color: '#ff6fb5' },
   { id: 'rally', name: 'Rally Cry', desc: 'Allies at this world deal [25% more damage] for 10s.', cd: 30, range: 9999, color: '#ffd23f' },
@@ -23,6 +36,6 @@ export const ABILITIES: AbilityDef[] = [
   { id: 'repairdrones', name: 'Repair Drones', desc: 'Restores [25% of its own hull] over 6s.', cd: 30, range: 0, color: '#2fd5a6' },
 ];
 
-export const LEARNABLE_ABILITIES = ABILITIES.filter((a) => !a.boss);
+export const LEARNABLE_ABILITIES = ABILITIES.filter((a) => !a.boss && !a.own);
 
 export const ABILITY_BY_ID = Object.fromEntries(ABILITIES.map((a) => [a.id, a])) as Record<string, AbilityDef>;

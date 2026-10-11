@@ -233,11 +233,11 @@ try {
   const end = await page.evaluate(() => ({ end: !!document.querySelector('.draft-end'), tray: document.querySelectorAll('.tray li').length, play: document.querySelector('.draft-end a')?.getAttribute('href'), text: document.querySelector('.draft-head').textContent }));
   check('after four picks the draft sums up and points to the game', end.end && end.tray === 4 && end.play === 'play/' && /That is 4 of \d+ Boons/.test(end.text), JSON.stringify(end));
   await page.screenshot({ path: '.shots/site-draft-end.png' });
-  await page.evaluate(() => document.querySelector('.heir[data-heir="nyx"]').click());
+  await page.evaluate(() => document.querySelector('.heir[data-heir="lyceum"]').click());
   await page.click('[data-act="again"]');
   await wait(300);
   const nyx = await page.evaluate(() => ({ n: document.querySelectorAll('.boon').length, head: document.querySelector('.draft-head').textContent }));
-  check('drafting again deals for the house now chosen', nyx.n === 3 && /Nyx Collective/.test(nyx.head), JSON.stringify(nyx));
+  check('drafting again deals for the house now chosen', nyx.n === 3 && /Lyceum Collective/.test(nyx.head), JSON.stringify(nyx));
   await page.screenshot({ path: '.shots/site-draft-again.png' });
 
   // ---------------- the rest

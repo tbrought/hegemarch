@@ -1,5 +1,5 @@
 import type { Game } from '../Game';
-import { ABILITY_BY_ID, type AbilityDef } from '../data/abilities';
+import { ABILITY_BY_ID, CONVERT_HULL, CONVERT_HULL_PER_LEVEL, type AbilityDef } from '../data/abilities';
 import { UNITS } from '../data/units';
 import type { Unit } from '../types';
 import { dist } from '../util';
@@ -32,6 +32,17 @@ function alliesInRange(g: Game, u: Unit, range: number): Unit[] {
     if (dist(u.x, u.y, o.x, o.y) <= range) out.push(o);
   }
   return out;
+}
+
+/**
+ * Can this ship be talked round (Conversion)? A warship or a Scout of a house or of the Corsairs. Not a
+ * capital ship, not a Carrier (its Fighters are its own), not a seed ship (a world is not won that
+ * way), nothing that stands still, nothing of the Hollow, which hears no one.
+ */
+export function convertible(g: Game, u: Unit): boolean {
+  const def = UNITS[u.type];
+  const kind = g.factions[u.owner].kind;
+  return !u.dead && !u.temp && !def.isStatic && (def.role === 'combat' || def.role === 'siege' || def.role === 'scout') && (kind === 'empire' || kind === 'pirate');
 }
 
 export function abilitiesTick(g: Game, dt: number) {
@@ -103,6 +114,22 @@ function tryCast(g: Game, u: Unit, def: AbilityDef): boolean {
         const ac = UNITS[e.type].armorClass;
         if (ac === 'light' || ac === 'strike') e.stun = Math.max(e.stun, 3);
       }
+      return true;
+    }
+    case 'conversion': {
+      // The weakest first, as many as the Ark can turn: those nearest to breaking are the first to listen.
+      let left = CONVERT_HULL + CONVERT_HULL_PER_LEVEL * (u.level - 1);
+      const es = enemiesInRange(g, u, def.range)
+        .filter((e) => convertible(g, e) && UNITS[e.type].hull <= left)
+        .sort((a, b) => a.hp - b.hp || a.id - b.id);
+      const turned: Unit[] = [];
+      for (const e of es) {
+        if (UNITS[e.type].hull > left) continue;
+        left -= UNITS[e.type].hull;
+        turned.push(e);
+      }
+      if (turned.length === 0) return false;
+      g.convertUnits(turned, u.owner, u);
       return true;
     }
     case 'phaselance': {

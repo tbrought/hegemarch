@@ -33,7 +33,7 @@ export type StatusTab = 'destinies' | 'boons' | 'rivals' | 'run';
 type HelpTab = 'basics' | 'controls' | 'tips';
 
 /** Tips in the order a run usually meets them. */
-const TIP_ORDER = ['role', 'fleet', 'boonReady', 'raid', 'anomalySeen', 'anomaly', 'blueprint', 'hangar', 'arkLevel', 'lostWorld', 'crisis'];
+const TIP_ORDER = ['role', 'fleet', 'boonReady', 'raid', 'anomalySeen', 'anomaly', 'blueprint', 'hangar', 'arkLevel', 'lostWorld', 'converted', 'crisis'];
 /** Tips of the cradle of an Ages run (listed first there, last elsewhere). */
 const AGES_TIPS = ['ageReady', 'ageNew', 'ageSiege', 'ageRival', 'ageGone', 'ageArk'];
 
@@ -603,7 +603,7 @@ export class Modals {
           const heir = HEIR_BY_ID[f.heir];
           const worlds = this.g.worldsOf(f.id).length;
           rect(g, cx, ly + 1, 6, 6, f.color);
-          text(g, `${f.name}${f.isPlayer ? ' (YOU)' : ''}`, cx + 10, ly, f.alive ? PAL.bone : PAL.slate);
+          text(g, `${this.g.shortName(f)}${f.isPlayer ? ' (YOU)' : ''}`, cx + 10, ly, f.alive ? PAL.bone : PAL.slate);
           const status = !f.alive ? (f.launchedAt >= 0 && this.g.cradle ? `LEFT FOR THE STARS AT ${fmtTime(f.launchedAt)}` : `OUT AT ${fmtTime(f.eliminatedAt)}`) : this.g.asleep(f.id) ? `STILL ON ITS WAY · ARRIVES IN ${fmtTime(f.asleepUntil - this.g.time)}` : `${worlds} WORLDS · ${f.boons} BOONS`;
           text(g, status, cx + cw - textWidth(status, 'tiny'), ly + 1, f.alive ? PAL.mist : PAL.slate, 'tiny');
           ly += 10;
@@ -1149,7 +1149,7 @@ export class Modals {
       const gone = f.launchedAt >= 0;
       const dead = !f.alive && !gone;
       rect(g, cx, ly + 1, 5, 5, dead ? PAL.slate : f.color);
-      text(g, (f.isPlayer ? `${f.name} (you)` : f.name).toUpperCase(), cx + 9, ly, dead ? PAL.slate : f.color);
+      text(g, (f.isPlayer ? `${this.g.shortName(f)} (you)` : this.g.shortName(f)).toUpperCase(), cx + 9, ly, dead ? PAL.slate : f.color);
       const fate = gone ? `LEFT FOR THE STARS AT ${fmtTime(f.launchedAt)}` : dead ? 'ITS HEARTH HAS GONE DARK' : ERAS[f.era].name.toUpperCase() + (f.advance && f.era >= LAST_CRADLE_ERA ? ' · BUILDING ITS ARK' : '');
       text(g, fate, cx + cw - textWidth(fate, 'tiny'), ly + 1, gone ? PAL.gold : dead ? PAL.slate : PAL.mist, 'tiny');
       for (let k = 0; k <= LAST_CRADLE_ERA; k++) rect(g, cx + 9 + k * 14, ly + 10, 12, 2, dead ? PAL.indigo : gone || f.era > k ? (gone ? PAL.gold : f.color) : PAL.indigo);

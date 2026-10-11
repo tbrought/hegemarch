@@ -4,6 +4,8 @@ import type { AIState, Mods } from '../types';
 export interface HeirDef {
   id: string;
   name: string;
+  /** What the house is called where there is no room for its name (a button, a table, one line of a panel). */
+  short?: string;
   title: string;
   color: string;
   desc: string;
@@ -16,6 +18,14 @@ export interface HeirDef {
   cost: number;
   personalities: AIState['personality'][];
 }
+
+/**
+ * Zeal (the Choir of the First Flame): what each ship lost adds to the damage of the rest of its house
+ * at that world, how many losses count at once, and for how long after the last of them.
+ */
+export const ZEAL_STEP = 0.05;
+export const ZEAL_MAX = 5;
+export const ZEAL_TIME = 10;
 
 /** Ember-16 palette. */
 export const PAL = {
@@ -96,8 +106,8 @@ export const HEIRS: HeirDef[] = [
     personalities: ['expansionist', 'opportunist'],
   },
   {
-    id: 'nyx',
-    name: 'Nyx Collective',
+    id: 'lyceum',
+    name: 'Lyceum Collective',
     title: 'The Hive-Minded House',
     color: PAL.violet,
     desc: 'Scholars joined in one mind. Quick to learn and quick to swarm, but their hulls are thin.',
@@ -110,30 +120,33 @@ export const HEIRS: HeirDef[] = [
     },
     arkName: 'Overmind',
     signature: 'strikewing',
-    hearth: 'Nyxara',
+    hearth: 'Lycea',
     start: { scouts: 1, strikers: 3, guardians: 0, breakers: 0, epicCard: false },
     cost: 120,
     personalities: ['opportunist', 'expansionist'],
   },
   {
-    id: 'ironclad',
-    name: 'Ironclad Dominion',
-    title: 'The Unbroken House',
+    // The one house that does not name itself like a state. What it can convert it does not destroy:
+    // its Ark turns ships (the ability `conversion`), a world it takes is not sacked (`flags.convert`),
+    // and every ship it loses is a martyr to the rest (`flags.zeal`). It does not run (`jumpCharge`).
+    id: 'choir',
+    name: 'Choir of the First Flame',
+    short: 'The Choir',
+    title: 'The Faithful House',
     color: PAL.sky,
-    desc: 'Fortress-builders who turn every world into a citadel. Slow, stubborn and very hard to kill.',
-    bonuses: ['[+40% world hull and shields]', 'Bastion guns deal [50% more damage]', '[+12% ship hull]', 'Ships move [!12% slower]', 'Ark: {EMP Burst}'],
+    desc: 'Zealots of a flame that never went out. They convert what others destroy, and they never run.',
+    bonuses: ['Captured worlds [keep their level and Glow]', '{Zeal}: [+5% damage] at a world for each ship lost there (up to 25%)', '[!Drives take 25% longer to charge]', 'Ark: {Conversion}'],
     mods: (m) => {
-      m.worldHp += 0.4;
-      m.role.bastion += 0.5;
-      m.hull += 0.12;
-      m.speed -= 0.12;
+      m.flags.convert = 1;
+      m.flags.zeal = ZEAL_STEP;
+      m.jumpCharge += 0.25;
     },
-    arkName: 'Bastion',
-    signature: 'emp',
-    hearth: 'Ferrum',
-    start: { scouts: 1, strikers: 0, guardians: 2, breakers: 1, epicCard: false },
+    arkName: 'Cantor',
+    signature: 'conversion',
+    hearth: 'Canticle',
+    start: { scouts: 1, strikers: 1, guardians: 1, breakers: 1, epicCard: false },
     cost: 160,
-    personalities: ['turtle'],
+    personalities: ['opportunist', 'warlord'],
   },
   {
     id: 'ashen',
@@ -156,6 +169,23 @@ export const HEIRS: HeirDef[] = [
 ];
 
 export const HEIR_BY_ID = Object.fromEntries(HEIRS.map((h) => [h.id, h])) as Record<string, HeirDef>;
+
+/**
+ * Houses that were renamed or replaced, by the id they had: a profile or a run saved before the change
+ * names them so. (The Nyx Collective became the Lyceum Collective; the Choir of the First Flame took
+ * the place of the Ironclad Dominion, and with it the Legacy a player had paid for that house.)
+ */
+const FORMER: Record<string, string> = { nyx: 'lyceum', ironclad: 'choir' };
+
+/** The id a house has now, for an id read from a save or a profile. */
+export function heirIdNow(id: string): string {
+  return FORMER[id] ?? id;
+}
+
+/** A house's name where room is short: "The Choir" for the Choir of the First Flame, the name itself for the others. */
+export function houseShort(heir: string, name: string): string {
+  return HEIR_BY_ID[heir]?.short ?? name;
+}
 
 export const PIRATE_COLOR = PAL.mist;
 export const GUARDIAN_COLOR = PAL.dusk;

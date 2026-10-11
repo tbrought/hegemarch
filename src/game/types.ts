@@ -159,6 +159,8 @@ export interface Unit {
   era: number;
   /** Ages: seconds until this unit is upgraded to its house's new age (the change spreads from the Hearth). */
   rearm?: number;
+  /** It came over from another house (Conversion): it takes no room in the hangar of the house it joined. */
+  guest?: boolean;
 }
 
 export interface QueueItem {

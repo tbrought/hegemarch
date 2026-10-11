@@ -1043,7 +1043,7 @@ export class App {
       const owned = p.heirs.includes(h.id);
       return `<div class="heir px-box ${st.heir === h.id ? 'sel' : ''} ${owned ? '' : 'locked'}" style="--hc:${h.color}" data-sa="heir:${h.id}">
         <canvas class="heir-art" data-heir="${h.id}" height="24" data-tip="${esc(`${h.name} starts with ${startingFleet(h)}${h.start.epicCard ? ', and a random Epic Boon' : ''}.`)}"></canvas>
-        <div class="hn">${esc(h.name.toUpperCase())}</div>
+        <div class="hn${h.name.length > 20 ? ' long' : ''}">${esc(h.name.toUpperCase())}</div>
         <div class="ht">${esc(h.title)}${owned ? '' : ` · locked: ◆${h.cost} in the Hall of Heirs`}${p.winsByHeir[h.id] ? ` · <span class="gold">${p.winsByHeir[h.id]} win${p.winsByHeir[h.id] > 1 ? 's' : ''}</span>` : ''}</div>
         <div class="hd">${glossHtml(h.desc)}</div>
         <ul>${h.bonuses.map((b) => `<li>${glossHtml(b)}</li>`).join('')}</ul>
@@ -1211,7 +1211,7 @@ export class App {
       <div class="reason">${esc(r.reason)}</div>
       ${legacyHero}
       <div class="cols">
-        <div class="px-box"><h3>THE REIGN OF THE ${esc((heir?.name ?? '').toUpperCase())}</h3><table class="stats">${r.stats.map(([k, v]) => `<tr><td>${k}</td><td>${esc(v)}</td></tr>`).join('')}</table></div>
+        <div class="px-box"><h3>THE REIGN OF ${esc((heir ? (heir.short ?? `the ${heir.name}`) : 'your house').toUpperCase())}</h3><table class="stats">${r.stats.map(([k, v]) => `<tr><td>${k}</td><td>${esc(v)}</td></tr>`).join('')}</table></div>
         <div class="px-box"><h3>LEGACY EARNED</h3><table class="stats">
           ${r.report.lines.filter(([k]) => !k.startsWith('Ambition')).map(([k, v]) => `<tr><td>${esc(k)}</td><td>+${v}</td></tr>`).join('')}
           <tr><td>Difficulty${daily ? ' and daily' : ''} multiplier</td><td>×${r.report.multiplier.toFixed(2)}</td></tr>

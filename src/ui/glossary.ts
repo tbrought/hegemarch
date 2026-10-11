@@ -96,6 +96,7 @@ export const GLOSSARY: GlossEntry[] = [
   // Between runs
   term('legacy', 'Legacy', 'legacy', 'Earned by every run, won or lost. Spend it in the Hall of Heirs on houses, perks and unlocks.'),
   term('ambition', 'Ambition', 'ambitions?', 'An extra goal for this run. Complete it for bonus Legacy.'),
+  term('zeal', 'Zeal', 'zeal', 'The Choir of the First Flame: each ship it loses makes the rest of its ships at that world deal 5% more damage, up to 25%, until 10 s after the last loss.'),
   // Ark and Dreadnought abilities
   ...ABILITIES.map((a) => term('ab-' + a.id, a.name, a.name.replace(/ /g, '\\s+'), a.desc)),
 ];
