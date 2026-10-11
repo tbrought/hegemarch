@@ -100,6 +100,33 @@ export class Actions {
     return true;
   }
 
+  /**
+   * The player's next world that builds (a Forge, or the Hearth), the idle ones first: selected and
+   * looked at. Tab; Shift+Tab goes back. Pressed again and again with a build key between, it queues
+   * ships all over the house without the mouse. (A look, not an order: it works while paused too.)
+   */
+  nextForge(dir = 1): boolean {
+    const sites = this.forges();
+    if (!sites.length) {
+      this.fail('You have no Forge yet');
+      return false;
+    }
+    const idle = sites.filter((n) => n.shipQ.length === 0);
+    const pool = idle.length ? idle : sites;
+    const at = pool.findIndex((n) => n.id === this.s.view.selectedNode);
+    const next = pool[at < 0 ? (dir > 0 ? 0 : pool.length - 1) : (at + dir + pool.length) % pool.length];
+    this.s.selectNode(next.id);
+    this.s.focusNode(next.id);
+    this.s.sfx.play('select', 0.4);
+    return true;
+  }
+
+  /** The player's worlds that build ships: every Forge, and the Hearth. */
+  forges() {
+    const g = this.g;
+    return g.nodes.filter((n) => n.owner === this.pid && g.isForge(n));
+  }
+
   upgrade(nodeId: number): boolean {
     if (!this.ready()) return false;
     const why = this.g.checkUpgrade(this.pid, nodeId);

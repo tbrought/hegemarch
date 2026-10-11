@@ -485,6 +485,14 @@ Measured with `npm run simulate` and `npm run balance:passive`. Speeds are ½×,
   carries its own copies (`src/fonts`, under the Open Font License): they are inside the one file a
   player downloads, so it looks the same with no connection, and the website serves them itself, so
   neither asks anything of another site.
+- **Build keys** (as the top row of keys is in Age of Empires): with one of the player's worlds that
+  builds selected (a Forge, or the Hearth), **Q W E R T Y** are the ship buttons of its panel, in
+  their order, each with its letter in the corner; Shift with one queues five. With ships selected,
+  or nothing, E and R keep their own meaning (Explore, Retreat). **Tab** goes to the next world that
+  builds, the idle ones first (Shift+Tab goes back), and the top bar counts the ones that build
+  nothing, beside a Forge: a click there does what Tab does. Tab, Q, Tab, W queues ships all over the
+  house without the mouse. Control groups stay as they were (Ctrl+1 to 9 saves ships, 1 to 9 selects
+  them, twice looks at them).
 - **The Hall of Heirs** shows a house as the setup does: its banner (its Hearth and starting fleet,
   flying), its name, what it is, what it has in a list, and its price along the foot of the card, with
   how much Legacy is still missing. Every card is the same shape, whatever the length of a name. A

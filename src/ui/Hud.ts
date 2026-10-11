@@ -28,6 +28,7 @@ import { gloss, GLOSS_BY_ID, termsIn } from './glossary';
 import { Goals } from './Goals';
 import { dimScreen, MARK, marksOf, Ui, type TipOpts } from './Ui';
 import { cradleVocabulary, unitCount, unitDesc, unitName } from './vocab';
+import { BUILD_LABELS } from './keys';
 
 interface LogLine {
   id: number;
@@ -389,6 +390,16 @@ export class Hud {
       const full = p.hangarUsed >= p.hangarCap;
       const ex = text(g, `${p.hangarUsed}/${p.hangarCap}`, x + 7, 3, full ? PAL.red : PAL.mist);
       this.ui.hit('hangar', x - 1, 0, ex - x + 2, 13, undefined, 'Hangar: room for your ships. Every world you hold adds room, and higher-level worlds add more. When it is full you cannot build. Hangar Bays at your Hearth add more.');
+      x = ex + 6;
+    }
+    // Forges that build nothing: how many, and a click (or Tab) to go to the next of them.
+    const idle = R.fleet && !this.g.outcome ? this.actions.forges().filter((n) => n.shipQ.length === 0).length : 0;
+    if (idle > 0) {
+      x += 2;
+      icon(g, 'forge', x, 3);
+      const ex = text(g, String(idle), x + 7, 3, PAL.ember);
+      this.ui.hit('idle-forges', x - 1, 0, ex - x + 2, 13, () => this.actions.nextForge(1), () =>
+        `${idle === 1 ? 'One of your Forges is' : `${idle} of your Forges are`} building nothing (your Hearth counts as one). Click, or press Tab, to go to the next: Q W E R T Y build there.`);
       x = ex + 6;
     }
     // Right side: menu, speeds, pause, clock.
@@ -1374,28 +1385,31 @@ export class Hud {
       const types = game.shipTypesFor(p);
       rows.push(this.gap(2));
       rows.push({
-        h: 15,
+        h: 18,
         draw: (x, y, w) => {
           const bw = Math.max(26, Math.min(34, Math.floor((w + 2) / types.length) - 2));
           let bx = x;
-          for (const t of types) {
+          types.forEach((t, k) => {
             const why = game.checkShip(p.id, n.id, t);
             const cost = game.shipCost(p, t);
             const id = 'build-' + t;
             const hot = this.ui.isHot(id);
             const blocked = !!why && why !== 'Not enough Embers' && why !== 'Hangar full' && why !== 'Queue full';
-            box(gx, bx, y, bw, 14, hot && !blocked ? PAL.indigo : PAL.night, hot ? PAL.dusk : why ? PAL.indigo : PAL.slate);
+            box(gx, bx, y, bw, 17, hot && !blocked ? PAL.indigo : PAL.night, hot ? PAL.dusk : why ? PAL.indigo : PAL.slate);
+            // (Its key, in the corner: Q W E R T Y, in the order of the buttons. See ui/keys.ts.)
+            const key = BUILD_LABELS[k];
+            if (key) text(gx, key, bx + 2, y + 2, hot ? PAL.mist : PAL.dusk, 'tiny');
             const spr = shipSprite(t, why ? PAL.slate : p.color, 0);
-            gx.drawImage(spr, bx + 2 + Math.max(0, Math.floor((9 - spr.width) / 2)), y + 7 - (spr.height >> 1));
-            text(gx, String(cost), bx + 12, y + 5, why === 'Not enough Embers' ? PAL.red : why ? PAL.slate : PAL.gold, 'tiny');
+            gx.drawImage(spr, bx + 2 + Math.max(0, Math.floor((9 - spr.width) / 2)), y + 10 - (spr.height >> 1));
+            text(gx, String(cost), bx + 12, y + 8, why === 'Not enough Embers' ? PAL.red : why ? PAL.slate : PAL.gold, 'tiny');
             const def = UNITS[t];
             this.ui.add({
-              id, x: bx, y, w: bw, h: 14, onClick: () => this.actions.build(n.id, t), disabled: blocked,
-              tipTitle: `${def.name} · ${cost} Embers · ${def.hangar} hangar`,
+              id, x: bx, y, w: bw, h: 17, onClick: () => this.actions.build(n.id, t), disabled: blocked,
+              tipTitle: `${def.name} · ${cost} Embers · ${def.hangar} hangar${key ? ` · key ${key}` : ''}`,
               tip: `${game.cradle ? `${unitDesc(t, p.era)} ${LINE_SHORT[t] ?? ''}` : (GLOSS_BY_ID[t]?.text ?? def.short)}${why ? ` [!${why}.]` : ' Shift-click: queue five.'}`,
             });
             bx += bw + 2;
-          }
+          });
         },
       });
       if (p.hangarUsed >= p.hangarCap) rows.push(this.line('HANGAR FULL: HOLD MORE WORLDS OR RAISE THEIR LEVEL', PAL.red, 'tiny', { terms: gloss('hangar', 'bay', 'level') }));

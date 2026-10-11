@@ -216,6 +216,63 @@ const screen = (page) => ev(page, () => window.__app.screen);
   check(fits, 'every row is inside the dialog');
   await page.screenshot({ path: '.shots/qol-settings.png' });
   await page.keyboard.press('Escape');
+  // Build keys and the next Forge. (The game is held still by its clock, not by a pause: a pause takes no orders.)
+  await page.waitForTimeout(200);
+  const k = await ev(page, () => {
+    const app = window.__app;
+    const s = app.session;
+    const g = s.game;
+    s.modal = null;
+    window.__step = g.step;
+    g.step = () => {};
+    g.player.embers = 9000;
+    g.player.hangarCap = 99;
+    s.clearSelection();
+    return { hearth: g.player.capital, types: g.shipTypesFor(g.player), idle: !!app.hud.ui.rectOf('idle-forges') };
+  });
+  await page.waitForTimeout(300);
+  check(await ev(page, () => !!window.__app.hud.ui.rectOf('idle-forges')), 'the top bar counts the Forges that build nothing');
+  await page.keyboard.press('Tab');
+  await page.waitForTimeout(200);
+  let kq = await ev(page, () => window.__app.session.view.selectedNode);
+  check(kq === k.hearth, `Tab goes to a world that builds, the idle ones first (the Hearth: ${kq === k.hearth})`);
+  const queue = () => ev(page, () => { const g = window.__app.session.game; return g.nodes[g.player.capital].shipQ.map((x) => x.id); });
+  await page.keyboard.press('KeyQ');
+  await page.keyboard.press('KeyE');
+  await page.keyboard.press('Shift+KeyW');
+  await page.waitForTimeout(200);
+  kq = await queue();
+  check(kq.join() === [k.types[0], k.types[2], k.types[1], k.types[1], k.types[1]].join(), `Q, E and Shift+W queue the first, third and second ships, five in all (${kq.join(', ')})`);
+  check(await ev(page, () => !window.__app.hud.ui.rectOf('idle-forges')), 'and with every Forge at work, the count is gone');
+  // With ships selected, E is still Explore, and builds nothing.
+  await ev(page, () => {
+    const s = window.__app.session;
+    const g = s.game;
+    for (const it of g.nodes[g.player.capital].shipQ) g.player.embers += it.cost;
+    g.nodes[g.player.capital].shipQ.length = 0;
+    s.selectUnits(s.fleetAt(g.player.capital).map((u) => u.id));
+  });
+  await page.keyboard.press('KeyE');
+  await page.keyboard.press('KeyQ');
+  await page.waitForTimeout(200);
+  check((await queue()).length === 0, 'with ships selected the keys keep their own meaning: nothing is built');
+  // The count in the top bar is a way to the next idle Forge as well.
+  await ev(page, () => window.__app.session.clearSelection());
+  await page.waitForTimeout(200);
+  const r = await ev(page, () => {
+    const c = document.getElementById('game').getBoundingClientRect();
+    const app = window.__app;
+    const r = app.hud.ui.rectOf('idle-forges');
+    return r ? { x: c.left + ((r.x + r.w / 2) * c.width) / app.hud.W, y: c.top + ((r.y + r.h / 2) * c.height) / app.hud.H } : null;
+  });
+  if (r) await page.mouse.click(r.x, r.y);
+  await page.waitForTimeout(200);
+  check(r && (await ev(page, () => window.__app.session.view.selectedNode)) === k.hearth, 'a click on the count goes there too');
+  await page.screenshot({ path: '.shots/qol-build-keys.png' });
+  await ev(page, () => {
+    const g = window.__app.session.game;
+    g.step = window.__step;
+  });
   // The run ends: the music stops for the fanfare and stays stopped, and the music of the results
   // waits for the fanfare to be over, also for a player who skips straight to them.
   await page.waitForTimeout(300);

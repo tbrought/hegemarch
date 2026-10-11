@@ -953,6 +953,8 @@ export class Modals {
               'With ships selected, click a world (or right-click) to send them. Right-click an enemy ship to attack it.',
               'Wheel: zoom. Right- or middle-drag, or the arrow keys: move the view. C: look at your Hearth.',
               'Space: pause. While the game is paused you can look around and read, but not give orders: press Space again first. The ½ 1 2 3 buttons at the top right (or + and -): game speed.',
+              'Q W E R T Y: with a Forge (or your Hearth) selected, build its ships, in the order of its buttons. Shift: five.',
+              'Tab: go to your next Forge, the idle ones first (Shift+Tab: back). The number beside the Forge at the top counts the idle ones.',
               'B: Boons. U: status. L: comms log. F: select all warships. K: kindle the selected world. S: stop. R: retreat.',
               'E: send the selected Scouts exploring. With no Scout selected, E picks your idle Scouts first: press it again to send them.',
               'Shift-click a ship button: queue five. Shift-click ships: add to the selection. Double-click a ship: select all of its kind nearby.',

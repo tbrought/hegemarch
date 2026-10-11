@@ -3,6 +3,7 @@ import { SPEEDS } from '../app/Session';
 import { UNITS } from '../game/data/units';
 import { PAL } from '../render/palette';
 import type { Hud } from './Hud';
+import { BUILD_KEYS } from './keys';
 
 const DRAG_PX = 4;
 
@@ -277,7 +278,15 @@ export class Input {
       } else s.recallGroup(k, performance.now() / 1000);
       return;
     }
+    if (this.buildKey(code)) {
+      e.preventDefault();
+      return;
+    }
     switch (code) {
+      case 'Tab':
+        e.preventDefault();
+        this.hud.actions.nextForge(e.shiftKey ? -1 : 1);
+        break;
       case 'Space':
         e.preventDefault();
         // A tip card holds the game: Space answers it (OK), as it would end a pause.
@@ -337,6 +346,25 @@ export class Input {
         s.view.orderMode = s.mode === 'play' && s.ownSelected().length > 0 && !s.view.orderMode;
         break;
     }
+  }
+
+  /**
+   * Q W E R T Y (ui/keys.ts): with one of the player's worlds that builds selected, and no ships, a key
+   * is the ship button in that place of its panel. True if the key was taken for it; otherwise it keeps
+   * its own meaning (E: explore, R: retreat).
+   */
+  private buildKey(code: string): boolean {
+    const i = BUILD_KEYS.indexOf(code);
+    if (i < 0) return false;
+    const s = this.s;
+    const g = this.g;
+    const n = s.view.selectedNode >= 0 ? g.nodes[s.view.selectedNode] : null;
+    if (!n || n.owner !== g.playerId || !g.isForge(n) || s.ownSelected().length) return false;
+    const t = g.shipTypesFor(g.player)[i];
+    // (Shift with the key queues five, as Shift with a click does.)
+    s.shiftHeld = this.keys.has('ShiftLeft') || this.keys.has('ShiftRight');
+    if (t) this.hud.actions.build(n.id, t);
+    return true;
   }
 
   /** Per-frame: keyboard and edge panning. */
