@@ -15,7 +15,7 @@ export const VICTORIES: Record<VictoryId, VictoryDef> = {
   ascension: { id: 'ascension', name: 'Ascension', short: 'Earn 15 Boons, then raise the Starfire Gate.', desc: 'Earn 15 Boons from Lore, then build the Starfire Gate at your Hearth and protect it while it charges for 4 minutes.' },
   relics: { id: 'relics', name: 'Relic Hunt', short: 'Hold most of the relics.', desc: 'Hold most of the relics hidden in the sector for 3 minutes. Relics are dug out of guarded vaults, and taken from a house when its Hearth falls.' },
   treasury: { id: 'treasury', name: 'Ember Hoard', short: 'Bank a vast hoard of Embers.', desc: 'Keep a vast hoard of Embers for 90 seconds. Taking a rival’s worlds seizes part of its hoard.' },
-  crisis: { id: 'crisis', name: 'Purge the Void', short: 'Destroy the Rift Heart.', desc: 'The Hollow will tear open the Maw. Destroy the Rift Heart inside it.' },
+  crisis: { id: 'crisis', name: 'Purge the Void', short: 'Land the killing blow on the Rift Heart.', desc: 'The Hollow will tear open the Maw. Destroy the Rift Heart inside it: the house that lands the killing blow takes the crown, whoever did the rest.' },
 };
 
 export const OPTIONAL_VICTORIES: VictoryId[] = ['domination', 'ascension', 'relics', 'treasury', 'crisis'];

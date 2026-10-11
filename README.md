@@ -75,7 +75,8 @@ terms do the same.
   Nothing can fire on a Scout in its first seconds at a place, so it can look at a guarded place and
   leave. Every ship you lose is reported in the log, with the place and who destroyed it.
 - **The hangar** limits your fleet. Hold more worlds and raise their level for more room.
-- **Destinies**: Conquest plus two of Dominion, Ascension, Relic Hunt, Ember Hoard and Purge the Void.
+- **Destinies**: Conquest plus two of Dominion, Ascension, Relic Hunt, Ember Hoard and Purge the Void
+  (the house that lands the killing blow on the Rift Heart wins it).
 - **Rushing** is allowed from the first second, and it is all or nothing. Every Hearth's walls
   (hull, shields and guns) start at 45% and reach full strength at 12:00. Take a rival's Hearth and
   its house falls: its worlds swear fealty to you, and you win half its hoard and a free Boon. Fail,

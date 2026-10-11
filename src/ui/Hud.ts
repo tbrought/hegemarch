@@ -510,6 +510,9 @@ export class Hud {
         if (c.dead) return { frac: 1, label: 'Purged' };
         if (!c.awake) return { frac: 0, label: `Maw opens ~${fmtTime(Math.max(0, c.awakenAt))}` };
         const h = g.units.get(c.heart);
+        // (While the void barrier holds, the Heart cannot really be hurt: say how long that is.)
+        const barrier = h?.buffs.find((b) => b.id === 'barrier');
+        if (h && barrier) return { frac: 1 - h.hp / h.maxHp, label: `Barrier ${fmtTime(Math.ceil(barrier.t))}` };
         return { frac: h ? 1 - h.hp / h.maxHp : 0, label: h ? `Heart ${pct(h.hp / h.maxHp)}` : '—' };
       }
     }

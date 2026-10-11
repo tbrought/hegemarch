@@ -498,6 +498,11 @@ export class Renderer {
           ctx.fillStyle = PAL.sky;
           ctx.fillRect(x, y - 4, 1, 1);
         }
+        // Held by a Gravity Snare (it cannot jump): ringed in violet, so the hold can be seen.
+        if (u.snare > 0) {
+          const { w, h } = spriteSize(u.type, u.era);
+          ring(ctx, x, y, Math.ceil(Math.max(w, h) / 2) + 2, flick ? PAL.violet : PAL.pink, 2);
+        }
         // Health bars for damaged or selected ships.
         const hpf = u.hp / Math.max(1, u.maxHp);
         const shf = u.maxSh > 0 ? u.sh / u.maxSh : 0;
@@ -529,7 +534,12 @@ export class Renderer {
     ctx.fillRect(x - core, y - 1, core * 2 + 1, 3);
     ctx.fillStyle = PAL.wine;
     ctx.fillRect(x - 1, y - 1, 3, 3);
-    if (this.game && u.buffs.some((b) => b.id === 'barrier')) ring(ctx, x, y, r + 3, Math.floor(this.time * 6) % 2 ? PAL.violet : PAL.pink, 2);
+    const barrier = u.buffs.find((b) => b.id === 'barrier');
+    if (this.game && barrier) {
+      ring(ctx, x, y, r + 3, Math.floor(this.time * 6) % 2 ? PAL.violet : PAL.pink, 2);
+      // How long the barrier holds, over the Heart: until then it shrugs off nine tenths of every hit.
+      if (z >= 0.06) textCenter(ctx, `BARRIER ${fmtTime(Math.ceil(barrier.t))}`, x, y - r - 12, PAL.pink, 'tiny');
+    }
   }
 
   private drawProjectiles(ctx: Ctx, g: Game, alpha: number, vis: (i: number) => boolean) {

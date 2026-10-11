@@ -16,6 +16,11 @@ export function crisisTick(g: Game, dt: number) {
   }
   const heart = g.units.get(C.heart);
   if (!heart || heart.dead) return;
+  // The barrier's end is said aloud: until then the Heart shrugs off nine tenths of every hit.
+  if (!C.barrierDown && !g.hasBuff(heart, 'barrier')) {
+    C.barrierDown = true;
+    g.notify(-1, `The void barrier around the Rift Heart has fallen. It can be destroyed now${g.victories.includes('crisis') ? ': the house that lands the killing blow wins by Purge the Void' : ''}.`, 'alert', C.node, true);
+  }
   if (heart.lastHit > 10) heart.hp = Math.min(heart.maxHp, heart.hp + 100 * dt);
   // The Heart spawns defenders while it is under attack.
   if (heart.lastHit < 3 && g.tick % 500 === 0) {
@@ -86,7 +91,19 @@ function driveCrisis(g: Game) {
         best = n.id;
       }
     }
-    if (best >= 0) g.cmdMove(g.crisisId, ids, best);
+    // The swarm keeps clear of the old guardians and the Corsairs on its way (it was walking into Sentinel
+    // vaults and the Corsair base, and never reached the houses it was meant to frighten). Where there is
+    // no way round, it goes through.
+    if (best >= 0) g.cmdMove(g.crisisId, ids, best, undefined, undefined, (id) => (wardedAgainstHollow(g, id) ? 30000 : 0));
   }
   void C;
+}
+
+/** Is this a place held by something that is neither a house nor the Hollow (Sentinels, Corsairs)? */
+function wardedAgainstHollow(g: Game, nodeId: number): boolean {
+  for (const u of g.buckets[nodeId]) {
+    if (u.dead || u.owner === g.crisisId) continue;
+    if (g.factions[u.owner].kind !== 'empire' && UNITS[u.type].role !== 'fighter') return true;
+  }
+  return false;
 }

@@ -18,7 +18,7 @@ export const ABILITIES: AbilityDef[] = [
   { id: 'phaselance', name: 'Ember Lance', desc: 'Fires a [900-damage lance] at the biggest enemy in range.', cd: 18, range: 780, color: '#ff8a1f' },
   { id: 'overdrive', name: 'Overdrive', desc: 'Fires [70% faster] for 8s.', cd: 22, range: 600, color: '#ff6fb5' },
   { id: 'rally', name: 'Rally Cry', desc: 'Allies at this world deal [25% more damage] for 10s.', cd: 30, range: 9999, color: '#ffd23f' },
-  { id: 'snare', name: 'Gravity Snare', desc: 'Enemies in range are [slowed by 40%] and [cannot jump] for 15s.', cd: 36, range: 600, color: '#b05cff' },
+  { id: 'snare', name: 'Gravity Snare', desc: 'Every enemy ship at this world is [slowed by 40%] and [cannot jump] for 15s. Held ships are ringed in violet.', cd: 30, range: 9999, color: '#b05cff' },
   { id: 'voidpulse', name: 'Void Pulse', desc: 'Every enemy in range takes [120 damage].', cd: 6, range: 650, color: '#ff6fb5', boss: true },
   { id: 'repairdrones', name: 'Repair Drones', desc: 'Restores [25% of its own hull] over 6s.', cd: 30, range: 0, color: '#2fd5a6' },
 ];

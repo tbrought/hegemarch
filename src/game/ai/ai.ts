@@ -480,10 +480,13 @@ function military(g: Game, f: Faction, ctx: Ctx) {
     const already = g.powerAt(th.node, f.id);
     const need = th.power * 1.3 - already;
     if (need <= 0) continue;
+    // (Ships within four jumps answer a threat to a world. For the Hearth every ship does, from anywhere:
+    // a fleet used to go on besieging a far world while its own Hearth fell.)
+    const reach = g.nodes[th.node].capitalOf === f.id ? Infinity : 4;
     const cands = all
       .filter((u) => !assigned.has(u.id) && u.node !== th.node && u.dest !== th.node)
       .map((u) => ({ u, d: g.pathLen(u.node >= 0 ? u.node : u.lane!.to, th.node) }))
-      .filter((c) => isFinite(c.d) && g.hops(c.u.node >= 0 ? c.u.node : c.u.lane!.to, th.node) <= 4)
+      .filter((c) => isFinite(c.d) && g.hops(c.u.node >= 0 ? c.u.node : c.u.lane!.to, th.node) <= reach)
       .sort((a, b) => a.d - b.d);
     const send: Unit[] = [];
     let sum = 0;
@@ -568,6 +571,24 @@ function military(g: Game, f: Faction, ctx: Ctx) {
         ai.mode = 'build';
         ai.lastAttack = g.time;
         break;
+      }
+      // A siege that is getting nowhere is called off. (A fleet without the guns for it would sit at a world
+      // for minutes, doing nothing a player could see.) Every 50 seconds the world must have lost some of
+      // its hull and shields, or there must be a battle on.
+      const tnode = g.nodes[tn];
+      if (arrived > army.length * 0.5 && tnode.kind === 'planet' && tnode.owner >= 0) {
+        const left = tnode.hp + tnode.sh;
+        if (!ai.siege || ai.siege.node !== tn) ai.siege = { node: tn, at: g.time, left };
+        else if (g.time - ai.siege.at > 50) {
+          if (left > ai.siege.left * 0.97 && theirs < ours * 0.4) {
+            g.cmdRetreat(f.id, army.map((u) => u.id));
+            ai.mode = 'build';
+            ai.lastAttack = g.time;
+            ai.siege = undefined;
+            break;
+          }
+          ai.siege = { node: tn, at: g.time, left };
+        }
       }
       const stragglers = army.filter((u) => u.node !== tn && u.dest !== tn && !u.lane && u.path.length === 0);
       if (stragglers.length) sendIfNeeded(g, f, stragglers, tn);

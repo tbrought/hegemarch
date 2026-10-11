@@ -268,6 +268,8 @@ export interface AIState {
   /** The house that last attacked our worlds (-1 = none): we answer it first. */
   grudge: number;
   grudgeAt: number;
+  /** The siege under way: the world, when it was last looked at, and how much hull and shield it had then. */
+  siege?: { node: number; at: number; left: number };
 }
 
 export interface Mods {
@@ -475,6 +477,8 @@ export interface CrisisState {
   nextWave: number;
   waves: number;
   warned: boolean;
+  /** The void barrier around the Rift Heart has fallen (said once). */
+  barrierDown?: boolean;
 }
 
 export interface Outcome {

@@ -129,6 +129,8 @@ function tryCast(g: Game, u: Unit, def: AbilityDef): boolean {
       const es = enemiesInRange(g, u, def.range).filter((e) => !UNITS[e.type].isStatic && e.type !== 'fighter');
       if (es.length === 0) return false;
       for (const e of es) e.snare = Math.max(e.snare, 15);
+      // (Said over the Ark, so that the player sees it took hold and on how many.)
+      if (g.fxEnabled) g.fx.push({ k: 'text', x: u.x, y: u.y - 24, text: `SNARED ${es.length}`, color: def.color, node: u.node });
       return true;
     }
     case 'voidpulse': {

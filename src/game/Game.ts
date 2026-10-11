@@ -1599,7 +1599,7 @@ export class Game {
 
   // ---- Movement orders ----
 
-  private orderPath(u: Unit, dest: number) {
+  private orderPath(u: Unit, dest: number, avoid?: (nodeId: number) => number) {
     const start = u.lane ? u.lane.to : u.node;
     if (start < 0) return;
     u.dest = dest;
@@ -1607,7 +1607,8 @@ export class Game {
       u.path = [];
       if (!u.lane) u.charge = -1;
     } else {
-      u.path = this.pathTo(start, dest);
+      const round = avoid ? this.pathAvoiding(start, dest, avoid) : [];
+      u.path = round.length ? round : this.pathTo(start, dest);
       if (!u.lane) u.charge = -1;
     }
   }
@@ -1617,7 +1618,8 @@ export class Game {
     return Number.isInteger(id) && id >= 0 && id < this.nodes.length ? this.nodes[id] : null;
   }
 
-  cmdMove(fid: number, ids: number[], dest: number, x?: number, y?: number) {
+  /** `avoid`: places the ships would rather not pass through, each counted as that much further (see `pathAvoiding`). */
+  cmdMove(fid: number, ids: number[], dest: number, x?: number, y?: number, avoid?: (nodeId: number) => number) {
     const n = this.nodeAt(dest);
     if (!n) return;
     const units = ids.map((id) => this.units.get(id)).filter((u): u is Unit => !!u && !u.dead && u.owner === fid && !UNITS[u.type].isStatic);
@@ -1647,7 +1649,7 @@ export class Game {
         u.ox = NaN;
         u.oy = NaN;
       }
-      this.orderPath(u, dest);
+      this.orderPath(u, dest, avoid);
       if (u.node === dest && !u.lane) {
         u.order = 'idle';
         if (!isNaN(u.ox)) {

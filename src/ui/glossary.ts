@@ -80,7 +80,7 @@ export const GLOSSARY: GlossEntry[] = [
   term('stronghold', 'Stronghold', 'stronghold', 'The Corsairs’ fortress. Destroying it ends their raids and wins a Boon.'),
   term('hollow', 'The Hollow', 'hollow', 'A ravenous swarm that pours out of the Maw and attacks every house.'),
   term('maw', 'The Maw', 'maw', 'The rift the Hollow come from. It opens partway through the run.'),
-  term('riftHeart', 'Rift Heart', 'rift heart', 'The core of the Maw. Destroy it to purge the Hollow.'),
+  term('riftHeart', 'Rift Heart', 'rift heart', 'The core of the Maw. A void barrier shields it for its first 4 minutes. Destroy it to purge the Hollow.'),
   // Winning
   term('hegemarch', 'Hegemarch', 'hegemarchs?', 'The sovereign of the sector. Fulfil any one of your Destinies to be crowned.'),
   term('destiny', 'Destiny', 'destin(?:y|ies)', 'A way to win. Every run offers Conquest and two others; fulfilling any one wins the run.'),
@@ -89,7 +89,7 @@ export const GLOSSARY: GlossEntry[] = [
   term('ascension', 'Ascension', 'ascension', 'A Destiny: earn 15 Boons from Lore, then raise the Starfire Gate and protect it for 4 minutes.'),
   term('relicHunt', 'Relic Hunt', 'relic hunt', 'A Destiny: hold most of the sector’s relics for 3 minutes.'),
   term('hoard', 'Ember Hoard', 'ember hoard', 'A Destiny: bank a great hoard of Embers (16,000 to 32,000, by sector size) and keep it for 90 s.'),
-  term('purge', 'Purge the Void', 'purge the void', 'A Destiny: destroy the Rift Heart inside the Maw.'),
+  term('purge', 'Purge the Void', 'purge the void', 'A Destiny: destroy the Rift Heart inside the Maw. The house that lands the killing blow wins, whoever did the rest.'),
   term('gate', 'Starfire Gate', 'starfire gate', 'Raised at your Hearth once you have earned 15 Boons. If it survives 4 minutes of charging, you win.'),
   term('lastStand', 'Last Stand', 'last stand', 'The first time a Hearth drops below 30% hull, Strikers and Guardians rise to defend it.'),
   // Between runs

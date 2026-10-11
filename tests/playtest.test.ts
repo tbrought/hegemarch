@@ -207,3 +207,120 @@ describe('the glossary', () => {
     expect(termsIn('Your total bonus now, counting your house, the omens, your Boons and your relics.').map((t) => t.id)).toEqual(['omen', 'relic']);
   });
 });
+
+describe('the Maw', () => {
+  const withMaw = () => mk({ forcedVictories: ['conquest', 'crisis', 'domination'] });
+
+  it('says when the void barrier around the Rift Heart falls, and who wins by destroying it', () => {
+    const g = withMaw();
+    const C = g.crisis!;
+    C.awakenAt = g.time + 1;
+    run(g, 3);
+    const heart = g.units.get(C.heart)!;
+    const barrier = heart.buffs.find((b) => b.id === 'barrier')!;
+    expect(barrier.t).toBeGreaterThan(200);
+    expect(C.barrierDown).toBeFalsy();
+    barrier.t = 1;
+    run(g, 3);
+    expect(g.hasBuff(heart, 'barrier')).toBe(false);
+    expect(C.barrierDown).toBe(true);
+    const said = g.notes.filter((n) => /void barrier around the Rift Heart has fallen/.test(n.text));
+    expect(said.length).toBe(1);
+    expect(said[0].text).toMatch(/the house that lands the killing blow wins by Purge the Void/);
+    run(g, 5);
+    expect(g.notes.filter((n) => /void barrier around the Rift Heart has fallen/.test(n.text)).length).toBe(1);
+  });
+
+  it('the killing blow on the Rift Heart takes the crown, and the Destiny says so', () => {
+    const g = withMaw();
+    const C = g.crisis!;
+    C.awakenAt = g.time + 1;
+    run(g, 3);
+    const heart = g.units.get(C.heart)!;
+    const rival = g.empires().find((f) => f.id !== g.playerId)!;
+    // The player does all the work; a rival lands the last hit.
+    g.damageUnit(heart, heart.maxHp * 5, 'energy', g.playerId, null);
+    heart.buffs = [];
+    heart.hp = 1;
+    g.damageUnit(heart, 500, 'energy', rival.id, null);
+    run(g, 1);
+    expect(g.outcome?.victory).toBe('crisis');
+    expect(g.outcome?.winner).toBe(rival.id);
+  });
+
+  it('a move order can keep clear of places: the ships take the way round', () => {
+    const g = mk();
+    const p = g.player;
+    // Two places with another way between them than the shortest one.
+    let done = false;
+    for (const from of g.nodes) {
+      for (const n of g.nodes) {
+        if (done || g.hops(from.id, n.id) < 3) continue;
+        const mid = g.pathTo(from.id, n.id)[1];
+        const round = g.pathAvoiding(from.id, n.id, (id) => (id === mid ? 1e6 : 0));
+        if (round.includes(mid)) continue;
+        const u = g.spawnUnit('striker', p.id, from.id);
+        g.cmdMove(p.id, [u.id], n.id, undefined, undefined, (id) => (id === mid ? 1e6 : 0));
+        expect(u.path).toEqual(round);
+        expect(u.dest).toBe(n.id);
+        const v = g.spawnUnit('striker', p.id, from.id);
+        g.cmdMove(p.id, [v.id], n.id);
+        expect(v.path).toEqual(g.pathTo(from.id, n.id));
+        expect(v.path).toContain(mid);
+        done = true;
+      }
+    }
+    expect(done).toBe(true);
+  });
+});
+
+describe('Gravity Snare', () => {
+  it('holds every enemy ship at the world, wherever it is there, and says how many', () => {
+    const g = mk();
+    const p = g.player;
+    const rival = g.empires().find((f) => f.id !== p.id)!;
+    const ark = g.units.get(p.ark)!;
+    const home = g.nodes[p.capital];
+    ark.abil = [{ id: 'snare', cd: 0 }];
+    // One enemy beside the Ark, one at the far edge of the world's well.
+    const near = g.spawnUnit('striker', rival.id, home.id, { x: ark.x + 60, y: ark.y });
+    const far = g.spawnUnit('striker', rival.id, home.id, { x: home.x + home.well * 0.95, y: home.y });
+    expect(Math.hypot(far.x - ark.x, far.y - ark.y)).toBeGreaterThan(200);
+    g.fx.length = 0;
+    let said = '';
+    for (let i = 0; i < 60 && !said; i++) {
+      g.step();
+      const t = g.fx.find((f) => f.k === 'text' && /^SNARED/.test(f.text));
+      if (t && t.k === 'text') said = t.text;
+    }
+    expect(said).toBe('SNARED 2');
+    expect(near.dead || near.snare > 10).toBe(true);
+    expect(far.dead || far.snare > 10).toBe(true);
+    // A snared ship cannot spool its jump.
+    if (!far.dead) {
+      g.cmdMove(rival.id, [far.id], rival.capital);
+      const charge = far.charge;
+      run(g, 2);
+      expect(far.lane).toBeFalsy();
+      expect(far.charge < 0 || far.charge >= charge - 1e-6 || far.snare > 0).toBe(true);
+    }
+  });
+});
+
+describe('rival fleets', () => {
+  it('come home for their Hearth from any distance', () => {
+    const g = mk({ size: 'medium' });
+    const p = g.player;
+    const rival = g.empires().find((f) => f.id !== p.id)!;
+    // The rival's fleet is far from home (more than four jumps)...
+    const farNode = g.nodes.filter((n) => n.kind === 'planet' && g.hops(n.id, rival.capital) > 4).sort((a, b) => g.hops(b.id, rival.capital) - g.hops(a.id, rival.capital))[0];
+    expect(farNode).toBeTruthy();
+    for (const u of g.unitsOf(rival.id)) if (u.type !== 'ark' && u.type !== 'scout') g.killUnit(u, -1);
+    const fleet = [0, 1, 2, 3, 4, 5].map(() => g.spawnUnit('guardian', rival.id, farNode.id));
+    // ...when a strong enemy arrives at its Hearth.
+    for (let i = 0; i < 14; i++) g.spawnUnit('breaker', p.id, rival.capital);
+    run(g, 6);
+    const coming = fleet.filter((u) => !u.dead && (u.dest === rival.capital || u.node === rival.capital));
+    expect(coming.length).toBeGreaterThanOrEqual(4);
+  });
+});

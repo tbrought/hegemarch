@@ -134,7 +134,11 @@ There is no truce. What keeps an early rush risky:
   attack time, unless provoked. Striking its worlds or ships gives it a grudge: it may hit back at
   once and values the grudge target 2.5× when it picks targets.
 - **Early warning**: AI houses see fleets bound for their worlds once those fleets are in sight and
-  pull defenders home.
+  pull defenders home. Ships within four jumps answer a threat to a world; for the Hearth every
+  ship does, from anywhere (a fleet used to go on besieging a far world while its own Hearth fell).
+- **A siege that gets nowhere is called off**: every 50 seconds at its target an AI fleet must have
+  taken 3% off the world's hull and shields, or be in a battle; otherwise it goes home and picks
+  again. A fleet without the guns for a world no longer sits at it for minutes.
 - **Stakes**: taking a Hearth eliminates the house, pays half its hoard (up to 6,000 Embers) and a
   free Boon, and its worlds swear **fealty** to the conqueror (they change owner, reset glow and keep
   their level). A failed rush leaves the attacker without an army against a rival with its economy
@@ -149,6 +153,14 @@ Conquest (take every rival Hearth) plus two of: **Dominion** (60% of all worlds 
 **Ascension** (15 Lore Boons, then raise and defend the Starfire Gate for 4 minutes), **Relic Hunt**
 (most relics for 3 minutes), **Ember Hoard** (16k/24k/32k Embers by sector size for 90 s; taking a
 rival's worlds seizes part of its hoard) and **Purge the Void** (destroy the Rift Heart).
+
+Purge the Void goes to the house that lands the **killing blow** on the Rift Heart, whoever did the
+rest (like a neutral boss in a MOBA: it can be stolen, by a rival or by the player). The rule is
+said on the Destiny's card and when the barrier falls. For its first 4 minutes a void barrier takes
+nine tenths off every hit on the Heart; a countdown stands over the Maw and in the Destiny's line
+(BARRIER 3:12), and the log says when it falls. The Hollow's swarms go for the nearest world of a
+house and keep clear of Sentinel vaults and the Corsair base on the way (`Game.pathAvoiding`): they
+used to walk into them and never arrive.
 
 ### Threats and pace (Normal, medium sector, 1× speed)
 | Moment | Time |
