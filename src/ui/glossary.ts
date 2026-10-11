@@ -33,8 +33,8 @@ export const GLOSSARY: GlossEntry[] = [
   term('blueprint', 'Blueprint', 'blueprints?', 'A Boon that lets your Forges build a new kind of ship.'),
   term('pact', 'Pact', 'pacts?', 'A double-edged Boon: a big gain that comes with a real cost.'),
   // Worlds
-  term('kindle', 'Kindle', 'kindl(?:e|es|ed|ing)', 'Light a dark world and make it yours: a seed ship flies there and kindles it in 20 s, once no enemies are present. Each world you hold makes the next one cost more.'),
-  term('seed', 'Seed Ship', 'seed ships?', 'Carries the spark that kindles a dark world. It launches from your nearest world.'),
+  term('kindle', 'Kindle', 'kindl(?:e|es|ed|ing)', 'Light a dark world and make it yours. KINDLE pays for a seed ship that goes there and kindles it in 20 s, once no enemies are present. The seed ship is used up. Each world you hold makes the next one cost more.'),
+  term('seed', 'Seed Ship', 'seed ships?', 'Carries the spark that kindles a dark world. Every KINDLE pays for one: it sets out from your nearest world and is used up when the world lights. If it is destroyed on the way, its Embers are lost and you kindle again. It takes no hangar room.'),
   term('dark', 'Dark world', 'dark worlds?', 'A world that no house holds. Kindle it to make it yours. Some are guarded.'),
   term('glow', 'Glow', 'glow(?:s|ing)?', 'A new or captured world starts at 25% output and reaches full strength over 90 s.'),
   term('house', 'House', 'houses?', 'One of the powers of the sector. You lead one, and each rival leads another. Every house has its own strengths and its own Ark.', true),

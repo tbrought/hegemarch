@@ -1198,8 +1198,8 @@ export class Hud {
             tip: why
               ? `Can't kindle: ${why}.`
               : waiting
-                ? `Your waiting seed ship flies to ${n.name} and kindles it. It is already paid for, so this costs nothing. (K)`
-                : `Send a seed ship to bring ${n.name} into your house. Costs ${cost} Embers (more with every world you hold). (K)`,
+                ? `Your waiting seed ship goes to ${n.name}, kindles it and is used up. It is already paid for, so this costs nothing. (K)`
+                : `Pay ${cost} Embers for a seed ship: it goes to ${n.name}, kindles it and is used up. If it is destroyed on the way, the Embers are lost. (K)`,
           });
           if (why && why !== 'Not enough Embers') text(this.s.screen.g, fit(why.toUpperCase(), w - 116, 'tiny'), x + 116, y + 4, PAL.slate, 'tiny');
         },

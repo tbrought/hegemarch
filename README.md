@@ -34,7 +34,8 @@ player). A run in progress is the banner at the top: CONTINUE.
 The first run is **guided** (the First Night, BEGIN on the title screen). It shows you six things, one
 at a time:
 
-1. **Kindle a dark world.** Click a grey world, then press KINDLE. A seed ship flies out and lights it.
+1. **Kindle a dark world.** Click a grey world, then press KINDLE. You pay for a seed ship, which flies
+   out, lights the world and is used up. (If it is destroyed on the way, the Embers are lost.)
 2. **Build a Striker** at your Hearth.
 3. **Choose your first Boon.**
 4. **Repel a pirate raider:** click your fleet's badge, then the world.

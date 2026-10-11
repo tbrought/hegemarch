@@ -906,7 +906,7 @@ export class Modals {
             'THE CRADLE: every house begins here in the Stone Age, all on one planet. Climb through the ages, build your Ark, and carry what you have won to the stars, where the crown is decided.',
             `AGES: your Lore is saved for the next age. When the bar at the top is full, press the button beside it (or A). The step costs Embers and takes time at your Hearth; an attack on the Hearth stops the work. There are five ages: ${ERAS.slice(0, LAST_CRADLE_ERA + 1).map((e) => e.name.replace(' Age', '')).join(', ')}.`,
             'A NEW AGE brings stronger units, more to build (siege units and Bastions with bronze, higher levels later), and one Boon. Every unit you already have is upgraded to it, wherever it stands.',
-            'KINDLE: click a grey land and press KINDLE. A firebearer walks out and lights it. Each land costs a bit more. Beasts hold the richest lands: drive them off first.',
+            'KINDLE: click a grey land and press KINDLE. You pay for a firebearer, who walks out, lights the land and stays there. If the firebearer is killed on the way, the Embers are lost. Each land costs a bit more. Beasts hold the richest lands: drive them off first.',
             'LANDS: each land earns Embers and has one role. MINE: more Embers. FORGE: builds units. OBSERVATORY: Lore, so a faster climb. BASTION: guns and repairs.',
             'UNITS: swift units beat siege units, siege units beat sturdy units and walls, sturdy units beat swift ones. Their names change with the ages; the triangle does not.',
             'THE ARK is the last step. When yours is done, your house leaves for the stars with its Boons and Embers. A rival whose Ark leaves first is ahead of you out there; a rival whose Hearth you put out here never follows.',
@@ -915,7 +915,7 @@ export class Modals {
         : this.helpTab === 'basics'
         ? [
             'The last Hegemarch fell, and the sector went dark. Light it up, one world at a time, and follow one of your three Destinies to the crown.',
-            'KINDLE: click a grey world and press KINDLE. A seed ship flies out and lights it. Each world costs a bit more.',
+            'KINDLE: click a grey world and press KINDLE. You pay for a seed ship, which flies out, lights the world and is used up. If it is destroyed on the way, the Embers are lost. Each world costs a bit more.',
             'SCOUTS wait for your order: select one (click its fleet badge) and press EXPLORE, and it charts the dark by itself. To look inside an anomaly (a violet swirl), send any ship there.',
             'WORLDS: each world earns Embers and has one role. MINE: more Embers. FORGE: builds ships. OBSERVATORY: Lore. BASTION: guns and repairs. Raise worlds to level II and III.',
             'SHIPS: Strikers beat Breakers, Breakers beat Guardians and worlds, Guardians beat Strikers. New ships come as Blueprint Boons.',

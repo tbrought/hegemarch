@@ -77,7 +77,11 @@ the depth into the draft and the screen into a "one thing at a time" model.
   place to catch a fleet that keeps running is its own Hearth.
 - **Kindle**: press KINDLE on a dark world; a seed ship launches from your nearest world and kindles
   it in 20 seconds once no enemies are present. It costs 120 Embers plus 30 per world you hold.
-  Guarded dark worlds (militia, sentinels) must be cleared first.
+  Guarded dark worlds (militia, sentinels) must be cleared first. The Embers pay for the seed ship:
+  it is never built at a Forge, takes no hangar room, and is **used up when the world lights**; if
+  it is destroyed on the way, the Embers are lost and the player kindles again. The KINDLE button,
+  the glossary and How to Play all say so (a player asked whether a seed ship should be consumed by
+  kindling: it always was, and nothing said it).
 - **A seed ship on its mission belongs to no fleet.** Fleet badges, selection boxes and control groups
   leave it out, and an order to a mixed selection never redirects it (it launches beside the Hearth
   fleet, so it used to be swept up and silently stranded). Only an order to seed ships alone calls a

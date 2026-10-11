@@ -58,7 +58,7 @@ const PIXEL_TIPS = {
 
 const HOWTO = `
 <p>The last <b>Hegemarch</b> fell, and the sector went dark. Your house lights it back up, one world at a time. Follow one of your three <b>Destinies</b> and be crowned the next Hegemarch.</p>
-<p><b>Kindle:</b> click a grey world and press KINDLE. A seed ship flies out and lights it in your color. Each world costs a few more Embers than the last.</p>
+<p><b>Kindle:</b> click a grey world and press KINDLE. You pay for a seed ship, which flies out, lights the world in your color and is used up. If it is destroyed on the way, the Embers are lost and you kindle again. Each world costs a few more Embers than the last.</p>
 <p><b>Scouts:</b> your Scout waits at your Hearth for orders. Select it (click the fleet badge) and press EXPLORE, or E, and it charts the dark world after world by itself. To look inside an <b>anomaly</b> (a violet swirl), send any ship there.</p>
 <p><b>Worlds:</b> every world earns <b>Embers</b>, your only currency, and has one role. MINE: more Embers. FORGE: builds ships. OBSERVATORY: makes Lore and sees further. BASTION: guns, armor and repairs. Raise worlds to level II and III for more of everything.</p>
 <p><b>Ships:</b> Strikers beat Breakers. Breakers beat Guardians and take worlds. Guardians beat Strikers. Carriers, Lancers, Dreadnoughts and Starbases come as Blueprint Boons.</p>

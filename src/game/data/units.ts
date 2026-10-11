@@ -70,7 +70,7 @@ const defs: UnitDef[] = [
     hull: 500, shield: 200, armor: 0, shieldRegen: 5, speed: 75, turn: 2, radius: 9,
     cost: 0, buildTime: 10, hangar: 0, weapons: [], power: 0, buildable: false, xpValue: 12,
     prefers: [], short: 'Kindles a dark world.',
-    desc: 'Carries a spark of your Hearth to a dark world and kindles it.',
+    desc: 'Carries a spark of your Hearth to a dark world and kindles it. Every KINDLE pays for one, and it is used up when the world lights.',
   },
   // ---------------- Blueprint ships ----------------
   {
