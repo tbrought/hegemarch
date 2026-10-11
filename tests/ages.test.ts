@@ -596,3 +596,15 @@ describe('the cradle on screen', () => {
     expect(back.player.cards).toEqual(['firekeepers']);
   });
 });
+
+describe('the cradle has its own words for what a playtest added', () => {
+  it('a fortified land keeps its attackers: no warp, no jump', () => {
+    const say = cradleVocabulary(1);
+    for (const t of ['ANTI-WARP FIELD: ENEMIES JUMP AWAY 6S SLOWER', 'ANTI-WARP FIELD: YOUR SHIPS JUMP AWAY 6S SLOWER', 'Fortifies the world: [orbital guns], and an [anti-warp field]: enemy ships take 6s longer to jump away.']) {
+      const said = say(t);
+      expect(said).not.toMatch(/warp|jump|ship|world/i);
+      expect(said).toMatch(/ring of walls/i);
+      expect(said).toMatch(/march away/i);
+    }
+  });
+});

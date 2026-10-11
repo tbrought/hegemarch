@@ -28,6 +28,10 @@ const WORDS: [string, string][] = [
   ['warship', 'unit'],
   ['ships', 'units'],
   ['ship', 'unit'],
+  // (A fortified land keeps its attackers from leaving, as an anti-warp field does among the stars.)
+  ['anti-warp fields', 'rings of walls'],
+  ['anti-warp field', 'ring of walls'],
+  ['jump away', 'march away'],
   ['starlanes', 'paths'],
   ['starlane', 'path'],
   // (Kinds of land, by the kinds of world they stand in for.)
