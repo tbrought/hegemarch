@@ -58,8 +58,24 @@ the depth into the draft and the screen into a "one thing at a time" model.
   to full over 90 seconds). A world under fire earns half.
 - Each world has one **role**: **Mine** (+75% Embers), **Forge** (builds ships, faster at higher
   levels), **Observatory** (Lore, and sees one starlane further) or **Bastion** (orbital guns, +50%
-  hull and shields, repairs your ships). Each planet type has a natural role (+25%). Switching role
-  takes a 20-second retool. The **Hearth** does every role and cannot change.
+  hull and shields, repairs your ships, an anti-warp field). Each planet type has a natural role
+  (+25%). A newly kindled world starts as a Mine, and the **first role its house gives it costs no
+  time** (`GNode.fresh`); a later change takes a 20-second retool. (Putting a world to the role it is
+  good at used to cost those 20 seconds every time. Starting each world in its natural role instead
+  would have cut the income of a player who never touches roles.) The **Hearth** does every role and
+  cannot change.
+- **A fleet can be made to stand.** Any ship can jump away after a 3.5-second spool, from anywhere in
+  a world's well, so a war between fleets was a chase: the first playtester gave up on catching
+  raiders and went for Hearths instead. Two rules change that, for every house alike:
+  - An **anti-warp field** (`Game.fieldAt`, `HOLD_FIELD`): at a Bastion, at a Hearth (it does every
+    role) and at any world with a Starbase, enemy ships take 6 seconds longer to jump away. The field
+    shows as a violet ring inside the world's well, and the world's card says so, for its owner and
+    for an attacker. The Gravity Anchors Boon adds its 4 seconds at every world of the house. Scouts
+    are too small to hold.
+  - **Under fire a drive spools at half speed** (`UNDER_FIRE`, `FIRE_SPOOL`): a ship hit in the last
+    two seconds takes twice as long to get away. Running from a fight costs time.
+  So a raid on a Bastion is a commitment, a Bastion is the buildable answer to raiders, and the
+  place to catch a fleet that keeps running is its own Hearth.
 - **Kindle**: press KINDLE on a dark world; a seed ship launches from your nearest world and kindles
   it in 20 seconds once no enemies are present. It costs 120 Embers plus 30 per world you hold.
   Guarded dark worlds (militia, sentinels) must be cleared first.

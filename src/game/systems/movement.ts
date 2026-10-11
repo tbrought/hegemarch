@@ -1,4 +1,5 @@
 import type { Game } from '../Game';
+import { FIRE_SPOOL, UNDER_FIRE } from '../constants';
 import { ECON } from '../data/worlds';
 import { UNITS } from '../data/units';
 import { mul } from '../mods';
@@ -56,7 +57,8 @@ export function movementTick(g: Game, dt: number) {
     if (u.path.length > 0) {
       if (u.charge < 0) u.charge = g.jumpChargeOf(u);
       else if (u.snare <= 0) {
-        u.charge -= dt;
+        // (Under fire the drive spools at half speed: running from a fight costs time.)
+        u.charge -= dt * (u.lastHit < UNDER_FIRE ? FIRE_SPOOL : 1);
         if (u.charge <= 0) {
           startJump(g, u);
           continue;

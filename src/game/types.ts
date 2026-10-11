@@ -171,6 +171,8 @@ export interface QueueItem {
 }
 
 export interface GNode {
+  /** Kindled, and not yet given a role by its house: the first role it is given costs no time. */
+  fresh?: boolean;
   id: number;
   name: string;
   kind: NodeKind;

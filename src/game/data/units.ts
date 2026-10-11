@@ -100,7 +100,7 @@ const defs: UnitDef[] = [
     cost: 700, buildTime: 50, hangar: 0, weapons: [{ ...W.beam, damage: 50, range: 560 }, { ...W.flak, damage: 8, cooldown: 0.8, range: 400 }],
     power: 28, buildable: false, blueprint: 'bpStarbase', isStatic: true, xpValue: 250,
     prefers: CORE_PREFS.all, short: 'Orbital fortress. One per world.',
-    desc: 'A huge orbital fortress that guards one world and repairs your ships there.',
+    desc: 'A huge orbital fortress that guards one world, repairs your ships there, and keeps an anti-warp field up: enemy ships take 6s longer to jump away.',
   },
   // ---------------- Special ----------------
   {

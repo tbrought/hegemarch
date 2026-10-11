@@ -6,6 +6,7 @@ import { ERAS, LAST_CRADLE_ERA, LINE_SHORT, SPACE } from '../game/data/eras';
 import { RELIC_BY_ID } from '../game/data/relics';
 import { isWarship, UNITS } from '../game/data/units';
 import { ASCENSION_BOONS, DOMINATION_SHARE, GATE_CHARGE, relicsRequired, treasuryTarget, VICTORIES } from '../game/data/victories';
+import { HOLD_FIELD } from '../game/constants';
 import { ECON, PLANETS, ROLES, ROLE_ORDER } from '../game/data/worlds';
 import type { Faction, GNode, Note, Unit, UnitType, VictoryId } from '../game/types';
 import { roman } from '../game/util';
@@ -1148,6 +1149,7 @@ export class Hud {
       if (visible) rows.push(this.hpRow(n));
       const walls = n.capitalOf >= 0 && f.kind === 'empire' ? game.wallsOf(n) : 1;
       if (walls < 1) rows.push(this.line(`WALLS ${pct(walls)}: WEAKER NOW, FULL AT ${fmtTime(ECON.wallsTime)}`, PAL.ember, 'tiny', { terms: gloss('walls') }));
+      if (visible && game.fieldAt(n)) rows.push(this.line(`ANTI-WARP FIELD: YOUR SHIPS JUMP AWAY ${HOLD_FIELD}S SLOWER`, PAL.violet, 'tiny', { terms: gloss('field') }));
       // (Ages: a house still on its way from the cradle holds its Hearth, and nothing can touch it until it arrives.)
       const away = game.asleep(f.id);
       if (away) rows.push(this.line(`ITS ARK HAS NOT ARRIVED: ${fmtTime(f.asleepUntil - game.time)} TO GO`, PAL.ember, 'tiny', { tip: `The ${f.name} are still on their way from the cradle. Until their Ark arrives nothing here can be hurt, and nothing here will fight.` }));
@@ -1242,6 +1244,7 @@ export class Hud {
     rows.push(this.line(info, n.retool > 0 ? PAL.ember : PAL.dusk, 'tiny', n.retool > 0 ? { terms: gloss('retool') } : hearth ? { terms: gloss('hearth') } : this.roleTip(n)));
     const walls = hearth ? game.wallsOf(n) : 1;
     if (walls < 1) rows.push(this.line(`WALLS ${pct(walls)} · FULL STRENGTH AT ${fmtTime(ECON.wallsTime)}`, PAL.ember, 'tiny', { terms: gloss('walls') }));
+    if (game.fieldAt(n)) rows.push(this.line(`ANTI-WARP FIELD: ENEMIES JUMP AWAY ${HOLD_FIELD}S SLOWER`, PAL.violet, 'tiny', { terms: gloss('field') }));
     rows.push({
       h: 10,
       draw: (x, y) => {
@@ -1276,7 +1279,7 @@ export class Hud {
             this.ui.iconButton(gx, 'role-' + r, bx, y, 12, r, () => this.actions.role(n.id, r), {
               selected: n.role === r,
               tipTitle: n.role === r ? `${ROLES[r].name} (current role)` : ROLES[r].name,
-              tip: `${ROLES[r].desc}${isAff ? ' This world is a natural fit: [+25%].' : ''}${n.role === r ? '' : ` Switching takes ${ECON.retoolTime}s, and the world works at neither role meanwhile.`}`,
+              tip: `${ROLES[r].desc}${isAff ? ' This world is a natural fit: [+25%].' : ''}${n.role === r ? '' : n.fresh ? ' The first role you give a new world costs no time.' : ` Switching takes ${ECON.retoolTime}s, and the world works at neither role meanwhile.`}`,
             });
             if (isAff) {
               gx.fillStyle = PAL.gold;

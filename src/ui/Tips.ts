@@ -13,7 +13,7 @@ import { MARK, marksOf } from './Ui';
 
 export const TIPS: Record<string, string> = {
   role: 'Every world has a role. MINE: more Embers. FORGE: builds ships. OBSERVATORY: Lore. BASTION: guns and repairs. Click a world to change it.',
-  raid: 'Corsairs raid worlds to steal Embers. Meet them with your fleet, or make the world a Bastion.',
+  raid: 'Corsairs raid worlds to steal Embers. Meet them with your fleet, or make the world a Bastion: its guns fire on them, and its anti-warp field keeps them from jumping away.',
   anomaly: 'Your ship found an anomaly. These strange finds can bring Embers, Lore, ships or trouble. You choose.',
   anomalySeen: 'There is an anomaly on your map (a violet swirl). Send any ship there to look inside, then choose what to do. Ships only passing through fly on, and so do Scouts out exploring.',
   blueprint: 'A Blueprint adds a new ship to your Forges for the rest of the run.',
@@ -22,7 +22,7 @@ export const TIPS: Record<string, string> = {
   hangar: 'Your hangar is nearly full. Hold more worlds, or raise them to higher levels, to make room for ships.',
   boonReady: 'Your Lore is full: press B, or the BOON button at the top, to choose a Boon.',
   fleet: `Ships gather in fleets. The badge beside a world (like ${IC.fleet}) counts your ships there: click it to select them, then click a world to send them.`,
-  lostWorld: 'You lost a world. Take it back with Breakers, or protect your others with Bastions and a Starbase.',
+  lostWorld: 'You lost a world. Take it back with Breakers, or protect your others with Bastions and a Starbase. An enemy that keeps running stands and fights at a Bastion: it cannot jump away quickly there.',
   // Ages runs, on the cradle.
   ageReady: 'The Lore of your age is gathered. Press the button at the top (or A) to begin the next age. It takes Embers too, and a little time at your Hearth.',
   ageNew: 'A new age! Every unit you have is upgraded to it: watch the change spread out from your Hearth. Your Forges build the new units from now on.',

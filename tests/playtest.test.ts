@@ -4,7 +4,7 @@
  */
 import { describe, expect, it } from 'vitest';
 import { Game } from '../src/game/Game';
-import { JUMP_CHARGE, SCOUT_CHARGE, SCOUT_SLIP, TICK } from '../src/game/constants';
+import { FIRE_SPOOL, HOLD_FIELD, JUMP_CHARGE, SCOUT_CHARGE, SCOUT_SLIP, TICK, UNDER_FIRE } from '../src/game/constants';
 import { GOAL_REWARD, GOALS } from '../src/game/data/goals';
 import type { GameConfig } from '../src/game/types';
 import { GLOSS_BY_ID, termsIn } from '../src/ui/glossary';
@@ -404,5 +404,75 @@ describe('first goals', () => {
     expect(GOALS.find((x) => x.id === 'level')!.done(g, p)).toBe(false);
     expect(g.cmdUpgrade(p.id, n.id)).toBe(true);
     expect(GOALS.find((x) => x.id === 'level')!.done(g, p)).toBe(true);
+  });
+});
+
+describe('a fleet can be made to stand', () => {
+  it('a Bastion, a Hearth and a world with a Starbase keep an anti-warp field up: enemy ships take longer to jump away', () => {
+    const g = mk();
+    const p = g.player;
+    const rival = g.empires().find((f) => f.id !== p.id)!;
+    const hearth = g.nodes[p.capital];
+    const plain = g.nodes.find((n) => n.kind === 'planet' && n.owner === -1)!;
+    g.kindleWorld(plain, p.id);
+    expect(g.fieldAt(hearth)).toBe(true);
+    expect(g.fieldAt(plain)).toBe(false);
+    const raider = g.spawnUnit('striker', rival.id, plain.id);
+    const mine = g.spawnUnit('striker', p.id, plain.id);
+    expect(g.jumpChargeOf(raider)).toBeCloseTo(JUMP_CHARGE, 5);
+    // As a Bastion (its first role costs no time) the world holds the raider, not its owner's ships.
+    expect(g.cmdSetRole(p.id, plain.id, 'bastion')).toBe(true);
+    expect(g.fieldAt(plain)).toBe(true);
+    expect(g.holdAt(raider)).toBe(HOLD_FIELD);
+    expect(g.jumpChargeOf(raider)).toBeCloseTo(JUMP_CHARGE + HOLD_FIELD, 5);
+    expect(g.jumpChargeOf(mine)).toBeCloseTo(JUMP_CHARGE, 5);
+    // A Starbase does the same for a world that is no Bastion.
+    const other = g.nodes.find((n) => n.kind === 'planet' && n.owner === -1)!;
+    g.kindleWorld(other, p.id);
+    const raider2 = g.spawnUnit('guardian', rival.id, other.id);
+    expect(g.holdAt(raider2)).toBe(0);
+    g.spawnUnit('starbase', p.id, other.id);
+    expect(g.fieldAt(other)).toBe(true);
+    expect(g.holdAt(raider2)).toBe(HOLD_FIELD);
+    // A Scout is too small to hold, and a dark world holds no one.
+    expect(g.holdAt(g.spawnUnit('scout', rival.id, plain.id))).toBe(0);
+    const dark = g.nodes.find((n) => n.kind === 'planet' && n.owner === -1)!;
+    expect(g.fieldAt(dark)).toBe(false);
+    expect(g.holdAt(g.spawnUnit('striker', rival.id, dark.id))).toBe(0);
+  });
+
+  it('the Gravity Anchors Boon holds at every world of the house, on top of a field', () => {
+    const g = mk();
+    const p = g.player;
+    const rival = g.empires().find((f) => f.id !== p.id)!;
+    const plain = g.nodes.find((n) => n.kind === 'planet' && n.owner === -1)!;
+    g.kindleWorld(plain, p.id);
+    g.addCard(p, 'anchors');
+    const raider = g.spawnUnit('striker', rival.id, plain.id);
+    expect(g.holdAt(raider)).toBe(4);
+    expect(g.holdAt(g.spawnUnit('striker', rival.id, p.capital))).toBe(HOLD_FIELD + 4);
+  });
+
+  it('under fire a drive spools at half speed: running from a fight costs time', () => {
+    const g = mk();
+    const p = g.player;
+    const dark = g.nodes.find((n) => n.kind === 'planet' && n.owner === -1 && !g.buckets[n.id].length)!;
+    const to = g.nodes.find((n) => n.id !== dark.id && g.hops(dark.id, n.id) === 1)!;
+    const calm = g.spawnUnit('striker', p.id, dark.id);
+    const shot = g.spawnUnit('striker', p.id, dark.id);
+    g.cmdMove(p.id, [calm.id, shot.id], to.id);
+    let tCalm = -1;
+    let tShot = -1;
+    for (let i = 0; i < 400 && (tCalm < 0 || tShot < 0); i++) {
+      shot.lastHit = 0; // (kept under fire)
+      g.step();
+      if (tCalm < 0 && calm.lane) tCalm = g.time;
+      if (tShot < 0 && shot.lane) tShot = g.time;
+    }
+    expect(tCalm).toBeGreaterThan(0);
+    expect(tShot).toBeGreaterThan(tCalm);
+    expect(FIRE_SPOOL).toBe(0.5);
+    expect(UNDER_FIRE).toBeGreaterThan(0);
+    expect((tShot - 0) / (tCalm - 0)).toBeGreaterThan(1.6);
   });
 });

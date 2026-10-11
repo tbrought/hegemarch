@@ -196,6 +196,12 @@ describe('worlds', () => {
     w.glow = 1;
     w.lastHit = 999;
     const mine = g.worldEmbers(w);
+    // The first role given to a newly kindled world costs no time...
+    expect(w.fresh).toBe(true);
+    expect(g.cmdSetRole(p.id, w.id, 'forge')).toBe(true);
+    expect(w.retool).toBe(0);
+    expect(w.fresh).toBeFalsy();
+    // ...and every change after that does: the world works at neither role meanwhile.
     expect(g.cmdSetRole(p.id, w.id, 'observatory')).toBe(true);
     expect(w.retool).toBeGreaterThan(0);
     expect(g.worldLore(w)).toBeCloseTo(ECON.worldLore, 5);
@@ -247,6 +253,8 @@ describe('worlds', () => {
     p.embers = 5000;
     expect(g.worldGun(w)).toBeNull();
     expect(g.checkShip(p.id, w.id, 'striker')).toMatch(/Forges/);
+    // (Not its first role: that one would cost no time.)
+    w.fresh = undefined;
     g.cmdSetRole(p.id, w.id, 'forge');
     expect(g.checkShip(p.id, w.id, 'striker')).toMatch(/Retooling/);
     run(g, ECON.retoolTime + 1);

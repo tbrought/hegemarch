@@ -11,7 +11,7 @@ import { TRAITS, TRAIT_BY_ID } from './data/traits';
 import { ABILITY_LEVELS, DMG_TABLE, DREADNOUGHT_CAP, LEVEL_XP, MAX_LEVEL, UNITS } from './data/units';
 import { ASCENSION_BOONS, OPTIONAL_VICTORIES } from './data/victories';
 import {
-  AI_INCOME, CRISIS_AWAKEN, CRISIS_OFFSET, JUMP_CHARGE, PHASE_SPEED, PIRATE_FIRST_RAID, QUEUE_MAX, SAVE_VERSION, SCOUT_CHARGE, SCOUT_SLIP, TICK,
+  AI_INCOME, CRISIS_AWAKEN, CRISIS_OFFSET, JUMP_CHARGE, PHASE_SPEED, PIRATE_FIRST_RAID, HOLD_FIELD, QUEUE_MAX, SAVE_VERSION, SCOUT_CHARGE, SCOUT_SLIP, TICK,
 } from './constants';
 import { computePaths, EMPIRES_BY_SIZE, generateCradle, generateMap, type SystemInfo } from './mapgen';
 import { baseMods, mul } from './mods';
@@ -769,6 +769,30 @@ export class Game {
     return n.owner >= 0 && this.hostile(n.owner, u.owner) && (this.factions[n.owner].mods.flags.anchors ?? 0) > 0;
   }
 
+  /**
+   * Does this world keep an anti-warp field up? A Bastion does, a Hearth does (it does every role), and
+   * so does any world with a Starbase. It is how a house makes raiders stand and fight: without one,
+   * any fleet can jump away from any fight in a few seconds, and wars turn into chases.
+   */
+  fieldAt(n: GNode): boolean {
+    if (n.kind !== 'planet' || n.owner < 0 || this.factions[n.owner].kind !== 'empire') return false;
+    if (this.hasRole(n, 'bastion')) return true;
+    for (const u of this.buckets[n.id]) if (u.type === 'starbase' && u.owner === n.owner && !u.dead) return true;
+    return false;
+  }
+
+  /**
+   * How many seconds longer a ship takes to jump away from where it is, because the house that holds
+   * the world keeps it there: an anti-warp field (`fieldAt`), and the Gravity Anchors Boon at any of
+   * that house's worlds. A Scout is too small to hold.
+   */
+  holdAt(u: Unit): number {
+    if (u.node < 0 || UNITS[u.type].role === 'scout') return 0;
+    const n = this.nodes[u.node];
+    if (n.owner < 0 || !this.hostile(n.owner, u.owner)) return 0;
+    return (this.fieldAt(n) ? HOLD_FIELD : 0) + (this.anchoredAt(u) ? 4 : 0);
+  }
+
   speedOf(u: Unit): number {
     const def = UNITS[u.type];
     const m = this.factions[u.owner].mods;
@@ -792,8 +816,7 @@ export class Game {
     let t = JUMP_CHARGE * mul(m.jumpCharge, 0.2);
     // A Scout is built to look and leave: its drive spools in less than half the time.
     if (UNITS[u.type].role === 'scout') t *= SCOUT_CHARGE;
-    if (this.anchoredAt(u)) t += 4;
-    return t;
+    return t + this.holdAt(u);
   }
 
   laneSpeedOf(u: Unit): number {
@@ -1258,6 +1281,7 @@ export class Game {
     n.level = 1;
     n.role = 'mine';
     n.retool = 0;
+    n.fresh = true;
     n.glow = ECON.glowStart;
     n.lastStand = true;
     n.shipQ = [];
@@ -1945,7 +1969,10 @@ export class Game {
       }
       n.shipQ = [];
     }
-    n.retool = n.role ? ECON.retoolTime : 0;
+    // (A newly kindled world starts as a Mine. The first role its house gives it costs no time: putting a
+    // world to the role it is good at should not be a twenty-second penalty.)
+    n.retool = n.role && !n.fresh ? ECON.retoolTime : 0;
+    n.fresh = undefined;
     n.role = role;
     this.refreshWorld(n);
     if (fid === this.playerId) this.ui.roleSet = 1;
