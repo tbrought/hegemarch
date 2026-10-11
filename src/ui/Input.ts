@@ -274,7 +274,9 @@ export class Input {
     switch (code) {
       case 'Space':
         e.preventDefault();
-        s.paused = !s.paused;
+        // A tip card holds the game: Space answers it (OK), as it would end a pause.
+        if (s.tipHold) this.hud.tips.dismiss();
+        else s.paused = !s.paused;
         break;
       case 'Equal':
       case 'NumpadAdd': {

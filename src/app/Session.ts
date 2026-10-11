@@ -49,6 +49,8 @@ export interface Reveal {
 export class Session {
   view: ViewState = emptyView();
   paused = false;
+  /** A tip card is up and holds the game while it is read (see Tips). */
+  tipHold = false;
   speed = 1;
   modal: Modal | null = null;
   groups = new Map<number, number[]>();
@@ -86,7 +88,7 @@ export class Session {
 
   get halted(): boolean {
     if (this.game.outcome) return true;
-    if (this.paused) return true;
+    if (this.paused || this.tipHold) return true;
     return !!this.modal && this.modal.kind !== 'log';
   }
 

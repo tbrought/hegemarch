@@ -54,6 +54,8 @@ export interface Profile {
   winsByHeir: Record<string, number>;
   /** Has opened the setup of an Ages run (until then the title screen marks that mode as new). */
   agesSeen: boolean;
+  /** First goals this player has reached, ever (game/data/goals.ts). */
+  goalsDone: string[];
 }
 
 const KEY = 'hegemarch.profile.v1';
@@ -83,6 +85,7 @@ export function defaultProfile(): Profile {
     lastDaily: null,
     winsByHeir: {},
     agesSeen: false,
+    goalsDone: [],
   };
 }
 
@@ -106,6 +109,7 @@ export function loadProfile(): Profile {
       settings: { ...d.settings, ...(p.settings ?? {}) },
       perks: { ...(p.perks ?? {}) },
       seenTips: [...(p.seenTips ?? [])],
+      goalsDone: [...(p.goalsDone ?? [])],
     } as Profile;
   } catch {
     return defaultProfile();

@@ -92,11 +92,14 @@ export class Tips {
     if (g.cradle && g.tick % 20 === 0 && p.era < SPACE && !p.advance && p.lore >= ERAS[p.era].lore) this.show('ageReady');
     // Anomalies wait for a ship to be sent: say so once one is on the map (not in the first minute).
     if (g.time > 60 && g.tick % 20 === 0 && !this.s.profile.seenTips.includes('anomalySeen') && g.nodes.some((n) => n.anomaly && p.explored[n.id])) this.show('anomalySeen');
+    // A tip card holds the game while it is up (with auto-pause on): nothing happens behind a card that
+    // is being read. It waits for OK or LATER then, however long that takes.
+    this.s.tipHold = !!this.current && !this.s.modal && this.s.profile.settings.autoPause && !g.outcome;
     if (this.current) {
-      // The clock only runs while the card can be read: not behind a dialog, not while paused,
-      // not while the pointer rests on it.
+      // Without the hold, the card's clock only runs while it can be read: not behind a dialog, not
+      // while paused, not while the pointer rests on it.
       const reading = !!this.hud.ui.hot?.startsWith('tip');
-      if (!this.s.modal && !this.s.paused && !reading) this.current.t -= dt;
+      if (!this.s.modal && !this.s.paused && !reading && !this.s.tipHold) this.current.t -= dt;
       if (this.current.t <= 0) this.putOff();
     } else if (this.queue.length && !this.s.modal && !this.hud.tutorial.busy() && !this.hud.tutorial.quiet()) {
       const id = this.queue.shift()!;
@@ -113,6 +116,7 @@ export class Tips {
     this.s.hooks.saveProfile();
     this.missed = this.missed.filter((id) => id !== this.current!.id);
     this.current = null;
+    this.s.tipHold = false;
   }
 
   /** LATER, or the card ran out: keep it behind the ★ TIP button. */
@@ -176,6 +180,12 @@ export class Tips {
     });
     const ok = 'OK';
     const okW = textWidth(ok, 'tiny') + 10;
+    // (Say that the game waits, where there is room between the buttons.)
+    if (this.s.tipHold) {
+      const held = 'PAUSED · OK OR SPACE';
+      const room = w - (textWidth(all, 'tiny') + 14) - (okW + textWidth('LATER', 'tiny') + 22);
+      if (textWidth(held, 'tiny') <= room) text(g, held, x + textWidth(all, 'tiny') + 14 + Math.floor((room - textWidth(held, 'tiny')) / 2), fy + 3, PAL.dusk, 'tiny');
+    }
     this.hud.ui.button(g, 'tip-ok', x + w - okW - 5, fy, okW, 10, ok, () => this.dismiss(), { font: 'tiny', tip: 'Got it.' });
     const later = 'LATER';
     const laterW = textWidth(later, 'tiny') + 10;

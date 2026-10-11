@@ -184,6 +184,26 @@ Measured with `npm run simulate` and `npm run balance:passive`. Speeds are ½×,
   between the banner and the card. The Scout step is skipped when a Scout is already exploring,
   none is left, or the sector is charted. Runs saved before the Scout step existed are renumbered
   on load (`game.ui.tutV`), so a finished guide stays finished.
+- **The guide explains its own words.** Under each step's line a smaller one says what the words
+  in it mean and why the step matters ("Your Hearth is your home world. A Striker is a fast, cheap
+  gunship."; "Lore, the violet bar, fills by itself. Each time it is full you choose a Boon").
+  A first-time player reported being told to build a Striker at the Hearth with neither explained.
+- **The First Night leaves little to chance.** Its first Boon offer is dealt by hand: Ember Tithe,
+  Striker Wings and Kindling Rites, each about something the player has just done (`FIRST_OFFER`;
+  a reroll and every later offer are random). A random first offer had been two Boons about Boon
+  choices and one about an Ark the player did not know they had. Its Destinies are fixed too:
+  Conquest, Dominion and Ascension, the three that need the least explaining, so there is no Maw in
+  a first game.
+- **The Destinies are a list, not three cards.** Down the card, one under the other, with OR between
+  them, under "HOW THIS RUN CAN BE WON: You do not choose one." Side by side like the Boons on
+  offer, they were taken for a choice of one.
+- **First goals** (`game/data/goals.ts`, `ui/Goals.ts`): once the guide is over, a small box in the
+  right-hand column names one thing to try next (give a world a role, hold 4 worlds, raise a world,
+  build 6 ships, earn 3 Boons, destroy 10 enemy ships, capture a rival world). Pointing at it says
+  how and why. Reaching a goal for the first time ever pays 40 Embers (`Game.cmdGoal`, once a run)
+  and moves the box on; the profile remembers, and when all seven are reached the box is gone for
+  good. They are an offer, not a script: nothing waits for them, and they can be reached in any
+  order. This is how the guide goes further without more forced steps.
 - **Unguided runs** say the same thing in the banner: once the first Boon is chosen, "Your Scout
   waits for orders…" until a Scout explores (for the first five minutes), and the EXPLORE button
   pulses until then.

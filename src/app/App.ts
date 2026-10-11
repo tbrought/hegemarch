@@ -267,6 +267,8 @@ export class App {
       unlockLegendary: this.profile.unlockLegendary,
       unlockPacts: this.profile.unlockPacts,
       tutorial: true,
+      // The three Destinies that need the least explaining (and no Maw in a first game).
+      forcedVictories: ['conquest', 'domination', 'ascension'],
     };
   }
 

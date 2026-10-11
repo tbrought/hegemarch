@@ -973,36 +973,45 @@ export class Modals {
   // Destinies intro (end of the First Night tutorial)
   // ---------------------------------------------------------------------
 
+  /**
+   * The Destinies of the run. They are a list, each on its own line with OR between them, and the
+   * heading says that none has to be picked. (As three cards side by side, like the Boons on offer,
+   * they were taken for a choice of one.)
+   */
   private destinies(g: Ctx) {
     const W = this.hud.W;
     const vs = this.g.victories;
-    const cw = Math.max(90, Math.min(124, Math.floor((W - 24 - (vs.length - 1) * 4) / vs.length)));
-    const ch = 40 + Math.max(...vs.map((v) => Math.min(8, wrap(VICTORIES[v].desc, cw - 8, 'main').length))) * 10;
-    const w = vs.length * cw + (vs.length - 1) * 4 + 16;
-    const h = ch + 50;
-    const { x, y } = this.frame(g, w, h, 'YOUR DESTINIES');
-    textCenter(g, 'Three roads to the crown of Hegemarch. Any one is enough.', x + w / 2, y + 16, PAL.dusk, 'tiny');
+    const w = Math.min(W - 12, 300);
+    const inner = w - 44;
+    const rows = vs.map((v) => wrap(VICTORIES[v].desc, inner, 'main').slice(0, 5));
+    const rowH = (i: number) => 13 + rows[i].length * 10;
+    const h = 31 + rows.reduce((a, _r, i) => a + rowH(i), 0) + (vs.length - 1) * 9 + 21;
+    const { x, y } = this.frame(g, w, h, 'HOW THIS RUN CAN BE WON');
+    textCenter(g, 'You do not choose one. Reach any one of these and the crown is yours.', x + w / 2, y + 16, PAL.dusk, 'tiny');
+    let ly = y + 28;
     vs.forEach((v, i) => {
       const d = VICTORIES[v];
-      const cx = x + 8 + i * (cw + 4);
-      const cy = y + 25;
-      box(g, cx, cy, cw, ch, PAL.night, PAL.ember);
+      if (i) {
+        rect(g, x + 10, ly + 2, w - 20, 1, PAL.indigo);
+        const ow = textWidth('OR', 'tiny') + 8;
+        rect(g, Math.round(x + w / 2 - ow / 2), ly, ow, 6, PAL.night);
+        textCenter(g, 'OR', x + w / 2, ly, PAL.dusk, 'tiny');
+        ly += 9;
+      }
       // Big icon (2x)
       const tmp = document.createElement('canvas');
       tmp.width = 5;
       tmp.height = 7;
       const tg = tmp.getContext('2d')!;
       icon(tg, v, 0, 0);
-      g.drawImage(tmp, Math.round(cx + cw / 2 - 5), cy + 5, 10, 14);
-      textCenter(g, d.name.toUpperCase(), cx + cw / 2, cy + 23, PAL.gold);
-      let ly = cy + 35;
-      for (const l of wrap(d.desc, cw - 8, 'main').slice(0, 8)) {
-        text(g, l, cx + 4, ly, PAL.mist);
-        ly += 10;
-      }
-      this.ui.add({ id: 'dest-card-' + i, x: cx, y: cy, w: cw, h: ch, terms: termsIn(d.desc, { exclude: d.name, max: 4 }), termsBeside: true });
+      g.drawImage(tmp, x + 12, ly + 1, 10, 14);
+      text(g, d.name.toUpperCase(), x + 32, ly, PAL.gold);
+      rows[i].forEach((l, k) => text(g, l, x + 32, ly + 11 + k * 10, PAL.mist));
+      this.ui.add({ id: 'dest-card-' + i, x: x + 6, y: ly - 2, w: w - 12, h: rowH(i), terms: termsIn(d.desc, { exclude: d.name, max: 4 }), termsBeside: true });
+      ly += rowH(i);
     });
-    this.ui.button(g, 'dest-begin', x + w / 2 - 34, y + h - 17, 68, 13, 'BEGIN', () => this.close(), { primary: true, pulse: true });
+    const label = this.hud.tutorial.busy() ? 'BEGIN' : 'OK';
+    this.ui.button(g, 'dest-begin', x + w / 2 - 34, y + h - 17, 68, 13, label, () => this.close(), { primary: true, pulse: true });
   }
 
   // ---------------------------------------------------------------------
@@ -1016,7 +1025,7 @@ export class Modals {
     const paras: [string, string][] = [
       ['That was the whole guide. You can kindle worlds, build ships, choose Boons, fight off raiders and send out Scouts.', PAL.mist],
       ['Go back to the menu to start a run of your own, or keep playing this one. It is saved either way: CONTINUE on the menu picks it up.', PAL.mist],
-      ['Tips still pop up the first time something new happens (Settings can turn them off).', PAL.dusk],
+      ['A small box on the right names a goal to try next: roles, levels, a fleet, your first capture. Tips still pop up the first time something new happens, and the game waits while you read them.', PAL.dusk],
     ];
     const blocks = paras.map(([t, c]) => ({ lines: wrap(t, inner, 'main'), c }));
     const h = 22 + blocks.reduce((a, b) => a + b.lines.length * 10 + 5, 0) + 20;

@@ -100,6 +100,24 @@ try {
   // ---- The normal path ----
   await freshGuidedRun();
   check('a guided run starts at step 1', (await step()) === 1);
+  const sub = () => ev(() => window.__app.hud.tutorial.banner()?.sub ?? '');
+  check('the step says what its words mean and why it matters', /Embers, your only currency/.test(await sub()), await sub());
+  check('the First Night has the three Destinies that need the least explaining (no Maw)', (await ev(() => window.__app.session.game.victories.join(','))) === 'conquest,domination,ascension');
+  check('its first Boons are dealt by hand: Embers, Strikers, kindling', await ev(() => {
+    const g = window.__app.session.game;
+    const p = g.player;
+    const had = p.pendingDrafts;
+    p.pendingDrafts = Math.max(1, had);
+    const offer = g.ensureOffer(p).join(',');
+    p.pendingDrafts = had;
+    return offer === 'emberTithe,strikerWings,kindlingRites';
+  }));
+  await ev(() => {
+    const g = window.__app.session.game;
+    g.cmdKindle(g.playerId, g.ui.tutWorld);
+  });
+  await tick(0.1);
+  check('step 2 says what a Hearth and a Striker are', /Hearth is your home world.*Striker is a fast, cheap gunship/.test(await sub()), await sub());
   await throughStep3();
   check('kindle, Striker and Boon reach step 4', (await step()) === 4);
   await fastForward(40);
@@ -159,6 +177,12 @@ try {
   check('the Destinies wait a moment while the Scout sets out', await ev(() => window.__app.session.modal?.kind !== 'destinies'));
   await tick(3);
   check('step 6 shows the Destinies', await ev(() => window.__app.session.modal?.kind === 'destinies'));
+  await wait(200);
+  check('as a list down the card, one under the other (three side by side read as a choice of one)', await ev(() => {
+    const u = window.__app.hud.ui;
+    const r = [0, 1, 2].map((i) => u.rectOf('dest-card-' + i));
+    return r.every(Boolean) && r[0].x === r[1].x && r[1].x === r[2].x && r[1].y >= r[0].y + r[0].h && r[2].y >= r[1].y + r[1].h;
+  }));
   await clickUi('dest-begin');
   await wait(200);
   check('BEGIN finishes the First Night', (await step()) === 7 && (await ev(() => window.__app.session.profile.tutorialDone)));
@@ -232,6 +256,57 @@ try {
   await wait(200);
   check('H, then TIPS, works any time', await ev(() => window.__app.session.modal?.kind === 'help' && window.__app.hud.modals.helpTab === 'tips'));
   await page.keyboard.press('Escape');
+
+  // ---- With auto-pause on (as it is for a new player), a tip card holds the game until it is answered ----
+  await ev(() => {
+    const a = window.__app;
+    const s = a.session;
+    s.profile.settings.autoPause = true;
+    s.modal = null;
+    s.paused = false;
+    while (a.hud.tips.current) a.hud.tips.dismiss();
+    s.profile.seenTips = s.profile.seenTips.filter((id) => id !== 'blueprint');
+    a.hud.tips.showFirst('blueprint');
+  });
+  await tick(0.2);
+  await wait(400);
+  const held = await ev(() => ({ id: window.__app.hud.tips.current?.id, hold: window.__app.session.tipHold, halted: window.__app.session.halted, t: window.__app.session.game.time }));
+  await wait(800);
+  check('a tip card holds the game while it is read', held.id === 'blueprint' && held.hold && held.halted && (await ev(() => window.__app.session.game.time)) === held.t, JSON.stringify(held));
+  await tick(120);
+  check('and waits for an answer, however long that takes', await ev(() => window.__app.hud.tips.current?.id === 'blueprint'));
+  await page.keyboard.press('Space');
+  await wait(200);
+  check('Space answers it (it does not pause on top of the hold)', await ev(() => window.__app.hud.tips.current?.id !== 'blueprint' && !window.__app.session.paused));
+  // (Other tips may have been waiting behind it: answer those too.)
+  await ev(() => {
+    while (window.__app.hud.tips.current) window.__app.hud.tips.dismiss();
+  });
+  await wait(600);
+  check('and the game goes on', await ev((t) => !window.__app.session.tipHold && window.__app.session.game.time > t, held.t));
+  await ev(() => (window.__app.session.profile.settings.autoPause = false));
+
+  // ---- After the guide, a small box names a first goal; reaching it pays, and the box moves on ----
+  const goal = () => ev(() => {
+    const a = window.__app;
+    return { shown: a.hud.goals.shown(), first: a.hud.goals.left()[0]?.id, hint: a.hud.ui.lastHints.some((h) => h.key === 'goal'), embers: a.session.game.player.embers, done: [...a.session.profile.goalsDone] };
+  });
+  await ev(() => {
+    window.__app.session.modal = null;
+    while (window.__app.hud.tips.current) window.__app.hud.tips.dismiss();
+  });
+  await wait(300);
+  const g0 = await goal();
+  check('a first goal is on screen once the guide is over', g0.shown && g0.hint && !!g0.first, JSON.stringify(g0));
+  await ev(() => {
+    const g = window.__app.session.game;
+    const w = g.worldsOf(g.playerId).find((n) => n.capitalOf < 0);
+    g.cmdSetRole(g.playerId, w.id, w.role === 'forge' ? 'observatory' : 'forge');
+  });
+  await tick(0.6);
+  await wait(200);
+  const g1 = await goal();
+  check('giving a world a role reaches the first goal: Embers paid, remembered, and the box moves on', g1.done.includes('role') && g1.first !== 'role' && g1.embers >= g0.embers + 39 && (await ev(() => JSON.parse(localStorage.getItem('hegemarch.profile.v1')).goalsDone.includes('role'))), JSON.stringify(g1));
 
   // ---- The seed ship never arrives: the raid comes to the Hearth instead ----
   await freshGuidedRun();

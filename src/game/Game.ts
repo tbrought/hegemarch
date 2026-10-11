@@ -2,6 +2,7 @@ import { ABILITY_BY_ID, LEARNABLE_ABILITIES } from './data/abilities';
 import { AMBITIONS } from './data/ambitions';
 import { BLUEPRINT_IDS, CARDS, CARD_BY_ID, RARITY_LUCK, RARITY_WEIGHT, type CardDef } from './data/cards';
 import { ERAS, LAST_CRADLE_ERA, SPACE, UPGRADE_MAX, UPGRADE_SPREAD } from './data/eras';
+import { GOAL_BY_ID, GOAL_REWARD } from './data/goals';
 import { EVENT_BY_ID, ANOMALY_EVENTS, OFFER_EVENTS } from './data/events';
 import { CRISIS_COLOR, GUARDIAN_COLOR, HEIRS, HEIR_BY_ID, PIRATE_COLOR } from './data/heirs';
 import { boonCost, ECON, PLANETS, ROLE_ORDER } from './data/worlds';
@@ -32,6 +33,9 @@ import { piratesTick } from './systems/pirates';
 import { crisisTick } from './systems/crisis';
 import { victoryTick } from './systems/victory';
 import { aiTick, makeAIState } from './ai/ai';
+
+/** The Boons the First Night offers first (as many as the house may choose from), see `generateOffer`. */
+const FIRST_OFFER = ['emberTithe', 'strikerWings', 'kindlingRites', 'hardHulls', 'stargazers'];
 
 const EMPTY_UM: UnitMod = {};
 
@@ -1498,6 +1502,14 @@ export class Game {
   generateOffer(f: Faction): string[] {
     const pool = this.cardPool(f);
     const n = this.draftSize(f);
+    // The First Night deals its first Boons by hand: plain ones, about things the player has just done
+    // (earned Embers, built a Striker, kindled a world). Dealt at random, a first offer could be three
+    // Boons about things a new player has not met yet. A reroll, and every later offer, is random.
+    if (this.config.tutorial && f.isPlayer && !this.ui.tutBoon && f.cards.length === 0) {
+      this.ui.tutBoon = 1;
+      const first = FIRST_OFFER.filter((id) => pool.some((c) => c.id === id)).slice(0, n);
+      if (first.length >= Math.min(3, n)) return first;
+    }
     const luck = f.mods.luck;
     const out: string[] = [];
     let pactTaken = false;
@@ -1524,6 +1536,21 @@ export class Game {
     } else if (hasBp) f.bpPity = 0;
     else f.bpPity++;
     return out;
+  }
+
+  /**
+   * A first goal reached (data/goals.ts): its small reward is paid, once a run. Which goals a player
+   * still has is the client's to know (they are reached once, ever); the game only checks that this
+   * one is truly reached here.
+   */
+  cmdGoal(fid: number, id: string): boolean {
+    const goal = GOAL_BY_ID[id];
+    const f = this.factions[fid];
+    if (!goal || !f || fid !== this.playerId || this.ui['goal:' + id] || !goal.done(this, f)) return false;
+    this.ui['goal:' + id] = 1;
+    this.addEmbers(f, GOAL_REWARD);
+    this.notify(fid, `Goal reached: ${goal.label}. +${GOAL_REWARD} Embers.`, 'good');
+    return true;
   }
 
   ensureOffer(f: Faction): string[] | null {
@@ -1892,6 +1919,7 @@ export class Game {
     const cost = this.upgradeCost(f, n)!;
     f.embers -= cost;
     n.buildQ.push({ kind: 'upgrade', id: 'level', t: 0, total: ECON.upgradeTime[n.level + 1], cost });
+    if (fid === this.playerId) this.ui.raised = 1;
     return true;
   }
 
@@ -1920,6 +1948,7 @@ export class Game {
     n.retool = n.role ? ECON.retoolTime : 0;
     n.role = role;
     this.refreshWorld(n);
+    if (fid === this.playerId) this.ui.roleSet = 1;
     return true;
   }
 

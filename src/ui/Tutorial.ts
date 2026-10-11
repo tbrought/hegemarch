@@ -310,36 +310,41 @@ export class Tutorial {
     }
   }
 
-  /** The objective line; `badge` is the number on the fleet badge in it (the one the arrow points at). */
-  banner(): { text: string; color: string; badge?: string } | null {
+  /**
+   * The objective line; `badge` is the number on the fleet badge in it (the one the arrow points at);
+   * `sub` is a smaller line under it that says what the words mean and why the step matters.
+   */
+  banner(): { text: string; color: string; badge?: string; sub?: string } | null {
     if (!this.s.guided) return null;
     const g = this.g;
     switch (this.step) {
       case 1:
-        return { text: `${stepOf(1)} · Kindle a dark world: click the grey world, then press KINDLE.`, color: PAL.gold };
+        return { text: `${stepOf(1)} · Kindle a dark world: click the grey world, then press KINDLE.`, color: PAL.gold, sub: 'Every world you hold earns Embers, your only currency.' };
       case 2:
-        return { text: `${stepOf(2)} · Build a Striker: click your Hearth, then the Striker button.`, color: PAL.gold };
+        return { text: `${stepOf(2)} · Build a Striker: click your Hearth, then the Striker button.`, color: PAL.gold, sub: 'Your Hearth is your home world. A Striker is a fast, cheap gunship.' };
       case 3:
-        return { text: `${stepOf(3)} · Choose your first Boon: press the BOON button at the top.`, color: PAL.gold };
+        return { text: `${stepOf(3)} · Choose your first Boon: press the BOON button at the top.`, color: PAL.gold, sub: 'Lore, the violet bar, fills by itself. Each time it is full you choose a Boon: an upgrade for the whole run.' };
       case 4: {
         const r = (g.ui.tutRaider ?? 0) > 0 ? g.units.get(g.ui.tutRaider!) : undefined;
         if (!r) {
           const seeding = g.unitList.some((u) => !u.dead && u.owner === g.playerId && u.type === 'seed' && u.order === 'kindle');
           return { text: seeding ? `${stepOf(4)} · Your seed ship is on its way. Wait for the new world to light up…` : `${stepOf(4)} · Get ready: a raider is coming.`, color: PAL.gold };
         }
-        return { text: `${stepOf(4)} · A pirate raids your new world! Click your fleet's badge ${IC.fleet}, then the world.`, color: PAL.ember, badge: this.hud.fleetLabel(this.biggestFleet()) };
+        return { text: `${stepOf(4)} · A pirate raids your new world! Click your fleet's badge ${IC.fleet}, then the world.`, color: PAL.ember, badge: this.hud.fleetLabel(this.biggestFleet()), sub: 'Ships fight by themselves once they are where the enemy is.' };
       }
       case 5: {
-        if (this.scoutPicked()) return { text: `${stepOf(5)} · Press EXPLORE (or E): your Scout ${IC.scout} will chart the dark by itself.`, color: PAL.gold };
+        const why = 'A Scout charts the dark, world after world. Nothing can fire on it in its first seconds at a place.';
+        if (this.scoutPicked()) return { text: `${stepOf(5)} · Press EXPLORE (or E): your Scout ${IC.scout} will chart the dark by itself.`, color: PAL.gold, sub: why };
         const sc = this.scouts()[0];
         return {
           text: `${stepOf(5)} · Send your Scout ${IC.scout} to explore: click its fleet badge ${IC.fleet}, then EXPLORE.`,
           color: PAL.gold,
           badge: this.hud.fleetLabel(sc && !sc.lane ? sc.node : -1),
+          sub: why,
         };
       }
       case 6:
-        return { text: `${stepOf(6)} · Meet your three Destinies: the ways this run can be won.`, color: PAL.gold };
+        return { text: `${stepOf(6)} · Meet your three Destinies: the ways this run can be won.`, color: PAL.gold, sub: 'You do not choose one. Reach any one of them and the run is won.' };
     }
     return null;
   }

@@ -24,6 +24,7 @@ import { Modals } from './Modals';
 import { Tips } from './Tips';
 import { Tutorial } from './Tutorial';
 import { gloss, GLOSS_BY_ID, termsIn } from './glossary';
+import { Goals } from './Goals';
 import { dimScreen, MARK, marksOf, Ui, type TipOpts } from './Ui';
 import { cradleVocabulary, unitCount, unitDesc, unitName } from './vocab';
 
@@ -51,6 +52,7 @@ export class Hud {
   modals: Modals;
   tutorial: Tutorial;
   tips: Tips;
+  goals: Goals;
   log: LogLine[] = [];
   /** Decisions the player closed without choosing: they wait behind the ! button. */
   snoozed = new Set<number>();
@@ -82,6 +84,7 @@ export class Hud {
     this.modals = new Modals(this);
     this.tutorial = new Tutorial(this);
     this.tips = new Tips(this);
+    this.goals = new Goals(this);
     this.lastNote = s.game.noteId - 1;
     this.ui.onClickSound = (disabled) => s.sfx.play(disabled ? 'error' : 'ui', disabled ? 0.4 : 0.5);
   }
@@ -176,6 +179,7 @@ export class Hud {
     }
     this.tutorial.update(dt);
     this.tips.update(dt);
+    this.goals.update(dt);
     this.nudge();
   }
 
@@ -397,7 +401,7 @@ export class Hud {
   // ---------------------------------------------------------------------
 
   /** The banner line. `badge` is the number on a fleet badge in its text (the fleet it means). */
-  private objective(): { text: string; color: string; badge?: string } | null {
+  private objective(): { text: string; color: string; badge?: string; sub?: string } | null {
     const s = this.s;
     const g = this.g;
     if (g.outcome) return null;
@@ -448,7 +452,11 @@ export class Hud {
     return n > 0 ? String(n) : '';
   }
 
+  /** Where the banner was drawn this frame (the right-hand column keeps clear of it). */
+  private bannerRect = { x: 0, y: 0, w: 0, h: 0 };
+
   private drawBanner() {
+    this.bannerRect = { x: 0, y: 0, w: 0, h: 0 };
     const o = this.objective();
     if (!o) return;
     const g = this.s.screen.g;
@@ -458,8 +466,10 @@ export class Hud {
     const rich = hasMarkup(o.text);
     const lines = rich ? [] : wrap(o.text, maxW - 12, 'main').slice(0, 2);
     const n = rich ? Math.min(2, richLines(o.text, maxW - 12)) : lines.length;
-    const w = (rich ? richWidth(o.text, maxW - 12) : Math.max(...lines.map((l) => textWidth(l)))) + 14;
-    const h = n * 10 + 5;
+    // (A smaller line under it, where the guide says what its words mean.)
+    const subs = o.sub ? wrap(o.sub, maxW - 12, 'tiny').slice(0, 3) : [];
+    const w = Math.max(rich ? richWidth(o.text, maxW - 12) : Math.max(...lines.map((l) => textWidth(l))), ...subs.map((l) => textWidth(l, 'tiny'))) + 14;
+    const h = n * 10 + 5 + (subs.length ? subs.length * 7 + 2 : 0);
     const x = Math.round(this.W / 2 - w / 2);
     const y = 17;
     box(g, x, y, w, h, PAL.void, o.color === PAL.red || o.color === PAL.ember ? o.color : PAL.slate);
@@ -472,6 +482,8 @@ export class Hud {
         textCenter(g, l, this.W / 2, y + 3 + i * 10, o.color);
         underlineMatches(g, l, Math.round(this.W / 2 - textWidth(l) / 2), y + 3 + i * 10, marks, MARK);
       });
+    subs.forEach((l, i) => textCenter(g, l, this.W / 2, y + 4 + n * 10 + i * 7, PAL.dusk, 'tiny'));
+    this.bannerRect = { x, y, w, h };
     this.ui.add({ id: 'banner', x, y, w, h, block: true, terms });
     setInlineBadgeLabel('3');
   }
@@ -792,6 +804,7 @@ export class Hud {
   private drawIndicators() {
     const g = this.s.screen.g;
     let y = 31;
+    y = this.goals.draw(g, this.W - 3, y, this.bannerRect);
     const pending = this.g.prompts.filter((x) => x.result === undefined);
     if (pending.length) {
       const label = pending.length > 1 ? `! ${pending.length} DECISIONS` : '! DECISION';
