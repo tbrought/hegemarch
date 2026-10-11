@@ -361,10 +361,33 @@ function pickExploreTarget(g: Game, u: Unit) {
     u.order = 'idle';
     if (!f.warned.scouted) {
       f.warned.scouted = g.time;
-      g.notify(u.owner, 'Scouting complete: the whole sector has been charted.', 'info');
+      g.notify(u.owner, 'Scouting complete: the whole sector has been charted. Your Scouts are coming home.', 'info');
+    }
+    // Nothing is left to chart: the Scout goes home. It does not wait where its last look took it,
+    // which is as often as not under someone's guns.
+    if (g.nodes[from].owner !== u.owner) {
+      let home = -1;
+      let hd = Infinity;
+      for (const n of g.nodes) {
+        if (n.kind !== 'planet' || n.owner !== u.owner) continue;
+        const d = g.pathLen(from, n.id);
+        if (d < hd) {
+          hd = d;
+          home = n.id;
+        }
+      }
+      if (home >= 0) {
+        const way = g.pathAvoiding(from, home, (id) => (g.hostilePowerAt(id, f.id) > 1 ? 40000 : 0));
+        u.dest = home;
+        u.path = way.length ? way : g.pathTo(from, home);
+      }
     }
     return;
   }
   u.dest = best;
-  u.path = g.pathTo(from, best);
+  // The way there keeps clear of places the house has seen to be guarded: a Scout does not survive a
+  // second look at a Sentinel vault, a Corsair base or a rival Hearth.
+  const target = best;
+  const way = g.pathAvoiding(from, target, (id) => (f.explored[id] && g.hostilePowerAt(id, f.id) > 1 ? 40000 : 0));
+  u.path = way.length ? way : g.pathTo(from, target);
 }

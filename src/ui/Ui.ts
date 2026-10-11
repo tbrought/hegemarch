@@ -2,7 +2,7 @@
  * A tiny immediate-mode UI for the pixel canvas. Each frame the HUD draws widgets and registers their
  * rectangles; input is hit-tested against the rectangles from the previous frame.
  */
-import { capHeight, fit, lineHeight, text, textCenter, textWidth, wrap, type FontId } from '../render/font';
+import { capHeight, fit, lineHeight, text, textCenter, textWidth, underlineMatches, wrap, type FontId } from '../render/font';
 import { PAL, UI } from '../render/palette';
 import { box, rect, type Ctx } from '../render/pixel';
 import { drawRich, hasMarkup, richLines, richWidth } from '../render/rich';
@@ -331,6 +331,20 @@ export class Ui {
     if (this.active === id && this.down) onChange(Math.max(0, Math.min(1, (this.mx - x) / (w - 1))));
   }
 
+  /**
+   * The glossary terms explained for an area: the hand-picked ones, then any others its tooltip or its
+   * own text mention. Text on screen marks exactly these words (`marksOf`), so that every marked word
+   * has its box and every box its mark.
+   */
+  termsFor(src: TipOpts): GlossEntry[] {
+    if (!this.explainTerms) return [];
+    const tip = typeof src.tip === 'function' ? src.tip() : src.tip;
+    const given = src.terms ?? [];
+    const words = [tip, src.scan].filter(Boolean).join(' ');
+    const extra = words ? autoTerms(words, { title: src.tipTitle, skip: new Set(given.map((t) => t.id)), max: 2 }) : [];
+    return [...given, ...extra].slice(0, Math.max(given.length, 3));
+  }
+
   /** Tooltip (and glossary boxes) for the hint or region under the pointer, after a short delay. */
   drawTooltip(g: Ctx, W: number, H: number) {
     this.shownTerms = [];
@@ -340,16 +354,10 @@ export class Ui {
     const src: TipOpts | null = hint ?? region;
     if (!src) return;
     const tip = typeof src.tip === 'function' ? src.tip() : src.tip;
-    let terms: GlossEntry[] = [];
-    if (this.explainTerms) {
-      // The hand-picked terms, then any others the tooltip's own words mention.
-      const given = src.terms ?? [];
-      const words = [tip, src.scan].filter(Boolean).join(' ');
-      const extra = words ? autoTerms(words, { title: src.tipTitle, skip: new Set(given.map((t) => t.id)), max: 2 }) : [];
-      terms = [...given, ...extra].slice(0, Math.max(given.length, 3));
-    }
+    const terms = this.termsFor(src);
     if (!tip && !terms.length) return;
-    const at: Rect | null = tip ? tooltip(g, tip, this.mx, this.my, W, H, 170, src.tipTitle, src.tipColor) : null;
+    // (The words of the tooltip that the boxes beside it explain are marked, as in the menus.)
+    const at: Rect | null = tip ? tooltip(g, tip, this.mx, this.my, W, H, 170, src.tipTitle, src.tipColor, marksOf(terms)) : null;
     if (!terms.length) return;
     if (region?.termsBeside || (hint && src.beside)) glossaryBoxes(g, terms, hint ?? region!, W, H, ['right', 'left', 'below', 'above']);
     else if (at) glossaryBoxes(g, terms, at, W, H, ['below', 'right', 'left', 'above']);
@@ -389,7 +397,12 @@ export function glossaryBoxes(g: Ctx, entries: GlossEntry[], a: Rect, W: number,
 }
 
 /** Draw a tooltip box near a point, kept on screen; returns where it went. Effect markup is drawn in color. */
-export function tooltip(g: Ctx, tip: string, mx: number, my: number, W: number, H: number, maxW = 170, title?: string, titleColor?: string): Rect {
+/** The patterns that find these terms in a text, for marking them where they are mentioned. */
+export const marksOf = (terms: GlossEntry[]): RegExp[] => terms.map((t) => t.re);
+/** The color of the dotted line under a word that has an explanation. */
+export const MARK = PAL.dusk;
+
+export function tooltip(g: Ctx, tip: string, mx: number, my: number, W: number, H: number, maxW = 170, title?: string, titleColor?: string, marks: RegExp[] = []): Rect {
   const lh = lineHeight('main');
   const rich = hasMarkup(tip);
   const lines = rich ? [] : wrap(tip, maxW, 'main');
@@ -410,8 +423,12 @@ export function tooltip(g: Ctx, tip: string, mx: number, my: number, W: number, 
     text(g, shownTitle, x + 4, ty, titleColor ?? PAL.gold, 'main');
     ty += lh + 2;
   }
-  if (rich) drawRich(g, tip, x + 4, ty, maxW, { body: PAL.bone });
-  else lines.forEach((l, i) => text(g, l, x + 4, ty + i * lh, PAL.bone, 'main'));
+  if (rich) drawRich(g, tip, x + 4, ty, maxW, { body: PAL.bone }, 'main', 99, marks, MARK);
+  else
+    lines.forEach((l, i) => {
+      text(g, l, x + 4, ty + i * lh, PAL.bone, 'main');
+      underlineMatches(g, l, x + 4, ty + i * lh, marks, MARK);
+    });
   return { x, y, w, h };
 }
 

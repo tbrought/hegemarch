@@ -202,11 +202,17 @@ export function dither(g: Ctx, x: number, y: number, w: number, h: number, c: st
 }
 
 /** Horizontal fill bar: background, fill fraction, optional border. */
-export function bar(g: Ctx, x: number, y: number, w: number, h: number, frac: number, fill: string, back: string, border?: string) {
+/**
+ * `min`: the least the filled part is drawn while there is anything at all. One pixel by default, so
+ * that "nearly gone" never reads as "gone"; 0 for a bar that should look empty when it nearly is (a
+ * shield that is shot down recharges a trickle at once, and must not seem to hold).
+ */
+export function bar(g: Ctx, x: number, y: number, w: number, h: number, frac: number, fill: string, back: string, border?: string, min = 1) {
   x = Math.round(x);
   y = Math.round(y);
   rect(g, x, y, w, h, back);
   const f = Math.max(0, Math.min(1, frac));
-  if (f > 0) rect(g, x, y, Math.max(1, Math.round(w * f)), h, fill);
+  const fw = Math.max(f > 0 ? min : 0, Math.round(w * f));
+  if (fw > 0) rect(g, x, y, fw, h, fill);
   if (border) frame(g, x - 1, y - 1, w + 2, h + 2, border);
 }

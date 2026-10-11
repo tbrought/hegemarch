@@ -4,11 +4,12 @@
  */
 import { ERAS, LAST_CRADLE_ERA, SPACE } from '../game/data/eras';
 import type { Note } from '../game/types';
-import { IC, text, textWidth, wrap } from '../render/font';
+import { IC, text, textWidth, underlineMatches, wrap } from '../render/font';
 import { PAL } from '../render/palette';
 import type { Ctx } from '../render/pixel';
 import { icon } from '../render/sprites';
 import type { Hud } from './Hud';
+import { MARK, marksOf } from './Ui';
 
 export const TIPS: Record<string, string> = {
   role: 'Every world has a role. MINE: more Embers. FORGE: builds ships. OBSERVATORY: Lore. BASTION: guns and repairs. Click a world to change it.',
@@ -161,7 +162,12 @@ export class Tips {
     this.hud.ui.panel(g, 'tip', x, y, w, h, { border: color, fill: PAL.night });
     icon(g, 'star', x + 5, y + 3);
     text(g, 'TIP', x + 13, y + 4, color, 'tiny');
-    lines.forEach((l, i) => text(g, l, x + 6, y + 13 + i * 10, PAL.mist));
+    // (The words the card explains when pointed at are marked.)
+    const marks = marksOf(this.hud.ui.termsFor({ scan: msg }));
+    lines.forEach((l, i) => {
+      text(g, l, x + 6, y + 13 + i * 10, PAL.mist);
+      underlineMatches(g, l, x + 6, y + 13 + i * 10, marks, MARK);
+    });
     this.hud.ui.hint('tip-text', x + 4, y + 11, w - 8, lines.length * 10 + 2, { scan: msg });
     const fy = y + h - 12;
     const all = 'ALL TIPS (H)';

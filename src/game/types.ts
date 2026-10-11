@@ -396,6 +396,12 @@ export interface Note {
   node?: number;
   /** Ask the client to pause (when auto-pause is on). */
   pause?: boolean;
+  /**
+   * This line tallies the player's ships lost at one place (`node`, -1 in flight): how many of each
+   * type, who destroyed the last of them (a faction id, -1 unknown), and when the last one fell. Ships
+   * lost there soon after are added to the same line.
+   */
+  loss?: { node: number; counts: Record<string, number>; by: number; at: number };
 }
 
 export type Fx =

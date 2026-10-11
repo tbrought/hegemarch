@@ -77,6 +77,14 @@ the depth into the draft and the screen into a "one thing at a time" model.
   picks the idle Scouts and shows them (E again sends them). EXPLORE is offered only while some world
   is still uncharted (a decision can chart the whole sector), and every refusal says why. Rival houses' Scouts set
   out at once (the AI would order the same thing a moment later).
+- **A Scout is built to look and leave.** Its drive spools in 40% of the time (`SCOUT_CHARGE`), and
+  for its first 4 seconds at a place nothing there can fire on it (`SCOUT_SLIP`, `Game.slips`): time
+  to chart a Sentinel vault or a rival Hearth and jump on. A Scout that stays is a target like any
+  other ship. An exploring Scout's way keeps clear of places its house has seen to be guarded
+  (`Game.pathAvoiding`), and a Scout with nothing left to chart goes home instead of waiting where
+  its last look took it. (In the first public playtest a player lost three Scouts of four without a
+  word from the game. Houses lost about 6.7 Scouts each in twenty minutes of AI play; now about 1.3,
+  and the sector gets charted whole.)
 - **Anomalies wait for a ship that is sent there.** A player's ship looks at an anomaly only when it
   stops there: ships with further jumps queued, and Scouts out exploring, fly on. So a choice
   never pops up because a fleet happened to pass by. AI houses decide on the spot, so any of their
@@ -190,6 +198,17 @@ Measured with `npm run simulate` and `npm run balance:passive`. Speeds are ½×,
   when nothing rarer is mentioned. Tip-only areas ("hints" in `Ui`) never take clicks from what is
   under them. The Boons screen totals list their sources (house, omens, each Boon, relics). The
   DOM menus underline glossary terms (dotted) and explain them, and controls carry `data-tip`.
+  In the game, the words that pointing at a text would explain carry the same dotted underline
+  (tooltips, tip cards, the banner, Boon cards): `Ui.termsFor` picks the terms, the text marks exactly
+  those (`marksOf`), so every marked word has its box and every box its mark.
+- **What the player sees is what happened.** A ship of the player's is never lost silently: the log
+  says "Lost at Cinder to Ancient Sentinels: 2 Scouts, 1 Striker", one line per place that counts up
+  while more are lost there (`Note.loss`), with an alarm only when the place is off screen. A shield
+  bar is empty when the shield is (other bars keep one pixel while anything is left, but a shield
+  that is shot down recharges a trickle at once and seemed to hold), and the moment a world's shields
+  give way is written over it: SHIELDS DOWN. A click on one of the player's own ships always picks
+  it, even while an order waits for its destination (before, the world around the ship took the
+  click as a move order, so a second ship at the same world could not be selected).
 - **What a choice affects, as pictures** (`src/ui/subjects.ts`): every Boon card, event choice and
   ability choice shows the ship type (drawn as on the map, in the house color), resource or part of
   the realm it touches. Boons are read from the modifiers they really change, then from their text

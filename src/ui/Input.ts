@@ -110,7 +110,9 @@ export class Input {
     if (u) v.hoverUnit = u.id;
     const n = r.pickNode(this.g, this.pointer.x, this.pointer.y, this.s.explored, v.orderMode);
     if (n && !u) v.hoverNode = n.id;
-    this.canvas.style.cursor = v.orderMode && (n || u) ? 'crosshair' : u || n ? 'pointer' : 'default';
+    // (One of our own ships is picked by a click, even while an order waits for its destination.)
+    const own = !!u && u.owner === this.g.playerId;
+    this.canvas.style.cursor = v.orderMode && (n || u) && !own ? 'crosshair' : u || n ? 'pointer' : 'default';
   }
 
   private up(e: PointerEvent) {
@@ -147,16 +149,16 @@ export class Input {
         v.orderMode = false;
         return;
       }
-      const n = r.pickNode(g, x, y, s.explored, true);
-      if (n) {
-        const [wx, wy] = r.cam.screenToWorld(x, y);
-        const inWell = Math.hypot(wx - n.x, wy - n.y) <= n.well;
-        if (this.hud.actions.orderAt(n.id, inWell ? wx : undefined, inWell ? wy : undefined)) v.orderMode = false;
-        return;
-      }
-      if (u && u.owner === g.playerId) {
-        // Clicked another of our ships: change the selection instead.
-      } else {
+      // One of our own ships under the pointer: the click picks it (below), it is not an order. Without
+      // this a second ship at the same world could never be clicked: the world all around it took the click.
+      if (!(u && u.owner === g.playerId)) {
+        const n = r.pickNode(g, x, y, s.explored, true);
+        if (n) {
+          const [wx, wy] = r.cam.screenToWorld(x, y);
+          const inWell = Math.hypot(wx - n.x, wy - n.y) <= n.well;
+          if (this.hud.actions.orderAt(n.id, inWell ? wx : undefined, inWell ? wy : undefined)) v.orderMode = false;
+          return;
+        }
         v.orderMode = false;
         return;
       }

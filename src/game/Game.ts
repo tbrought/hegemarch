@@ -10,7 +10,7 @@ import { TRAITS, TRAIT_BY_ID } from './data/traits';
 import { ABILITY_LEVELS, DMG_TABLE, DREADNOUGHT_CAP, LEVEL_XP, MAX_LEVEL, UNITS } from './data/units';
 import { ASCENSION_BOONS, OPTIONAL_VICTORIES } from './data/victories';
 import {
-  AI_INCOME, CRISIS_AWAKEN, CRISIS_OFFSET, JUMP_CHARGE, PHASE_SPEED, PIRATE_FIRST_RAID, QUEUE_MAX, SAVE_VERSION, TICK,
+  AI_INCOME, CRISIS_AWAKEN, CRISIS_OFFSET, JUMP_CHARGE, PHASE_SPEED, PIRATE_FIRST_RAID, QUEUE_MAX, SAVE_VERSION, SCOUT_CHARGE, SCOUT_SLIP, TICK,
 } from './constants';
 import { computePaths, EMPIRES_BY_SIZE, generateCradle, generateMap, type SystemInfo } from './mapgen';
 import { baseMods, mul } from './mods';
@@ -525,6 +525,54 @@ export class Game {
     return this.pathHops[a * this.nodes.length + b];
   }
 
+  /**
+   * The way from `a` to `b` (the places to jump to, in order) that keeps clear of trouble: every place
+   * on the way counts as `extra(place)` further than it is, so the way goes round a place with a high
+   * cost when there is another way, and through it when there is none. The ends themselves are free.
+   */
+  pathAvoiding(a: number, b: number, extra: (nodeId: number) => number): number[] {
+    const N = this.nodes.length;
+    if (a === b || a < 0 || b < 0) return [];
+    const pen = new Float64Array(N);
+    let any = false;
+    for (let i = 0; i < N; i++) {
+      if (i === a || i === b) continue;
+      pen[i] = Math.max(0, extra(i));
+      if (pen[i] > 0) any = true;
+    }
+    if (!any) return this.pathTo(a, b);
+    const far = new Float64Array(N).fill(Infinity);
+    const prev = new Int32Array(N).fill(-1);
+    const done = new Uint8Array(N);
+    far[a] = 0;
+    for (let it = 0; it < N; it++) {
+      let cur = -1;
+      let best = Infinity;
+      for (let i = 0; i < N; i++) {
+        if (!done[i] && far[i] < best) {
+          best = far[i];
+          cur = i;
+        }
+      }
+      if (cur < 0 || cur === b) break;
+      done[cur] = 1;
+      for (const l of this.lanes) {
+        const o = l.a === cur ? l.b : l.b === cur ? l.a : -1;
+        if (o < 0 || done[o]) continue;
+        // (A jump costs its length and its spool, as in the sector's own table of ways.)
+        const d = best + l.len + 900 + pen[o];
+        if (d < far[o]) {
+          far[o] = d;
+          prev[o] = cur;
+        }
+      }
+    }
+    if (!isFinite(far[b])) return [];
+    const out: number[] = [];
+    for (let cur = b; cur !== a && cur >= 0; cur = prev[cur]) out.push(cur);
+    return out.reverse();
+  }
+
   pathTo(a: number, b: number): number[] {
     const out: number[] = [];
     const N = this.nodes.length;
@@ -726,9 +774,20 @@ export class Game {
     return s;
   }
 
+  /**
+   * A Scout that has just arrived at a place slips in unseen: for a few seconds nothing there can fire
+   * on it. With its quick drive that is time to chart a guarded place and leave it alive; a Scout that
+   * stays is a target like any other ship.
+   */
+  slips(u: Unit): boolean {
+    return this.time - u.arrivedAt < SCOUT_SLIP && UNITS[u.type].role === 'scout';
+  }
+
   jumpChargeOf(u: Unit): number {
     const m = this.factions[u.owner].mods;
     let t = JUMP_CHARGE * mul(m.jumpCharge, 0.2);
+    // A Scout is built to look and leave: its drive spools in less than half the time.
+    if (UNITS[u.type].role === 'scout') t *= SCOUT_CHARGE;
     if (this.anchoredAt(u)) t += 4;
     return t;
   }
@@ -991,6 +1050,9 @@ export class Game {
       this.notify(n.owner, `${hearth ? 'Your Hearth, ' : ''}${n.name} is under attack${who ? ' by ' + who.name : ''}!`, 'alert', n.id, hearth);
     }
     const absorbed = Math.min(n.sh, dmg);
+    // The moment a world's shields give way is shown on the map: from here on its hull takes the hits.
+    // (Shields that are being shot at never recharge far, so this is said once a siege, not once a hit.)
+    if (this.fxEnabled && n.maxSh > 0 && n.sh >= n.maxSh * 0.1 && n.sh - absorbed <= 0) this.fx.push({ k: 'text', x: n.x, y: n.y - n.r - 26, text: 'SHIELDS DOWN', color: '#3fa7ff', node: n.id });
     n.sh -= absorbed;
     dmg -= absorbed;
     n.hp -= dmg;
@@ -1019,6 +1081,31 @@ export class Game {
     }
   }
 
+  /**
+   * The log's line for ships the player has lost at one place: "Lost at Kessel to Ancient Sentinels:
+   * 2 Strikers, 1 Scout." Ships lost there within the next 20 seconds are added to the same line, so a
+   * battle is one line that counts, not one line a ship.
+   */
+  private noteLoss(u: Unit, byFaction: number) {
+    if (this.config.autoplay) return;
+    const node = u.node >= 0 ? u.node : u.lane ? u.lane.to : -1;
+    let note = this.notes.find((n) => n.loss && n.loss.node === node && this.time - n.loss.at < 20);
+    if (!note) {
+      note = { id: this.noteId++, t: this.time, text: '', kind: 'bad', node: node >= 0 ? node : undefined, loss: { node, counts: {}, by: -1, at: this.time } };
+      this.notes.push(note);
+      if (this.notes.length > 60) this.notes.splice(0, this.notes.length - 60);
+    }
+    const L = note.loss!;
+    L.counts[u.type] = (L.counts[u.type] ?? 0) + 1;
+    L.at = this.time;
+    if (byFaction >= 0 && byFaction !== u.owner) L.by = byFaction;
+    const list = Object.entries(L.counts)
+      .map(([t, c]) => `${c} ${UNITS[t as UnitType].name}${c > 1 ? 's' : ''}`)
+      .join(', ');
+    const where = node < 0 ? 'in flight' : u.node >= 0 ? `at ${this.nodes[node].name}` : `on the way to ${this.nodes[node].name}`;
+    note.text = `Lost ${where}${L.by >= 0 ? ` to ${this.factions[L.by].name}` : ''}: ${list}.`;
+  }
+
   killUnit(u: Unit, byFaction: number, src: Unit | null = null) {
     if (u.dead) return;
     u.dead = true;
@@ -1033,6 +1120,8 @@ export class Game {
       const t = u.order === 'kindle' ? this.nodeAt(u.orderTarget) : null;
       this.notify(owner.id, `Your seed ship was destroyed${t ? ` on its way to ${t.name}` : ''}. Clear the way, then kindle again.`, 'bad', u.node >= 0 ? u.node : undefined);
     }
+    // No ship of the player's is ever lost silently. (The seed ship, the Ark and the Gate have words of their own.)
+    if (owner.isPlayer && isShip && u.type !== 'seed' && u.type !== 'ark' && u.type !== 'gate') this.noteLoss(u, byFaction);
     if (byFaction >= 0 && byFaction !== u.owner && isShip) {
       const killer = this.factions[byFaction];
       killer.stats.kills++;

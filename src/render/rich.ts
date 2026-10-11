@@ -5,7 +5,7 @@
  *   {text}   a keyword, forced
  * Game terms (ship types, roles, Embers, Hearth…) are recognised automatically and drawn as keywords.
  */
-import { lineHeight, text, textWidth, type FontId, say } from './font';
+import { lineHeight, text, textWidth, underlineMatches, type FontId, say } from './font';
 import { PAL } from './palette';
 import type { Ctx } from './pixel';
 
@@ -157,23 +157,28 @@ export function richLines(s: string, maxW: number, font: FontId = 'main'): numbe
   return wrapRich(s, maxW, font).length;
 }
 
-/** Draw one wrapped line of words. */
-function drawLine(g: Ctx, line: Word[], x: number, y: number, colors: RichColors, font: FontId) {
+/** Draw one wrapped line of words. `marks`: whole-word patterns to underline (words that have an explanation). */
+function drawLine(g: Ctx, line: Word[], x: number, y: number, colors: RichColors, font: FontId, marks?: RegExp[], markColor = '') {
   const space = textWidth(' ', font) + 1;
   let cx = x;
   for (let i = 0; i < line.length; i++) {
     if (i) cx += space;
     for (const p of line[i]) cx = text(g, p.text, cx, y, colors[p.style], font);
   }
+  // (Words are drawn a space apart, as in plain text, so the line can be measured as one string.)
+  if (marks?.length) underlineMatches(g, line.map((w) => w.map((p) => p.text).join('')).join(' '), x, y, marks, markColor, font);
 }
 
-/** Draw wrapped rich text; returns the y below the last line. */
-export function drawRich(g: Ctx, s: string, x: number, y: number, maxW: number, colors: Partial<RichColors> = {}, font: FontId = 'main', maxLines = 99): number {
+/**
+ * Draw wrapped rich text; returns the y below the last line. `marks`: patterns of the words to mark
+ * with a dotted underline (the terms explained beside the text), in `markColor`.
+ */
+export function drawRich(g: Ctx, s: string, x: number, y: number, maxW: number, colors: Partial<RichColors> = {}, font: FontId = 'main', maxLines = 99, marks?: RegExp[], markColor = ''): number {
   const c = { ...RICH_DEFAULT, ...colors };
   const lh = lineHeight(font);
   const lines = wrapRich(s, maxW, font).slice(0, maxLines);
   for (const l of lines) {
-    drawLine(g, l, x, y, c, font);
+    drawLine(g, l, x, y, c, font, marks, markColor);
     y += lh;
   }
   return y;

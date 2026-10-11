@@ -508,7 +508,8 @@ export class Renderer {
           const by = y - Math.ceil(Math.max(w, h) / 2) - 3;
           rect(ctx, bx, by, bw, 1, PAL.night);
           rect(ctx, bx, by, Math.max(1, Math.round(bw * hpf)), 1, hpf > 0.5 ? PAL.teal : hpf > 0.25 ? PAL.gold : PAL.red);
-          if (u.maxSh > 0 && shf > 0) rect(ctx, bx, by - 1, Math.max(1, Math.round(bw * shf)), 1, PAL.sky);
+          // (No sliver for a shield that is as good as gone: it recharges a trickle even under fire.)
+          if (u.maxSh > 0 && Math.round(bw * shf) > 0) rect(ctx, bx, by - 1, Math.round(bw * shf), 1, PAL.sky);
         }
         if (u.level > 1 && z >= 0.15 && (u.type === 'ark' || u.type === 'dreadnought')) {
           text(ctx, String(u.level), x + 6, y + 3, PAL.gold, 'tiny');

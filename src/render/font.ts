@@ -259,6 +259,34 @@ export function textWidth(s: string, font: FontId = 'main'): number {
   return Math.max(0, w - 1);
 }
 
+/**
+ * Mark the words of a drawn line that match any of `marks` (whole-word patterns) with a dotted
+ * underline, as the menus mark the words they explain. `line` is the line as it was drawn at (x, y).
+ */
+export function underlineMatches(g: Ctx, line: string, x: number, y: number, marks: RegExp[], color: string, font: FontId = 'main') {
+  if (!marks.length) return;
+  const s = say(line);
+  const at = (i: number) => {
+    let w = 0;
+    let k = 0;
+    for (const ch of s) {
+      if (k >= i) break;
+      w += charWidth(ch, font);
+      k += ch.length;
+    }
+    return w;
+  };
+  const uy = Math.round(y) + capHeight(font) + 1;
+  g.fillStyle = color;
+  for (const re of marks) {
+    for (const m of s.matchAll(re)) {
+      const x0 = Math.round(x) + at(m.index);
+      const x1 = Math.round(x) + at(m.index + m[0].length) - 1;
+      for (let px = x0; px < x1; px += 2) g.fillRect(px, uy, 1, 1);
+    }
+  }
+}
+
 export function lineHeight(font: FontId = 'main'): number {
   return fonts()[font].lineH;
 }

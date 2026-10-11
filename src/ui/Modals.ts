@@ -23,6 +23,7 @@ import { boonColor, CAT_ORDER, catIcon, groupBoons } from './boons';
 import { boonSubjects, drawSubjects, starWindow, subjectNames, subjectsIn, subjectsSize, type Look } from './subjects';
 import { fmt } from './format';
 import { gloss, termsIn } from './glossary';
+import { MARK, marksOf } from './Ui';
 import type { Hud } from './Hud';
 import { TIPS } from './Tips';
 
@@ -347,7 +348,9 @@ export class Modals {
         g.drawImage(spr, Math.round(cx + cw / 2 - (spr.width * sc) / 2), ly + 2, spr.width * sc, spr.height * sc);
         ly += spr.height * sc + 6;
       }
-      ly = drawRich(g, c.desc, cx + 4, ly, inner, {}, 'main', 8);
+      // (The words of the card that the boxes beside it explain are marked.)
+      const cardTerms = termsIn(`${c.name}. ${c.desc}${c.pact ? ' Pact' : ''}`, { max: 4 });
+      ly = drawRich(g, c.desc, cx + 4, ly, inner, {}, 'main', 8, marksOf(this.ui.termsFor({ terms: cardTerms })), MARK);
       const deltaTop = ly;
       if (deltas.length) {
         ly += 1;
@@ -362,7 +365,7 @@ export class Modals {
       text(g, tag, cx + cw - 4 - tagW, ty + ch - 9, owned ? PAL.gold : PAL.teal, 'tiny');
       this.ui.add({
         id: hid, x: cx, y: cy - 2 + slide, w: cw, h: ch + 2, onClick: () => this.choose(id, i),
-        terms: termsIn(`${c.name}. ${c.desc}${c.pact ? ' Pact' : ''}`, { max: 4 }), termsBeside: true,
+        terms: cardTerms, termsBeside: true,
       });
       this.ui.hint('card-tag-' + i, cx + cw - 6 - tagW, ty + ch - 11, tagW + 4, 9, {
         tip: owned

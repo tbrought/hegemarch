@@ -453,6 +453,43 @@ try {
   await page.keyboard.press('Escape');
   check('Esc clears the selection', await ev(() => window.__app.session.ownSelected().length === 0 && window.__app.session.modal === null));
 
+  // ---- One ship, then another: a click on a second ship picks it (it is not an order to the world around it) ----
+  const pair = await ev((capId) => {
+    const app = window.__app;
+    const g = app.session.game;
+    const n = g.nodes[capId];
+    // Two fresh ships, held apart and still, clear of the world itself.
+    const a = g.spawnUnit('striker', g.playerId, capId, { x: n.x - 260, y: n.y - 200 });
+    const b = g.spawnUnit('guardian', g.playerId, capId, { x: n.x + 260, y: n.y - 200 });
+    for (const u of [a, b]) {
+      u.vx = 0;
+      u.vy = 0;
+    }
+    app.session.paused = true;
+    app.renderer.cam.focus(n.x, n.y - 100, 0.2);
+    app.renderer.cam.update(10);
+    return { a: a.id, b: b.id, ax: app.renderer.sx(a.x), ay: app.renderer.sy(a.y), bx: app.renderer.sx(b.x), by: app.renderer.sy(b.y) };
+  }, cap);
+  await wait(250);
+  await page.mouse.click(...(await toPage(pair.ax, pair.ay)));
+  await wait(450); // (longer than a double click)
+  check('a click on a ship selects it', await ev((id) => {
+    const own = window.__app.session.ownSelected();
+    return own.length === 1 && own[0].id === id && window.__app.session.view.orderMode;
+  }, pair.a));
+  await page.mouse.click(...(await toPage(pair.bx, pair.by)));
+  await wait(200);
+  check('a click on another ship at the same world selects that one, and orders nothing', await ev(([a, b, capId]) => {
+    const s = window.__app.session;
+    const own = s.ownSelected();
+    const first = s.game.units.get(a);
+    return own.length === 1 && own[0].id === b && first.path.length === 0 && first.node === capId && isNaN(first.ox);
+  }, [pair.a, pair.b, cap]), await ev(() => window.__app.session.ownSelected().map((u) => u.type).join(',')));
+  await ev(() => {
+    window.__app.session.clearSelection();
+    window.__app.session.paused = false;
+  });
+
   // ---- Drag-select: the box shows while dragging, and selects what it covers ----
   await ev(() => {
     const app = window.__app;

@@ -9,7 +9,7 @@ import { ASCENSION_BOONS, DOMINATION_SHARE, GATE_CHARGE, relicsRequired, treasur
 import { ECON, PLANETS, ROLES, ROLE_ORDER } from '../game/data/worlds';
 import type { Faction, GNode, Note, Unit, UnitType, VictoryId } from '../game/types';
 import { roman } from '../game/util';
-import { bigText, fit, IC, paragraph, setVocabulary, text, textCenter, textOutline, textRight, textWidth, wrap } from '../render/font';
+import { bigText, fit, IC, paragraph, setVocabulary, text, textCenter, textOutline, textRight, textWidth, underlineMatches, wrap } from '../render/font';
 import { PAL, shade, UI } from '../render/palette';
 import { bar, box, frame, rect, ring, type Ctx } from '../render/pixel';
 import { drawSettlement } from '../render/ground';
@@ -24,7 +24,7 @@ import { Modals } from './Modals';
 import { Tips } from './Tips';
 import { Tutorial } from './Tutorial';
 import { gloss, GLOSS_BY_ID, termsIn } from './glossary';
-import { dimScreen, Ui, type TipOpts } from './Ui';
+import { dimScreen, MARK, marksOf, Ui, type TipOpts } from './Ui';
 import { cradleVocabulary, unitCount, unitDesc, unitName } from './vocab';
 
 interface LogLine {
@@ -113,10 +113,22 @@ export class Hud {
     }
     // Notes: sounds, the log, toasts and auto-pause.
     for (const n of g.notes) {
-      if (n.id <= this.lastNote) continue;
+      if (n.id <= this.lastNote) {
+        // A line that tallies ships lost grows while more are lost there: keep the log's copy in step.
+        if (n.loss) {
+          const l = this.log.find((x) => x.id === n.id);
+          if (l && l.text !== n.text) {
+            l.text = n.text;
+            l.at = this.clock;
+          }
+        }
+        continue;
+      }
       this.lastNote = n.id;
       this.log.push({ id: n.id, text: n.text, kind: n.kind, node: n.node, t: n.t, at: this.clock });
       if (this.log.length > 40) this.log.shift();
+      // Ships lost in a fight the player is watching go in the log without an alarm: it is on screen.
+      if (n.loss && this.watching(n.loss.node)) continue;
       if (n.kind === 'alert') s.sfx.play('alert', 0.55);
       else if (n.kind === 'bad') s.sfx.play('alert', 0.35);
       else if (n.kind === 'good' && /Boon/.test(n.text)) s.sfx.play('boon', 0.5);
@@ -423,6 +435,13 @@ export class Hud {
     return { text: `Your Scout ${IC.scout} waits for orders. Click its fleet badge ${IC.fleet}, then EXPLORE.`, badge: this.fleetLabel(scout.lane ? -1 : scout.node) };
   }
 
+  /** Is this place on screen, near enough for its ships to be seen? */
+  private watching(node: number): boolean {
+    if (node < 0) return false;
+    const sc = this.nodeScreen(node);
+    return this.s.renderer.cam.zoom >= 0.1 && sc.x > 0 && sc.x < this.W && sc.y > 16 && sc.y < this.H;
+  }
+
   /** The number on the player's fleet badge at a world, as the map shows it ("" for none). */
   fleetLabel(node: number): string {
     const n = node >= 0 ? this.s.fleetAt(node).length : 0;
@@ -444,9 +463,16 @@ export class Hud {
     const x = Math.round(this.W / 2 - w / 2);
     const y = 17;
     box(g, x, y, w, h, PAL.void, o.color === PAL.red || o.color === PAL.ember ? o.color : PAL.slate);
-    if (rich) drawRich(g, o.text, x + 7, y + 3, maxW - 12, { body: o.color }, 'main', 2);
-    else lines.forEach((l, i) => textCenter(g, l, this.W / 2, y + 3 + i * 10, o.color));
-    this.ui.add({ id: 'banner', x, y, w, h, block: true, terms: termsIn(o.text, { max: 2 }) });
+    // (The words the banner explains when pointed at are marked.)
+    const terms = termsIn(o.text, { max: 2 });
+    const marks = marksOf(this.ui.termsFor({ terms }));
+    if (rich) drawRich(g, o.text, x + 7, y + 3, maxW - 12, { body: o.color }, 'main', 2, marks, MARK);
+    else
+      lines.forEach((l, i) => {
+        textCenter(g, l, this.W / 2, y + 3 + i * 10, o.color);
+        underlineMatches(g, l, Math.round(this.W / 2 - textWidth(l) / 2), y + 3 + i * 10, marks, MARK);
+      });
+    this.ui.add({ id: 'banner', x, y, w, h, block: true, terms });
     setInlineBadgeLabel('3');
   }
 
@@ -1176,7 +1202,7 @@ export class Hud {
         text(g, label, x, y, PAL.dusk, 'tiny');
         const bw = Math.min(90, w - off - 2);
         bar(g, x + off, y + 1, bw, 2, n.hp / Math.max(1, n.maxHp), PAL.teal, PAL.indigo);
-        if (n.maxSh > 0) bar(g, x + off, y + 4, bw, 1, n.sh / n.maxSh, PAL.sky, PAL.night);
+        if (n.maxSh > 0) bar(g, x + off, y + 4, bw, 1, n.sh / n.maxSh, PAL.sky, PAL.night, undefined, 0);
         this.ui.hint('card-hp', x - 1, y - 1, bw + off + 2, 8, {
           tip: cradle
             ? `Walls ${fmt(n.hp)} / ${fmt(n.maxHp)} (green)${n.maxSh > 0 ? ` · shields ${fmt(n.sh)} / ${fmt(n.maxSh)} (blue)` : ''}. Shields soak up damage first. When the walls are down the land falls to whoever is attacking it.`
@@ -1476,7 +1502,7 @@ export class Hud {
         const off = game.cradle ? textWidth('HEALTH', 'tiny') + 4 : 18;
         text(gx, 'HULL', x, y, PAL.dusk, 'tiny');
         bar(gx, x + off, y + 1, Math.min(90, w - off - 2), 2, hp / Math.max(1, max), PAL.teal, PAL.indigo);
-        if (shMax > 0) bar(gx, x + off, y + 4, Math.min(90, w - off - 2), 1, sh / shMax, PAL.sky, PAL.night);
+        if (shMax > 0) bar(gx, x + off, y + 4, Math.min(90, w - off - 2), 1, sh / shMax, PAL.sky, PAL.night, undefined, 0);
         this.ui.hint('fleet-hp', x - 1, y - 1, Math.min(90, w - off - 2) + off + 2, 8, {
           tip: `Hull ${fmt(hp)} / ${fmt(max)} (green)${shMax > 0 ? ` · shields ${fmt(sh)} / ${fmt(shMax)} (blue)` : ''}. Shields soak up damage first and recharge out of battle. Bastions and Starbases repair hulls.`,
         });
