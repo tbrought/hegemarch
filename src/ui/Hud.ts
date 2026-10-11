@@ -10,7 +10,7 @@ import { HOLD_FIELD } from '../game/constants';
 import { ECON, PLANETS, ROLES, ROLE_ORDER } from '../game/data/worlds';
 import type { Faction, GNode, Note, Unit, UnitType, VictoryId } from '../game/types';
 import { roman } from '../game/util';
-import { bigText, fit, IC, paragraph, setVocabulary, text, textCenter, textOutline, textRight, textWidth, underlineMatches, wrap } from '../render/font';
+import { bigText, capHeight, fit, IC, paragraph, setVocabulary, text, textCenter, textOutline, textRight, textWidth, underlineMatches, wrap } from '../render/font';
 import { PAL, shade, UI } from '../render/palette';
 import { bar, box, frame, rect, ring, type Ctx } from '../render/pixel';
 import { drawSettlement } from '../render/ground';
@@ -29,6 +29,9 @@ import { Goals } from './Goals';
 import { dimScreen, MARK, marksOf, Ui, type TipOpts } from './Ui';
 import { cradleVocabulary, unitCount, unitDesc, unitName } from './vocab';
 import { BUILD_LABELS } from './keys';
+
+/** Seconds the idle-Forge button flashes when one more Forge has run out of work. */
+const IDLE_FLASH = 3;
 
 interface LogLine {
   id: number;
@@ -392,15 +395,27 @@ export class Hud {
       this.ui.hit('hangar', x - 1, 0, ex - x + 2, 13, undefined, 'Hangar: room for your ships. Every world you hold adds room, and higher-level worlds add more. When it is full you cannot build. Hangar Bays at your Hearth add more.');
       x = ex + 6;
     }
-    // Forges that build nothing: how many, and a click (or Tab) to go to the next of them.
+    // Forges that build nothing: how many, and a click (or Tab) to go to the next of them. A button and
+    // not a figure (as a bare number beside an anvil it read as one more rate, like the Embers'), and it
+    // flashes for a few seconds whenever a Forge has just run out of work: something to see to.
     const idle = R.fleet && !this.g.outcome ? this.actions.forges().filter((n) => n.shipQ.length === 0).length : 0;
+    if (idle > this.idleShown) this.idleFlashAt = this.clock;
+    this.idleShown = idle;
     if (idle > 0) {
+      const label = `${idle} IDLE`;
+      const bw = textWidth(label, 'tiny') + 19;
       x += 2;
-      icon(g, 'forge', x, 3);
-      const ex = text(g, String(idle), x + 7, 3, PAL.ember);
-      this.ui.hit('idle-forges', x - 1, 0, ex - x + 2, 13, () => this.actions.nextForge(1), () =>
-        `${idle === 1 ? 'One of your Forges is' : `${idle} of your Forges are`} building nothing (your Hearth counts as one). Click, or press Tab, to go to the next: Q W E R T Y build there.`);
-      x = ex + 6;
+      this.ui.button(g, 'idle-forges', x, 1, bw, 11, label, () => this.actions.nextForge(1), {
+        icon: 'forge', font: 'tiny', color: PAL.ember,
+        tip: `${idle === 1 ? 'One of your Forges is' : `${idle} of your Forges are`} building nothing (your Hearth counts as one). Click, or press Tab, to go to the next: Q W E R T Y build there.`,
+      });
+      // (Flashing: the button turns to fire and back, a few times a second.)
+      if (this.clock - this.idleFlashAt < IDLE_FLASH && Math.floor(this.clock * 5) % 2 === 0) {
+        box(g, x, 1, bw, 11, PAL.ember, PAL.gold);
+        icon(g, 'forge', x + 4, 3, PAL.void, true);
+        text(g, label, x + 12, 1 + Math.floor((11 - capHeight('tiny')) / 2), PAL.void, 'tiny');
+      }
+      x += bw + 4;
     }
     // Right side: menu, speeds, pause, clock.
     let rx = W - 2;
@@ -482,6 +497,10 @@ export class Hud {
     const n = node >= 0 ? this.s.fleetAt(node).length : 0;
     return n > 0 ? String(n) : '';
   }
+
+  /** How many Forges were idle at the last frame, and when one more went idle (the button flashes for `IDLE_FLASH` s). */
+  private idleShown = 0;
+  private idleFlashAt = -99;
 
   /** Ability choices that have opened by themselves already (ship, level and choices waiting). */
   private abilityShown = new Set<string>();

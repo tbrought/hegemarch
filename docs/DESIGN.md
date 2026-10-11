@@ -489,8 +489,10 @@ Measured with `npm run simulate` and `npm run balance:passive`. Speeds are ½×,
   builds selected (a Forge, or the Hearth), **Q W E R T Y** are the ship buttons of its panel, in
   their order, each with its letter in the corner; Shift with one queues five. With ships selected,
   or nothing, E and R keep their own meaning (Explore, Retreat). **Tab** goes to the next world that
-  builds, the idle ones first (Shift+Tab goes back), and the top bar counts the ones that build
-  nothing, beside a Forge: a click there does what Tab does. Tab, Q, Tab, W queues ships all over the
+  builds, the idle ones first (Shift+Tab goes back), and the top bar has a button for the ones that
+  build nothing (an anvil and "2 IDLE"): a click there does what Tab does. Whenever one more Forge runs
+  out of work it flashes, turning to fire and back for three seconds, then waits quietly. (As a bare
+  number beside an anvil it read as one more rate, like the Embers'.) Tab, Q, Tab, W queues ships all over the
   house without the mouse. Control groups stay as they were (Ctrl+1 to 9 saves ships, 1 to 9 selects
   them, twice looks at them).
 - **The Hall of Heirs** shows a house as the setup does: its banner (its Hearth and starting fleet,
