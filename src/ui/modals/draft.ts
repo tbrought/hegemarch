@@ -96,7 +96,10 @@ function glint(modals: Modals, g: Ctx, x: number, y: number, w: number, h: numbe
 const WIN = 28;
 const ART = WIN + 1;
 
-/** A Boon on offer, with what the draft has worked out about it: what it would change, its name in lines, the height its card needs, what it affects. */
+/**
+ * A Boon on offer, with what the draft has worked out about it: what it would change, its name in
+ * lines, the height its card needs, what it affects.
+ */
 interface DraftCard {
   id: string;
   c: CardDef;
@@ -106,7 +109,10 @@ interface DraftCard {
   subs: ReturnType<typeof boonSubjects>;
 }
 
-/** Where the cards of a draft stand: the width and height of one, the first one's corner, the room for text, and whether each has a window for its pictures. */
+/**
+ * Where the cards of a draft stand: the width and height of one, the first one's corner, the room for
+ * text, and whether each has a window for its pictures.
+ */
 interface DraftLayout {
   cw: number;
   ch: number;
@@ -172,7 +178,10 @@ export function draft(modals: Modals, g: Ctx) {
   modals.ui.button(g, 'later', x + w / 2 - 20, by, 40, 12, lw, () => modals.close(), { font: 'tiny', tip: 'Decide later. The Boon will wait. (Esc)' });
 }
 
-/** One card of the draft: its rarity and kind, what it affects (in a window of its own, or small in the header), its name and text, what it would change in figures, and whether the house has it already. */
+/**
+ * One card of the draft: its rarity and kind, what it affects (in a window of its own, or small in the
+ * header), its name and text, what it would change in figures, and whether the house has it already.
+ */
 function draftCard(modals: Modals, g: Ctx, card: DraftCard, i: number, lay: DraftLayout) {
   const { id, c, deltas, names, subs } = card;
   const { cw, ch, cx0, cy, inner, strip } = lay;

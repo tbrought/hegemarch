@@ -91,7 +91,8 @@ export function drawIndicators(hud: Hud) {
     const label = `${u.type === 'ark' ? 'ARK' : 'DREAD'} LEVEL ${u.level}!`;
     const w = textWidth(label, 'tiny') + 10;
     hud.ui.button(g, 'abil-' + u.id, hud.W - 3 - w, y, w, 11, label, () => hud.modals.open({ kind: 'ability', unitId: u.id }), {
-      primary: true, pulse: true, font: 'tiny', tip: `Your ${u.type === 'ark' ? 'Ark' : 'Dreadnought'} reached level ${u.level} and can learn a new ability. Click to choose.`,
+      primary: true, pulse: true, font: 'tiny', tip: `Your ${u.type === 'ark' ? 'Ark' : 'Dreadnought'} reached level ${u.level} and can learn a ` +
+          `new ability. Click to choose.`,
     });
     y += 13;
     if (y > 70) break;
@@ -134,7 +135,8 @@ export function drawBadges(hud: Hud) {
       const wait = o === pid ? jumpWait(hud, hud.s.fleetAt(n.id)) : null;
       if (wait) bar(g, bx, by + 10, w, 1, wait.done, wait.held || wait.fire || wait.snared ? PAL.ember : PAL.sky, PAL.indigo);
       if (o === pid) {
-        hud.ui.hit(id, bx - 1, by - 1, w + 2, 11, () => selectFleet(hud, n.id), `${wait ? `${jumpWaitText(wait)}. ` : ''}Your fleet at ${n.name}: ${fleetSummary(hud.s.fleetAt(n.id))}. Click to select it, then click a world to send it.`);
+        hud.ui.hit(id, bx - 1, by - 1, w + 2, 11, () => selectFleet(hud, n.id), `${wait ? `${jumpWaitText(wait)}. ` : ''}Your fleet at ${n.name}: ` +
+            `${fleetSummary(hud.s.fleetAt(n.id))}. Click to select it, then click a world to send it.`);
       } else {
         const units = b.filter((u) => u.owner === o && !u.dead && u.type !== 'fighter' && !UNITS[u.type].isStatic);
         hud.ui.hit(id, bx - 1, by - 1, w + 2, 11, () => {

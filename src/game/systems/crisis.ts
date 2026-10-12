@@ -20,7 +20,8 @@ export function crisisTick(g: Game, dt: number) {
   // The barrier's end is said aloud: until then the Heart shrugs off nine tenths of every hit.
   if (!C.barrierDown && !g.hasBuff(heart, 'barrier')) {
     C.barrierDown = true;
-    g.notify(-1, `The void barrier around the Rift Heart has fallen. It can be destroyed now${g.victories.includes('crisis') ? ': the house that lands the killing blow wins by Purge the Void' : ''}.`, 'alert', C.node, true);
+    g.notify(-1, `The void barrier around the Rift Heart has fallen. It can be destroyed now` +
+        `${g.victories.includes('crisis') ? ': the house that lands the killing blow wins by Purge the Void' : ''}.`, 'alert', C.node, true);
   }
   if (heart.lastHit > 10) heart.hp = Math.min(heart.maxHp, heart.hp + 100 * dt);
   // The Heart spawns defenders while it is under attack.

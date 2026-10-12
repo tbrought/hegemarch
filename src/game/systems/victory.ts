@@ -27,7 +27,8 @@ export function victoryTick(g: Game) {
       const owned = g.worldsOf(f.id).length;
       if (owned / g.worldCount >= DOMINATION_SHARE) {
         f.holdTimer += 1;
-        warnOnce(g, f, 'dom', `${f.name} holds ${Math.round(DOMINATION_SHARE * 100)}% of all worlds! In ${DOMINATION_HOLD}s they are crowned Hegemarch unless their hold is broken.`);
+        warnOnce(g, f, 'dom', `${f.name} holds ${Math.round(DOMINATION_SHARE * 100)}% of all worlds! In ${DOMINATION_HOLD}s they are crowned ` +
+            `Hegemarch unless their hold is broken.`);
         if (f.holdTimer >= DOMINATION_HOLD) return win(g, f, 'domination', `${f.name} rules the sector.`);
       } else {
         f.holdTimer = 0;
@@ -40,7 +41,8 @@ export function victoryTick(g: Game) {
         f.gate = null;
       } else {
         f.gate.charge += 1;
-        if (f.gate.charge >= GATE_CHARGE / 2) warnOnce(g, f, 'gate50', `${f.name}'s Starfire Gate is half charged! When it is full, they will be crowned Hegemarch.`);
+        if (f.gate.charge >= GATE_CHARGE / 2) warnOnce(g, f, 'gate50', `${f.name}'s Starfire Gate is half charged! When it is full, they will be ` +
+            `crowned Hegemarch.`);
         if (f.gate.charge >= GATE_CHARGE) return win(g, f, 'ascension', `${f.name} passed through the Starfire Gate.`);
       }
     }

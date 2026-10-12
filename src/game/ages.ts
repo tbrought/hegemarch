@@ -26,7 +26,10 @@ const GRACE = [600, 480, 360, 240];
 export interface PassageRival {
   name: string;
   color: string;
-  /** 'ahead': its Ark left before the player's. 'behind': it is still climbing. 'fallen': its Hearth was put out on the cradle. */
+  /**
+   * 'ahead': its Ark left before the player's. 'behind': it is still climbing. 'fallen': its Hearth was
+   * put out on the cradle.
+   */
   fate: 'ahead' | 'behind' | 'fallen';
   /** Ahead: seconds since its Ark left. Behind: seconds until it follows (an estimate). */
   seconds: number;

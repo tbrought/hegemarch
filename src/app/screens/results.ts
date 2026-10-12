@@ -73,10 +73,12 @@ export function showResults(app: App) {
   const cards = groupBoons(r.cards)
     .map(({ id, count }) => {
       const c = CARD_BY_ID[id];
-      return `<span class="chip" style="--rc:${c.pact ? PACT_COLOR : RARITY_COLOR[c.rarity]}" data-tip-title="${esc(c.name)}" data-tip="${esc(c.desc)}">${esc(c.name)}${count > 1 ? ` <b>×${count}</b>` : ''}</span>`;
+      return `<span class="chip" style="--rc:${c.pact ? PACT_COLOR : RARITY_COLOR[c.rarity]}" data-tip-title="${esc(c.name)}" data-tip="` +
+          `${esc(c.desc)}">${esc(c.name)}${count > 1 ? ` <b>×${count}</b>` : ''}</span>`;
     })
     .join('');
-  const relics = r.relics.map((id) => `<span class="chip" style="--rc:var(--sky)" data-tip-title="${esc(RELIC_BY_ID[id]?.name ?? id)}" data-tip="${esc(RELIC_BY_ID[id]?.desc ?? '')}">♦ ${esc(RELIC_BY_ID[id]?.name ?? id)}</span>`).join('');
+  const relics = r.relics.map((id) => `<span class="chip" style="--rc:var(--sky)" data-tip-title="${esc(RELIC_BY_ID[id]?.name ?? id)}" data-tip="` +
+      `${esc(RELIC_BY_ID[id]?.desc ?? '')}">♦ ${esc(RELIC_BY_ID[id]?.name ?? id)}</span>`).join('');
   const amb = AMBITION_BY_ID[r.ambition];
   const daily = app.session?.game.config.daily;
   // Legacy is what a run leaves behind, and the reason to play another: it is the headline here, with
@@ -86,9 +88,12 @@ export function showResults(app: App) {
   const afford = shop.filter((x) => x.cost <= have);
   const next = shop.find((x) => x.cost > have);
   const buys = afford.length
-    ? `<div class="lh-buys"><span>Enough for:</span>${afford.slice(0, 4).map((x) => `<span class="chip" style="--rc:var(--gold)">${esc(x.name)} ◆${x.cost}</span>`).join('')}${afford.length > 4 ? `<span class="dim">and ${afford.length - 4} more</span>` : ''}</div>`
+    ? (`<div class="lh-buys"><span>Enough for:</span>` +
+        `${afford.slice(0, 4).map((x) => `<span class="chip" style="--rc:var(--gold)">${esc(x.name)} ◆${x.cost}</span>`).join('')}` +
+        `${afford.length > 4 ? `<span class="dim">and ${afford.length - 4} more</span>` : ''}</div>`)
     : next
-      ? `<div class="lh-buys"><span>Next: <b>${esc(next.name)}</b> ◆${next.cost}, <b>◆${next.cost - have}</b> to go</span><span class="lh-bar"><i style="width:${Math.round((100 * have) / next.cost)}%"></i></span></div>`
+      ? (`<div class="lh-buys"><span>Next: <b>${esc(next.name)}</b> ◆${next.cost}, <b>◆${next.cost - have}</b> to go</span><span class="lh-bar"><i ` +
+          `style="width:${Math.round((100 * have) / next.cost)}%"></i></span></div>`)
       : '<div class="lh-buys"><span>Everything in the Hall of Heirs is yours.</span></div>';
   const legacyHero = `<div class="px-box legacy-hero">
         <div class="lh-earned"><span class="lh-num">◆<span id="legacy-total">0</span></span><span class="lh-label">LEGACY EARNED</span></div>

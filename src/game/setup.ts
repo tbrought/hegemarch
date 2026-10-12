@@ -79,7 +79,10 @@ function layOutSector(g: Game, nEmp: number): MapGenResult {
   return map;
 }
 
-/** The houses, the player first, each at a Hearth drawn by lot; then the Corsairs, the guardians of the dark and the Hollow. Returns the Hearths, in the order of the houses. */
+/**
+ * The houses, the player first, each at a Hearth drawn by lot; then the Corsairs, the guardians of the
+ * dark and the Hollow. Returns the Hearths, in the order of the houses.
+ */
 function seatHouses(g: Game, nEmp: number, mapHomes: number[]): number[] {
   const config = g.config;
   const rng = g.rng;

@@ -158,7 +158,8 @@ export async function continueRun(app: App) {
   } catch (e) {
     console.error(e);
     clearRun();
-    app.menuNotice = 'Your saved run was made by an older version of Hegemarch and could not be continued, so it was cleared. Your Legacy and unlocks are safe.';
+    app.menuNotice = 'Your saved run was made by an older version of Hegemarch and could not be continued, so it was cleared. Your Legacy and ' +
+        'unlocks are safe.';
     app.showMenu();
     return;
   }
@@ -292,9 +293,11 @@ function shareOf(g: Game): ResultsData['share'] {
   const c = g.config.challenge;
   let vs: string | null = null;
   if (c) {
-    const them = `${HEIR_BY_ID[c.heir]?.name ?? 'The challenger'} ${c.won ? `was crowned${vname(c.victory) ? ` by ${vname(c.victory)}` : ''} in ${fmtTime(c.time)}` : `fell after ${fmtTime(c.time)}`}`;
+    const them = `${HEIR_BY_ID[c.heir]?.name ?? 'The challenger'} ` +
+        `${c.won ? `was crowned${vname(c.victory) ? ` by ${vname(c.victory)}` : ''} in ${fmtTime(c.time)}` : `fell after ${fmtTime(c.time)}`}`;
     const you = o.playerWon ? `You were crowned in ${fmtTime(time)}` : `You fell after ${fmtTime(time)}`;
-    const verdict = o.playerWon && c.won ? `: ${versus(time, c.time, fmtTime)}.` : !o.playerWon && !c.won ? `: you lasted ${versus(time, c.time, fmtTime).replace('faster', 'less long').replace('slower', 'longer')}.` : o.playerWon ? ', where they fell.' : ', where they were crowned.';
+    const verdict = o.playerWon && c.won ? `: ${versus(time, c.time, fmtTime)}.` : !o.playerWon && !c.won ? (`: you lasted ` +
+        `${versus(time, c.time, fmtTime).replace('faster', 'less long').replace('slower', 'longer')}.`) : o.playerWon ? ', where they fell.' : ', where they were crowned.';
     vs = `The challenge: ${them}. ${you}${verdict}`;
   }
   return { text: shareText(run), line: shareLine(run), link, daily: !!g.config.daily, versus: vs };
@@ -393,12 +396,16 @@ function resultStats(g: Game, o: Outcome, note: (key: RecordKey, show: (v: numbe
     .map(([k, v, n]) => [g.cradle ? cradleVocabulary(LAST_CRADLE_ERA + 1)(k) : k, v, n] as ResultsData['stats'][number]);
 }
 
-/** The run in one paragraph, for a bug report: the version, the seed and the setup, how it ended, its Destinies, omens and Boons; and the same for a machine to read. */
+/**
+ * The run in one paragraph, for a bug report: the version, the seed and the setup, how it ended, its
+ * Destinies, omens and Boons; and the same for a machine to read.
+ */
 function runDetails(g: Game, o: Outcome): string {
   const p = g.player;
   return [
     `Hegemarch v${GAME_VERSION}`,
-    `${g.config.mode === 'ages' ? 'Ages run' : g.config.daily ? 'Daily run' : g.config.tutorial ? 'First Night' : 'Classic run'}, seed ${g.config.seed}, ${g.config.size}, ${DIFFICULTY_NAMES[g.config.difficulty]}, ${HEIR_BY_ID[p.heir]?.name ?? p.heir}`,
+    `${g.config.mode === 'ages' ? 'Ages run' : g.config.daily ? 'Daily run' : g.config.tutorial ? 'First Night' : 'Classic run'}, seed ` +
+        `${g.config.seed}, ${g.config.size}, ${DIFFICULTY_NAMES[g.config.difficulty]}, ${HEIR_BY_ID[p.heir]?.name ?? p.heir}`,
     `${o.playerWon ? 'Victory' : 'Defeat'} by ${vname(o.victory)} at ${fmtTime(o.time)}: ${o.reason}`,
     `Destinies: ${g.victories.map(vname).join(', ')}. Omens: ${g.traits.map((t) => TRAIT_BY_ID[t]?.name ?? t).join(', ') || 'none'}.`,
     `Boons: ${groupBoons(p.cards).map(({ id, count }) => (CARD_BY_ID[id]?.name ?? id) + (count > 1 ? ` x${count}` : '')).join(', ') || 'none'}.`,

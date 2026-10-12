@@ -192,7 +192,10 @@ function tryGenerate(seed: number, opts: MapGenOptions): MapGenResult {
   return { nodes: m.nodes, lanes: m.lanes, systems: m.systems, homes: m.homes, pirateBase: m.pirateBase, rift: m.rift, relicSites: m.relicSites, anomalies: m.anomalies, ...boundsOf(m.nodes) };
 }
 
-/** Where the systems stand: the cores in the middle, the houses' systems in a ring about them, pushed apart until none overlap. */
+/**
+ * Where the systems stand: the cores in the middle, the houses' systems in a ring about them, pushed
+ * apart until none overlap.
+ */
 function placeSystems(rng: RNG, nHomes: number, nCores: number): SysPos[] {
   const nSys = nHomes + nCores;
   const sysPos: SysPos[] = [];
@@ -234,7 +237,10 @@ function placeSystems(rng: RNG, nHomes: number, nCores: number): SysPos[] {
   return sysPos;
 }
 
-/** Which system gets what: the Corsairs and the Maw in the cores, the vaults in the cores first and then in the houses' systems. */
+/**
+ * Which system gets what: the Corsairs and the Maw in the cores, the vaults in the cores first and then
+ * in the houses' systems.
+ */
 function planSites(rng: RNG, sysPos: SysPos[], relics: number, crisis: boolean) {
   const nSys = sysPos.length;
   const coreIds = sysPos.map((s, i) => (s.home ? -1 : i)).filter((i) => i >= 0);
@@ -403,7 +409,10 @@ function namePlanets(m: Build, sysNodes: number[], sp: SysPos, starName: string)
   return planets;
 }
 
-/** The starlanes inside a system: every place joined to its near neighbours, the star a hub, and a world next door to a Hearth. */
+/**
+ * The starlanes inside a system: every place joined to its near neighbours, the star a hub, and a world
+ * next door to a Hearth.
+ */
 function laneSystem(m: Build, s: number, sp: SysPos, starId: number, sysNodes: number[], planets: number[]) {
   const { rng, nodes, lanes } = m;
   const pts = sysNodes.map((id) => nodes[id]);
@@ -443,7 +452,10 @@ function laneSystem(m: Build, s: number, sp: SysPos, starId: number, sysNodes: n
   }
 }
 
-/** The starlanes between systems, star to star: near neighbours, every house's system to its nearest core, and a few more for loops. */
+/**
+ * The starlanes between systems, star to star: near neighbours, every house's system to its nearest
+ * core, and a few more for loops.
+ */
 function laneStars(m: Build, sysPos: SysPos[], coreIds: number[], homeIds: number[]) {
   const { rng, systems } = m;
   const starOf = (s: number) => systems[s].star;
@@ -513,7 +525,10 @@ function tryCradle(seed: number, houses: number): MapGenResult {
   return { nodes: m.nodes, lanes: m.lanes, systems: [], homes: m.homes, pirateBase: -1, rift: -1, relicSites: [], anomalies: [], ...boundsOf(m.nodes, 420) };
 }
 
-/** The lands of a cradle: the Hearths on a ring, three lands of its own around each, a border land between neighbours, and the rich middle held by beasts. */
+/**
+ * The lands of a cradle: the Hearths on a ring, three lands of its own around each, a border land
+ * between neighbours, and the rich middle held by beasts.
+ */
 function placeLands(m: Build, houses: number) {
   const { rng, nodes, homes } = m;
   const names = rng.shuffle([...LAND_NAMES]);
@@ -591,7 +606,10 @@ function placeLands(m: Build, houses: number) {
   if (placedMid < Math.min(3, middle)) throw new Error('Failed to place the middle lands');
 }
 
-/** The paths of a cradle: every land reaches every other, with a few loops, no Hearth is a dead end, and none is next to another. */
+/**
+ * The paths of a cradle: every land reaches every other, with a few loops, no Hearth is a dead end, and
+ * none is next to another.
+ */
 function pathLands(m: Build) {
   const { rng, nodes, lanes, homes } = m;
   for (const [i, j] of rngEdges(nodes)) addLane(m, i, j);

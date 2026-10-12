@@ -552,7 +552,10 @@ function military(g: Game, f: Faction, ctx: Ctx) {
   else if (ai.mode === 'attack') press(g, f, army, armyPower, minArmy);
 }
 
-/** Ships for the worlds under threat, the Hearth first. Those it sends, or leaves on the job, are `assigned`: the army does without them. */
+/**
+ * Ships for the worlds under threat, the Hearth first. Those it sends, or leaves on the job, are
+ * `assigned`: the army does without them.
+ */
 function defend(g: Game, f: Faction, ctx: Ctx, all: Unit[], assigned: Set<number>) {
   const ai = f.ai!;
   const threats = [...ctx.threats].sort(
@@ -629,7 +632,10 @@ function claimDerelicts(g: Game, f: Faction, all: Unit[], assigned: Set<number>)
   }
 }
 
-/** At peace: the army gathers at the staging world, and when it is strong enough (and the time has come) picks a target and a place to rally. */
+/**
+ * At peace: the army gathers at the staging world, and when it is strong enough (and the time has come)
+ * picks a target and a place to rally.
+ */
 function muster(g: Game, f: Faction, ctx: Ctx, army: Unit[], armyPower: number, minArmy: number) {
   const ai = f.ai!;
   const age = ERAS[f.era].power;
@@ -669,7 +675,10 @@ function gather(g: Game, f: Faction, army: Unit[], armyPower: number) {
   }
 }
 
-/** At the target: on to the next one near by when this one is done; home when the fight is lost, the siege gets nowhere, or it has gone on too long. */
+/**
+ * At the target: on to the next one near by when this one is done; home when the fight is lost, the
+ * siege gets nowhere, or it has gone on too long.
+ */
 function press(g: Game, f: Faction, army: Unit[], armyPower: number, minArmy: number) {
   const ai = f.ai!;
   const tn = ai.target;

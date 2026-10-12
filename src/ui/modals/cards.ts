@@ -66,7 +66,8 @@ export function nightDone(modals: Modals, g: Ctx) {
   const paras: [string, string][] = [
     ['That was the whole guide. You can kindle worlds, build ships, choose Boons, fight off raiders and send out Scouts.', PAL.mist],
     ['Go back to the menu to start a run of your own, or keep playing this one. It is saved either way: CONTINUE on the menu picks it up.', PAL.mist],
-    ['A small box on the right names a goal to try next: roles, levels, a fleet, your first capture. Tips still pop up the first time something new happens, and the game waits while you read them.', PAL.dusk],
+    ['A small box on the right names a goal to try next: roles, levels, a fleet, your first capture. Tips still pop up the first time something ' +
+        'new happens, and the game waits while you read them.', PAL.dusk],
   ];
   const blocks = paras.map(([t, c]) => ({ lines: wrap(t, inner, 'main'), c }));
   const h = 22 + blocks.reduce((a, b) => a + b.lines.length * 10 + 5, 0) + 20;
@@ -97,7 +98,8 @@ export function cradleCard(modals: Modals, g: Ctx) {
     ['lore', 'CLIMB', `Your Lore is saved for the next age. When the bar at the top is full, press ADVANCE (or A): the ${ERAS[1].name} begins.`],
     ['boon', 'EVERY AGE', 'A new age brings stronger units, new things to build, and one Boon to choose. You keep those Boons for the whole run.'],
     ['ascension', 'THE ARK', `After the ${ERAS[LAST_CRADLE_ERA].name} you build your Ark. It carries your house to the stars, and there the crown is decided.`],
-    ['conquest', 'YOUR RIVALS', 'They climb too. An Ark that leaves before yours is ahead of you out there. A Hearth you put out here never troubles you again.'],
+    ['conquest', 'YOUR RIVALS', 'They climb too. An Ark that leaves before yours is ahead of you out there. A Hearth you put out here never ' +
+        'troubles you again.'],
   ];
   const blocks = points.map(([, , t]) => wrap(t, inner, 'main'));
   // (On the smallest screens the opening line makes way for the four points.)
@@ -134,12 +136,15 @@ export function ascendCard(modals: Modals, g: Ctx) {
   const pass = describePassage(modals.g);
   const lead = wrap(`After ${fmtTime(pass.cradleTime)} on the cradle, your Ark leaves for the stars. The crown of Hegemarch is decided out there.`, w - 20, 'main');
   const carry = wrap(
-    `${pass.boons} ${pass.boons === 1 ? 'Boon' : 'Boons'} of your ages, ${fmt(pass.embers)} Embers${pass.ships ? `, and ${pass.ships} more ${pass.ships === 1 ? 'ship' : 'ships'} for the ${pass.lands} lands you held` : ''}. Your Lore makes Boons again.`,
+    `${pass.boons} ${pass.boons === 1 ? 'Boon' : 'Boons'} of your ages, ${fmt(pass.embers)} Embers` +
+        `${pass.ships ? `, and ${pass.ships} more ${pass.ships === 1 ? 'ship' : 'ships'} for the ${pass.lands} lands you held` : ''}. Your Lore ` +
+        `makes Boons again.`,
     w - 31, 'main');
   const rows = pass.rivals.map((r) => ({
     r,
     line:
-      r.fate === 'ahead' ? `left ${fmtTime(r.seconds)} before you: it is ahead` : r.fate === 'fallen' ? 'its Hearth is dark: it will not follow' : `still in the ${ERAS[Math.min(r.era, LAST_CRADLE_ERA)].name}: it follows in about ${Math.max(1, Math.round(r.seconds / 60))} min`,
+      r.fate === 'ahead' ? `left ${fmtTime(r.seconds)} before you: it is ahead` : r.fate === 'fallen' ? 'its Hearth is dark: it will not follow' : (`still in the ` +
+          `${ERAS[Math.min(r.era, LAST_CRADLE_ERA)].name}: it follows in about ${Math.max(1, Math.round(r.seconds / 60))} min`),
   }));
   const h = 20 + lead.length * 10 + 8 + 10 + carry.length * 10 + 8 + 10 + rows.length * 11 + 24;
   const { x, y } = modals.frame(g, w, h, 'YOUR ARK RISES', PAL.gold);

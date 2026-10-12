@@ -9,6 +9,7 @@ import { esc } from './stage';
 
 /** Fills `root`, and returns what draws it each frame (page seconds). */
 export function startAges(root: HTMLElement): (t: number) => void {
-  root.innerHTML = `<canvas class="mode-art" data-art="ages" aria-hidden="true"></canvas><ol class="ages-names">${ERAS.map((e) => `<li>${esc(e.short)}</li>`).join('')}</ol>`;
+  root.innerHTML = `<canvas class="mode-art" data-art="ages" aria-hidden="true"></canvas><ol class="ages-names">` +
+      `${ERAS.map((e) => `<li>${esc(e.short)}</li>`).join('')}</ol>`;
   return (t) => drawModeArt(root, t);
 }

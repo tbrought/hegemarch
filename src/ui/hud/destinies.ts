@@ -123,7 +123,8 @@ export function advanceTip(hud: Hud): string {
   const p = hud.g.player;
   const era = ERAS[p.era];
   const why = hud.g.checkAdvance(p.id);
-  const needs = `It takes [${era.lore} Lore] (you have ${Math.floor(p.lore)}), [${era.cost} Embers] and ${era.time} seconds at your Hearth. The work stops while the Hearth is under attack.`;
+  const needs = `It takes [${era.lore} Lore] (you have ${Math.floor(p.lore)}), [${era.cost} Embers] and ${era.time} seconds at your Hearth. The ` +
+      `work stops while the Hearth is under attack.`;
   const no = why ? ` [!${why}.]` : '';
   if (p.era >= LAST_CRADLE_ERA) return `Build your Ark. When it is done it leaves for the stars with your house, and the run goes on there. ${needs}${no} (A)`;
   return `Begin the ${ERAS[p.era + 1].name}. ${ERAS[p.era + 1].brings} ${needs}${no} (A)`;
@@ -156,14 +157,16 @@ export function drawAge(hud: Hud, x: number): number {
     hud.ui.hit('age', x - 8, 0, ex - x + 10, 13, undefined, () =>
       held
         ? 'The work stands still while your Hearth is under attack. Drive the attackers off.'
-        : `${last ? 'Your Ark' : `The ${ERAS[p.era + 1].name}`}: ${Math.ceil(p.advance!.total - p.advance!.t)} seconds to go. An attack on your Hearth stops the work.`);
+        : (`${last ? 'Your Ark' : `The ${ERAS[p.era + 1].name}`}: ${Math.ceil(p.advance!.total - p.advance!.t)} seconds to go. An attack on your ` +
+            `Hearth stops the work.`));
     return ex + 6;
   }
   if (p.lore < era.lore) {
     bar(g, x + 1, 5, 36, 3, p.lore / era.lore, PAL.violet, PAL.indigo, PAL.indigo);
     const ex = text(g, era.short + ' AGE', x + 41, 4, PAL.dusk, 'tiny');
     hud.ui.hit('age', x - 8, 0, ex - x + 10, 13, undefined, () =>
-      `${era.name}. Lore: ${Math.floor(p.lore)} / ${era.lore} (+${p.loreRate.toFixed(2)}/s). On the cradle your Lore is saved for the next age: when the bar is full, ${last ? 'you can build your Ark' : `you can begin the ${ERAS[p.era + 1].name}`}. Observatories make Lore faster.`);
+      `${era.name}. Lore: ${Math.floor(p.lore)} / ${era.lore} (+${p.loreRate.toFixed(2)}/s). On the cradle your Lore is saved for the next age: ` +
+          `when the bar is full, ${last ? 'you can build your Ark' : `you can begin the ${ERAS[p.era + 1].name}`}. Observatories make Lore faster.`);
     return ex + 6;
   }
   // The Lore of the age is gathered: the step is an order, never automatic.
@@ -208,7 +211,8 @@ export function drawAges(hud: Hud) {
   hud.ui.hit('ages', x, y, w, h, () => hud.modals.open({ kind: 'status' }), () =>
     'The climb: ' +
     houses
-      .map((f) => `${f.isPlayer ? 'you' : hud.g.shortName(f)}: ${f.launchedAt >= 0 ? 'gone to the stars' : !f.alive ? 'Hearth dark' : ERAS[f.era].name + (f.advance && f.era >= LAST_CRADLE_ERA ? ', building its Ark' : '')}`)
+      .map((f) => `${f.isPlayer ? 'you' : hud.g.shortName(f)}: ` +
+          `${f.launchedAt >= 0 ? 'gone to the stars' : !f.alive ? 'Hearth dark' : ERAS[f.era].name + (f.advance && f.era >= LAST_CRADLE_ERA ? ', building its Ark' : '')}`)
       .join(' · ') +
     '. Click for details.');
 }
@@ -232,8 +236,10 @@ export function destinyClocks(hud: Hud): { id: string; left: number; mine: boole
         tip: mine ? own : `${f.name} win by ${VICTORIES[v].name} when this runs out. ${rival}`,
       });
     };
-    if (has('domination') && f.holdTimer > 0) add('domination', DOMINATION_HOLD - f.holdTimer, `You hold ${Math.round(DOMINATION_SHARE * 100)}% of all worlds. Keep them until this runs out and the crown is yours.`, 'Take worlds from them, or kindle more of your own, to break their hold.', f.capital);
-    if (has('relics') && f.relicTimer > 0) add('relics', RELIC_HOLD - f.relicTimer, 'You hold most of the relics. Keep your Hearth until this runs out and the crown is yours.', 'Take their Hearth: its relics go to whoever takes it.', f.capital);
+    if (has('domination') && f.holdTimer > 0) add('domination', DOMINATION_HOLD - f.holdTimer, `You hold ${Math.round(DOMINATION_SHARE * 100)}% of ` +
+        `all worlds. Keep them until this runs out and the crown is yours.`, 'Take worlds from them, or kindle more of your own, to break their hold.', f.capital);
+    if (has('relics') && f.relicTimer > 0) add('relics', RELIC_HOLD - f.relicTimer, 'You hold most of the relics. Keep your Hearth until this runs ' +
+        'out and the crown is yours.', 'Take their Hearth: its relics go to whoever takes it.', f.capital);
     if (has('treasury') && f.treasuryTimer > 0) add('treasury', TREASURY_HOLD - f.treasuryTimer, 'Your hoard is full. Keep it until this runs out and the crown is yours.', 'Take their worlds: each one seizes part of their hoard.', f.capital);
     if (has('ascension') && f.gate) add('ascension', GATE_CHARGE - f.gate.charge, 'Your Starfire Gate is charging. Protect it until this runs out and the crown is yours.', 'Destroy their Starfire Gate before it is charged.', f.gate.node);
   }

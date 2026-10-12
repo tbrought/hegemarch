@@ -26,13 +26,15 @@ export const PERKS: PerkDef[] = [
   { id: 'escort', name: 'Veteran Escort', desc: `Begin each run with [+1 Guardian], and every ship of yours has [+${pc(PERK_HULL)} hull], per rank.`, costs: [60, 120] },
   { id: 'archivist', name: 'Archivist', desc: '[+1 Boon reroll] per rank.', costs: [50, 100] },
   { id: 'luck', name: 'Fortunate Stars', desc: 'Rarer Boons [appear more often] with each rank.', costs: [60, 100, 150, 200, 260] },
-  { id: 'bastion', name: 'Ancestral Walls', desc: `Every world of yours gains [+${pc(PERK_WALLS)} hull] and your Hearth [+${pc(PERK_HEARTH)}] in all, per rank.`, costs: [40, 80] },
+  { id: 'bastion', name: 'Ancestral Walls', desc: `Every world of yours gains [+${pc(PERK_WALLS)} hull] and your Hearth [+${pc(PERK_HEARTH)}] in ` +
+      `all, per rank.`, costs: [40, 80] },
   { id: 'secondBreath', name: 'Second Breath', desc: 'Your Hearth’s Last Stand calls [twice the defenders].', costs: [70] },
 ];
 
 export const UNLOCKS = [
   { id: 'pacts', name: 'Forbidden Archives', desc: '[Every double-edged Pact] can appear among your Boons.', cost: 80 },
-  { id: 'legendary', name: 'Legendary Lineage', desc: '[Legendary Boons] can appear among your choices: [at least one in every run], by your fifth choice at the latest.', cost: 120 },
+  { id: 'legendary', name: 'Legendary Lineage', desc: '[Legendary Boons] can appear among your choices: [at least one in every run], by your fifth ' +
+      'choice at the latest.', cost: 120 },
 ] as const;
 
 /**

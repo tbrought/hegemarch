@@ -218,7 +218,8 @@ export class Hud {
     const dark = g.nodes.some((n) => n.kind === 'planet' && n.owner < 0 && p.explored[n.id] && !g.checkKindle(p.id, n.id));
     let hint = '';
     if (dark && p.embers >= kindle * 2) hint = `${fmt(p.embers)} Embers waiting: kindle a dark world (click a grey world, then KINDLE).`;
-    else if (p.hangarUsed >= p.hangarCap && p.embers >= 600) hint = 'Your hangar is full: raise your worlds, hold more of them, or build a Hangar Bay at your Hearth.';
+    else if (p.hangarUsed >= p.hangarCap && p.embers >= 600) hint = 'Your hangar is full: raise your worlds, hold more of them, or build a Hangar ' +
+        'Bay at your Hearth.';
     else if (p.embers >= 900) hint = `${fmt(p.embers)} Embers waiting: build ships at a Forge, or raise a world to the next level.`;
     if (!hint) return;
     this.lastNudge = g.time;

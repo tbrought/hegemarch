@@ -68,7 +68,8 @@ export function startDestinies(list: HTMLElement) {
   list.innerHTML = (['conquest', ...OPTIONAL_VICTORIES] as const)
     .map((id) => {
       const v = VICTORIES[id];
-      return `<li class="tile"><canvas class="pic" data-icon="${id}" aria-hidden="true"></canvas><h3>${esc(v.name.toUpperCase())}</h3><p>${esc(v.short)}</p></li>`;
+      return `<li class="tile"><canvas class="pic" data-icon="${id}" aria-hidden="true"></canvas><h3>${esc(v.name.toUpperCase())}</h3><p>` +
+          `${esc(v.short)}</p></li>`;
     })
     .join('');
 }

@@ -74,7 +74,8 @@ export function settings(modals: Modals, g: Ctx) {
   // The track that plays, and a way on to the next of its mood (a run plays the music that fits the moment).
   const track = modals.s.music.title;
   modals.ui.button(g, 'tg-track', x + 10, ly + 1, w - 20, 12, fit(`Track: ${track ?? 'none'}`, w - 60), () => modals.s.music.skip(), {
-    right: 'NEXT', rightColor: PAL.gold, align: 'left', disabled: !track, tip: 'Play another track. A run chooses its music by the moment: a quiet night, a battle. This goes on to the next track of the same kind.',
+    right: 'NEXT', rightColor: PAL.gold, align: 'left', disabled: !track, tip: 'Play another track. A run chooses its music by the moment: a quiet ' +
+        'night, a battle. This goes on to the next track of the same kind.',
   });
   ly += 16;
   const toggle = (label: string, key: 'autoPause' | 'crt' | 'edgePan' | 'tips' | 'explainTerms', tip: string) => {
@@ -84,7 +85,8 @@ export function settings(modals: Modals, g: Ctx) {
     }, { right: st[key] ? 'ON' : 'OFF', rightColor: st[key] ? PAL.teal : PAL.slate, align: 'left', tip });
     ly += 14;
   };
-  toggle('Auto-pause for decisions', 'autoPause', 'Pause when your ship reaches an anomaly, when a visitor hails you, on the first raid, or when your Hearth is attacked.');
+  toggle('Auto-pause for decisions', 'autoPause', 'Pause when your ship reaches an anomaly, when a visitor hails you, on the first raid, or when ' +
+      'your Hearth is attacked.');
   toggle('First-time tips', 'tips', 'One-line cards that explain things the first time they happen.');
   toggle('Explain game terms', 'explainTerms', 'Boxes beside tooltips that explain game terms such as Kindle, Glow or Hangar.');
   toggle('Scanlines (CRT)', 'crt', 'An old-monitor scanline filter.');
@@ -176,7 +178,10 @@ export function help(modals: Modals, g: Ctx) {
   }
 }
 
-/** What How to Play says under the tab that is open: the game in five numbered moves (the cradle's, on the cradle), the controls, or every tip again. */
+/**
+ * What How to Play says under the tab that is open: the game in five numbered moves (the cradle's, on
+ * the cradle), the controls, or every tip again.
+ */
 function helpText(modals: Modals): { text: string; color: string; star?: boolean; head?: string; n?: number }[] {
   const seen = modals.s.profile.seenTips;
   // THE BASICS is the game in five numbered moves, each under its own heading, like How to Play on the
@@ -186,31 +191,46 @@ function helpText(modals: Modals): { text: string; color: string; star?: boolean
   const paras: { text: string; color: string; star?: boolean; head?: string; n?: number }[] =
     modals.helpTab === 'basics' && modals.g.cradle
       ? [
-          { text: 'Every house begins here in the Stone Age, all on one planet. Climb the ages, build your Ark, and carry what you have won to the stars, where the crown is decided.', color: PAL.bone },
-          step(1, 'KINDLE LANDS', 'Click a grey land and press KINDLE. A firebearer walks out, lights the land and stays there; if the firebearer is killed on the way, the Embers are lost. Each land costs a bit more. Beasts hold the richest lands: drive them off first.'),
+          { text: 'Every house begins here in the Stone Age, all on one planet. Climb the ages, build your Ark, and carry what you have won to the ' +
+              'stars, where the crown is decided.', color: PAL.bone },
+          step(1, 'KINDLE LANDS', 'Click a grey land and press KINDLE. A firebearer walks out, lights the land and stays there; if the firebearer ' +
+              'is killed on the way, the Embers are lost. Each land costs a bit more. Beasts hold the richest lands: drive them off first.'),
           step(2, 'GIVE EACH LAND A ROLE', 'MINE: more Embers. FORGE: builds units. OBSERVATORY: Lore, so a faster climb. BASTION: guns and repairs.'),
-          step(3, 'RAISE UNITS', 'Swift units beat siege units, siege units beat sturdy units and walls, sturdy units beat swift ones. Their names change with the ages; the triangle does not.'),
-          step(4, 'CLIMB THE AGES', `Your Lore is saved for the next age. When the bar at the top is full, press the button beside it (or A). The step costs Embers and takes time at your Hearth; an attack on the Hearth stops the work. There are five ages: ${ERAS.slice(0, LAST_CRADLE_ERA + 1).map((e) => e.name.replace(' Age', '')).join(', ')}. A new age brings stronger units, more to build (siege units and Bastions with bronze, higher levels later), and one Boon. Every unit you already have is upgraded to it, wherever it stands.`),
-          step(5, 'BUILD YOUR ARK', 'The Ark is the last step. When yours is done, your house leaves for the stars with its Boons and Embers. A rival whose Ark leaves first is ahead of you out there; a rival whose Hearth you put out here never follows.'),
+          step(3, 'RAISE UNITS', 'Swift units beat siege units, siege units beat sturdy units and walls, sturdy units beat swift ones. Their names ' +
+              'change with the ages; the triangle does not.'),
+          step(4, 'CLIMB THE AGES', `Your Lore is saved for the next age. When the bar at the top is full, press the button beside it (or A). The ` +
+              `step costs Embers and takes time at your Hearth; an attack on the Hearth stops the work. There are five ages: ` +
+              `${ERAS.slice(0, LAST_CRADLE_ERA + 1).map((e) => e.name.replace(' Age', '')).join(', ')}. A new age brings stronger units, more to ` +
+              `build (siege units and Bastions with bronze, higher levels later), and one Boon. Every unit you already have is upgraded to it, ` +
+              `wherever it stands.`),
+          step(5, 'BUILD YOUR ARK', 'The Ark is the last step. When yours is done, your house leaves for the stars with its Boons and Embers. A ' +
+              'rival whose Ark leaves first is ahead of you out there; a rival whose Hearth you put out here never follows.'),
           note('THE HEARTH', 'Lose your Hearth and your house goes dark. Put out every rival Hearth before any Ark rises, and the crown is yours at once.'),
         ]
       : modals.helpTab === 'basics'
       ? [
           { text: 'The sector is dark. Light it, world by world, and take the crown.', color: PAL.bone },
-          step(1, 'KINDLE WORLDS', 'Click a grey world and press KINDLE. A seed ship flies out, lights it and is used up; if it is destroyed on the way, the Embers are lost. Every lit world earns Embers, and each one costs a bit more than the last.'),
-          step(2, 'GIVE EACH WORLD A ROLE', 'MINE: more Embers. FORGE: builds ships. OBSERVATORY: Lore. BASTION: guns, repairs, and it protects your worlds next to it. Raise worlds to level II and III for more of everything.'),
-          step(3, 'BUILD A FLEET', 'Strikers beat Breakers, Breakers beat Guardians and worlds, Guardians beat Strikers. New ships come as Blueprint Boons. Scouts wait for your order: select one (click its fleet badge) and press EXPLORE, and it charts the dark by itself.'),
+          step(1, 'KINDLE WORLDS', 'Click a grey world and press KINDLE. A seed ship flies out, lights it and is used up; if it is destroyed on ' +
+              'the way, the Embers are lost. Every lit world earns Embers, and each one costs a bit more than the last.'),
+          step(2, 'GIVE EACH WORLD A ROLE', 'MINE: more Embers. FORGE: builds ships. OBSERVATORY: Lore. BASTION: guns, repairs, and it protects ' +
+              'your worlds next to it. Raise worlds to level II and III for more of everything.'),
+          step(3, 'BUILD A FLEET', 'Strikers beat Breakers, Breakers beat Guardians and worlds, Guardians beat Strikers. New ships come as ' +
+              'Blueprint Boons. Scouts wait for your order: select one (click its fleet badge) and press EXPLORE, and it charts the dark by itself.'),
           step(4, 'CHOOSE BOONS', 'When your Lore fills, choose one Boon of three. They shape every run differently, and line the left edge of the screen.'),
           step(5, 'TAKE THE CROWN', 'Follow one of your three Destinies to the crown (U shows them). Lose your Hearth and your house goes dark.'),
-          note('WHAT IS COMING', 'Corsairs raid from about 10:00 and rivals attack from about 12:00. Hearth walls start at half strength and are full at 12:00: a rush can win early, but if it fails your rivals will strike back.'),
-          note('NOT SURE WHAT SOMETHING IS?', 'Point at it. Tooltips, Boon cards, events and Destinies explain the game terms they use in boxes beside them (Settings can turn this off). To look inside an anomaly (a violet swirl), send any ship there.'),
+          note('WHAT IS COMING', 'Corsairs raid from about 10:00 and rivals attack from about 12:00. Hearth walls start at half strength and are ' +
+              'full at 12:00: a rush can win early, but if it fails your rivals will strike back.'),
+          note('NOT SURE WHAT SOMETHING IS?', 'Point at it. Tooltips, Boon cards, events and Destinies explain the game terms they use in boxes ' +
+              'beside them (Settings can turn this off). To look inside an anomaly (a violet swirl), send any ship there.'),
         ]
       : modals.helpTab === 'controls'
         ? [
             `Left-click: select a world, a ship or a fleet badge (${IC.fleet}, the number of ships beside a world). Drag: select ships.`,
-            'With ships selected, click a world (or right-click) to send them; their way shows for a moment, red where you know of danger. Shift+right-click: one more stop on the way. Right-click an enemy ship to attack it.',
+            'With ships selected, click a world (or right-click) to send them; their way shows for a moment, red where you know of danger. ' +
+                'Shift+right-click: one more stop on the way. Right-click an enemy ship to attack it.',
             'Wheel: zoom. Right- or middle-drag, or the arrow keys: move the view. C: look at your Hearth.',
-            'Space: pause. Paused, you can still look around and give orders; the game goes on when you press Space again. The ½ 1 2 3 buttons at the top right (or + and -): game speed.',
+            'Space: pause. Paused, you can still look around and give orders; the game goes on when you press Space again. The ½ 1 2 3 buttons at ' +
+                'the top right (or + and -): game speed.',
             'Q W E R T Y: with a Forge (or your Hearth) selected, build its ships, in the order of its buttons. Shift: five.',
             'Tab: go to your next Forge, the idle ones first (Shift+Tab: back). The number beside the Forge at the top counts the idle ones.',
             'B: Boons. U: status. L: comms log. F: select all warships. K: kindle the selected world. S: stop. R: retreat.',

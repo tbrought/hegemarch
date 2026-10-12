@@ -82,7 +82,8 @@ export function showSetup(app: App) {
         </div>`
     : '';
   // The ways to play, as tabs: a change of mind costs one click here, not a trip back to the title screen.
-  const tab = (sa: string, name: string, on: boolean) => `<button class="small${on ? ' active' : ''}" data-sa="${sa}" role="tab" aria-selected="${on}">${name}</button>`;
+  const tab = (sa: string, name: string, on: boolean) => `<button class="small${on ? ' active' : ''}" data-sa="${sa}" role="tab" aria-selected="` +
+      `${on}">${name}</button>`;
   app.put('setup', `<div class="screen${app.crt()}"><div class="page">
       <h1>NEW RUN</h1>
       ${challenge}

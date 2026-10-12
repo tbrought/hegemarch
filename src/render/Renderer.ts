@@ -438,7 +438,11 @@ export class Renderer {
     }
   }
 
-  /** A world: lit or dark (a kindling dissolves in), its house's ring with the glow it has reached, a Hearth's crown, the red of a world under fire, the violet of one a Bastion protects, and a seed ship's progress. */
+  /**
+   * A world: lit or dark (a kindling dissolves in), its house's ring with the glow it has reached, a
+   * Hearth's crown, the red of a world under fire, the violet of one a Bastion protects, and a seed
+   * ship's progress.
+   */
   private drawPlanet(ctx: Ctx, g: Game, n: GNode, x: number, y: number, r: number, visible: boolean, owner: number, dt: number, ghost: boolean) {
     const t = this.time;
     // Kindle dissolve: track a visual "lit" amount per world.
@@ -490,7 +494,10 @@ export class Renderer {
     }
   }
 
-  /** A place that is neither a star nor a world: an anomaly (a swirl, dark once it is spent), a vault, the Corsairs' base, the Maw. */
+  /**
+   * A place that is neither a star nor a world: an anomaly (a swirl, dark once it is spent), a vault,
+   * the Corsairs' base, the Maw.
+   */
   private drawSite(ctx: Ctx, g: Game, n: GNode, x: number, y: number, r: number, visible: boolean) {
     const t = this.time;
     if (n.kind === 'anomaly') {

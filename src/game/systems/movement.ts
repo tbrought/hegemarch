@@ -395,7 +395,8 @@ function pickExploreTarget(g: Game, u: Unit) {
     } else if (g.time - (f.warned.scoutedSafe ?? -999) > 30) {
       // (Said again when the player sends Scouts out once more and there is still no safe way on.)
       f.warned.scoutedSafe = g.time;
-      g.notify(u.owner, `Scouting done as far as it is safe: ${left} place${left === 1 ? ' lies' : 's lie'} beyond guarded passages. Clear the way, or send a Scout there yourself. Your Scouts are coming home.`, 'info');
+      g.notify(u.owner, `Scouting done as far as it is safe: ${left} place${left === 1 ? ' lies' : 's lie'} beyond guarded passages. Clear the ` +
+          `way, or send a Scout there yourself. Your Scouts are coming home.`, 'info');
     }
     // The Scout goes home. It does not wait where its last look took it.
     if (g.nodes[from].owner !== u.owner) {

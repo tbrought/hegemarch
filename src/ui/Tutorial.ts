@@ -241,7 +241,10 @@ export class Tutorial {
     } else if (tw >= 0) view.highlightNode = tw;
   }
 
-  /** Step 4: a raider comes for the new world (or the Hearth); the lesson is to send the fleet. It ends when the raider is gone, one way or another. */
+  /**
+   * Step 4: a raider comes for the new world (or the Hearth); the lesson is to send the fleet. It ends
+   * when the raider is gone, one way or another.
+   */
   private stepRaid() {
     const g = this.g;
     const p = g.player;
@@ -288,7 +291,10 @@ export class Tutorial {
     }
   }
 
-  /** Step 5: send the Scout exploring. (Nothing to teach once one explores, with no Scout left, or with nothing left to chart.) */
+  /**
+   * Step 5: send the Scout exploring. (Nothing to teach once one explores, with no Scout left, or with
+   * nothing left to chart.)
+   */
   private stepScout() {
     const g = this.g;
     const p = g.player;
@@ -349,7 +355,8 @@ export class Tutorial {
       case 2:
         return { text: `${stepOf(2)} · Build a Striker: click your Hearth, then the Striker button.`, color: PAL.gold, sub: 'Your Hearth is your home world. A Striker is a fast, cheap gunship.' };
       case 3:
-        return { text: `${stepOf(3)} · Choose your first Boon: press the BOON button at the top.`, color: PAL.gold, sub: 'Lore, the violet bar, fills by itself. Each time it is full you choose a Boon: an upgrade for the whole run.' };
+        return { text: `${stepOf(3)} · Choose your first Boon: press the BOON button at the top.`, color: PAL.gold, sub: 'Lore, the violet bar, fills by itself. ' +
+            'Each time it is full you choose a Boon: an upgrade for the whole run.' };
       case 4: {
         const r = (g.ui.tutRaider ?? 0) > 0 ? g.units.get(g.ui.tutRaider!) : undefined;
         if (!r) {

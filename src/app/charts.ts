@@ -160,7 +160,10 @@ export function scale(v: number, whole = false): { max: number; step: number } {
 /** The room about a chart's plot: its scale at the left, the names at the ends of its lines at the right. */
 const M = { l: 34, r: 78, t: 8, b: 20 };
 
-/** What the charts of a run show at the moment: the rival that is compared, and the sample under the crosshair (-1: none) with the chart it is read in. */
+/**
+ * What the charts of a run show at the moment: the rival that is compared, and the sample under the
+ * crosshair (-1: none) with the chart it is read in.
+ */
 interface ChartView {
   pick: number;
   at: number;
@@ -206,7 +209,10 @@ export function mountCharts(root: HTMLElement, c: RunCharts): void {
   }
 }
 
-/** What a chart answers to: the pointer over it (the crosshair goes to the nearest sample, and the read-out with it), and the keyboard (the arrows move through the run). */
+/**
+ * What a chart answers to: the pointer over it (the crosshair goes to the nearest sample, and the
+ * read-out with it), and the keyboard (the arrows move through the run).
+ */
 function listen(fig: HTMLElement, c: RunCharts, view: ChartView, T: number, tip: HTMLElement, draw: () => void, read: (fig: HTMLElement, px: number, py: number) => void) {
   const host = fig.querySelector<HTMLElement>('.rc-plot')!;
   const key = fig.dataset.key as Key;
@@ -303,7 +309,11 @@ function readOut(box: HTMLElement, tip: HTMLElement, fig: HTMLElement, c: RunCha
   tip.style.top = `${Math.max(8, f.top - b.top + py - 10)}px`;
 }
 
-/** One chart, drawn to the width it has: the grid and its round numbers, a line for every house (the player's and the compared rival's in colour, over the others in grey), their names where they end, and the crosshair. */
+/**
+ * One chart, drawn to the width it has: the grid and its round numbers, a line for every house (the
+ * player's and the compared rival's in colour, over the others in grey), their names where they end,
+ * and the crosshair.
+ */
 function drawChart(fig: HTMLElement, c: RunCharts, view: ChartView, T: number) {
   const rank = (h: ChartHouse) => (h.you ? 2 : h.f === view.pick ? 1 : 0);
   const key = fig.dataset.key as Key;

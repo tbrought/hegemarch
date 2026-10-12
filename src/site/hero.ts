@@ -110,7 +110,8 @@ export class Hero {
       const list = this.$('.live-houses');
       if (list) {
         list.innerHTML = this.houses(g)
-          .map((f) => `<li><button type="button" class="chip" data-f="${f.id}" style="--hc:${f.color}" title="Fly to the Hearth of the ${esc(f.name)}"><i></i><b>${esc(f.name)}</b><span></span></button></li>`)
+          .map((f) => `<li><button type="button" class="chip" data-f="${f.id}" style="--hc:${f.color}" title="Fly to the Hearth of the ` +
+              `${esc(f.name)}"><i></i><b>${esc(f.name)}</b><span></span></button></li>`)
           .join('');
       }
     }
@@ -123,7 +124,8 @@ export class Hero {
     const what = this.$('.live-what');
     if (what) {
       const left = this.houses(g).filter((f) => f.alive).length;
-      what.textContent = dawn ? 'The first minutes, sped up: the houses light their first worlds.' : `The game is playing itself, right now, in your browser. ${left} ${left === 1 ? 'house is' : 'houses are'} left.`;
+      what.textContent = dawn ? 'The first minutes, sped up: the houses light their first worlds.' : (`The game is playing itself, right now, in ` +
+          `your browser. ${left} ${left === 1 ? 'house is' : 'houses are'} left.`);
     }
     // Worlds held by each house.
     const held = new Map<number, number>();
@@ -180,7 +182,8 @@ export class Hero {
     const el = this.$('.crown');
     if (!o || !f || !el) return;
     const how = o.victory !== 'defeat' ? VICTORIES[o.victory]?.name : '';
-    el.innerHTML = `<b style="color:${f.color}">${esc(f.name)}</b> is crowned Hegemarch<small>${how ? `by ${esc(how)}, ` : ''}after ${fmtTime(o.time)}. A new sector follows.</small>`;
+    el.innerHTML = `<b style="color:${f.color}">${esc(f.name)}</b> is crowned Hegemarch<small>${how ? `by ${esc(how)}, ` : ''}after ` +
+        `${fmtTime(o.time)}. A new sector follows.</small>`;
     el.hidden = false;
   }
 
@@ -210,7 +213,8 @@ export class Hero {
     if (btn) {
       // (The game's own sound button: a speaker, with waves or a cross, and the words.)
       const marks = this.sound ? '<path d="M5 3h1v3H5zM7 2h1v5H7z"/>' : '<path d="M5 3h1v1H5zM7 3h1v1H7zM6 4h1v1H6zM5 5h1v1H5zM7 5h1v1H7z"/>';
-      btn.innerHTML = `<svg viewBox="0 0 9 9" shape-rendering="crispEdges" aria-hidden="true"><path d="M0 3h2v3H0zM2 2h1v5H2zM3 1h1v7H3z"/>${marks}</svg><span>${this.sound ? 'SOUND ON' : 'SOUND OFF'}</span>`;
+      btn.innerHTML = `<svg viewBox="0 0 9 9" shape-rendering="crispEdges" aria-hidden="true"><path d="M0 3h2v3H0zM2 2h1v5H2zM3 1h1v7H3z"/>${marks}` +
+          `</svg><span>${this.sound ? 'SOUND ON' : 'SOUND OFF'}</span>`;
       btn.setAttribute('aria-pressed', String(this.sound));
     }
   }

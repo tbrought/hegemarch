@@ -244,7 +244,10 @@ export function killUnit(g: Game, u: Unit, byFaction: number, _src: Unit | null 
   lastOfItsKind(g, u, byFaction);
 }
 
-/** The house that destroyed a ship: a kill to its name, Embers or Lore if its Boons pay for kills, and experience for its capital ships there. */
+/**
+ * The house that destroyed a ship: a kill to its name, Embers or Lore if its Boons pay for kills, and
+ * experience for its capital ships there.
+ */
 function creditKill(g: Game, u: Unit, byFaction: number, isShip: boolean) {
   const def = UNITS[u.type];
   if (byFaction >= 0 && byFaction !== u.owner && isShip) {
@@ -316,7 +319,10 @@ function eternalReturn(g: Game, u: Unit, isShip: boolean) {
   }
 }
 
-/** An Ark keeps what it had learned for the one built after it; a Gate is gone; the Stronghold ends the raids; the Rift Heart ends the Hollow. */
+/**
+ * An Ark keeps what it had learned for the one built after it; a Gate is gone; the Stronghold ends the
+ * raids; the Rift Heart ends the Hollow.
+ */
 function lastOfItsKind(g: Game, u: Unit, byFaction: number) {
   const owner = g.factions[u.owner];
   if (u.type === 'ark' && owner.ark === u.id) {

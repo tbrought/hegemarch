@@ -32,9 +32,12 @@ function step(n: number, title: string, picture: string, say: string): string {
 }
 
 export function howtoHtml(): string {
-  const roles = `<div class="how-tiles">${ROLES.map(([id, name, gives]) => `<div class="how-tile">${pic(id)}<span><b>${name}</b>${gives}</span></div>`).join('')}</div>`;
+  const roles = `<div class="how-tiles">` +
+      `${ROLES.map(([id, name, gives]) => `<div class="how-tile">${pic(id)}<span><b>${name}</b>${gives}</span></div>`).join('')}</div>`;
   const fleet = `${art('fleet')}<div class="how-names"><span>STRIKER</span><span>BREAKER</span><span>GUARDIAN</span></div>`;
-  const crowns = `<div class="how-tiles names">${DESTINIES.map((id) => `<div class="how-tile" data-tip="${esc(VICTORIES[id].short)}">${pic(id)}<span>${esc(VICTORIES[id].name)}</span></div>`).join('')}</div>`;
+  const crowns = `<div class="how-tiles names">` +
+      `${DESTINIES.map((id) => `<div class="how-tile" data-tip="${esc(VICTORIES[id].short)}">${pic(id)}<span>${esc(VICTORIES[id].name)}</span></div>`).join('')}` +
+      `</div>`;
   return `
     <p class="how-lede">The sector is dark. Light it, world by world, and take the crown.</p>
     <ol class="how-steps">

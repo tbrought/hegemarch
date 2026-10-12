@@ -79,7 +79,8 @@ export function fleetRows(hud: Hud, units: Unit[]): CardRow[] {
   const wait = jumpWait(hud, units);
   if (wait) {
     rows.push(line(hud, jumpWaitText(wait).toUpperCase(), wait.held || wait.fire || wait.snared ? PAL.ember : PAL.sky, 'tiny', {
-      tip: `A ship charges its drive before every jump (${JUMP_CHARGE_TEXT}). An enemy anti-warp field (a Bastion, a Hearth, a Starbase) adds ${HOLD_FIELD} s; under fire the drive charges at half speed; a Gravity Snare stops it for a while.`,
+      tip: `A ship charges its drive before every jump (${JUMP_CHARGE_TEXT}). An enemy anti-warp field (a Bastion, a Hearth, a Starbase) adds ` +
+          `${HOLD_FIELD} s; under fire the drive charges at half speed; a Gravity Snare stops it for a while.`,
     }));
   }
   // Composition: click a type to keep only those.
@@ -93,7 +94,10 @@ export function fleetRows(hud: Hud, units: Unit[]): CardRow[] {
   return rows;
 }
 
-/** The orders a fleet can be given by button: move, stop, retreat; explore, for its Scouts; and the ability a ship has to learn. */
+/**
+ * The orders a fleet can be given by button: move, stop, retreat; explore, for its Scouts; and the
+ * ability a ship has to learn.
+ */
 function ordersRow(hud: Hud, units: Unit[]): CardRow {
   const game = hud.g;
   const gx = hud.s.screen.g;
@@ -150,7 +154,8 @@ function fleetHullRow(hud: Hud, units: Unit[]): CardRow {
       bar(gx, x + off, y + 1, Math.min(90, w - off - 2), 2, hp / Math.max(1, max), PAL.teal, PAL.indigo);
       if (shMax > 0) bar(gx, x + off, y + 4, Math.min(90, w - off - 2), 1, sh / shMax, PAL.sky, PAL.night, undefined, 0);
       hud.ui.hint('fleet-hp', x - 1, y - 1, Math.min(90, w - off - 2) + off + 2, 8, {
-        tip: `Hull ${fmt(hp)} / ${fmt(max)} (green)${shMax > 0 ? ` · shields ${fmt(sh)} / ${fmt(shMax)} (blue)` : ''}. Shields soak up damage first and recharge out of battle. Bastions and Starbases repair hulls.`,
+        tip: `Hull ${fmt(hp)} / ${fmt(max)} (green)${shMax > 0 ? ` · shields ${fmt(sh)} / ${fmt(shMax)} (blue)` : ''}. Shields soak up damage ` +
+            `first and recharge out of battle. Bastions and Starbases repair hulls.`,
       });
     },
   };

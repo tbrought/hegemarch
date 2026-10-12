@@ -81,7 +81,9 @@ export function showHall(app: App) {
   }).join('');
   const spent = perksSpent(p.perks);
   const refund = spent
-    ? ` <button class="small${app.refundAsked ? ' primary' : ''}" data-sa="refund" data-tip="Give back every perk for the Legacy it cost (◆${spent}), to spend again as you like. Houses and Forbidden Knowledge are kept.">${app.refundAsked ? `SURE? REFUND ◆${spent}` : `REFUND ALL ◆${spent}`}</button>`
+    ? (` <button class="small${app.refundAsked ? ' primary' : ''}" data-sa="refund" data-tip="Give back every perk for the Legacy it cost (◆${spent}` +
+        `), to spend again as you like. Houses and Forbidden Knowledge are kept.">` +
+        `${app.refundAsked ? `SURE? REFUND ◆${spent}` : `REFUND ALL ◆${spent}`}</button>`)
     : '';
   const unlocks = UNLOCKS.map((u) => {
     const owned = u.id === 'pacts' ? p.unlockPacts : p.unlockLegendary;

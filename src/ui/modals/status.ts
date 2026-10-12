@@ -69,7 +69,10 @@ export function status(modals: Modals, g: Ctx) {
   }
 }
 
-/** Rivals: each house, how many worlds it holds, and what it is doing that could win it the run; then the Corsairs and the Hollow. */
+/**
+ * Rivals: each house, how many worlds it holds, and what it is doing that could win it the run; then
+ * the Corsairs and the Hollow.
+ */
 function rivalsTab(modals: Modals, g: Ctx, cx: number, cy: number, cw: number) {
   let ly = cy;
   for (const f of modals.g.empires()) {
@@ -250,7 +253,10 @@ function boonsTab(modals: Modals, g: Ctx, x: number, y: number, w: number, h: nu
   boonTotals(modals, g, x, y, lw, tw, h);
 }
 
-/** The list of Boons in its column, as far as the wheel has scrolled it, with a bar at its side when it is longer than the column. */
+/**
+ * The list of Boons in its column, as far as the wheel has scrolled it, with a bar at its side when it
+ * is longer than the column.
+ */
 function scrollBoonList(modals: Modals, g: Ctx, items: { h: number; draw: (ly: number) => void; terms?: ReturnType<typeof termsIn> }[], x: number, y: number, lw: number, h: number) {
   // The list scrolls inside its column.
   const total = items.reduce((a, it) => a + it.h, 0);
@@ -291,7 +297,8 @@ function boonTotals(modals: Modals, g: Ctx, x: number, y: number, lw: number, tw
   const rows = Math.max(1, Math.floor((h - 30) / 7));
   const shown = lines.length > rows ? lines.slice(0, rows - 1) : lines;
   const sources = modals.g.modSources(p);
-  modals.ui.hint('bt-head', rx, y + 1, tw - 4, 15, { tip: 'Every bonus your house has right now, added up from all its sources. Point at a line to see where it comes from.' });
+  modals.ui.hint('bt-head', rx, y + 1, tw - 4, 15, { tip: 'Every bonus your house has right now, added up from all its sources. Point at a line to ' +
+      'see where it comes from.' });
   for (const l of shown) {
     const vw = textWidth(l.text, 'tiny');
     text(g, fit(l.label.toUpperCase(), tw - vw - 10, 'tiny'), rx, ty, PAL.mist, 'tiny');
@@ -330,9 +337,11 @@ function agesTab(modals: Modals, g: Ctx, cx: number, cy: number, cw: number, bot
   const era = ERAS[Math.min(p.era, LAST_CRADLE_ERA)];
   const lines = [
     p.era >= LAST_CRADLE_ERA
-      ? `Your next step is the Ark: ${era.lore} Lore, ${era.cost} Embers and ${era.time} seconds at your Hearth. When it is done, your house leaves for the stars.`
+      ? (`Your next step is the Ark: ${era.lore} Lore, ${era.cost} Embers and ${era.time} seconds at your Hearth. When it is done, your house ` +
+          `leaves for the stars.`)
       : `Your next age is the ${ERAS[p.era + 1].name}: ${era.lore} Lore, ${era.cost} Embers and ${era.time} seconds at your Hearth. ${ERAS[p.era + 1].brings}`,
-    'Put out every rival Hearth before any Ark rises, and the crown is yours at once. Otherwise it is decided among the stars: a house whose Ark has left is gone ahead, not beaten.',
+    'Put out every rival Hearth before any Ark rises, and the crown is yours at once. Otherwise it is decided among the stars: a house whose Ark ' +
+        'has left is gone ahead, not beaten.',
     'A new age upgrades every unit you have, wherever it stands, and brings a Boon of its own.',
   ];
   for (const t of lines) {

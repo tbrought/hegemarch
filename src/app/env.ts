@@ -4,5 +4,8 @@
 declare const __GAME_VERSION__: string;
 export const GAME_VERSION = __GAME_VERSION__;
 
-/** A screen that is touched and has no pointer to hover with: a phone or a tablet. The game needs a mouse (the wheel, the right button). */
+/**
+ * A screen that is touched and has no pointer to hover with: a phone or a tablet. The game needs a
+ * mouse (the wheel, the right button).
+ */
 export const NO_MOUSE = typeof matchMedia === 'function' && matchMedia('(hover: none) and (pointer: coarse)').matches;

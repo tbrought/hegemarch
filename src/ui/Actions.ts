@@ -76,7 +76,8 @@ export class Actions {
     if (!off) return;
     const world = this.g.nodeAt(off.target);
     const again = off.u.order === 'kindle';
-    if (!again) this.s.showToast(`Kindling${world ? ' of ' + world.name : ''} is called off. The seed ship waits for orders: its next KINDLE is free.`, PAL.gold, 5);
+    if (!again) this.s.showToast(`Kindling${world ? ' of ' + world.name : ''} is called off. The seed ship waits for orders: its next KINDLE is ` +
+        `free.`, PAL.gold, 5);
   }
 
   /** Ages: take the step to the next age (from the last age of the cradle: build the Ark). */

@@ -77,7 +77,8 @@ export function syncSound(app: App) {
   b.dataset.tip = tip;
   b.setAttribute('aria-label', `${say}. ${tip}`);
   b.setAttribute('aria-pressed', String(state !== 'off'));
-  b.innerHTML = `<svg viewBox="0 0 9 9" shape-rendering="crispEdges" aria-hidden="true"><path d="M0 3h2v3H0zM2 2h1v5H2zM3 1h1v7H3z"/>${marks}</svg><span>${say}</span>`;
+  b.innerHTML = `<svg viewBox="0 0 9 9" shape-rendering="crispEdges" aria-hidden="true"><path d="M0 3h2v3H0zM2 2h1v5H2zM3 1h1v7H3z"/>${marks}` +
+      `</svg><span>${say}</span>`;
 }
 
 /** Settings has a selector of every track: it shows the one that is playing, also when the music moves on by itself. */

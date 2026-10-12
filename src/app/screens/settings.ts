@@ -23,7 +23,8 @@ export const PIXEL_TIPS = {
 export function showSettings(app: App) {
   const s = app.profile.settings;
   const full = fullscreen();
-  const tog = (k: string, label: string, on: boolean) => `<div class="check ${on ? 'on' : ''}" data-sa="toggle:${k}" role="checkbox" aria-checked="${on}" tabindex="0"><span class="box"></span>${label}</div>`;
+  const tog = (k: string, label: string, on: boolean) => `<div class="check ${on ? 'on' : ''}" data-sa="toggle:${k}" role="checkbox" aria-checked="` +
+      `${on}" tabindex="0"><span class="box"></span>${label}</div>`;
   app.put('settings', `<div class="screen${app.crt()}"><div class="page px-box" style="max-width:620px">
       <h1>SETTINGS</h1>
       <div class="kv">

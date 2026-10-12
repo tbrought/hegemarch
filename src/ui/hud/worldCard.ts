@@ -53,7 +53,11 @@ export interface Project {
 }
 
 /** What a Bastion's field does, for the tips of the cards. */
-export const FIELD_TIP = `A Bastion's field covers its own world and every place one jump from it, at every level: enemy ships there take ${HOLD_FIELD}s longer to jump away. A Bastion also protects the other worlds of its house one jump from it: they take ${Math.round(FIELD_GUARD[1] * 100)}% less damage while it stands, ${Math.round(FIELD_GUARD[2] * 100)}% at level II, ${Math.round(FIELD_GUARD[3] * 100)}% at level III. Two Bastions next to one world do not add up (the stronger counts), but both must fall before the protection is gone.`;
+export const FIELD_TIP = `A Bastion's field covers its own world and every place one jump from it, at every level: enemy ships there take ` +
+    `${HOLD_FIELD}s longer to jump away. A Bastion also protects the other worlds of its house one jump from it: they take ` +
+    `${Math.round(FIELD_GUARD[1] * 100)}% less damage while it stands, ${Math.round(FIELD_GUARD[2] * 100)}% at level II, ` +
+    `${Math.round(FIELD_GUARD[3] * 100)}% at level III. Two Bastions next to one world do not add up (the stronger counts), but both must fall ` +
+    `before the protection is gone.`;
 
 /** What a world's size means, for tooltips. */
 function sizeTip(n: GNode): string {
@@ -93,7 +97,8 @@ export function nodeRows(hud: Hud, n: GNode): CardRow[] {
     if (visible) rows.push(...fieldRows(hud, n));
     // (Ages: a house still on its way from the cradle holds its Hearth, and nothing can touch it until it arrives.)
     const away = game.asleep(f.id);
-    if (away) rows.push(line(hud, `ITS ARK HAS NOT ARRIVED: ${fmtTime(f.asleepUntil - game.time)} TO GO`, PAL.ember, 'tiny', { tip: `The ${f.name} are still on their way from the cradle. Until their Ark arrives nothing here can be hurt, and nothing here will fight.` }));
+    if (away) rows.push(line(hud, `ITS ARK HAS NOT ARRIVED: ${fmtTime(f.asleepUntil - game.time)} TO GO`, PAL.ember, 'tiny', { tip: `The ${f.name} are still on their way ` +
+        `from the cradle. Until their Ark arrives nothing here can be hurt, and nothing here will fight.` }));
     const why = away
       ? 'Nothing can touch this Hearth until its house arrives.'
       : f.kind === 'empire'
@@ -166,8 +171,10 @@ function hpRow(hud: Hud, n: GNode): CardRow {
       if (n.maxSh > 0) bar(g, x + off, y + 4, bw, 1, n.sh / n.maxSh, PAL.sky, PAL.night, undefined, 0);
       hud.ui.hint('card-hp', x - 1, y - 1, bw + off + 2, 8, {
         tip: cradle
-          ? `Walls ${fmt(n.hp)} / ${fmt(n.maxHp)} (green)${n.maxSh > 0 ? ` · shields ${fmt(n.sh)} / ${fmt(n.maxSh)} (blue)` : ''}. Shields soak up damage first. When the walls are down the land falls to whoever is attacking it.`
-          : `Hull ${fmt(n.hp)} / ${fmt(n.maxHp)} (green)${n.maxSh > 0 ? ` · shields ${fmt(n.sh)} / ${fmt(n.maxSh)} (blue)` : ''}. Shields soak up damage first. At zero hull the world falls to whoever is attacking it.`,
+          ? (`Walls ${fmt(n.hp)} / ${fmt(n.maxHp)} (green)${n.maxSh > 0 ? ` · shields ${fmt(n.sh)} / ${fmt(n.maxSh)} (blue)` : ''}. Shields soak up ` +
+              `damage first. When the walls are down the land falls to whoever is attacking it.`)
+          : (`Hull ${fmt(n.hp)} / ${fmt(n.maxHp)} (green)${n.maxSh > 0 ? ` · shields ${fmt(n.sh)} / ${fmt(n.maxSh)} (blue)` : ''}. Shields soak up ` +
+              `damage first. At zero hull the world falls to whoever is attacking it.`),
       });
     },
   };
@@ -197,7 +204,8 @@ function titleRows(hud: Hud, n: GNode): CardRow[] {
   rows.push(header(hud, n.name.toUpperCase(), p.color, n, hearth ? `HEARTH · ${roman(n.level)}` : `LEVEL ${roman(n.level)}`, PAL.gold,
     hearth ? { tip: `Your Hearth, level ${roman(n.level)}.`, terms: gloss('hearth', 'lastStand') } : { tip: `Level ${roman(n.level)} of III.`, terms: gloss('level') }));
   const aff = game.affinityOf(n);
-  let info = hearth ? 'YOUR HEARTH: IT DOES EVERY ROLE' : `${n.size} WORLD · ${(n.role ?? 'mine').toUpperCase()}${aff && n.role === aff ? ' (A NATURAL FIT)' : aff ? ` · GOOD AS A ${aff.toUpperCase()}` : ''}`;
+  let info = hearth ? 'YOUR HEARTH: IT DOES EVERY ROLE' : (`${n.size} WORLD · ${(n.role ?? 'mine').toUpperCase()}` +
+      `${aff && n.role === aff ? ' (A NATURAL FIT)' : aff ? ` · GOOD AS A ${aff.toUpperCase()}` : ''}`);
   if (n.retool > 0) info = `RETOOLING AS A ${(n.role ?? '').toUpperCase()}… ${Math.ceil(n.retool)}S`;
   rows.push(line(hud, info, n.retool > 0 ? PAL.ember : PAL.dusk, 'tiny', n.retool > 0 ? { terms: gloss('retool') } : hearth ? { terms: gloss('hearth') } : roleTip(hud, n)));
   const walls = hearth ? game.wallsOf(n) : 1;
@@ -219,7 +227,8 @@ function yieldRow(hud: Hud, n: GNode): CardRow {
       const lo = fmtRate(game.worldLore(n) * (1 + p.mods.lore) * p.incomeMul);
       icon(gx, 'ember', x, y);
       let tx = text(gx, `${em}/s`, x + 7, y, PAL.gold) + 6;
-      hud.ui.hint('card-embers', x - 1, y - 1, tx - x - 4, 10, { tip: `${n.name} earns ${em} Embers a second, with all your bonuses. Size, level, role and glow set it.` });
+      hud.ui.hint('card-embers', x - 1, y - 1, tx - x - 4, 10, { tip: `${n.name} earns ${em} Embers a second, with all your bonuses. Size, level, ` +
+          `role and glow set it.` });
       const lx = tx;
       icon(gx, 'lore', tx, y);
       tx = text(gx, `${lo}/s`, tx + 7, y, PAL.violet) + 6;
@@ -256,7 +265,8 @@ function rolesRow(hud: Hud, n: GNode): CardRow {
           hud.ui.iconButton(gx, 'role-' + r, bx, y, 12, r, () => hud.actions.role(n.id, r), {
             selected: n.role === r,
             tipTitle: n.role === r ? `${ROLES[r].name} (current role)` : ROLES[r].name,
-            tip: `${ROLES[r].desc}${here}${isAff ? ` This world is a natural fit: ${FIT_TEXT(r)}.` : ''}${n.role === r ? '' : n.fresh ? ' The first role you give a new world costs no time.' : ` Switching takes ${ECON.retoolTime}s, and the world works at neither role meanwhile.`}`,
+            tip: `${ROLES[r].desc}${here}${isAff ? ` This world is a natural fit: ${FIT_TEXT(r)}.` : ''}` +
+                `${n.role === r ? '' : n.fresh ? ' The first role you give a new world costs no time.' : ` Switching takes ${ECON.retoolTime}s, and the world works at neither role meanwhile.`}`,
           });
           if (isAff) {
             gx.fillStyle = PAL.gold;
@@ -273,7 +283,9 @@ function rolesRow(hud: Hud, n: GNode): CardRow {
         const label = `RAISE TO ${roman(n.level + 1)}`;
         hud.ui.button(gx, 'upgrade', bx, y, Math.min(w - (bx - x), 104), 12, label, () => hud.actions.upgrade(n.id), {
           disabled: !!why && why !== WHY.embers ? true : !!why, right: `${IC.ember}${cost}`, font: 'tiny',
-          tip: `Raise ${n.name} to level ${roman(n.level + 1)}: +50% output, more hull and more hangar room.${game.isBastion(n) ? ` As a Bastion it then protects your worlds one jump away by ${pct(FIELD_GUARD[Math.min(3, n.level + 1)])}, up from ${pct(FIELD_GUARD[n.level])}.` : ''}${why ? ` (${why})` : ''}`,
+          tip: `Raise ${n.name} to level ${roman(n.level + 1)}: +50% output, more hull and more hangar room.` +
+              `${game.isBastion(n) ? ` As a Bastion it then protects your worlds one jump away by ${pct(FIELD_GUARD[Math.min(3, n.level + 1)])}, up from ${pct(FIELD_GUARD[n.level])}.` : ''}` +
+              `${why ? ` (${why})` : ''}`,
         });
       } else if (rising) {
         const q = n.buildQ.find((it) => it.kind === 'upgrade')!;
@@ -316,7 +328,8 @@ function buildRows(hud: Hud, n: GNode): CardRow[] {
           hud.ui.add({
             id, x: bx, y, w: bw, h: 17, onClick: () => hud.actions.build(n.id, t), disabled: blocked,
             tipTitle: `${def.name} · ${cost} Embers · ${def.hangar} hangar${key ? ` · key ${key}` : ''}`,
-            tip: `${game.cradle ? `${unitDesc(t, p.era)} ${LINE_SHORT[t] ?? ''}` : (GLOSS_BY_ID[t]?.text ?? def.short)}${why ? ` [!${why}.]` : ' Shift-click: queue five.'}`,
+            tip: `${game.cradle ? `${unitDesc(t, p.era)} ${LINE_SHORT[t] ?? ''}` : (GLOSS_BY_ID[t]?.text ?? def.short)}` +
+                `${why ? ` [!${why}.]` : ' Shift-click: queue five.'}`,
           });
           bx += bw + 2;
         });
@@ -324,7 +337,8 @@ function buildRows(hud: Hud, n: GNode): CardRow[] {
     });
     if (p.hangarUsed >= p.hangarCap) rows.push(line(hud, 'HANGAR FULL: HOLD MORE WORLDS OR RAISE THEIR LEVEL', PAL.red, 'tiny', { terms: gloss('hangar', 'bay', 'level') }));
   } else if (!hearth) {
-    rows.push(line(hud, 'ONLY FORGES BUILD SHIPS', PAL.slate, 'tiny', { tip: 'Make this world a Forge (the second role button) to build ships here. Your Hearth always can.', terms: gloss('forge') }));
+    rows.push(line(hud, 'ONLY FORGES BUILD SHIPS', PAL.slate, 'tiny', { tip: 'Make this world a Forge (the second role button) to build ships ' +
+        'here. Your Hearth always can.', terms: gloss('forge') }));
   }
   return rows;
 }
@@ -358,7 +372,10 @@ function queueRows(hud: Hud, n: GNode): CardRow[] {
   return rows;
 }
 
-/** The projects on offer here: a Starbase at any world; at the Hearth a Hangar Bay, the next age, the Ark again, the Starfire Gate. */
+/**
+ * The projects on offer here: a Starbase at any world; at the Hearth a Hangar Bay, the next age, the
+ * Ark again, the Starfire Gate.
+ */
 function projects(hud: Hud, n: GNode): Project[] {
   const game = hud.g;
   const p = game.player;
@@ -377,7 +394,8 @@ function projects(hud: Hud, n: GNode): Project[] {
     const all = bays >= ECON.bayMax;
     extras.push({
       id: 'bay', label: 'HANGAR BAY', plus: all ? undefined : `+${ECON.bayHangar}`, cost: game.bayCost(p), right: all ? `${bays}/${ECON.bayMax}` : undefined, icon: 'hangar', accent: PAL.teal, act: () => hud.actions.bay(),
-      tip: `Build a Hangar Bay at your Hearth: room for ${ECON.bayHangar} more hangar space. Each bay costs more than the last. You have built ${bays} of ${ECON.bayMax}.`, dis: all ? 'Every bay is built' : game.checkBay(p.id),
+      tip: `Build a Hangar Bay at your Hearth: room for ${ECON.bayHangar} more hangar space. Each bay costs more than the last. You have built ` +
+          `${bays} of ${ECON.bayMax}.`, dis: all ? 'Every bay is built' : game.checkBay(p.id),
       // (It asks to be seen when it is needed: the hangar nearly full.)
       calls: p.hangarUsed >= p.hangarCap * 0.9,
     });
@@ -394,7 +412,8 @@ function projects(hud: Hud, n: GNode): Project[] {
     const short = p.boons < ASCENSION_BOONS;
     extras.push({
       id: 'gate', label: 'STARFIRE GATE', cost: game.shipCost(p, 'gate'), icon: 'ascension', accent: PAL.pink, act: () => hud.actions.gate(n.id),
-      tip: `Raise the Starfire Gate. Protect it for ${GATE_CHARGE / 60} minutes to win by Ascension.${short ? ` You have ${p.boons} of the ${ASCENSION_BOONS} Boons it takes.` : ''}`, dis: why,
+      tip: `Raise the Starfire Gate. Protect it for ${GATE_CHARGE / 60} minutes to win by Ascension.` +
+          `${short ? ` You have ${p.boons} of the ${ASCENSION_BOONS} Boons it takes.` : ''}`, dis: why,
       // (Until it can be raised it counts the Boons it waits for; then a spark runs round it.)
       progress: short ? { have: p.boons, need: ASCENSION_BOONS } : undefined, spark: true,
     });
@@ -544,7 +563,8 @@ function siteRows(hud: Hud, n: GNode, innerW: number): CardRow[] {
       break;
     case 'anomaly':
       rows.push(header(hud, n.name.toUpperCase(), PAL.violet, null, 'ANOMALY', undefined, { terms: gloss('anomaly') }));
-      rows.push(para(hud, n.anomaly ? 'Something strange drifts here. Send a ship here to look inside, then choose what to do. Passing ships fly on.' : 'Already explored. Nothing more to find.', PAL.mist, innerW));
+      rows.push(para(hud, n.anomaly ? ('Something strange drifts here. Send a ship here to look inside, then choose what to do. Passing ships fly ' +
+          'on.') : 'Already explored. Nothing more to find.', PAL.mist, innerW));
       break;
     case 'relic': {
       rows.push(header(hud, n.name.toUpperCase(), PAL.sky, null, 'RELIC VAULT', undefined, { terms: gloss('relic', 'relicHunt') }));
@@ -608,14 +628,17 @@ function fieldRows(hud: Hud, n: GNode): CardRow[] {
     const guard = FIELD_GUARD[Math.max(1, Math.min(3, n.level))];
     const less = `${pct(guard)} less damage`;
     if (reach.length) {
-      row(fits(reach.length === 1 ? `Field also reaches ${name(reach[0])}, one jump away` : '', `Field also reaches the ${reach.length} ${reach.length === 1 ? 'place' : 'places'} one jump away`),
+      row(fits(reach.length === 1 ? `Field also reaches ${name(reach[0])}, one jump away` : '', `Field also reaches the ${reach.length} ` +
+          `${reach.length === 1 ? 'place' : 'places'} one jump away`),
         `Its field holds ${names(reach)} as well as ${n.name}: every place one jump away.`);
     }
     if (wards.length) {
       row(fits(wards.length <= 2 ? `Protects ${names(wards)}: ${less}` : '', `Protects ${wards.length} ${wards.length === 1 ? 'world' : 'worlds'}: ${less}`),
-        `${names(wards)} ${wards.length > 1 ? 'take' : 'takes'} ${less} while ${n.name} stands.${mine ? (n.level < 3 ? ` Raise ${n.name} and that is ${pct(FIELD_GUARD[n.level + 1])}.` : '') : ` Take ${n.name} first (or see it retooled) and the protection is gone.`}`);
+        `${names(wards)} ${wards.length > 1 ? 'take' : 'takes'} ${less} while ${n.name} stands.` +
+            `${mine ? (n.level < 3 ? ` Raise ${n.name} and that is ${pct(FIELD_GUARD[n.level + 1])}.` : '') : ` Take ${n.name} first (or see it retooled) and the protection is gone.`}`);
     } else if (mine) {
-      row('No world of yours one jump away to protect', `${n.name} protects the worlds of yours one jump from it, and there is none. Its field still holds the places next to it.`);
+      row('No world of yours one jump away to protect', `${n.name} protects the worlds of yours one jump from it, and there is none. Its field ` +
+          `still holds the places next to it.`);
     }
   }
   // A world a Bastion protects. (The word is "protected", not "walled": a Hearth's walls are another
@@ -624,8 +647,10 @@ function fieldRows(hud: Hud, n: GNode): CardRow[] {
   if (by.length) {
     const less = `${pct(game.guardOf(n))} less damage`;
     row(fits(by.length <= 2 ? `Protected by ${names(by)}: ${less}` : '', `Protected by ${by.length > 1 ? `${by.length} Bastions` : 'a Bastion'}: ${less}`), mine
-      ? `${n.name} takes ${less} while ${names(by, 'or')} stands${by.length > 1 ? ' (the stronger of them counts)' : ''}. Lose every Bastion next to it and the protection is gone.`
-      : `${n.name} takes ${less} while ${names(by, 'or')} stands${by.length > 1 ? ' (the stronger of them counts)' : ''}. Take ${by.length > 1 ? 'those Bastions' : 'that Bastion'} first (or see ${by.length > 1 ? 'them' : 'it'} retooled) and the protection is gone.`);
+      ? (`${n.name} takes ${less} while ${names(by, 'or')} stands${by.length > 1 ? ' (the stronger of them counts)' : ''}. Lose every Bastion next ` +
+          `to it and the protection is gone.`)
+      : (`${n.name} takes ${less} while ${names(by, 'or')} stands${by.length > 1 ? ' (the stronger of them counts)' : ''}. Take ` +
+          `${by.length > 1 ? 'those Bastions' : 'that Bastion'} first (or see ${by.length > 1 ? 'them' : 'it'} retooled) and the protection is gone.`));
   }
   // A place a Bastion's field reaches from next door. (Not said of a world that keeps a field of the
   // same house up itself: its card has said "anti-warp field" already.)

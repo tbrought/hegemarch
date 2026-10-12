@@ -285,7 +285,10 @@ export class Input {
     this.hotkey(e, code);
   }
 
-  /** A key while a dialog is open: the dialog's own keys first (a digit chooses), then the letter that opened it, or Space and Enter, to close it. */
+  /**
+   * A key while a dialog is open: the dialog's own keys first (a digit chooses), then the letter that
+   * opened it, or Space and Enter, to close it.
+   */
   private dialogKey(e: KeyboardEvent, code: string) {
     const s = this.s;
     if (!s.modal) return;
@@ -299,7 +302,10 @@ export class Input {
     }
   }
 
-  /** The keys of a run with no dialog open: Tab to the next Forge, Space to pause, the speeds, the dialogs by their letters, and the orders (stop, retreat, explore, kindle, move). */
+  /**
+   * The keys of a run with no dialog open: Tab to the next Forge, Space to pause, the speeds, the
+   * dialogs by their letters, and the orders (stop, retreat, explore, kindle, move).
+   */
   private hotkey(e: KeyboardEvent, code: string) {
     const s = this.s;
     const g = this.g;

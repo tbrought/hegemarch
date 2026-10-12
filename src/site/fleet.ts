@@ -25,7 +25,8 @@ export function startFleet(root: HTMLElement) {
   for (const [sel, types] of [['.ship-list', CORE_SHIPS], ['.blueprint-list', BLUEPRINTS]] as const) {
     const list = root.querySelector<HTMLElement>(sel);
     if (!list) continue;
-    list.innerHTML = types.map((t) => `<li><canvas class="ship-art" data-ship="${t}" aria-hidden="true"></canvas><div><b>${esc(UNITS[t].name)}</b><span>${esc(UNITS[t].short)}</span></div></li>`).join('');
+    list.innerHTML = types.map((t) => `<li><canvas class="ship-art" data-ship="${t}" aria-hidden="true"></canvas><div><b>${esc(UNITS[t].name)}` +
+        `</b><span>${esc(UNITS[t].short)}</span></div></li>`).join('');
     pictures(list);
   }
 }

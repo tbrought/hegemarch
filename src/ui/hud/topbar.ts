@@ -97,12 +97,16 @@ function barEmbers(hud: Hud): number {
     py += 7;
   }
   hud.emberPops = hud.emberPops.filter((pop) => pop.t <= 1.4);
-  barTip(hud, 'embers', 1, 0, x + 1, 13, () => `Embers: your only currency. You earn ${fmtRate(p.income)} every second from your worlds. Spend them on ships, kindling and world upgrades.`);
+  barTip(hud, 'embers', 1, 0, x + 1, 13, () => `Embers: your only currency. You earn ${fmtRate(p.income)} every second from your worlds. Spend ` +
+      `them on ships, kindling and world upgrades.`);
   x += 8;
   return x;
 }
 
-/** Lore: the bar that fills toward the next Boon, or the button of a Boon that waits (on the cradle, the age). Returns where the next thing begins. */
+/**
+ * Lore: the bar that fills toward the next Boon, or the button of a Boon that waits (on the cradle, the
+ * age). Returns where the next thing begins.
+ */
 function barLore(hud: Hud, R: ReturnType<Session['reveal']>, x: number): number {
   const g = hud.s.screen.g;
   const p = hud.g.player;
@@ -117,11 +121,13 @@ function barLore(hud: Hud, R: ReturnType<Session['reveal']>, x: number): number 
       hud.ui.button(g, 'boon', x, 1, textWidth(label, 'tiny') + 12, 11, label, () => hud.modals.open({ kind: 'draft' }), {
         primary: true, pulse: true, font: 'tiny', tip: () => `A Boon is ready. Choose one of a few upgrades for your house. (B)\n${nextBoonText(hud)}`,
       });
-      hud.barTips.push({ id: 'boon', x, y: 1, w: textWidth(label, 'tiny') + 12, h: 11, tip: () => `${p.pendingDrafts > 1 ? `${p.pendingDrafts} Boons are` : 'A Boon is'} waiting. ${nextBoonText(hud)}` });
+      hud.barTips.push({ id: 'boon', x, y: 1, w: textWidth(label, 'tiny') + 12, h: 11, tip: () => `${p.pendingDrafts > 1 ? `${p.pendingDrafts} Boons are` : 'A Boon is'}` +
+          ` waiting. ${nextBoonText(hud)}` });
       x += textWidth(label, 'tiny') + 15;
     } else {
       bar(g, x + 1, 5, 36, 3, p.lore / cost, PAL.violet, PAL.indigo, PAL.indigo);
-      barTip(hud, 'lore', x - 8, 0, 48, 13, () => `Lore: ${Math.floor(p.lore)} / ${cost}. Every time it fills you choose a Boon. Observatories make Lore faster. (+${p.loreRate.toFixed(2)}/s)\n${nextBoonText(hud)}`);
+      barTip(hud, 'lore', x - 8, 0, 48, 13, () => `Lore: ${Math.floor(p.lore)} / ${cost}. Every time it fills you choose a Boon. Observatories ` +
+          `make Lore faster. (+${p.loreRate.toFixed(2)}/s)\n${nextBoonText(hud)}`);
       x += 42;
     }
   }
@@ -144,7 +150,9 @@ function barHangar(hud: Hud, R: ReturnType<Session['reveal']>, x: number): numbe
     const figures = `${p.hangarUsed}/${p.hangarCap}`;
     textTabular(g, figures, x + 7, 3, color);
     const ex = x + 7 + numberRoom(figures, `${p.hangarCap}/${p.hangarCap}`);
-    barTip(hud, 'hangar', x - 1, 0, ex - x + 2, 13, () => `Hangar: ${p.hangarUsed} of ${p.hangarCap} used${full ? ', and full: you cannot build' : `, room for ${p.hangarCap - p.hangarUsed} more`}. Every world you hold adds room, and higher-level worlds add more. Hangar Bays at your Hearth add more.`);
+    barTip(hud, 'hangar', x - 1, 0, ex - x + 2, 13, () => `Hangar: ${p.hangarUsed} of ${p.hangarCap} used` +
+        `${full ? ', and full: you cannot build' : `, room for ${p.hangarCap - p.hangarUsed} more`}. Every world you hold adds room, and ` +
+        `higher-level worlds add more. Hangar Bays at your Hearth add more.`);
     x = ex + 6;
   }
   return x;
@@ -165,7 +173,8 @@ function barIdleForges(hud: Hud, R: ReturnType<Session['reveal']>, x: number) {
     x += 2;
     hud.ui.button(g, 'idle-forges', x, 1, bw, 11, label, () => hud.actions.nextForge(1), {
       icon: 'forge', font: 'tiny', color: PAL.ember,
-      tip: `${idle === 1 ? 'One of your Forges is' : `${idle} of your Forges are`} building nothing (your Hearth counts as one). Click, or press Tab, to go to the next: Q W E R T Y build there.`,
+      tip: `${idle === 1 ? 'One of your Forges is' : `${idle} of your Forges are`} building nothing (your Hearth counts as one). Click, or press ` +
+          `Tab, to go to the next: Q W E R T Y build there.`,
     });
     // (Flashing: the button turns to fire and back, a few times a second.)
     if (hud.clock - hud.idleFlashAt < IDLE_FLASH && Math.floor(hud.clock * 5) % 2 === 0) {
