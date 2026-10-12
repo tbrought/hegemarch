@@ -942,7 +942,7 @@ export class Modals {
         ? [
             { text: 'The sector is dark. Light it, world by world, and take the crown.', color: PAL.bone },
             step(1, 'KINDLE WORLDS', 'Click a grey world and press KINDLE. A seed ship flies out, lights it and is used up; if it is destroyed on the way, the Embers are lost. Every lit world earns Embers, and each one costs a bit more than the last.'),
-            step(2, 'GIVE EACH WORLD A ROLE', 'MINE: more Embers. FORGE: builds ships. OBSERVATORY: Lore. BASTION: guns and repairs. Raise worlds to level II and III for more of everything.'),
+            step(2, 'GIVE EACH WORLD A ROLE', 'MINE: more Embers. FORGE: builds ships. OBSERVATORY: Lore. BASTION: guns, repairs, and it protects your worlds next to it. Raise worlds to level II and III for more of everything.'),
             step(3, 'BUILD A FLEET', 'Strikers beat Breakers, Breakers beat Guardians and worlds, Guardians beat Strikers. New ships come as Blueprint Boons. Scouts wait for your order: select one (click its fleet badge) and press EXPLORE, and it charts the dark by itself.'),
             step(4, 'CHOOSE BOONS', 'When your Lore fills, choose one Boon of three. They shape every run differently, and line the left edge of the screen.'),
             step(5, 'TAKE THE CROWN', 'Follow one of your three Destinies to the crown (U shows them). Lose your Hearth and your house goes dark.'),

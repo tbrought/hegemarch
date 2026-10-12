@@ -19,19 +19,15 @@ export const POWER_BOON = 0.5;
 /** What each level above the first adds to a ship that has levels (an Ark, a Dreadnought). */
 export const LEVEL_STEP = 0.08;
 /**
- * How far a Bastion's field links with another field of its house, in jumps, by the world's level
- * (index 1 to 3): not at all at level I, to a partner in its own system at level II (the star between
- * them), across to the next system at level III (both stars of the starlane between).
+ * A Bastion's field reaches every place one jump from it (`Game.fieldReaches`), and it protects the
+ * worlds of its house among them: they take this much less damage while it stands, by the Bastion's
+ * level (index 1 to 3). The reach is the same at every level; a level makes the Bastion stronger, not
+ * wider. It is what a Bastion is built for: the Hearth next to it is slow to crack until the Bastion is
+ * taken, so "ignore every world and go for the Hearth" has an answer, and the answer takes nothing from
+ * a fleet that flies where it likes. (Protection does not add up: of two Bastions next to a world the
+ * stronger counts; but both must fall before it is gone.)
  */
-export const LINK_REACH = [0, 0, 2, 3];
-/**
- * A Bastion protects the worlds its field is linked with: they take this much less damage while it
- * stands (`Game.guardsOf`). It is what a Bastion is built for: the Hearth it is linked with is slow to
- * crack until the Bastion is taken, so "ignore every world and go for the Hearth" has an answer, and
- * the answer takes nothing from a fleet that flies where it likes. (Protection does not add up: one
- * Bastion or three, it is this much; but all three must fall before it is gone.)
- */
-export const LINK_GUARD = 0.4;
+export const FIELD_GUARD = [0, 0.2, 0.3, 0.4];
 /** A ship that was hit this many seconds ago or less is under fire... */
 export const UNDER_FIRE = 2;
 /** ...and its drive spools at this share of its speed: running from a fight costs time. */

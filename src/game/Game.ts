@@ -12,7 +12,7 @@ import { ABILITY_LEVELS, DMG_TABLE, DREADNOUGHT_CAP, isWarship, LEVEL_XP, MAX_LE
 import { PERK_EMBERS, PERK_HEARTH, PERK_HULL, PERK_LORE, PERK_WALLS } from '../meta/perks';
 import { ASCENSION_BOONS, OPTIONAL_VICTORIES } from './data/victories';
 import {
-  AI_INCOME, CRISIS_AWAKEN, CRISIS_OFFSET, JUMP_CHARGE, LEVEL_STEP, LINK_GUARD, LINK_REACH, PHASE_SPEED, PIRATE_FIRST_RAID, POWER_BOON, POWER_WRECK, HOLD_FIELD, QUEUE_MAX, SAVE_VERSION, TICK,
+  AI_INCOME, CRISIS_AWAKEN, CRISIS_OFFSET, FIELD_GUARD, JUMP_CHARGE, LEVEL_STEP, PHASE_SPEED, PIRATE_FIRST_RAID, POWER_BOON, POWER_WRECK, HOLD_FIELD, QUEUE_MAX, SAVE_VERSION, TICK,
 } from './constants';
 import { computePaths, EMPIRES_BY_SIZE, generateCradle, generateMap, type SystemInfo } from './mapgen';
 import { baseMods, mul } from './mods';
@@ -90,20 +90,22 @@ export interface HistorySample {
 /** Seconds of game time between two samples of `Game.history`. */
 export const HISTORY_EVERY = 30;
 
-/** Two fields of one house, joined: `way` runs from one world to the other through the places between. */
-export interface FieldLink {
+/** A Bastion's field reaching a place next to it: `from` is the Bastion, `to` the place one jump away. */
+export interface FieldReach {
   owner: number;
-  a: number;
-  b: number;
-  way: number[];
+  from: number;
+  to: number;
 }
 
 interface FieldState {
   tick: number;
   sig: number;
   nodes: GNode[];
-  links: FieldLink[];
+  reaches: FieldReach[];
+  /** For each place a field holds: the houses that hold it. */
   over: Map<number, number[]>;
+  /** For each place a Bastion's field reaches from next door: those Bastions. */
+  from: Map<number, number[]>;
   /** For each world that is protected: the Bastions that protect it. */
   guards: Map<number, number[]>;
 }
@@ -884,35 +886,46 @@ export class Game {
   }
 
   /**
-   * How far a Bastion's field links, in jumps (`LINK_REACH`). 0 for a world that is not a Bastion: a
-   * Hearth and a world with a Starbase can be linked to, but throw no link themselves. 0 in the cradle,
-   * where a Bastion holds its own land only.
+   * Does this world's field reach beyond it? A Bastion's does: it holds every place one jump away as
+   * well as its own, and protects the worlds of its house among them. A Hearth's field and a Starbase's
+   * hold their own world only, and so does a Bastion in the cradle.
    */
-  linkReach(n: GNode): number {
-    if (this.cradle || n.capitalOf >= 0 || n.owner < 0 || !this.hasRole(n, 'bastion') || this.factions[n.owner].kind !== 'empire') return 0;
-    return LINK_REACH[clamp(n.level, 1, 3)];
+  isBastion(n: GNode): boolean {
+    return !this.cradle && n.capitalOf < 0 && n.owner >= 0 && this.hasRole(n, 'bastion') && this.factions[n.owner].kind === 'empire';
   }
 
   /**
-   * The links between fields. A Bastion alone holds only its own world, at every level. Two fields of
-   * one house (a Bastion's, its Hearth's, a Starbase's), at least one of them a Bastion that reaches the
-   * other (`linkReach`, the higher level of two Bastions), join along the starlanes between them, and
-   * every place on the way is held as well: two towers, and the wall between them. So one Bastion never
-   * covers a system, a pair is where the field starts to matter, and taking or retooling one end brings
-   * the wall down on both sides. (1.11 gave one Bastion its system's star at level II and the whole
-   * system at level III: one world did it all, and no second Bastion was ever worth its role.)
+   * Where the Bastions' fields reach: one entry for every place one jump from a Bastion. The rule is
+   * the one a player reads off the map: a Bastion covers its own world and its neighbours, at every
+   * level, with nothing else needed. (1.11 gave one Bastion its system's star at level II and the
+   * whole system at level III: one world did it all, and no second Bastion was ever worth its role.
+   * 1.13 had fields link between two strongholds within two or three jumps: a Bastion alone did
+   * nothing past its own world, and the player who made one looked at the map and asked whether it
+   * was broken.)
    */
-  fieldLinks(): FieldLink[] {
-    return this.fields().links;
+  fieldReaches(): FieldReach[] {
+    return this.fields().reaches;
+  }
+
+  /** The Bastions whose field reaches a place from next door. */
+  fieldsFrom(n: GNode): number[] {
+    return this.fields().from.get(n.id) ?? NO_FIELDS;
   }
 
   /**
-   * The Bastions that protect a world: those its field is linked with. While one of them stands the world
-   * takes `LINK_GUARD` less damage (`damagePlanet`). A Bastion protects the other end of its link, not
-   * itself: linked with a Hearth it is the way in, and two Bastions linked protect each other.
+   * The Bastions that protect a world: those of its house one jump from it. While one of them stands
+   * the world takes less damage (`guardOf`, `damagePlanet`). A Bastion protects its neighbours, not
+   * itself: next to a Hearth it is the way in, and two Bastions next to each other protect each other.
    */
   guardsOf(n: GNode): number[] {
     return this.fields().guards.get(n.id) ?? NO_FIELDS;
+  }
+
+  /** How much less damage a world takes for the Bastions that protect it (`FIELD_GUARD`): the strongest counts. */
+  guardOf(n: GNode): number {
+    let best = 0;
+    for (const id of this.guardsOf(n)) best = Math.max(best, FIELD_GUARD[clamp(this.nodes[id].level, 1, 3)]);
+    return best;
   }
 
   /** The worlds a Bastion protects (the other way round). */
@@ -922,54 +935,43 @@ export class Game {
     return out;
   }
 
-  /** The houses whose anti-warp fields hold a place: its own world's field, and the links that run through it. */
+  /** The houses whose anti-warp fields hold a place: its own world's field, and a Bastion's from next door. */
   fieldsOver(n: GNode): number[] {
     return this.fields().over.get(n.id) ?? NO_FIELDS;
   }
 
   /**
-   * Fields and links as they stand. Worked out again whenever what they come from has changed (`fieldSig`:
-   * a world's house, role or level, a Starbase built or lost), so the map shows a link the moment a
-   * paused player makes one; and forgotten at the end of every tick, so a game that was saved and one
-   * that went on always work them out from the same state.
+   * Fields as they stand. Worked out again whenever what they come from has changed (`fieldSig`: a
+   * world's house, role or level, a Starbase built or lost), so the map shows a field the moment a
+   * paused player makes a Bastion; and forgotten at the end of every tick, so a game that was saved and
+   * one that went on always work them out from the same state.
    */
   private fields(): FieldState {
     const sig = this.fieldSig();
     const c = this.fieldCache;
     if (c && c.tick === this.tick && c.sig === sig && c.nodes === this.nodes) return c;
-    const links: FieldLink[] = [];
+    const reaches: FieldReach[] = [];
     const over = new Map<number, number[]>();
+    const from = new Map<number, number[]>();
     const guards = new Map<number, number[]>();
-    const hold = (id: number, owner: number) => {
-      const l = over.get(id);
-      if (!l) over.set(id, [owner]);
-      else if (!l.includes(owner)) l.push(owner);
+    const add = (m: Map<number, number[]>, id: number, v: number) => {
+      const l = m.get(id);
+      if (!l) m.set(id, [v]);
+      else if (!l.includes(v)) l.push(v);
     };
-    const bastion = (n: GNode) => n.capitalOf < 0 && this.hasRole(n, 'bastion');
-    const guard = (world: GNode, by: GNode) => {
-      if (this.cradle || !bastion(by)) return;
-      const l = guards.get(world.id);
-      if (!l) guards.set(world.id, [by.id]);
-      else if (!l.includes(by.id)) l.push(by.id);
-    };
-    const worlds = this.nodes.filter((n) => this.fieldAt(n));
-    for (const n of worlds) hold(n.id, n.owner);
-    for (let i = 0; i < worlds.length; i++) {
-      for (let j = i + 1; j < worlds.length; j++) {
-        const a = worlds[i];
-        const b = worlds[j];
-        if (a.owner !== b.owner) continue;
-        const reach = Math.max(this.linkReach(a), this.linkReach(b));
-        if (!reach || this.hops(a.id, b.id) > reach) continue;
-        const way = [a.id, ...this.hopPath(a.id, b.id)];
-        if (way[way.length - 1] !== b.id) continue;
-        links.push({ owner: a.owner, a: a.id, b: b.id, way });
-        for (const id of way) hold(id, a.owner);
-        guard(a, b);
-        guard(b, a);
+    for (const n of this.nodes) {
+      if (!this.fieldAt(n)) continue;
+      add(over, n.id, n.owner);
+      if (!this.isBastion(n)) continue;
+      for (const id of this.neighbours(n.id)) {
+        const o = this.nodes[id];
+        reaches.push({ owner: n.owner, from: n.id, to: id });
+        add(over, id, n.owner);
+        add(from, id, n.id);
+        if (o.kind === 'planet' && o.owner === n.owner) add(guards, id, n.id);
       }
     }
-    this.fieldCache = { tick: this.tick, sig, nodes: this.nodes, links, over, guards };
+    this.fieldCache = { tick: this.tick, sig, nodes: this.nodes, reaches, over, from, guards };
     return this.fieldCache;
   }
 
@@ -977,7 +979,7 @@ export class Game {
   /** Counts the Starbases built and lost (they make and unmake a field). */
   private fieldEpoch = 0;
 
-  /** A number that changes when anything a field or a link depends on does. */
+  /** A number that changes when anything a field depends on does. */
   private fieldSig(): number {
     let h = this.fieldEpoch;
     for (const n of this.nodes) {
@@ -985,33 +987,6 @@ export class Game {
       h = (Math.imul(h, 31) + n.id * 97 + n.owner * 13 + n.level * 5 + (n.role === 'bastion' ? 3 : 0) + (n.retool > 0 ? 1 : 0)) | 0;
     }
     return h;
-  }
-
-  /**
-   * The way from `a` to `b` in the fewest jumps (the shortest of those ways), without `a` itself: what a
-   * player counts on the map when the rule says "within two jumps". (`pathTo` is the way ships fly, the
-   * shortest in time, which now and then takes one jump more.)
-   */
-  hopPath(a: number, b: number): number[] {
-    const out: number[] = [];
-    let cur = a;
-    while (cur !== b && out.length < 16) {
-      const left = this.hops(cur, b);
-      let best = -1;
-      let bd = Infinity;
-      for (const x of this.neighbours(cur)) {
-        if (this.hops(x, b) !== left - 1) continue;
-        const d = this.pathLen(cur, x) + this.pathLen(x, b);
-        if (d < bd - 1e-9) {
-          bd = d;
-          best = x;
-        }
-      }
-      if (best < 0) return [];
-      out.push(best);
-      cur = best;
-    }
-    return out;
   }
 
   /** The places one starlane away (worked out once from the map, which does not change). */
@@ -1317,8 +1292,8 @@ export class Game {
     if (n.owner < 0 || n.kind !== 'planet' || this.asleep(n.owner)) return;
     let dmg = amount * DMG_TABLE[type].planet;
     if (dmg <= 0) return;
-    // A world a Bastion protects takes less (`LINK_GUARD`), for as long as that Bastion stands.
-    if (this.guardsOf(n).length) dmg *= 1 - LINK_GUARD;
+    // A world a Bastion protects takes less (`FIELD_GUARD`), for as long as that Bastion stands.
+    dmg *= 1 - this.guardOf(n);
     const owner = this.factions[n.owner];
     if (n.lastHit > 25 && byFaction >= 0) {
       const who = this.factions[byFaction];

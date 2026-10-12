@@ -88,6 +88,21 @@ function rngEdges(pts: { x: number; y: number }[]): [number, number][] {
   return out;
 }
 
+/** How far a point is from the stretch between two others. */
+function segDist(px: number, py: number, ax: number, ay: number, bx: number, by: number): number {
+  const dx = bx - ax;
+  const dy = by - ay;
+  const len2 = dx * dx + dy * dy;
+  const t = len2 > 0 ? Math.max(0, Math.min(1, ((px - ax) * dx + (py - ay) * dy) / len2)) : 0;
+  return dist(px, py, ax + dx * t, ay + dy * t);
+}
+
+/** Do the stretches a-b and c-d cross? */
+function crosses(a: { x: number; y: number }, b: { x: number; y: number }, c: { x: number; y: number }, d: { x: number; y: number }): boolean {
+  const side = (p: { x: number; y: number }, q: { x: number; y: number }, r: { x: number; y: number }) => Math.sign((q.x - p.x) * (r.y - p.y) - (q.y - p.y) * (r.x - p.x));
+  return side(a, b, c) !== side(a, b, d) && side(c, d, a) !== side(c, d, b);
+}
+
 /** Gabriel graph edges (superset of RNG) — used to add a few loops. */
 function gabrielEdges(pts: { x: number; y: number }[]): [number, number][] {
   const out: [number, number][] = [];
@@ -352,6 +367,30 @@ function tryGenerate(seed: number, opts: MapGenOptions): MapGenResult {
         .filter((id) => id !== starId && !nodes[starId].lanes.includes(id))
         .sort((a, b) => dist(nodes[a].x, nodes[a].y, sp.x, sp.y) - dist(nodes[b].x, nodes[b].y, sp.x, sp.y));
       for (const id of near.slice(0, 2 - nodes[starId].lanes.length)) addLane(starId, id);
+    }
+    // A Hearth has a world next door: the nearest one whose starlane would cross no other and pass
+    // through no place on its way (or, failing that, simply the nearest). A Bastion protects the
+    // worlds one jump from it, and one Hearth in six had only its star and an anomaly for neighbours:
+    // nothing could have protected it.
+    for (const h of sysNodes) {
+      const home = nodes[h];
+      if (home.tag !== 'home' || home.lanes.some((id) => nodes[id].kind === 'planet')) continue;
+      const cands = planets.filter((id) => id !== h).sort((a, b) => dist(nodes[a].x, nodes[a].y, home.x, home.y) - dist(nodes[b].x, nodes[b].y, home.x, home.y));
+      const clear = (to: number) => {
+        const t = nodes[to];
+        for (const id of sysNodes) {
+          if (id === h || id === to) continue;
+          const o = nodes[id];
+          if (segDist(o.x, o.y, home.x, home.y, t.x, t.y) < o.well) return false;
+        }
+        for (const l of lanes) {
+          if (nodes[l.a].system !== s || nodes[l.b].system !== s || l.a === h || l.b === h || l.a === to || l.b === to) continue;
+          if (crosses(home, t, nodes[l.a], nodes[l.b])) return false;
+        }
+        return true;
+      };
+      const pick = cands.find(clear) ?? cands[0];
+      if (pick !== undefined) addLane(h, pick);
     }
   }
 

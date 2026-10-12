@@ -46,7 +46,7 @@ export const GLOSSARY: GlossEntry[] = [
   term('mine', 'Mine', 'mines?', 'A world role: the world makes [75% more Embers].'),
   term('forge', 'Forge', 'forges?', 'A world role: builds ships. Higher levels build faster.'),
   term('observatory', 'Observatory', 'observator(?:y|ies)', 'A world role: makes [Lore] and sees one starlane further.'),
-  term('bastion', 'Bastion', 'bastions?', 'A world role: orbital guns, [+50% hull and shields], repairs for your ships there, and an anti-warp field. From level II it links with another field of yours, and the world it is linked with takes [40% less damage] while the Bastion stands.'),
+  term('bastion', 'Bastion', 'bastions?', 'A world role: orbital guns, [+50% hull and shields], repairs for your ships there, and an anti-warp field over its world and every place one jump away. Your other worlds one jump from it take [20% less damage] while it stands ([30%] at level II, [40%] at level III).'),
   term('level', 'World level', 'world levels?|world upgrades?|levels? (?:I|II|III)|up to III|rises one level', 'Worlds rise from level I to III. Each level adds output, hull and hangar room.'),
   term('hangar', 'Hangar', 'hangars?', 'Room for your fleet. Every world adds room, more at higher levels. When it is full you cannot build ships.'),
   term('bay', 'Hangar Bay', 'hangar bays?', 'Built at your Hearth: [+5 hangar room] each. Every bay costs more than the last.'),
@@ -70,7 +70,7 @@ export const GLOSSARY: GlossEntry[] = [
   term('shields', 'Shields', 'shields?', 'Take damage before the hull, and recharge when out of combat.', true),
   term('armor', 'Armor', 'armou?r', 'Cuts the damage that gets through to the hull.'),
   term('starlane', 'Starlane', 'starlanes?|jumps?', 'The routes between stars and worlds. Ships jump onto a starlane to travel.'),
-  term('field', 'Anti-warp field', 'anti-warp fields?', 'Kept up by a Bastion, a Hearth and any world with a Starbase. Enemy ships there take [6 s longer] to jump away, so raiders must stand and fight. From level II a Bastion’s field links with another field of yours 2 jumps away (3 at level III), and the places on the starlanes between them are held too.'),
+  term('field', 'Anti-warp field', 'anti-warp fields?', 'Kept up by a Bastion, a Hearth and any world with a Starbase. Enemy ships there take [6 s longer] to jump away, so raiders must stand and fight. A Bastion’s field also reaches [every place one jump away], and your other worlds there take less damage while it stands.'),
   term('spool', 'Spool', 'spool(?:s|ing)?', 'Ships charge their drives for a few seconds before they jump onto a starlane. Under fire it takes twice as long.'),
   // The sector
   term('relic', 'Relic', 'relics?', 'An ancient treasure dug out of a guarded vault. Each relic gives its holder a bonus.'),

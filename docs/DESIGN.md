@@ -72,48 +72,57 @@ the depth into the draft and the screen into a "one thing at a time" model.
     role) and at any world with a Starbase, enemy ships take 6 seconds longer to jump away. The field
     shows as a violet ring inside the world's well, and the world's card says so, for its owner and
     for an attacker. The Gravity Anchors Boon adds its 4 seconds at every world of the house.
-    **Fields link** (`Game.fieldLinks`, `linkReach`, `LINK_REACH`): two towers, and the wall between
-    them. A Bastion alone holds only its own world, at every level. Two fields of one house (a
-    Bastion's, its Hearth's, a Starbase's), at least one of them a Bastion that reaches the other,
-    join along the starlanes between them, and every place on that way is held as well. A Bastion
-    reaches by its level: not at all at level I, 2 jumps at level II (a partner in its own system:
-    the star between them), 3 jumps at level III (across to the next system: both stars of the
-    starlane between). The way is the one with the fewest jumps (`hopPath`: what a player counts on
-    the map), so two worlds joined by a starlane of their own link along that, and hold nothing more.
-    The map draws a link as a violet line along its starlanes and rings each place it holds; the
-    cards say it in words ("LINKED WITH AURELIA: ORISON HELD TOO", "BETWEEN YOUR FIELDS: ENEMIES JUMP
-    6S SLOWER"), and a Bastion of the player's that links with nothing says why ("AT LEVEL II ITS
-    FIELD LINKS 2 JUMPS AWAY", "NO FIELD OF YOURS WITHIN 2 JUMPS TO LINK"): the third playtest's
-    Bastion on an isolated leg did nothing for the way past it, and nothing said so. Fields do not
-    add up: one is one. Lose or retool one end and the link is gone. In the cradle a Bastion holds
-    its own land only.
-    **A Bastion protects the world it is linked with** (`Game.guardsOf`, `LINK_GUARD`): that world
-    takes 40% less damage for as long as the Bastion stands. It is what a Bastion is for. The third
-    playtest's host did not see why he would build one, and said that going straight for the Hearth
-    and ignoring every other world was the one tactic there was; he asked for Bastions that bar the
-    way, or cost a fleet its shields and a share of its hull for flying past. Both tax movement,
-    which is bad to play: a fleet is punished for going where it was sent. Protection takes nothing
-    from anyone. A fleet flies where it likes; a Hearth linked with a Bastion is simply slow to
-    crack, and taking the Bastion first is the better play, which also gives ships that break worlds
-    their job. A Bastion protects the other end of its link, not itself (linked with a Hearth it is
-    the way in); two Bastions linked protect each other. Protection does not add up, but every
-    Bastion a world is linked with must fall before it is gone. The world wears a thin violet ring
-    that flares when it takes a hit, and the cards say it from both sides ("PROTECTED BY MIRACH I:
-    40% LESS DAMAGE", "PROTECTS AURELIA: 40% LESS DAMAGE THERE"). (The word is "protected", not
-    "walled": a Hearth's walls are its strength in the first minutes, another thing.) Rival houses
+    **A Bastion's field reaches one jump** (`Game.fieldReaches`, `isBastion`): it covers its own
+    world and every place one starlane from it, at every level, with nothing else needed. That is
+    the whole rule, and it is the one a player reads off the map: the fourth playtest's host made a
+    Bastion, saw the field round that world only, and asked whether it was a bug. (It was the rule
+    of 1.13: fields *linked* between two strongholds within two or three jumps, so a Bastion alone
+    did nothing past its own world, and its card's "NO FIELD OF YOURS WITHIN 2 JUMPS TO LINK" said
+    what was missing and not what to do. It had passed on paper: it could be drawn on the map, and
+    it left a choice. It failed the third test, which is that what a player does shows its effect at
+    once and on its own. Before that, 1.11 had reach by level: its own world, then its system's
+    star, then the whole system. One level III Bastion did it all, and no second Bastion was ever
+    worth its role.) A level makes a Bastion stronger, not wider. A Hearth's field and a Starbase's
+    hold their own world only, and in the cradle a Bastion holds its own land only. Fields do not
+    add up: a place two Bastions reach is held once.
+    **A Bastion protects the worlds of its house one jump from it** (`Game.guardsOf`, `guardOf`,
+    `FIELD_GUARD`): they take 20% less damage while it stands, 30% at level II, 40% at level III.
+    It is what a Bastion is for. The third playtest's host did not see why he would build one, and
+    said that going straight for the Hearth and ignoring every other world was the one tactic there
+    was; he asked for Bastions that bar the way, or cost a fleet its shields and a share of its hull
+    for flying past. Both tax movement, which is bad to play: a fleet is punished for going where it
+    was sent. Protection takes nothing from anyone. A fleet flies where it likes; a Hearth with a
+    Bastion next door is simply slow to crack, and taking the Bastion first is the better play,
+    which also gives ships that break worlds their job. A Bastion protects its neighbours, not
+    itself (next to a Hearth it is the way in); two Bastions next to each other protect each other,
+    which is all the "interlocking" there needs to be. Of two Bastions next to one world the
+    stronger counts, and both must fall before the protection is gone.
+    On the map a Bastion's starlanes are drawn in the field's violet and each place it reaches wears
+    the field's ring; a protected world wears a thin violet ring close about it, which flares when
+    it takes a hit. The cards say it from every side ("FIELD ALSO REACHES THE 3 PLACES ONE JUMP
+    AWAY", "PROTECTS AURELIA: 20% LESS DAMAGE", "PROTECTED BY CALYX V: 20% LESS DAMAGE", "FIELD FROM
+    CALYX V: ENEMIES JUMP 6S SLOWER", and for a Bastion of the player's with no world of theirs next
+    door, "NO WORLD OF YOURS ONE JUMP AWAY TO PROTECT"). (The word is "protected", not "walled": a
+    Hearth's walls are its strength in the first minutes, another thing.) And the choice can be seen
+    before it is made: the Bastion button's tip says what the role would do at this very world
+    ("Here its field would reach 3 places and protect your Hearth and Calyx II"), and while the
+    pointer is on the button the map shows it, blinking (`ViewState.fieldPreview`).
+    So where a Bastion goes is the decision. A world has two starlanes at the median, so a Bastion
+    protects one or two worlds; only about a third of Hearths have a neighbour that also touches
+    their star, so protecting the Hearth and holding the system's crossroads are usually two
+    Bastions' work. **Every Hearth has a world next door** (`mapgen.ts`): one Hearth in six had only
+    its star and an anomaly for neighbours, and nothing could have protected it. Such a Hearth now
+    gets a starlane to its nearest world (one that crosses no other lane and runs through no place,
+    where there is one), so a seed that had such a Hearth makes a sector with one starlane more.
+    Rival houses keep one world next to their Hearth for a Bastion (it is the first world a house
+    kindles, and went to its first Forge or Observatory: 4 Hearths in 48 were protected until the
+    choice of roles kept it), then put Bastions next to as many of their worlds as may be. They
     count a protected world as that much harder, and the Bastion that protects a Hearth as worth
-    going for. An early rush is not touched by it: a link takes a Bastion at level II.
-    So the choices are real ones: two level II Bastions in a system cost two worlds' roles and
-    little else; one level III Bastion a system, each linked to the next system's, costs fewer
-    worlds and more Embers, and the whole chain falls with one of its links. A world that only hangs
-    off its star (a Mine) is on no way between two fields: raiders still reach it, and are caught at
-    the star on their way out. (1.11 had tried reach by level: its own world, then its system's
-    star, then the whole system. One level III Bastion did it all, no second Bastion was ever worth
-    its role, and "world, star, everything" was not something a player would guess from the map.)
-    Rival houses prefer a world within two jumps of another of their fields for a Bastion; in twelve
-    AI-only games every game had links, one to four of them, the first between minute 6 and 29.
-    Pace is within what the seeds vary by (40 seeds, Normal: small 28 and medium 31 of 40 games
-    decided within the hour, against 34 and 33; medians 40 and 35 minutes, against 44 and 37).
+    going for. In twelve AI-only games on medium sectors 37 of 48 houses built a Bastion, the first
+    at minute 9 at the median, and 36 had their Hearth protected by one; a Bastion protected two
+    worlds at the median, three at the most. Pace is within what the seeds vary by (40 seeds,
+    Normal: small 36 and medium 32 of 40 games decided within the hour, against 34 and 35 with
+    links; medians 41 and 41 minutes, against 46 and 39).
   - **Under fire a drive spools at half speed** (`UNDER_FIRE`, `FIRE_SPOOL`): a ship hit in the last
     two seconds takes twice as long to get away. Running from a fight costs time.
   So a raid on a Bastion is a commitment, a Bastion is the buildable answer to raiders, and the

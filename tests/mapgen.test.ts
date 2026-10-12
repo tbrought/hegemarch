@@ -41,6 +41,20 @@ describe('map generation', () => {
     }
   }
 
+  it('every Hearth has a world next door (a Bastion protects the worlds one jump from it)', () => {
+    for (const size of sizes) {
+      for (let seed = 1; seed <= 40; seed++) {
+        const m = generateMap(seed * 31, { size, empires: EMPIRES_BY_SIZE[size], crisis: seed % 2 === 0 });
+        for (const h of m.homes) {
+          const next = m.nodes[h].lanes.map((id) => m.nodes[id]);
+          expect(next.some((n) => n.kind === 'planet')).toBe(true);
+          // (And still no Hearth next to another.)
+          expect(next.some((n) => n.tag === 'home')).toBe(false);
+        }
+      }
+    }
+  });
+
   it('is deterministic', () => {
     const a = generateMap(5, { size: 'medium', empires: 4, crisis: true });
     const b = generateMap(5, { size: 'medium', empires: 4, crisis: true });

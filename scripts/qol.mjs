@@ -367,55 +367,87 @@ const screen = (page) => ev(page, () => window.__app.screen);
   check(allBuilt.there && allBuilt.disabled && /Every bay is built/.test(allBuilt.tip ?? ''), `with every bay built it is still there, greyed, with the reason (${(allBuilt.tip ?? '').slice(-40)})`);
   await page.screenshot({ path: '.shots/qol-projects.png' });
   await ev(page, () => window.__app.session.clearSelection());
-  // (The third playtest.) Fields link: a Bastion at level II two jumps from the Hearth, and its card and
-  // the card of the place between them say so.
-  const linked = await ev(page, () => {
+  // (The fourth playtest.) A Bastion's field reaches the places one jump from it, and it protects the
+  // worlds of its house there. A world next to the Hearth: before it is a Bastion, that role's button
+  // says what it would do here and the map shows it; made one, its card, the Hearth's and the card of
+  // a place next door say it.
+  const reach = await ev(page, () => {
     const app = window.__app;
     const s = app.session;
     const g = s.game;
     const p = g.player;
     const hearth = g.nodes[p.capital];
-    const world = g.nodes.find((n) => n.kind === 'planet' && n.owner < 0 && g.hops(n.id, hearth.id) === 2);
+    const world = g.nodes
+      .filter((n) => n.kind === 'planet' && n.owner < 0 && g.hops(n.id, hearth.id) === 1)
+      .sort((a, b) => g.neighbours(b.id).length - g.neighbours(a.id).length)[0];
     for (const u of [...g.buckets[world.id]]) g.killUnit(u, -1);
     g.kindleWorld(world, p.id);
     g.flushDeferred();
-    world.role = 'bastion';
+    world.role = 'mine';
     world.retool = 0;
     world.fresh = undefined;
     g.setLevel(world, 1);
-    const before = g.fieldLinks().filter((l) => l.owner === p.id).length;
     s.selectNode(world.id);
     window.__bastion = world.id;
-    return { before, name: world.name };
+    return { id: world.id, name: world.name, next: g.neighbours(world.id).length, fields: g.fieldReaches().filter((r) => r.owner === p.id).length };
   });
   await page.waitForTimeout(300);
-  const cardLine = () => ev(page, () => window.__app.hud.ui.lastHints.map((h) => h.key).filter((k) => k.startsWith('card-line:') && /LINK|BETWEEN|PROTECT/.test(k)).map((k) => k.slice(10)));
-  const lone = await cardLine();
-  check(linked.before === 0 && lone.some((t) => /^AT LEVEL II ITS FIELD LINKS/.test(t)), `a Bastion at level I links with nothing, and its card says what level II brings (${lone.join(' | ')})`);
-  const link = await ev(page, () => {
+  const cardLine = () => ev(page, () => window.__app.hud.ui.lastHints.map((h) => h.key).filter((k) => k.startsWith('card-line:') && /FIELD|PROTECT/.test(k)).map((k) => k.slice(10)));
+  const spot = (id) => ev(page, (id) => {
+    const c = document.getElementById('game').getBoundingClientRect();
     const app = window.__app;
-    const g = app.session.game;
+    const r = app.hud.ui.rectOf(id);
+    return r ? { x: c.left + ((r.x + r.w / 2) * c.width) / app.hud.W, y: c.top + ((r.y + r.h / 2) * c.height) / app.hud.H } : null;
+  }, id);
+  const before = await cardLine();
+  const btn = await spot('role-bastion');
+  await page.mouse.move(btn.x - 40, btn.y - 60);
+  await page.mouse.move(btn.x, btn.y, { steps: 5 });
+  await page.waitForTimeout(500);
+  const pre = await ev(page, () => {
+    const app = window.__app;
+    const r = app.hud.ui.rectOf('role-bastion');
+    return { preview: app.session.view.fieldPreview, tip: (typeof r.tip === 'function' ? r.tip() : r.tip) ?? '' };
+  });
+  check(reach.fields === 0 && !before.some((t) => /REACHES|PROTECT/.test(t)), `a Mine next to the Hearth has no field (${before.join(' | ') || 'no line'})`);
+  check(pre.preview === reach.id, `with the pointer on the Bastion button, the map shows where its field would reach (${pre.preview} for world ${reach.id})`);
+  check(new RegExp(`Here its field would reach ${reach.next} places? and protect .*your Hearth`).test(pre.tip), `and the button says what it would do here (${(pre.tip.match(/Here its field[^.]*\./) ?? ['no such sentence'])[0]})`);
+  await page.screenshot({ path: '.shots/qol-field-preview.png' });
+  await page.mouse.move(btn.x - 40, btn.y - 200, { steps: 5 });
+  await page.waitForTimeout(300);
+  check((await ev(page, () => window.__app.session.view.fieldPreview)) === -1, 'and no longer once the pointer has left it');
+  const made = await ev(page, () => {
+    const g = window.__app.session.game;
+    const p = g.player;
     const world = g.nodes[window.__bastion];
-    g.setLevel(world, 2);
-    const l = g.fieldLinks().find((x) => x.owner === g.playerId);
-    window.__between = l?.way[1];
-    return l ? l.way.map((id) => g.nodes[id].name) : null;
+    world.role = 'bastion';
+    world.retool = 0;
+    const hearth = g.nodes[p.capital];
+    const other = g.neighbours(world.id).map((id) => g.nodes[id]).find((n) => n.owner !== p.id);
+    window.__next = other ? other.id : -1;
+    return { reaches: g.fieldReaches().filter((r) => r.from === world.id).length, guard: g.guardOf(hearth), guards: g.guardsOf(hearth).length, other: other ? other.name : null };
   });
   await page.waitForTimeout(300);
-  const joined = await cardLine();
-  check(link && link.length === 3 && joined.some((t) => t.startsWith('LINKED WITH') && t.includes(link[1].toUpperCase())), `at level II it links with the Hearth, and the place between is held (${joined.join(' | ')})`);
-  // What a Bastion is for: the Hearth it is linked with takes less damage while it stands.
-  check(joined.some((t) => /^PROTECTS .+: 40% LESS DAMAGE THERE$/.test(t)), `and it protects the Hearth it is linked with (${joined.find((t) => t.startsWith('PROTECTS')) ?? 'no line'})`);
+  const own = await cardLine();
+  check(made.reaches === reach.next && own.some((t) => /^FIELD ALSO REACHES /.test(t)), `made a Bastion at level I, its field reaches every place one jump away at once (${made.reaches} of ${reach.next}: ${own.find((t) => t.startsWith('FIELD ALSO')) ?? 'no line'})`);
+  check(own.some((t) => /^PROTECTS .+: 20% LESS DAMAGE$/.test(t)), `and its card says what it protects (${own.find((t) => t.startsWith('PROTECTS')) ?? 'no line'})`);
   await ev(page, () => window.__app.session.selectNode(window.__app.session.game.player.capital));
   await page.waitForTimeout(300);
   const hearthCard = await cardLine();
-  const guarded = await ev(page, () => { const g = window.__app.session.game; return g.guardsOf(g.nodes[g.player.capital]).length; });
-  check(guarded === 1 && hearthCard.some((t) => /^PROTECTED BY .+: 40% LESS DAMAGE$/.test(t)), `the Hearth's card says what protects it (${hearthCard.find((t) => t.startsWith('PROTECTED')) ?? 'no line'})`);
-  await ev(page, () => window.__app.session.selectNode(window.__between));
+  check(made.guards === 1 && made.guard === 0.2 && hearthCard.some((t) => /^PROTECTED BY .+: 20% LESS DAMAGE$/.test(t)), `the Hearth's card says what protects it (${hearthCard.find((t) => t.startsWith('PROTECTED')) ?? 'no line'})`);
+  await ev(page, () => { const g = window.__app.session.game; g.setLevel(g.nodes[window.__bastion], 2); });
   await page.waitForTimeout(300);
-  const mid = await cardLine();
-  check(mid.some((t) => t.startsWith('BETWEEN YOUR FIELDS')), `and that place's card says it lies between two fields (${mid.join(' | ')})`);
-  await page.screenshot({ path: '.shots/qol-link.png' });
+  const raised = await cardLine();
+  check(raised.some((t) => /^PROTECTED BY .+: 30% LESS DAMAGE$/.test(t)), `raised to level II the Bastion protects by more, and reaches no further (${raised.find((t) => t.startsWith('PROTECTED')) ?? 'no line'})`);
+  if (made.other) {
+    await ev(page, () => window.__app.session.selectNode(window.__next));
+    await page.waitForTimeout(300);
+    const next = await cardLine();
+    check(next.some((t) => /^(FIELD FROM .+|IN YOUR FIELD): ENEMIES JUMP/.test(t)), `and the card of ${made.other}, next door, says the field reaches it (${next.join(' | ') || 'no line'})`);
+  }
+  await ev(page, () => window.__app.session.selectNode(window.__bastion));
+  await page.waitForTimeout(300);
+  await page.screenshot({ path: '.shots/qol-field.png' });
   await ev(page, () => window.__app.session.clearSelection());
   // (The third playtest.) A right-click shows the way for a moment; Shift+right-click adds a stop.
   const way = await ev(page, () => {

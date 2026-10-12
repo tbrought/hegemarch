@@ -30,6 +30,11 @@ export interface ViewState {
   route: number;
   /** Leave out names and labels (the ending of a run, once its words are on the screen). */
   plain?: boolean;
+  /**
+   * A world the player is thinking of making a Bastion (the pointer is on that role's button): the map
+   * shows where its field would reach before it is done. -1 or absent for none.
+   */
+  fieldPreview?: number;
 }
 
 export function emptyView(reveal = false): ViewState {
@@ -154,7 +159,7 @@ export class Renderer {
       this.drawSystemHalos(ctx, g, explored);
     }
     this.drawLanes(ctx, g, explored, vis, view);
-    if (!backdrop) this.drawFieldLinks(ctx, g, explored, vis);
+    if (!backdrop) this.drawFieldReaches(ctx, g, explored, vis, view);
     if (!backdrop) this.drawRoutes(ctx, g, view, dt);
     for (const n of g.nodes) {
       if (!explored(n.id)) continue;
@@ -290,24 +295,32 @@ export class Renderer {
   }
 
   /**
-   * Links between fields (`Game.fieldLinks`): a violet line along the starlanes from one world to the
-   * other, the wall between two towers. The player's own are always drawn; another house's where the
-   * player sees a place on that stretch.
+   * Where the Bastions' fields reach (`Game.fieldReaches`): a violet line along each starlane out of a
+   * Bastion, to the places one jump away (which wear the field's ring, like the Bastion). The player's
+   * own are always drawn; another house's where the player sees one end of the stretch. A world the
+   * player is thinking of making a Bastion (`view.fieldPreview`) shows its starlanes the same way, in
+   * dots that run outward.
    */
-  private drawFieldLinks(ctx: Ctx, g: Game, explored: (i: number) => boolean, vis: (i: number) => boolean) {
+  private drawFieldReaches(ctx: Ctx, g: Game, explored: (i: number) => boolean, vis: (i: number) => boolean, view: ViewState) {
     if (this.cam.zoom < 0.03) return;
     const seen = new Set<string>();
-    for (const l of g.fieldLinks()) {
-      for (let i = 1; i < l.way.length; i++) {
-        const a = l.way[i - 1];
-        const b = l.way[i];
-        if (!explored(a) || !explored(b) || !(l.owner === g.playerId || vis(a) || vis(b))) continue;
-        const key = Math.min(a, b) + '-' + Math.max(a, b);
-        if (seen.has(key)) continue;
-        seen.add(key);
-        const seg = this.laneSeg(g.nodes[a], g.nodes[b]);
-        if (seg) line(ctx, seg[0], seg[1], seg[2], seg[3], PAL.violet, 2);
-      }
+    for (const r of g.fieldReaches()) {
+      const a = r.from;
+      const b = r.to;
+      if (!explored(a) || !explored(b) || !(r.owner === g.playerId || vis(a) || vis(b))) continue;
+      const key = Math.min(a, b) + '-' + Math.max(a, b);
+      if (seen.has(key)) continue;
+      seen.add(key);
+      const seg = this.laneSeg(g.nodes[a], g.nodes[b]);
+      if (seg) line(ctx, seg[0], seg[1], seg[2], seg[3], PAL.violet, 2);
+    }
+    const pv = view.fieldPreview ?? -1;
+    if (pv < 0 || !g.nodes[pv]) return;
+    const phase = Math.floor(this.time * 8);
+    for (const b of g.neighbours(pv)) {
+      if (!explored(b) || seen.has(Math.min(pv, b) + '-' + Math.max(pv, b))) continue;
+      const seg = this.laneSeg(g.nodes[pv], g.nodes[b]);
+      if (seg) line(ctx, seg[0], seg[1], seg[2], seg[3], PAL.violet, 3, -phase);
     }
   }
 
@@ -384,9 +397,13 @@ export class Renderer {
     // Gravity well edge (where ships gather) for visible worlds at closer zoom.
     if (visible && z >= 0.05 && n.kind !== 'star') ring(ctx, x, y, wellR, this.ground ? PAL.indigo : PAL.night, 4);
     // An anti-warp field (a Bastion, a Hearth, a Starbase): a second, violet ring just inside the edge. A
-    // place held by a link between two fields has the same ring: a violet ring is a field, wherever it
-    // comes from. (Clear of the place itself: a star's well is small.)
-    if (visible && z >= 0.08 && this.game && this.game.fieldsOver(n).length) ring(ctx, x, y, Math.max(wellR - 3, this.nodeR(n) * 2 + 6), PAL.violet, 8);
+    // place one jump from a Bastion, which its field reaches, has the same ring: a violet ring is a
+    // field, wherever it comes from. (Clear of the place itself: a star's well is small.) A world the
+    // player is thinking of making a Bastion shows the rings it would bring, blinking.
+    const pv = view.fieldPreview ?? -1;
+    const previewed = pv >= 0 && (pv === n.id || g.neighbours(pv).includes(n.id));
+    const blink = Math.floor(t * 4) % 2 === 0;
+    if (z >= 0.08 && ((visible && g.fieldsOver(n).length) || (previewed && blink))) ring(ctx, x, y, Math.max(wellR - 3, this.nodeR(n) * 2 + 6), PAL.violet, 8);
 
     if (n.kind === 'star') {
       const s = starSprite(r, n.starColor);
@@ -427,9 +444,10 @@ export class Renderer {
         else ring(ctx, x, y, rr, visible ? f.color : shade(f.color));
         if (n.capitalOf >= 0 && r >= 3) icon(ctx, 'conquest', x - 2, y - r - (r > 6 ? 12 : 9), f.color, true);
         if (visible && n.lastHit < 1.5 && Math.floor(t * 6) % 2 === 0) ring(ctx, x, y, rr + 2, PAL.red, 1);
-        // Protected by a Bastion it is linked with: a ring of the field's violet close about it, which
-        // flares white for a moment when it takes a hit for the world.
-        if (visible && r >= 3 && this.game?.guardsOf(n).length) ring(ctx, x, y, rr + 4, n.lastHit < 0.25 ? PAL.bone : PAL.violet, 1);
+        // Protected by a Bastion next door: a ring of the field's violet close about it, which flares
+        // white for a moment when it takes a hit for the world. (Blinking, for a world that would be.)
+        if (visible && r >= 3 && g.guardsOf(n).length) ring(ctx, x, y, rr + 4, n.lastHit < 0.25 ? PAL.bone : PAL.violet, 1);
+        else if (previewed && blink && r >= 3 && pv !== n.id && n.owner === g.nodes[pv].owner) ring(ctx, x, y, rr + 4, PAL.violet, 1);
       }
       // A seed ship at work: progress ring.
       if (visible && owner < 0) {

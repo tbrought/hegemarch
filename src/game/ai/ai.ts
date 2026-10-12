@@ -1,5 +1,5 @@
 import type { Game } from '../Game';
-import { AI_ATTACK_RATIO, AI_FIRST_ATTACK, AI_RUSH, AI_THINK, LINK_GUARD, LINK_REACH } from '../constants';
+import { AI_ATTACK_RATIO, AI_FIRST_ATTACK, AI_RUSH, AI_THINK } from '../constants';
 import { CARD_BY_ID, type CardCat } from '../data/cards';
 import { ERAS, LAST_CRADLE_ERA } from '../data/eras';
 import { isWarship, UNITS } from '../data/units';
@@ -286,16 +286,31 @@ function roles(g: Game, f: Faction, ctx: Ctx) {
     ['bastion', p === 'turtle' ? Math.floor(n / 4) : n >= 7 ? 1 : 0],
   ];
   const frontier = new Set(ctx.frontier.map((w) => w.id));
+  // A Bastion protects the worlds one jump from it, and the Hearth before all: as long as no Bastion
+  // stands next to the Hearth, one world next to it (the largest still a Mine) is kept for one. (It is
+  // the first world a house kindles and the only one that glows when the first Forge and Observatory
+  // are due, so it went to those: 4 Hearths in 48 had a Bastion next door.)
+  const cap = f.capital >= 0 ? g.nodes[f.capital] : null;
+  // (Not in the cradle, where a Bastion holds its own land only and protects no other.)
+  const open = !g.cradle && !!cap && g.guardsOf(cap).length === 0;
+  const byHearth = new Set(cap ? g.neighbours(cap.id) : []);
+  const kept = open ? plain.filter((w) => byHearth.has(w.id) && w.role === 'mine').sort((a, b) => SIZE_VALUE[b.size] - SIZE_VALUE[a.size] || a.id - b.id)[0] : undefined;
   for (const [role, k] of want) {
     if (count(role) >= k) continue;
-    const cands = plain.filter((w) => w.role === 'mine' && w.retool <= 0 && w.glow >= 0.5);
+    const cands = plain.filter((w) => w.role === 'mine' && w.retool <= 0 && w.glow >= 0.5 && (role === 'bastion' || w !== kept));
     if (cands.length === 0) continue;
     const score = (w: GNode) => {
       let s = SIZE_VALUE[w.size] + (g.affinityOf(w) === role ? 1.5 : 0) - (g.affinityOf(w) === 'mine' ? 1 : 0);
       if (role !== 'observatory' && frontier.has(w.id)) s += 1.2;
       if (role === 'observatory' && frontier.has(w.id)) s -= 1;
-      // (A Bastion is worth more within reach of another field of the house: there its field links.)
-      if (role === 'bastion' && ctx.worlds.some((o) => o.id !== w.id && g.fieldAt(o) && g.hops(o.id, w.id) <= LINK_REACH[2])) s += 1;
+      // (A Bastion protects the worlds of the house one jump from it: next to the Hearth before all,
+      // then next to as many worlds as may be.)
+      if (role === 'bastion' && !g.cradle) {
+        for (const id of g.neighbours(w.id)) {
+          const o = g.nodes[id];
+          if (o.kind === 'planet' && o.owner === f.id) s += o.capitalOf >= 0 && open ? 5 : 0.6;
+        }
+      }
       return s;
     };
     cands.sort((a, b) => score(b) - score(a));
@@ -474,7 +489,7 @@ function chooseTarget(g: Game, f: Faction, armyPower: number, from: number): { n
       if (g.factions[n.owner].isPlayer) value *= 1 + 0.12 * d;
       // (A world a Bastion protects takes that much longer to crack; the Bastion that protects a Hearth
       // is the way in, and worth going for.)
-      def += n.hp / (n.capitalOf >= 0 ? 900 : 1600) / (g.guardsOf(n).length ? 1 - LINK_GUARD : 1);
+      def += n.hp / (n.capitalOf >= 0 ? 900 : 1600) / (1 - g.guardOf(n));
       const wards = g.guardedBy(n);
       if (wards.some((id) => g.nodes[id].capitalOf >= 0)) value += 14;
       else if (wards.length) value += 4;

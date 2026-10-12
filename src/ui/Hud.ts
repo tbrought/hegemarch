@@ -6,7 +6,7 @@ import { ERAS, LAST_CRADLE_ERA, LINE_SHORT, SPACE } from '../game/data/eras';
 import { RELIC_BY_ID } from '../game/data/relics';
 import { isWarship, UNITS } from '../game/data/units';
 import { ASCENSION_BOONS, DOMINATION_HOLD, DOMINATION_SHARE, GATE_CHARGE, RELIC_HOLD, relicsRequired, TREASURY_HOLD, treasuryTarget, VICTORIES } from '../game/data/victories';
-import { FIRE_SPOOL, HOLD_FIELD, JUMP_CHARGE, LINK_GUARD, LINK_REACH, UNDER_FIRE } from '../game/constants';
+import { FIELD_GUARD, FIRE_SPOOL, HOLD_FIELD, JUMP_CHARGE, UNDER_FIRE } from '../game/constants';
 import { ECON, PLANETS, ROLES, ROLE_ORDER } from '../game/data/worlds';
 import type { Faction, GNode, Note, Unit, UnitType, VictoryId } from '../game/types';
 import { roman } from '../game/util';
@@ -68,8 +68,8 @@ interface Project {
   spark?: boolean;
 }
 
-/** How fields link, for the tips of the cards. */
-const LINK_TIP = `A Bastion alone holds only its own world. From level II its field links with another field of yours (a Bastion's, your Hearth's, a Starbase's) up to ${LINK_REACH[2]} jumps away, at level III up to ${LINK_REACH[3]}: every place on the starlanes between them is held too, and enemy ships there take ${HOLD_FIELD}s longer to jump away. A Bastion also protects the world it is linked with: that world takes ${Math.round(LINK_GUARD * 100)}% less damage while the Bastion stands. Lose or retool one end and the link is gone.`;
+/** What a Bastion's field does, for the tips of the cards. */
+const FIELD_TIP = `A Bastion's field covers its own world and every place one jump from it, at every level: enemy ships there take ${HOLD_FIELD}s longer to jump away. A Bastion also protects the other worlds of its house one jump from it: they take ${Math.round(FIELD_GUARD[1] * 100)}% less damage while it stands, ${Math.round(FIELD_GUARD[2] * 100)}% at level II, ${Math.round(FIELD_GUARD[3] * 100)}% at level III. Two Bastions next to one world do not add up (the stronger counts), but both must fall before the protection is gone.`;
 
 /** How long a drive charges with nothing holding it, for the words of a tip. */
 const JUMP_CHARGE_TEXT = `${JUMP_CHARGE} s`;
@@ -287,6 +287,7 @@ export class Hud {
   private drawAll(dt: number) {
     const g = this.s.screen.g;
     this.ui.begin(dt);
+    this.s.view.fieldPreview = -1;
     // The run is over: the map and its ending have the screen to themselves.
     if (this.g.outcome) {
       this.ending.draw(g, this.W, this.H);
@@ -1360,7 +1361,7 @@ export class Hud {
       const walls = n.capitalOf >= 0 && f.kind === 'empire' ? game.wallsOf(n) : 1;
       if (walls < 1) rows.push(this.line(`WALLS ${pct(walls)}: WEAKER NOW, FULL AT ${fmtTime(ECON.wallsTime)}`, PAL.ember, 'tiny', { terms: gloss('walls') }));
       if (visible && game.fieldAt(n)) rows.push(this.line(`ANTI-WARP FIELD: YOUR SHIPS JUMP AWAY ${HOLD_FIELD}S SLOWER`, PAL.violet, 'tiny', { terms: gloss('field') }));
-      if (visible) rows.push(...this.linkRows(n));
+      if (visible) rows.push(...this.fieldRows(n));
       // (Ages: a house still on its way from the cradle holds its Hearth, and nothing can touch it until it arrives.)
       const away = game.asleep(f.id);
       if (away) rows.push(this.line(`ITS ARK HAS NOT ARRIVED: ${fmtTime(f.asleepUntil - game.time)} TO GO`, PAL.ember, 'tiny', { tip: `The ${f.name} are still on their way from the cradle. Until their Ark arrives nothing here can be hurt, and nothing here will fight.` }));
@@ -1380,8 +1381,8 @@ export class Hud {
       tip: `${this.sizeTip(n)} ${T.name} worlds suit the ${ROLES[aff ?? 'mine'].name} role: ${FIT_TEXT(aff ?? 'mine')} once it is yours.`,
       terms: gloss(aff ?? 'mine', 'natural'),
     }));
-    // (A dark world on the way between two fields is held like any other place there.)
-    if (visible) rows.push(...this.linkRows(n));
+    // (A dark world one jump from a Bastion is held like any other place there.)
+    if (visible) rows.push(...this.fieldRows(n));
     const guards = visible ? game.buckets[n.id].filter((u) => !u.dead && u.owner !== p.id && game.factions[u.owner].kind !== 'empire' && u.type !== 'fighter') : [];
     const seed = game.seedFor(p.id, n.id);
     if (guards.length) {
@@ -1458,7 +1459,7 @@ export class Hud {
     const walls = hearth ? game.wallsOf(n) : 1;
     if (walls < 1) rows.push(this.line(`WALLS ${pct(walls)} · FULL STRENGTH AT ${fmtTime(ECON.wallsTime)}`, PAL.ember, 'tiny', { terms: gloss('walls') }));
     if (game.fieldAt(n)) rows.push(this.line(`ANTI-WARP FIELD: ENEMIES JUMP AWAY ${HOLD_FIELD}S SLOWER`, PAL.violet, 'tiny', { terms: gloss('field') }));
-    rows.push(...this.linkRows(n));
+    rows.push(...this.fieldRows(n));
     rows.push({
       h: 10,
       draw: (x, y) => {
@@ -1490,10 +1491,14 @@ export class Hud {
         if (!hearth) {
           for (const r of ROLE_ORDER) {
             const isAff = aff === r;
+            // (A Bastion is chosen for where it stands: the tip says what it would reach and protect
+            // here, and while the pointer is on the button the map shows it.)
+            const here = r === 'bastion' && n.role !== r && !game.cradle ? ` ${this.bastionHere(n)}` : '';
+            if (here && this.ui.isHot('role-' + r)) this.s.view.fieldPreview = n.id;
             this.ui.iconButton(gx, 'role-' + r, bx, y, 12, r, () => this.actions.role(n.id, r), {
               selected: n.role === r,
               tipTitle: n.role === r ? `${ROLES[r].name} (current role)` : ROLES[r].name,
-              tip: `${ROLES[r].desc}${isAff ? ` This world is a natural fit: ${FIT_TEXT(r)}.` : ''}${n.role === r ? '' : n.fresh ? ' The first role you give a new world costs no time.' : ` Switching takes ${ECON.retoolTime}s, and the world works at neither role meanwhile.`}`,
+              tip: `${ROLES[r].desc}${here}${isAff ? ` This world is a natural fit: ${FIT_TEXT(r)}.` : ''}${n.role === r ? '' : n.fresh ? ' The first role you give a new world costs no time.' : ` Switching takes ${ECON.retoolTime}s, and the world works at neither role meanwhile.`}`,
             });
             if (isAff) {
               gx.fillStyle = PAL.gold;
@@ -1510,7 +1515,7 @@ export class Hud {
           const label = `RAISE TO ${roman(n.level + 1)}`;
           this.ui.button(gx, 'upgrade', bx, y, Math.min(w - (bx - x), 104), 12, label, () => this.actions.upgrade(n.id), {
             disabled: !!why && why !== 'Not enough Embers' ? true : !!why, right: `${IC.ember}${cost}`, font: 'tiny',
-            tip: `Raise ${n.name} to level ${roman(n.level + 1)}: +50% output, more hull and more hangar room.${why ? ` (${why})` : ''}`,
+            tip: `Raise ${n.name} to level ${roman(n.level + 1)}: +50% output, more hull and more hangar room.${game.isBastion(n) ? ` As a Bastion it then protects your worlds one jump away by ${pct(FIELD_GUARD[Math.min(3, n.level + 1)])}, up from ${pct(FIELD_GUARD[n.level])}.` : ''}${why ? ` (${why})` : ''}`,
           });
         } else if (rising) {
           const q = n.buildQ.find((it) => it.kind === 'upgrade')!;
@@ -1760,72 +1765,79 @@ export class Hud {
       }
     }
     if (n.claim?.what === 'derelict') rows.push(this.para('A derelict Dreadnought drifts here. Hold this place alone for 15 seconds to claim it.', PAL.gold, innerW, { terms: gloss('dreadnought') }));
-    if (this.s.visible(n.id)) rows.push(...this.linkRows(n));
+    if (this.s.visible(n.id)) rows.push(...this.fieldRows(n));
     return rows;
   }
 
+  /** What a Bastion would do at a world of the player's, for the tip of that role's button. */
+  private bastionHere(n: GNode): string {
+    const game = this.g;
+    const reach = game.neighbours(n.id);
+    const wards = reach.filter((id) => game.nodes[id].kind === 'planet' && game.nodes[id].owner === n.owner);
+    const names = wards.map((id) => (game.nodes[id].capitalOf >= 0 ? 'your Hearth' : game.nodes[id].name));
+    const places = `${reach.length} ${reach.length === 1 ? 'place' : 'places'}`;
+    return wards.length
+      ? `Here its field would reach ${places} and protect ${names.length > 1 ? `${names.slice(0, -1).join(', ')} and ${names[names.length - 1]}` : names[0]}.`
+      : `Here its field would reach ${places}, and protect nothing: no world of yours is one jump away.`;
+  }
+
   /**
-   * What a place's card says of the links between fields (`Game.fieldLinks`): for a world with a field,
-   * what it is linked with and what that holds (or, for a Bastion of the player's, why it is linked with
-   * nothing: the answer to "what does this Bastion do out here?"); for a place between two fields, that
-   * it is held, and by whom.
+   * What a place's card says of the Bastions' fields: for a Bastion, how far its field reaches and
+   * which worlds it protects (or, for one of the player's, that no world of theirs is next door to be
+   * protected: the answer to "what does this Bastion do out here?"); for a world a Bastion protects, by
+   * which and by how much; for any place a Bastion's field reaches from next door, that it is held.
    */
-  private linkRows(n: GNode): CardRow[] {
+  private fieldRows(n: GNode): CardRow[] {
     const game = this.g;
     const p = game.player;
     if (game.cradle) return [];
     const rows: CardRow[] = [];
     const name = (id: number) => game.nodes[id].name;
-    const list = (ids: number[]) => (ids.length <= 2 ? ids.map(name).join(' and ') : `${ids.length} places`);
-    const row = (t: string, tip: string) => rows.push(this.line(t.toUpperCase(), PAL.violet, 'tiny', { tip: `${tip} ${LINK_TIP}`, terms: gloss('field') }));
-    const links = game.fieldLinks().filter((l) => l.way.includes(n.id));
-    const ends = links.filter((l) => l.a === n.id || l.b === n.id);
-    // Protection: what protects this world, and what it protects. (The word is "protected", not
-    // "walled": a Hearth's walls are another thing, its strength in the first minutes.)
-    const less = `${Math.round(LINK_GUARD * 100)}% less damage`;
-    const by = game.guardsOf(n);
-    const wards = game.guardedBy(n);
+    const names = (ids: number[], last = 'and') => (ids.length > 1 ? `${ids.slice(0, -1).map(name).join(', ')} ${last} ${name(ids[ids.length - 1])}` : ids.map(name).join(''));
+    const row = (t: string, tip: string) => rows.push(this.line(t.toUpperCase(), PAL.violet, 'tiny', { tip: `${tip} ${FIELD_TIP}`, terms: gloss('field') }));
+    /** The first of these that fits a card's line (the last, if none does). */
+    const fits = (...texts: string[]) => texts.find((t) => t && t.length <= 46) ?? texts[texts.length - 1];
     const mine = n.owner === p.id;
-    const both = by.length > 0 && by.length === wards.length && by.every((id) => wards.includes(id));
-    const protection = () => {
-      if (both) {
-        row(`Each protects the other: ${less}`, `${n.name} and ${by.map(name).join(', ')} are linked Bastions: each takes ${less} while the other stands.`);
-        return;
-      }
-      if (by.length) {
-        const who = by.length <= 2 ? by.map(name).join(' and ') : `${by.length} Bastions`;
-        const text = `Protected by ${who}: ${less}`;
-        row(text.length <= 46 ? text : `Protected by ${by.length > 1 ? `${by.length} Bastions` : 'a Bastion'}: ${less}`, mine
-          ? `${n.name} takes ${less} while ${by.map(name).join(' or ')} stands. Lose every Bastion it is linked with and the protection is gone.`
-          : `${n.name} takes ${less} while ${by.map(name).join(' or ')} stands. Take ${by.length > 1 ? 'those Bastions' : 'that Bastion'} first (or see ${by.length > 1 ? 'them' : 'it'} retooled) and the protection is gone.`);
+    // A Bastion: where its field reaches, and what it protects.
+    if (game.isBastion(n)) {
+      const reach = game.neighbours(n.id);
+      const wards = game.guardedBy(n);
+      const guard = FIELD_GUARD[Math.max(1, Math.min(3, n.level))];
+      const less = `${pct(guard)} less damage`;
+      if (reach.length) {
+        row(fits(reach.length === 1 ? `Field also reaches ${name(reach[0])}, one jump away` : '', `Field also reaches the ${reach.length} ${reach.length === 1 ? 'place' : 'places'} one jump away`),
+          `Its field holds ${names(reach)} as well as ${n.name}: every place one jump away.`);
       }
       if (wards.length) {
-        const text = `Protects ${list(wards)}: ${less} there`;
-        row(text.length <= 46 ? text : `Protects ${wards.length} worlds: ${less}`, `${wards.map(name).join(', ')} ${wards.length > 1 ? 'take' : 'takes'} ${less} while ${n.name} stands.`);
+        row(fits(wards.length <= 2 ? `Protects ${names(wards)}: ${less}` : '', `Protects ${wards.length} ${wards.length === 1 ? 'world' : 'worlds'}: ${less}`),
+          `${names(wards)} ${wards.length > 1 ? 'take' : 'takes'} ${less} while ${n.name} stands.${mine ? (n.level < 3 ? ` Raise ${n.name} and that is ${pct(FIELD_GUARD[n.level + 1])}.` : '') : ` Take ${n.name} first (or see it retooled) and the protection is gone.`}`);
+      } else if (mine) {
+        row('No world of yours one jump away to protect', `${n.name} protects the worlds of yours one jump from it, and there is none. Its field still holds the places next to it.`);
       }
-    };
-    if (game.fieldAt(n)) {
-      if (ends.length) {
-        const partners = [...new Set(ends.map((l) => (l.a === n.id ? l.b : l.a)))];
-        const held = [...new Set(ends.flatMap((l) => l.way.slice(1, -1)))];
-        // (Next door to its partner, a link holds nothing more: the card says so, not just "linked".)
-        const full = `Linked with ${list(partners)}: ${held.length ? `${list(held)} held too` : 'nothing lies between'}`;
-        const short = `Linked with ${partners.length} ${partners.length > 1 ? 'fields' : 'field'}: ${held.length ? `${held.length} ${held.length > 1 ? 'places' : 'place'} held too` : 'nothing lies between'}`;
-        row(full.length <= 46 ? full : short, `Its field is linked with ${partners.map(name).join(', ')}${held.length ? `, and holds ${held.map(name).join(', ')} between them` : ', which is next door: no place lies between them to be held'}.`);
-        protection();
-      } else if (n.owner === p.id && n.capitalOf < 0 && game.hasRole(n, 'bastion')) {
-        const reach = game.linkReach(n);
-        if (!reach) row(`At level II its field links ${LINK_REACH[2]} jumps away`, 'Alone and at level I, this Bastion holds only its own world.');
-        else row(`No field of yours within ${reach} jumps to link`, `This Bastion holds only its own world: none of your other fields (a Bastion, your Hearth, a world with a Starbase) is within ${reach} jumps of it.`);
-      }
-      return rows;
     }
-    // A place between two fields.
-    const ours = links.filter((l) => l.owner === p.id);
-    const theirs = links.filter((l) => game.hostile(l.owner, p.id));
-    const between = (ls: typeof links) => ls.map((l) => `${name(l.a)} and ${name(l.b)}`).join('; ');
-    if (ours.length) row(`Between your fields: enemies jump ${HOLD_FIELD}s slower`, `This place lies between ${between(ours)}, whose fields are linked.`);
-    if (theirs.length) row(`Between enemy fields: you jump ${HOLD_FIELD}s slower`, `This place lies between ${between(theirs)}, whose fields are linked.`);
+    // A world a Bastion protects. (The word is "protected", not "walled": a Hearth's walls are another
+    // thing, its strength in the first minutes.)
+    const by = game.guardsOf(n);
+    if (by.length) {
+      const less = `${pct(game.guardOf(n))} less damage`;
+      row(fits(by.length <= 2 ? `Protected by ${names(by)}: ${less}` : '', `Protected by ${by.length > 1 ? `${by.length} Bastions` : 'a Bastion'}: ${less}`), mine
+        ? `${n.name} takes ${less} while ${names(by, 'or')} stands${by.length > 1 ? ' (the stronger of them counts)' : ''}. Lose every Bastion next to it and the protection is gone.`
+        : `${n.name} takes ${less} while ${names(by, 'or')} stands${by.length > 1 ? ' (the stronger of them counts)' : ''}. Take ${by.length > 1 ? 'those Bastions' : 'that Bastion'} first (or see ${by.length > 1 ? 'them' : 'it'} retooled) and the protection is gone.`);
+    }
+    // A place a Bastion's field reaches from next door. (Not said of a world that keeps a field of the
+    // same house up itself: its card has said "anti-warp field" already.)
+    const from = game.fieldsFrom(n).filter((id) => !(game.fieldAt(n) && game.nodes[id].owner === n.owner));
+    const ours = from.filter((id) => game.nodes[id].owner === p.id);
+    const theirs = from.filter((id) => game.hostile(game.nodes[id].owner, p.id));
+    const whose = (ids: number[]) => (ids.length === 1 ? name(ids[0]) : `${ids.length} Bastions`);
+    if (ours.length) {
+      row(fits(`Field from ${whose(ours)}: enemies jump ${HOLD_FIELD}s slower`, `In your field: enemies jump away ${HOLD_FIELD}s slower`),
+        `${n.name} is one jump from ${names(ours)}, whose field reaches it: enemy ships here take ${HOLD_FIELD}s longer to jump away.`);
+    }
+    if (theirs.length) {
+      row(fits(`Enemy field from ${whose(theirs)}: you jump ${HOLD_FIELD}s slower`, `In an enemy field: you jump away ${HOLD_FIELD}s slower`),
+        `${n.name} is one jump from ${names(theirs)}, whose field reaches it: your ships here take ${HOLD_FIELD}s longer to jump away.`);
+    }
     return rows;
   }
 
