@@ -226,7 +226,7 @@ export class Hud {
     // Pending decisions open themselves when auto-pause is on (but not mid-tutorial).
     if (!s.modal && !g.outcome && s.profile.settings.autoPause && !this.tutorial.busy()) {
       const pr = g.prompts.find((x) => x.result === undefined && !this.snoozed.has(x.id));
-      if (pr) this.modals.open({ kind: 'event', promptId: pr.id });
+      if (pr) this.modals.open({ kind: 'event', promptId: pr.id, unbidden: true });
       else if (!s.view.box) {
         // An Ark or a Dreadnought that may learn an ability is a decision too: its choice opens by itself,
         // once. (It waited behind a small button at the edge of the screen, easy to miss, above all right
@@ -235,7 +235,7 @@ export class Hud {
         const u = g.unitList.find((x) => !x.dead && x.owner === g.playerId && x.pendingAbil.length > 0 && !this.abilityShown.has(key(x)));
         if (u) {
           this.abilityShown.add(key(u));
-          this.modals.open({ kind: 'ability', unitId: u.id });
+          this.modals.open({ kind: 'ability', unitId: u.id, unbidden: true });
         }
       }
     }

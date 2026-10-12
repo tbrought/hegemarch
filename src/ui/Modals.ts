@@ -41,7 +41,27 @@ const TIP_ORDER = ['role', 'fleet', 'boonReady', 'raid', 'anomalySeen', 'anomaly
 /** Tips of the cradle of an Ages run (listed first there, last elsewhere). */
 const AGES_TIPS = ['ageReady', 'ageNew', 'ageSiege', 'ageRival', 'ageGone', 'ageArk'];
 
+/**
+ * Seconds a dialog that opened by itself takes no click and no key. A random event comes up in the
+ * middle of play, on top of whatever the player was about to click: twice in one evening a playtester's
+ * click, already on its way to the map, chose an option of an event he had not seen yet. A second is
+ * longer than a click takes to land and shorter than the dialog takes to read; the game stands still
+ * behind it, so it costs nothing.
+ */
+export const DIALOG_GUARD = 1;
+/**
+ * And after a choice, seconds before what the same dialog shows next (an event's outcome, the next
+ * ability, the next Boon) takes one: a double click chooses once.
+ */
+export const CHOICE_GUARD = 0.5;
+
 export class Modals {
+  /** The dialog on the screen, and from when until when it takes no input. */
+  private shown: Modal | null = null;
+  private guardFrom = 0;
+  private guardUntil = 0;
+  /** Where the dialog's frame is this frame (the guard draws its bar there). */
+  private box: { x: number; y: number; w: number; color: string } | null = null;
   private result: { promptId: number; text: string } | null = null;
   private statusTab: StatusTab = 'destinies';
   private helpTab: HelpTab = 'basics';
@@ -104,6 +124,25 @@ export class Modals {
     if (m.kind === 'destinies') this.hud.tutorial.onDestiniesClosed();
   }
 
+  /**
+   * Is the dialog taking no input yet? One that opened by itself, for its first moment (`DIALOG_GUARD`);
+   * any dialog, for a moment after a choice was made in it (`CHOICE_GUARD`).
+   */
+  guarded(): boolean {
+    const m = this.s.modal;
+    if (!m) return false;
+    // (Not drawn yet: a key can come before its first frame.)
+    if (m !== this.shown) return !!m.unbidden;
+    return this.ui.time < this.guardUntil;
+  }
+
+  /** A choice was made and the dialog stays: what it shows next waits a moment before it takes one. */
+  private afterChoice() {
+    if (!this.s.modal) return;
+    this.guardFrom = this.ui.time;
+    this.guardUntil = this.ui.time + CHOICE_GUARD;
+  }
+
   /** Clicking the dimmed area outside closes informational modals. */
   closable(): boolean {
     const k = this.s.modal?.kind;
@@ -114,6 +153,7 @@ export class Modals {
   key(code: string): boolean {
     const m = this.s.modal;
     if (!m) return false;
+    if (this.guarded()) return true;
     if (m.kind === 'draft') {
       const n = parseInt(code.replace('Digit', ''), 10);
       const offer = this.g.ensureOffer(this.g.player);
@@ -134,6 +174,25 @@ export class Modals {
 
   draw(g: Ctx) {
     const m = this.s.modal!;
+    if (m !== this.shown) {
+      this.shown = m;
+      this.guardFrom = this.ui.time;
+      this.guardUntil = m.unbidden ? this.ui.time + DIALOG_GUARD : 0;
+    }
+    const held = this.ui.time < this.guardUntil;
+    if (held) this.ui.holdClicks();
+    this.box = null;
+    this.drawKind(g, m);
+    // While it takes no input, a line runs out under its title: the dialog is there to be read, and
+    // says for how long it will not be clicked.
+    const b = this.box as { x: number; y: number; w: number; color: string } | null;
+    if (held && b && this.s.modal === m) {
+      const left = (this.guardUntil - this.ui.time) / Math.max(0.01, this.guardUntil - this.guardFrom);
+      rect(g, b.x + 2, b.y + 13, Math.round((b.w - 4) * Math.max(0, Math.min(1, left))), 1, b.color);
+    }
+  }
+
+  private drawKind(g: Ctx, m: Modal) {
     switch (m.kind) {
       case 'draft':
         return this.draft(g);
@@ -175,6 +234,7 @@ export class Modals {
     const y = Math.round(H / 2 - h / 2);
     this.ui.add({ id: 'modal-back', x: 0, y: 0, w: W, h: H, onClick: () => this.closable() && this.close() });
     this.ui.panel(g, 'modal', x, y, w, h, { border: color === PAL.gold ? PAL.ember : PAL.slate });
+    this.box = { x, y, w, color };
     rect(g, x + 2, y + 2, w - 4, 11, PAL.indigo);
     textCenter(g, title, x + w / 2, y + 4, color);
     return { x, y };
@@ -198,6 +258,7 @@ export class Modals {
       this.hud.flyBoon(id, r ? r.x + r.w / 2 : this.hud.W / 2, r ? r.y + 18 : this.hud.H / 2);
       this.hud.tips.onBoon(card.cat === 'blueprint');
       if (p.pendingDrafts <= 0) this.s.modal = null;
+      else this.afterChoice();
     }
   }
 
@@ -411,6 +472,7 @@ export class Modals {
     }
     this.result = { promptId, text: r };
     this.s.sfx.play('good', 0.5);
+    this.afterChoice();
   }
 
   private event(g: Ctx, promptId: number) {
@@ -519,6 +581,7 @@ export class Modals {
           if (this.g.cmdChooseAbility(this.g.playerId, u.id, id)) {
             this.s.sfx.play('ability', 0.6);
             if (!u.pendingAbil.length) this.s.modal = null;
+            else this.afterChoice();
           }
         },
       });

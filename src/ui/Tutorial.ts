@@ -173,7 +173,7 @@ export class Tutorial {
     if (g.outcome || p.capital < 0) return;
     if (this.closingCard && !this.s.modal) {
       this.closingCard = false;
-      this.hud.modals.open({ kind: 'nightDone' });
+      this.hud.modals.open({ kind: 'nightDone', unbidden: true });
     }
     const view = this.s.view;
     view.highlightNode = -1;
@@ -273,7 +273,7 @@ export class Tutorial {
           // A moment to watch the Scout set out, then the Destinies.
           if (!this.s.modal && this.t - this.stepSince > 2) {
             this.openedDestinies = true;
-            this.hud.modals.open({ kind: 'destinies' });
+            this.hud.modals.open({ kind: 'destinies', unbidden: true });
           }
         } else if (this.s.modal?.kind !== 'destinies') {
           // However the card went away, the First Night is over.

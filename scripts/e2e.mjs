@@ -30,6 +30,11 @@ const toPage = (ix, iy) =>
     return [r.left + ((x + 0.5) * r.width) / c.width, r.top + ((y + 0.5) * r.height) / c.height];
   }, [ix, iy]);
 const uiRect = (id) => ev((rid) => window.__app.hud?.ui.rectOf(rid) ?? null, id);
+// A dialog that has just opened by itself takes no click and no key for a moment (Modals.guarded): wait
+// it out, as a player would.
+const unheld = async () => {
+  for (let i = 0; i < 60 && (await ev(() => window.__app.hud?.ui.holding())); i++) await wait(100);
+};
 const clickUi = async (id, button = 'left') => {
   let r = await uiRect(id);
   for (let i = 0; i < 10 && !r; i++) {
@@ -37,6 +42,7 @@ const clickUi = async (id, button = 'left') => {
     r = await uiRect(id);
   }
   if (!r) throw new Error('no UI region ' + id);
+  await unheld();
   const [x, y] = await toPage(r.x + r.w / 2, r.y + r.h / 2);
   await page.mouse.click(x, y, { button });
   await wait(120);
@@ -618,6 +624,13 @@ try {
   });
   await wait(300);
   check('a decision opens itself (auto-pause)', await ev(() => window.__app.session.modal?.kind === 'event'));
+  // (It came up by itself: for a moment it takes no key, so that a key already on its way does not
+  // answer it or put it away unread.)
+  await page.keyboard.press('Escape');
+  await page.keyboard.press('1');
+  await wait(100);
+  check('and takes no key for its first moment', await ev(() => window.__app.session.modal?.kind === 'event' && window.__app.session.game.prompts.find((p) => p.id === 777)?.result === undefined));
+  await unheld();
   await page.keyboard.press('Escape');
   await wait(300);
   check('closing a decision does not reopen it', await ev(() => window.__app.session.modal === null));
@@ -706,6 +719,7 @@ try {
   });
   await wait(600);
   check('the choice of an ability opens by itself', await ev(() => window.__app.session.modal?.kind === 'ability'));
+  await unheld();
   await page.keyboard.press('Escape');
   await wait(600);
   check('closed without a choice, it does not open again, and waits behind its button', await ev(() => window.__app.session.modal === null && window.__app.session.game.units.get(window.__app.session.game.player.ark).pendingAbil.length === 1) && !!(await ev(() => window.__app.hud.ui.rectOf('abil-' + window.__app.session.game.player.ark))));

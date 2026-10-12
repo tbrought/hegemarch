@@ -32,6 +32,11 @@ const toPage = (ix, iy) =>
     return [r.left + ((x + 0.5) * r.width) / c.width, r.top + ((y + 0.5) * r.height) / c.height];
   }, [ix, iy]);
 const uiRect = (id) => ev((rid) => window.__app.hud.ui.rectOf(rid), id);
+// A dialog that has just opened by itself takes no click and no key for a moment (Modals.guarded): wait
+// it out, as a player would.
+const unheld = async () => {
+  for (let i = 0; i < 60 && (await ev(() => window.__app.hud?.ui.holding())); i++) await wait(100);
+};
 const clickUi = async (id) => {
   let r = await uiRect(id);
   for (let i = 0; i < 10 && !r; i++) {
@@ -41,6 +46,7 @@ const clickUi = async (id) => {
   if (!r) throw new Error('no UI region ' + id);
   // Clicks are tested against the last finished frame: let a just-opened panel draw once more.
   await wait(120);
+  await unheld();
   const [x, y] = await toPage(r.x + r.w / 2, r.y + r.h / 2);
   await page.mouse.click(x, y);
 };
@@ -369,6 +375,7 @@ try {
   await ev(() => (window.__app.session.modal = null));
   await tick(0.1);
   check('and its closing card waits until the other one is gone', await ev(() => window.__app.session.modal?.kind === 'nightDone'));
+  await unheld();
   await page.keyboard.press('Escape');
   await wait(150);
   check('Esc on the closing card keeps playing', await ev(() => window.__app.session.modal === null && window.__app.screen === 'game'));

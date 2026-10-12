@@ -2018,6 +2018,8 @@ export class Game {
     if (c.cond && !c.cond(this, f, ctx)) return null;
     p.result = c.run(this, f, ctx);
     f.stats.eventsResolved++;
+    // (What was chosen, and what came of it, stays in the log: the dialog is gone at a click.)
+    this.notify(f.id, `${ev.title}: ${c.label}. ${p.result}`, 'event', p.node >= 0 ? p.node : undefined);
     return p.result;
   }
 

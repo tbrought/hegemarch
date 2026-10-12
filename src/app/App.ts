@@ -281,7 +281,7 @@ export class App {
         this.sfx.play('victory', 0.6);
         this.music.duck(FANFARE);
       }
-      s.modal = { kind: 'ascend' };
+      s.modal = { kind: 'ascend', unbidden: true };
     }
     if (playing && this.hud) {
       try {
@@ -516,10 +516,10 @@ export class App {
       this.renderer.cam.zoom = 0.07;
     }
     if (g.config.tutorial && !g.ui.tut) this.hud.tutorial.start();
-    else if (g.cradle && g.time < 1) s.modal = { kind: 'cradle' };
+    else if (g.cradle && g.time < 1) s.modal = { kind: 'cradle', unbidden: true };
     else if (!g.cradle && !g.config.tutorial && (g.time < 1 || (g.config.ages && !g.ui.arrived))) {
       // (An Ages run arrives among the stars some minutes into that game: its omens are shown then.)
-      s.modal = { kind: 'omens' };
+      s.modal = { kind: 'omens', unbidden: true };
       g.ui.arrived = 1;
     }
     this.music.play(g.cradle ? 'cradle' : 'night');

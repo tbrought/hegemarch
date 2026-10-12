@@ -115,16 +115,23 @@ export class Ui {
 
   /** Seconds since the last frame. */
   dt = 0;
+  /** Regions from this one on, of the frame being drawn, are shown and take no click (`holdClicks`). */
+  private holdFrom = Infinity;
+  /** The same for the last completed frame, which is the one clicks are tested against. */
+  private lastHoldFrom = Infinity;
 
   begin(dt: number) {
     this.dt = dt;
     this.time += dt;
     this.last = this.regions;
     this.regions = [];
+    this.lastHoldFrom = this.holdFrom;
+    this.holdFrom = Infinity;
     this.lastHints = this.hints;
     this.hints = [];
-    const h = this.hitTest(this.mx, this.my);
-    this.hot = h ? h.id : null;
+    const i = this.hitIndex(this.mx, this.my);
+    // (A region that takes no click yet does not light up under the pointer either.)
+    this.hot = i >= 0 && i < this.lastHoldFrom ? this.last[i].id : null;
     this.hintNow = this.hintAt(this.mx, this.my);
     const key = this.hintNow ? 'hint:' + this.hintNow.key : this.hot;
     if (key !== this.hoverKey) {
@@ -166,11 +173,29 @@ export class Ui {
 
   /** Top-most region under a point (from the last completed frame). */
   hitTest(x: number, y: number): Region | null {
+    const i = this.hitIndex(x, y);
+    return i >= 0 ? this.last[i] : null;
+  }
+
+  private hitIndex(x: number, y: number): number {
     for (let i = this.last.length - 1; i >= 0; i--) {
       const r = this.last[i];
-      if (x >= r.x && y >= r.y && x < r.x + r.w && y < r.y + r.h) return r;
+      if (x >= r.x && y >= r.y && x < r.x + r.w && y < r.y + r.h) return i;
     }
-    return null;
+    return -1;
+  }
+
+  /**
+   * Everything drawn from here to the end of this frame is shown and takes no click: a dialog that has
+   * just opened by itself. A click on it goes nowhere (and not through to what lies under it).
+   */
+  holdClicks() {
+    this.holdFrom = Math.min(this.holdFrom, this.regions.length);
+  }
+
+  /** Is a part of the screen taking no click right now? (For tests.) */
+  holding(): boolean {
+    return this.lastHoldFrom < this.last.length;
   }
 
   rectOf(id: string): Region | null {
@@ -196,8 +221,10 @@ export class Ui {
   pointerDown(x: number, y: number, button: number): boolean {
     this.mx = x;
     this.my = y;
-    const r = this.hitTest(x, y);
-    if (!r) return false;
+    const i = this.hitIndex(x, y);
+    if (i < 0) return false;
+    if (i >= this.lastHoldFrom) return true;
+    const r = this.last[i];
     if (button === 0) {
       this.down = true;
       this.active = r.id;
@@ -214,8 +241,11 @@ export class Ui {
     const wasActive = this.active;
     this.down = false;
     this.active = null;
-    if (button !== 0 || !wasActive) return !!this.hitTest(x, y);
-    const r = this.hitTest(x, y);
+    const i = this.hitIndex(x, y);
+    // (Pressed before the dialog was there and let go on it: no click.)
+    if (i >= this.lastHoldFrom) return true;
+    if (button !== 0 || !wasActive) return i >= 0;
+    const r = i >= 0 ? this.last[i] : null;
     if (r && r.id === wasActive) {
       if (r.onClick) {
         this.onClickSound?.(!!r.disabled);

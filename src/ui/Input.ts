@@ -250,6 +250,12 @@ export class Input {
       if (code === 'Enter' || code === 'Space' || code === 'Escape') this.hud.ending.advance();
       return;
     }
+    // A dialog that has just opened by itself takes no key for a moment (`Modals.guarded`): not a digit
+    // that would choose in it, and not the Escape that would put it away unread.
+    if (s.modal && this.hud.modals.guarded()) {
+      if (code === 'Escape' || code === 'Space' || code === 'Enter' || code === 'Tab' || code.startsWith('Digit')) e.preventDefault();
+      return;
+    }
     if (code === 'Escape') {
       e.preventDefault();
       if (s.modal) this.hud.modals.close();

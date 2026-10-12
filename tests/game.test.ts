@@ -474,9 +474,15 @@ describe('events and threats', () => {
     const g = mk();
     g.prompts.push({ id: 999, event: 'comet', node: g.player.capital, unit: -1 });
     const e0 = g.player.embers;
-    expect(g.cmdResolvePrompt(999, 0)).toBeTruthy();
+    const said = g.cmdResolvePrompt(999, 0)!;
+    expect(said).toBeTruthy();
     expect(g.player.embers).toBe(e0 + 250);
     expect(g.cmdResolvePrompt(999, 0)).toBeNull();
+    // What was chosen and what came of it stays in the log, once: the dialog is gone at a click.
+    const lines = g.notes.filter((n) => n.kind === 'event' && n.text.endsWith(said));
+    expect(lines.length).toBe(1);
+    expect(lines[0].text).toMatch(/^.+: .+\. /);
+    expect(lines[0].node).toBe(g.player.capital);
   });
 
   it('launches pirate raids at houses and asks to pause for the first one', () => {

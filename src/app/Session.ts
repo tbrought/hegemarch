@@ -9,7 +9,7 @@ import type { Music } from '../audio/Music';
 import type { Profile } from '../meta/profile';
 import { TUTORIAL_STEPS } from '../ui/Tutorial';
 
-export type Modal =
+export type Modal = (
   | { kind: 'draft' }
   | { kind: 'event'; promptId: number }
   | { kind: 'ability'; unitId: number }
@@ -23,7 +23,14 @@ export type Modal =
   | { kind: 'cradle' }
   | { kind: 'ascend' }
   | { kind: 'log' }
-  | { kind: 'confirm'; text: string; yes: string; onYes: () => void };
+  | { kind: 'confirm'; text: string; yes: string; onYes: () => void }
+) & {
+  /**
+   * It opened by itself, not at the player's click or key: it takes no click and no key for a moment
+   * (`Modals.guarded`), so that a click already on its way does not choose for the player.
+   */
+  unbidden?: boolean;
+};
 
 export interface SessionHooks {
   /** The ending is over (or was skipped): show the results. */

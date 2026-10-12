@@ -449,6 +449,65 @@ const screen = (page) => ev(page, () => window.__app.screen);
   await page.waitForTimeout(300);
   await page.screenshot({ path: '.shots/qol-field.png' });
   await ev(page, () => window.__app.session.clearSelection());
+  // An event that comes up by itself, in the middle of play: a click already on its way must not choose
+  // in it. For a moment it takes no click and no key; then it does. One the player opens takes a click
+  // at once.
+  const raise = (id, unbidden) => ev(page, ({ id, unbidden }) => {
+    const app = window.__app;
+    const g = app.session.game;
+    g.prompts.push({ id, event: 'comet', node: g.player.capital, unit: -1 });
+    app.hud.modals.open({ kind: 'event', promptId: id, unbidden });
+  }, { id, unbidden });
+  const eventState = (id) => ev(page, (id) => {
+    const app = window.__app;
+    const g = app.session.game;
+    const pr = g.prompts.find((x) => x.id === id);
+    return { open: app.session.modal?.kind === 'event', chosen: !!pr && pr.result !== undefined, there: !!pr, holding: app.hud.ui.holding(), guarded: app.hud.modals.guarded(), hot: app.hud.ui.hot };
+  }, id);
+  const released = async () => {
+    for (let i = 0; i < 50 && (await ev(page, () => window.__app.hud.ui.holding())); i++) await page.waitForTimeout(100);
+  };
+  await raise(9001, true);
+  await page.waitForTimeout(150);
+  const choice = await spot('choice-0');
+  await page.mouse.move(choice.x, choice.y, { steps: 3 });
+  await page.waitForTimeout(80);
+  await page.mouse.click(choice.x, choice.y);
+  await page.keyboard.press('Digit1');
+  await page.keyboard.press('Escape');
+  await page.waitForTimeout(80);
+  const early = await eventState(9001);
+  check(early.open && !early.chosen && early.holding && early.guarded && early.hot === null, `an event that opens by itself takes no click, no digit and no Escape at first (open ${early.open}, chosen ${early.chosen}, lit ${early.hot})`);
+  await page.screenshot({ path: '.shots/qol-guard.png' });
+  await released();
+  const freed = await eventState(9001);
+  await page.mouse.click(choice.x, choice.y);
+  await page.waitForTimeout(120);
+  const picked = await eventState(9001);
+  check(freed.open && !freed.holding && !freed.chosen && picked.chosen, `after a moment it takes the click (chosen ${picked.chosen})`);
+  // The outcome stays a moment too: a double click on a choice does not put it away unread.
+  const okBtn = await spot('ev-ok');
+  await page.mouse.click(okBtn.x, okBtn.y);
+  await page.waitForTimeout(80);
+  const outcome = await eventState(9001);
+  await released();
+  await page.mouse.click(okBtn.x, okBtn.y);
+  await page.waitForTimeout(150);
+  const gone = await eventState(9001);
+  check(outcome.open && outcome.there && !gone.open && !gone.there, `its outcome cannot be clicked away at once, and can a moment later (open ${outcome.open}, then ${gone.open})`);
+  const logged = await ev(page, () => window.__app.session.game.notes.filter((n) => n.kind === 'event').map((n) => n.text).pop());
+  check(/^.+: .+\. .+/.test(logged ?? ''), `and what was chosen stays in the log (${(logged ?? 'no line').slice(0, 70)})`);
+  // Opened by the player (the button at the edge of the screen), it is theirs at once.
+  await raise(9002, false);
+  await page.waitForTimeout(150);
+  const asked = await eventState(9002);
+  await page.keyboard.press('Digit1');
+  await page.waitForTimeout(120);
+  const direct = await eventState(9002);
+  check(!asked.holding && !asked.guarded && direct.chosen, `an event the player opens takes a choice at once (chosen ${direct.chosen})`);
+  await released();
+  await ev(page, () => window.__app.hud.modals.close());
+  await page.waitForTimeout(150);
   // (The third playtest.) A right-click shows the way for a moment; Shift+right-click adds a stop.
   const way = await ev(page, () => {
     const app = window.__app;

@@ -538,6 +538,20 @@ Measured with `npm run simulate` and `npm run balance:passive`. Speeds are ½×,
   every single order instead, and said it plainly: do not make the controls serve the feel, and do
   not punish the player who likes to think. `npm run test:stopped` checks both states.)
   Closing a decision without choosing parks it behind a "! DECISION" button.
+- **A dialog that opens by itself waits a second before it takes a click** (`DIALOG_GUARD`,
+  `Modals.guarded`, `Ui.holdClicks`). An event comes up in the middle of play, on top of whatever
+  the player was about to click: twice in one evening a playtester's click, already on its way to
+  the map, chose an option of an event he had not seen yet. So a dialog nobody asked for (an event,
+  an ability to choose, the cards of the First Night, the omens and the Ark's leaving) is shown at
+  once and for its first second takes no click, no digit and no Escape, and does not light up under
+  the pointer; a line under its title runs out to say for how long. A click on it in that second
+  goes nowhere, and not through to the map either; a button pressed before it opened and let go on
+  it clicks nothing. A dialog the player opens (the "! DECISION" button, B for a Boon) is theirs at
+  once. After a choice, what the same dialog shows next (the outcome of an event, the next ability,
+  the next Boon) waits half a second (`CHOICE_GUARD`): a double click chooses once, and does not
+  put the outcome away unread. And what was chosen stays in the log with what came of it ("Ember
+  Comet: Mine the core. Mining drones crack the core open."), for the outcome that was clicked away
+  all the same. The game stands still behind a decision, so the second costs nothing.
 
 ## 6. Presentation
 

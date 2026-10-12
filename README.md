@@ -109,6 +109,8 @@ terms do the same.
   Normal, 16:00 on Easy) unless you strike them first; warlike houses rush at about 7:00 on Hard and
   5:30 on Brutal. Corsairs raid from about 10:00. A medium run takes about 35 to 50 minutes.
   Speeds: ½×, 1×, 2×, 3×. The game pauses itself when it needs a decision (you can turn that off).
+  A decision that comes up by itself takes no click for its first second, so a click already on its
+  way does not answer it for you.
   While it is paused you can look around and give orders; it goes on when you press Space.
 
 | Input | Action |
