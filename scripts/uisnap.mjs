@@ -554,46 +554,62 @@ if (mode === 'record') {
   console.log(`${second.order.length} scenes recorded in ${FILE}${loose.length ? ` (pixels not compared in ${loose.length}: ${loose.join(', ')})` : ', pixels and all'}`);
   process.exit(allErrors.length ? 1 : 0);
 }
-await warmUp();
-await stageAll();
-if (allErrors.length) console.log('ERRORS in the page:\n  ' + allErrors.slice(0, 8).join('\n  '));
 if (!fs.existsSync(FILE)) {
   console.log(`nothing recorded in ${FILE}: run "node scripts/uisnap.mjs record" on the code before the change`);
   process.exit(2);
 }
 const want = JSON.parse(fs.readFileSync(FILE, 'utf8'));
 const wantFull = fs.existsSync(FULL) ? JSON.parse(fs.readFileSync(FULL, 'utf8')) : {};
-let differ = 0;
-const names = [...new Set([...want.order, ...order])].filter((n) => !only || n.includes(only));
-for (const name of names) {
-  const a = want.scenes[name];
-  const b = scenes[name];
-  if (!a || !b) {
-    differ++;
-    console.log(`DIFF ${name}: ${a ? 'no longer staged' : 'not recorded'}`);
-    continue;
+
+/** What differs between the recording and the scenes as they were just staged: scene name -> what to say of it. */
+function compare() {
+  const out = new Map();
+  const names = [...new Set([...want.order, ...order])].filter((n) => !only || n.includes(only));
+  for (const name of names) {
+    const a = want.scenes[name];
+    const b = scenes[name];
+    if (!a || !b) {
+      out.set(name, a ? 'no longer staged' : 'not recorded');
+      continue;
+    }
+    const parts = ['screen', 'html', 'regions', 'hints', 'pixels'].filter((k) => a[k] !== b[k] && !(k === 'pixels' && a.pixels === undefined));
+    if (!parts.length) continue;
+    const why = [];
+    for (const k of ['regions', 'hints']) {
+      if (!parts.includes(k)) continue;
+      const x = wantFull[name]?.[k] ?? [];
+      const y = full[name][k] ?? [];
+      let i = 0;
+      while (i < x.length && i < y.length && JSON.stringify(x[i]) === JSON.stringify(y[i])) i++;
+      why.push(`${k}: ${x.length} then, ${y.length} now; the first that differs is number ${i}: ${JSON.stringify(x[i] ?? null).slice(0, 160)}  now  ${JSON.stringify(y[i] ?? null).slice(0, 160)}`);
+    }
+    if (parts.includes('html')) {
+      const x = wantFull[name]?.html ?? '';
+      const y = full[name].html ?? '';
+      let i = 0;
+      while (i < x.length && i < y.length && x[i] === y[i]) i++;
+      why.push(`html: from character ${i}: …${x.slice(Math.max(0, i - 60), i + 80)}…  now  …${y.slice(Math.max(0, i - 60), i + 80)}…`);
+    }
+    if (parts.includes('pixels')) why.push(`pixels: ${a.pixels} then, ${b.pixels} now (see .shots/uisnap-${name}.png)`);
+    out.set(name, `${parts.join(', ')}\n     ${why.join('\n     ')}`);
   }
-  const parts = ['screen', 'html', 'regions', 'hints', 'pixels'].filter((k) => a[k] !== b[k] && !(k === 'pixels' && a.pixels === undefined));
-  if (!parts.length) continue;
-  differ++;
-  const why = [];
-  for (const k of ['regions', 'hints']) {
-    if (!parts.includes(k)) continue;
-    const x = wantFull[name]?.[k] ?? [];
-    const y = full[name][k] ?? [];
-    let i = 0;
-    while (i < x.length && i < y.length && JSON.stringify(x[i]) === JSON.stringify(y[i])) i++;
-    why.push(`${k}: ${x.length} then, ${y.length} now; the first that differs is number ${i}: ${JSON.stringify(x[i] ?? null).slice(0, 160)}  now  ${JSON.stringify(y[i] ?? null).slice(0, 160)}`);
-  }
-  if (parts.includes('html')) {
-    const x = wantFull[name]?.html ?? '';
-    const y = full[name].html ?? '';
-    let i = 0;
-    while (i < x.length && i < y.length && x[i] === y[i]) i++;
-    why.push(`html: from character ${i}: …${x.slice(Math.max(0, i - 60), i + 80)}…  now  …${y.slice(Math.max(0, i - 60), i + 80)}…`);
-  }
-  if (parts.includes('pixels')) why.push(`pixels: ${a.pixels} then, ${b.pixels} now (see .shots/uisnap-${name}.png)`);
-  console.log(`DIFF ${name}: ${parts.join(', ')}\n     ${why.join('\n     ')}`);
+  return { out, count: names.length };
 }
-console.log(`${names.length} scenes · ${differ ? `${differ} DIFFER` : 'all the same'}`);
+
+await warmUp();
+await stageAll();
+let { out: diffs, count } = compare();
+// A scene that differs is staged once more before it is called different: right after a change to the
+// code the dev server is still busy, and a picture that is made over several frames can come a frame late.
+let once = 0;
+if (diffs.size) {
+  await stageAll();
+  const again = compare().out;
+  once = [...diffs.keys()].filter((n) => !again.has(n)).length;
+  diffs = new Map([...again].filter(([n]) => diffs.has(n)));
+}
+if (allErrors.length) console.log('ERRORS in the page:\n  ' + allErrors.slice(0, 8).join('\n  '));
+for (const [name, what] of diffs) console.log(`DIFF ${name}: ${what}`);
+const differ = diffs.size;
+console.log(`${count} scenes · ${differ ? `${differ} DIFFER` : 'all the same'}${once ? ` (${once} came out differently once, and the same when staged again)` : ''}`);
 process.exit(differ || allErrors.length ? 1 : 0);

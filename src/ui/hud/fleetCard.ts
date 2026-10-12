@@ -13,9 +13,8 @@ import { bar, box } from '../../render/pixel';
 import { shipSprite } from '../../render/sprites';
 import { fmt } from '../format';
 import { gloss, GLOSS_BY_ID, termsIn } from '../glossary';
-import { unitDesc, unitName } from '../vocab';
-import { CardRow, gap, header, line, para } from './card';
-import { fleetSummary } from './overlays';
+import { unitCount, unitDesc, unitName } from '../vocab';
+import { gap, header, line, para, type CardRow } from './rows';
 import type { Hud } from '../Hud';
 
 /** How long a drive charges with nothing holding it, for the words of a tip. */
@@ -171,4 +170,12 @@ export function enemyRows(hud: Hud, units: Unit[]): CardRow[] {
   if (units.length === 1) rows.push(para(hud, unitDesc(units[0].type, units[0].era), PAL.dusk, 200, { terms: termsIn(unitDesc(units[0].type, units[0].era), { exclude: UNITS[units[0].type].name }) }));
   rows.push(line(hud, 'SELECT YOUR FLEET, THEN RIGHT-CLICK THEM TO ATTACK', PAL.dusk));
   return rows;
+}
+
+/** What is in a fleet, in words: "3 Strikers, 2 Guardians". */
+export function fleetSummary(units: Unit[]): string {
+  // (By type and by age: on the cradle a Warrior and a Spearman are the same line, an age apart.)
+  const counts = new Map<string, number>();
+  for (const u of units) counts.set(`${u.type}|${u.era}`, (counts.get(`${u.type}|${u.era}`) ?? 0) + 1);
+  return [...counts.entries()].map(([k, c]) => unitCount(c, k.split('|')[0] as UnitType, Number(k.split('|')[1]))).join(', ') || 'no ships';
 }

@@ -21,7 +21,7 @@ import { gloss, GLOSS_BY_ID, termsIn } from '../glossary';
 import { BUILD_LABELS } from '../keys';
 import type { TipOpts } from '../Ui';
 import { unitDesc } from '../vocab';
-import { CardRow, gap, header, line, para } from './card';
+import { gap, header, line, para, type CardRow } from './rows';
 import { advanceTip } from './destinies';
 import type { Hud } from '../Hud';
 

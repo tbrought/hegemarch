@@ -5,15 +5,14 @@
  */
 
 import { UNITS } from '../../game/data/units';
-import type { Note, Unit, UnitType } from '../../game/types';
+import type { Note, Unit } from '../../game/types';
 import { fit, text, textWidth, wrap } from '../../render/font';
 import { PAL, shade } from '../../render/palette';
 import { bar, box, frame } from '../../render/pixel';
 import { SPRITE_ZOOM } from '../../render/Renderer';
 import { fleetBadge, icon } from '../../render/sprites';
-import { unitCount } from '../vocab';
 import { destinyClocks } from './destinies';
-import { jumpWait, jumpWaitText } from './fleetCard';
+import { fleetSummary, jumpWait, jumpWaitText } from './fleetCard';
 import type { Hud } from '../Hud';
 
 export const KIND_COLOR: Record<Note['kind'], string> = { info: PAL.mist, good: PAL.teal, bad: PAL.red, alert: PAL.ember, event: PAL.violet };
@@ -190,13 +189,6 @@ function selectFleet(hud: Hud, node: number) {
   if (!ids.length) return;
   hud.s.selectUnits(ids);
   hud.s.sfx.play('select', 0.5);
-}
-
-export function fleetSummary(units: Unit[]): string {
-  // (By type and by age: on the cradle a Warrior and a Spearman are the same line, an age apart.)
-  const counts = new Map<string, number>();
-  for (const u of units) counts.set(`${u.type}|${u.era}`, (counts.get(`${u.type}|${u.era}`) ?? 0) + 1);
-  return [...counts.entries()].map(([k, c]) => unitCount(c, k.split('|')[0] as UnitType, Number(k.split('|')[1]))).join(', ') || 'no ships';
 }
 
 export function drawLog(hud: Hud) {
