@@ -173,6 +173,15 @@ export class Sfx {
     };
   }
 
+  /** One clear note (a MIDI number), for a thing that rings a scale: the worlds lighting at a crowning. */
+  note(n: number, vol = 0.3, dur = 0.14) {
+    const c = this.ctx;
+    if (!c || !this.sfxGain || c.state !== 'running') return;
+    const t = c.currentTime + 0.005;
+    this.tone(this.sfxGain, 'p25', midi(n), midi(n), t, dur, vol * 0.35);
+    this.tone(this.sfxGain, 'tri', midi(n - 12), midi(n - 12), t, dur * 1.6, vol * 0.3);
+  }
+
   play(id: SoundId, vol = 0.5, pan = 0) {
     const c = this.ctx;
     if (!c || !this.sfxGain || c.state !== 'running') return;

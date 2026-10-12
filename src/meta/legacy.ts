@@ -3,6 +3,7 @@ import { LEGACY_MUL } from '../game/constants';
 import { AMBITION_BY_ID } from '../game/data/ambitions';
 import { PERK_EMBERS, PERK_HEARTH, PERK_HULL, PERK_LORE, PERK_WALLS } from './perks';
 import type { Profile } from './profile';
+import type { RunFigures } from './records';
 
 export interface PerkDef {
   id: string;
@@ -88,6 +89,18 @@ export function computeLegacy(g: Game): LegacyReport {
     sum += amb.reward;
   }
   return { lines, multiplier: mult, total: Math.round(sum), ambitionDone };
+}
+
+/** How long a run that has ended took: an Ages run, its time on the cradle and its time among the stars together. */
+export function runTime(g: Game): number {
+  const t = g.outcome?.time ?? g.time;
+  return g.config.ages ? g.config.ages.cradleTime + Math.max(0, t - g.config.ages.arrival) : t;
+}
+
+/** What a run that has ended is measured by against the player's records (meta/records.ts). */
+export function runFigures(g: Game, legacy: number): RunFigures {
+  const p = g.player;
+  return { won: !!g.outcome?.playerWon, time: runTime(g), worlds: p.stats.maxWorlds, kills: p.stats.kills, boons: p.boons, legacy };
 }
 
 /** Apply a finished run to the profile. Returns a newly unlocked difficulty name, if any. */

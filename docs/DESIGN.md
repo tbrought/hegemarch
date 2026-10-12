@@ -520,9 +520,37 @@ Measured with `npm run simulate` and `npm run balance:passive`. Speeds are ½×,
   spends; Boon cards are dealt (they slide in one after another); a chosen Boon flies to the tray;
   a rival Hearth falling gets a banner, a rumble and a chime; red arrows at the screen edge point at
   your worlds under attack off screen (click to look); after 40 s without input and with Embers
-  piling up, a hint says what to spend them on (at most every 3 minutes, off with tips). The end of
-  a run is its own moment: the screen dims, VICTORY or DEFEAT rises with the reason (gold sparks on
-  a win), and a click skips to the results, where the Legacy total counts up.
+  piling up, a hint says what to spend them on (at most every 3 minutes, off with tips).
+- **A run that is won ends in a crowning** (`ui/Ending.ts`), on the map itself, in four beats of
+  about fifteen seconds. *The moment*: the view goes to where the run was decided (the last rival
+  Hearth to fall, `Faction.lostHearth`; the Maw; or the player's own Hearth), the screen shakes and
+  rings of light roll out from it. *The light spreads*: the view pulls back to the whole sector, the
+  dark lifts from it, and the house's worlds flare one after another outward from its Hearth, each
+  ringing a note up the fanfare's scale. *The crowning*: two banners in the house's colour fall, a
+  crown comes down over VICTORY, "SOLAR CONCORD IS CROWNED HEGEMARCH · BY CONQUEST", and one of every
+  kind of ship that saw the end flies past. *The tally*: the run's figures count up one by one (time
+  to the crown, most worlds, ships destroyed, Boons, Legacy), and a figure that beat the player's
+  record is stamped NEW RECORD with what the record was; the others show the record that stands.
+  A run that is lost is told shorter and quieter: a ring of red closes on the place where the Hearth
+  stood, the dark comes in, DEFEAT, who was crowned or why, and the tally ("YOU LASTED 23:10").
+  A click or a key goes straight to the tally, and from the tally to the results; nothing moves on
+  by itself, and a run that was abandoned goes straight to its results with no ceremony. (It was two
+  seconds: the screen dimmed, a word rose, and the results came after four seconds whether the
+  player was done or not. The player who had won a forty-minute run got less ceremony than a Boon.)
+  `npm run record:ending` films either ending from the game's own canvas and sound.
+- **Records** (`meta/records.ts`, in the profile): the fastest crown, the longest a house lasted in
+  a run it lost, the most worlds, ships destroyed, Boons and Legacy, kept for each kind of run (classic
+  or Ages, the sector's size, the difficulty: a crown in twenty minutes on a small sector says nothing
+  about a large one). A first run of its kind sets them and beats none. The results show the record
+  beside each figure, and the Hall of Heirs lists them. The First Night and abandoned runs set none.
+- **A run can be told to someone else** (`app/share.ts`): the results have three lines to paste (what
+  happened, the sector and its figures, a link) and COPY CHALLENGE LINK. There is no server and no
+  leaderboard: the link itself carries the sector (seed, size, difficulty, classic or Ages) and what
+  its first player made of it, as a short code in the address's tail. Whoever opens it finds the
+  setup on that sector, fixed, with the result to beat ("Solar Concord was crowned by Conquest in
+  34:12. Take the crown faster."), chooses a house and plays; their results say how it went against
+  it ("3:10 faster"). A code is typed by strangers, so anything that does not read as one is ignored.
+  A Daily run, the same sector for everyone that day, has COPY DAILY LINE: one line to compare by.
 - **The results put Legacy first.** Under the verdict, a gold-framed banner counts up the Legacy
   earned, says in two lines what Legacy is (kept between runs, spent in the Hall of Heirs on houses,
   perks and rarer Boons) and what it buys right now ("Enough for: Old Coin ◆40 …"), or how far the
@@ -641,9 +669,10 @@ Measured with `npm run simulate` and `npm run balance:passive`. Speeds are ½×,
   tracks. A mood that is interrupted picks its track up at the part it had reached, so a skirmish does
   not send the night back to its beginning. The tracks differ in key, tempo, metre (Starlanes is in
   three), bass, drums and the wave that sings. When a run ends the music stops for the fanfare of the
-  crowning or of the fall and stays stopped (it used to be started again on the next frame, and the
-  fanfare played over it); the music of the results waits for the fanfare to be over, also for a
-  player who skips straight to them. Under the smaller fanfare of an Ark that leaves its cradle the
+  crowning or of the fall (it used to be started again on the next frame, and the fanfare played over
+  it). After the fanfare of a run that was won comes **The Crowning**, a tune of its own in the
+  fanfare's key (C major, at a walk), from its first bar every time; a fall is left in silence. The
+  music of the results waits for the fanfare to be over, also for a player who skips straight to them. Under the smaller fanfare of an Ark that leaves its cradle the
   music steps back for two seconds and comes forward again. `tests/music.test.ts` checks the writing (every note in
   its key or its chord, no long note a semitone above a chord tone, no leap over an octave) and plays
   half an hour into a list; `npm run test:music` plays every part of every track through the real
@@ -664,6 +693,13 @@ Measured with `npm run simulate` and `npm run balance:passive`. Speeds are ½×,
   checks it under both browser rules, and with a scrollbar that takes room.
 
 ### The website
+
+**The icon** of the site and of the game is the flame: the game's ember drawn on a 16×16 grid in its
+own palette (red at the edge, ember, gold, white-hot at the heart), on a dark tile with rounded
+corners. `npm run favicon` (`scripts/favicon.mjs`) writes it as `site/favicon.svg`, as `favicon.ico`
+(16, 32 and 48 pixels), as the 180-pixel icon a phone puts on its home screen, and into the address
+of the icon inside the game's own page. (It was an 8×8 orange diamond with a gold middle, made before
+the game had a look of its own.)
 
 The landing page (hegemarch.com) is built from the game's code (`src/site/`), so it shows the game
 and not pictures of it, and it cannot drift from the rules.
@@ -706,13 +742,15 @@ src/game/      deterministic simulation (no DOM)
   ai/ai.ts       AI houses: drafting, kindling, roles, upgrades, counter-building, attack planning
   data/          units, worlds, Boons, houses, relics, events, omens, Destinies, ambitions
 src/render/    pixel canvas: Screen (scaling), Camera, Renderer, worlds, sprites, fonts, effects
-src/ui/        immediate-mode HUD: Ui toolkit, Hud, Modals, Actions, Input, Tutorial, Tips
+src/ui/        immediate-mode HUD: Ui toolkit, Hud, Modals, Actions, Input, Tutorial, Tips, Ending
+               (how a run ends, on the map)
 src/audio/     Sfx (synth) and Music (sequencer)
 src/app/       App (menus, loop, results), Attract (the sector that plays itself behind the menus
                and on the website), houseArt and modeArt (the pictures the menus draw), charts (the
-               graphs of the results), rundata and Session (one run's shared UI state)
+               graphs of the results), share (a run to paste, and the link to its sector), rundata and
+               Session (one run's shared UI state)
 src/site/      the website's script: the live sector, houses, fleet, Boon draft (see "The website")
-src/meta/      profile, settings and Legacy
+src/meta/      profile, settings, Legacy and the player's records
 ```
 
 The simulation never touches the DOM or `Math.random` (visual jitter does), so the same seed gives

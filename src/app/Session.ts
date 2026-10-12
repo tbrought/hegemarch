@@ -1,3 +1,4 @@
+import type { TallyLine } from '../ui/Ending';
 import type { Game } from '../game/Game';
 import { isWarship, UNITS } from '../game/data/units';
 import type { Unit } from '../game/types';
@@ -25,7 +26,7 @@ export type Modal =
   | { kind: 'confirm'; text: string; yes: string; onYes: () => void };
 
 export interface SessionHooks {
-  /** Skip the ending moment and show the results now. */
+  /** The ending is over (or was skipped): show the results. */
   showResults?(): void;
   quit(save: boolean): void;
   abandon(): void;
@@ -65,6 +66,8 @@ export class Session {
   idleSince = 0;
   /** Shift is held (Shift-click queues five ships). */
   shiftHeld = false;
+  /** The figures of a run that has ended, for its ending to count up (ui/Ending.ts). */
+  endTally: TallyLine[] = [];
 
   constructor(
     public game: Game,

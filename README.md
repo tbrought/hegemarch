@@ -93,8 +93,11 @@ terms do the same.
   is reported in the log, with the place and who destroyed it.
 - **The hangar** limits your fleet. Hold more worlds and raise their level for more room.
   Dreadnoughts take none.
-- **After a run** the results draw it minute by minute: every house's Embers per second, worlds,
-  fleet strength and Boons, your house beside a rival of your choosing.
+- **A run that is won ends in a crowning** on the map (a click skips it), and its figures are
+  counted up against your records for that kind of run. **After it** the results draw the run minute
+  by minute: every house's Embers per second, worlds, fleet strength and Boons, your house beside a
+  rival of your choosing; and they have the run to paste for your friends, with a **challenge link**
+  that opens the same sector for whoever follows it.
 - **Destinies**: Conquest plus two of Dominion, Ascension, Relic Hunt, Ember Hoard and Purge the Void
   (the house that lands the killing blow on the Rift Heart wins it).
 - **Rushing** is allowed from the first second, and it is all or nothing. Every Hearth's walls

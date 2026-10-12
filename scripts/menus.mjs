@@ -72,6 +72,11 @@ try {
     g.declareWinner(1, 'conquest', 'Vael Imperium put out every rival Hearth.');
     app.session.paused = false;
   });
+  // (The ending is skipped: once to its tally, once more to the results.)
+  await wait(1200);
+  await page.keyboard.press('Enter');
+  await wait(300);
+  await page.keyboard.press('Enter');
   await page.waitForSelector('.results', { timeout: 10000 });
   await wait(500);
   await shot('results');

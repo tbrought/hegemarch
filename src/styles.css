@@ -1063,6 +1063,99 @@ table.stats tr.total td {
   margin: -4px 0 20px;
 }
 
+/* Beside a figure of the results: the record it beat (in gold), or the record that still stands. */
+.results .rec {
+  margin-left: 8px;
+  color: var(--dusk);
+  font-size: 15px;
+  white-space: nowrap;
+}
+
+.results .rec.fresh {
+  color: var(--gold);
+  font-family: var(--display);
+  font-size: 8px;
+  padding: 3px 6px;
+  box-shadow: 0 0 0 2px var(--gold);
+  background: var(--wine);
+}
+
+/* The run to tell someone else: its lines as they will be pasted, and the buttons that copy them. */
+.share {
+  margin-top: 16px;
+}
+
+.share-text {
+  margin: 0 0 10px;
+  padding: 10px 12px;
+  background: var(--void);
+  box-shadow: 0 0 0 2px var(--indigo);
+  color: var(--mist);
+  font: 16px/1.4 var(--body);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.share .row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.share-vs {
+  margin: 0 0 10px;
+  color: var(--gold);
+  font-size: 18px;
+}
+
+.share textarea {
+  width: 100%;
+  margin-bottom: 8px;
+}
+
+.share p.dim {
+  margin: 0;
+}
+
+/* A challenge taken up from a link, at the head of the setup. */
+.challenge {
+  margin-bottom: 16px;
+  box-shadow:
+    0 calc(var(--px) * -1) 0 0 var(--gold),
+    0 var(--px) 0 0 var(--gold),
+    calc(var(--px) * -1) 0 0 0 var(--gold),
+    var(--px) 0 0 0 var(--gold);
+}
+
+.challenge h3 {
+  font-family: var(--display);
+  font-size: 11px;
+  color: var(--gold);
+  margin: 0 0 8px;
+}
+
+.challenge p {
+  margin: 0 0 8px;
+  font-size: 18px;
+  color: var(--mist);
+}
+
+.challenge p.dim {
+  font-size: 15px;
+  color: var(--dusk);
+}
+
+.history.records td,
+.history.records th {
+  text-align: right;
+}
+
+.history.records td:first-child,
+.history.records th:first-child {
+  text-align: left;
+}
+
 /* The graphs of a run (app/charts.ts): four small charts on one time axis. The player's house and one
    rival wear their colours, the other houses are grey; text is never in a series colour. */
 .run-charts {

@@ -1,3 +1,4 @@
+import type { Records } from './records';
 import type { SaveData } from '../game/Game';
 import type { Difficulty, MapSize } from '../game/types';
 import { heirIdNow } from '../game/data/heirs';
@@ -61,6 +62,8 @@ export interface Profile {
   goalsDone: string[];
   /** The house, sector and difficulty last chosen for a run: the setup opens on them. */
   lastSetup?: { heir: string; size: MapSize; difficulty: Difficulty };
+  /** The player's records, by kind of run (meta/records.ts: "classic:medium:1"). */
+  records: Record<string, Records>;
 }
 
 const KEY = 'hegemarch.profile.v1';
@@ -83,6 +86,7 @@ export function defaultProfile(): Profile {
     runs: 0,
     wins: 0,
     bestTime: null,
+    records: {},
     history: [],
     settings: defaultSettings(),
     tutorialDone: false,

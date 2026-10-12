@@ -303,7 +303,8 @@ describe('played through', () => {
       // (The tune is heard within seconds, not after a pass of bass alone.)
       expect(r.played.some((x) => x.w === t.leadWave && Math.abs(x.vol - t.leadVol) < 1e-9), t.name).toBe(true);
       r.run(trackSeconds(t) + 15);
-      expect(r.heard[r.heard.length - 1]).not.toBe(t.name);
+      // (A crowning has one tune, and comes round to it again; every other mood moves on to another.)
+      if (of(t.mood).length > 1) expect(r.heard[r.heard.length - 1]).not.toBe(t.name);
       expect(TRACKS.find((x) => x.name === r.music.title)!.mood).toBe(t.mood);
     }
     const r = rig();

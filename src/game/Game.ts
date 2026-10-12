@@ -1764,6 +1764,8 @@ export class Game {
       by.pendingDrafts++;
       if (by.isPlayer) this.notify(by.id, `Spoils of ${f.name}'s Hearth: a free Boon! (B)`, 'good');
     }
+    // (Where its Hearth stood is kept: the ending of the run goes there.)
+    f.lostHearth = f.capital;
     f.capital = -1;
     if (f.isPlayer) {
       this.declareWinner(-1, 'defeat', by ? `Your Hearth went dark, taken by ${by.name}.` : 'Your Hearth went dark.');

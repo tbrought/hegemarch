@@ -275,6 +275,11 @@ try {
     const g = s.game;
     g.eliminate(g.playerId, g.empires().find((f) => !f.isPlayer).id);
   });
+  // (The ending is skipped: once to its tally, once more to the results.)
+  await wait(1500);
+  await page.keyboard.press('Enter');
+  await wait(300);
+  await page.keyboard.press('Enter');
   await page.waitForFunction(() => window.__app?.screen === 'results', null, { timeout: 30000 });
   const res = await page.textContent('#ui');
   check('losing the Hearth on the cradle ends the run, told in the cradle\'s words', /DEFEAT/.test(res) && /Age reached/.test(res) && /Most lands held/.test(res) && !/Most worlds held/.test(res));

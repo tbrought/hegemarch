@@ -28,6 +28,8 @@ export interface ViewState {
   highlightNode: number;
   /** Seconds the way of the last order is still drawn bright (Actions.ROUTE_FLASH). */
   route: number;
+  /** Leave out names and labels (the ending of a run, once its words are on the screen). */
+  plain?: boolean;
 }
 
 export function emptyView(reveal = false): ViewState {
@@ -165,7 +167,7 @@ export class Renderer {
     const b = view.box;
     const box = b && { x: Math.round(Math.min(b.x0, b.x1)), y: Math.round(Math.min(b.y0, b.y1)), w: Math.round(Math.abs(b.x1 - b.x0)), h: Math.round(Math.abs(b.y1 - b.y0)) };
     if (box) dither(ctx, box.x, box.y, box.w, box.h, PAL.gold, 2);
-    if (!backdrop) this.drawLabels(ctx, g, explored, vis, ownerShown, view);
+    if (!backdrop && !view.plain) this.drawLabels(ctx, g, explored, vis, ownerShown, view);
     this.drawMarkers(ctx, view, dt);
     if (box) frame(ctx, box.x, box.y, box.w + 1, box.h + 1, PAL.gold);
   }

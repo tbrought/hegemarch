@@ -244,10 +244,10 @@ export class Input {
     const g = this.g;
     const code = e.code;
     s.idleSince = g.time;
-    // The run is over: no key does anything but show its results.
+    // The run is over: a key skips the ending to its tally, and from the tally goes on to the results.
     if (s.mode === 'none') {
       e.preventDefault();
-      if (code === 'Enter' || code === 'Space' || code === 'Escape') s.hooks.showResults?.();
+      if (code === 'Enter' || code === 'Space' || code === 'Escape') this.hud.ending.advance();
       return;
     }
     if (code === 'Escape') {

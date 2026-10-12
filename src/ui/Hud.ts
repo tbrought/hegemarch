@@ -10,9 +10,9 @@ import { FIRE_SPOOL, HOLD_FIELD, JUMP_CHARGE, LINK_REACH, UNDER_FIRE } from '../
 import { ECON, PLANETS, ROLES, ROLE_ORDER } from '../game/data/worlds';
 import type { Faction, GNode, Note, Unit, UnitType, VictoryId } from '../game/types';
 import { roman } from '../game/util';
-import { bigText, capHeight, fit, IC, tabularWidth, textTabular, paragraph, setVocabulary, text, textCenter, textOutline, textRight, textWidth, underlineMatches, wrap } from '../render/font';
+import { capHeight, fit, IC, tabularWidth, textTabular, paragraph, setVocabulary, text, textCenter, textOutline, textRight, textWidth, underlineMatches, wrap } from '../render/font';
 import { PAL, shade, UI } from '../render/palette';
-import { bar, box, frame, rect, ring, type Ctx } from '../render/pixel';
+import { bar, box, frame, rect, ring } from '../render/pixel';
 import { drawSettlement } from '../render/ground';
 import { drawRich, hasMarkup, richLines, richWidth } from '../render/rich';
 import { fmtTime, SPRITE_ZOOM } from '../render/Renderer';
@@ -26,6 +26,7 @@ import { Tips } from './Tips';
 import { Tutorial } from './Tutorial';
 import { gloss, GLOSS_BY_ID, termsIn } from './glossary';
 import { Goals } from './Goals';
+import { Ending } from './Ending';
 import { dimScreen, MARK, marksOf, Ui, type TipOpts } from './Ui';
 import { cradleVocabulary, unitCount, unitDesc, unitName } from './vocab';
 import { BUILD_LABELS } from './keys';
@@ -123,12 +124,14 @@ export class Hud {
   /** "+250" / "-120" popups under the Ember counter. */
   private emberPops: { text: string; color: string; t: number }[] = [];
   /** When the run ended (UI time), for the ending moment. */
-  private endedAt = -1;
+  /** The end of the run, when it comes (ui/Ending.ts). */
+  ending: Ending;
   /** Game time of the last "Embers are piling up" nudge. */
   private lastNudge = -999;
 
   constructor(public s: Session) {
     this.actions = new Actions(s);
+    this.ending = new Ending(s, this.ui);
     this.modals = new Modals(this);
     this.tutorial = new Tutorial(this);
     this.tips = new Tips(this);
@@ -284,6 +287,12 @@ export class Hud {
   private drawAll(dt: number) {
     const g = this.s.screen.g;
     this.ui.begin(dt);
+    // The run is over: the map and its ending have the screen to themselves.
+    if (this.g.outcome) {
+      this.ending.draw(g, this.W, this.H);
+      if (this.s.profile.settings.crt) this.scanlines();
+      return;
+    }
     this.ui.explainTerms = this.s.profile.settings.explainTerms !== false;
     setInlineBadgeColor(this.g.player.color);
     const R = this.s.reveal();
@@ -309,46 +318,8 @@ export class Hud {
       this.drawPaused();
     }
     this.drawFlyers(dt);
-    if (this.g.outcome) this.drawEnding(g);
     if (this.s.profile.settings.crt) this.scanlines();
     this.ui.drawTooltip(g, this.W, this.H);
-  }
-
-  /** The end of a run: the screen dims, and VICTORY or DEFEAT rises with the reason. */
-  private drawEnding(g: Ctx) {
-    const o = this.g.outcome!;
-    if (this.endedAt < 0) this.endedAt = this.ui.time;
-    const t = this.ui.time - this.endedAt;
-    const W = this.W;
-    const H = this.H;
-    g.fillStyle = `rgba(11, 10, 26, ${Math.min(0.78, t * 1.2)})`;
-    g.fillRect(0, 0, W, H);
-    const won = o.playerWon;
-    const color = won ? PAL.gold : PAL.red;
-    // Gold sparks rise on a win.
-    if (won) {
-      for (let i = 0; i < 40; i++) {
-        const sx = (i * 97 + 31) % W;
-        const speed = 14 + ((i * 37) % 23);
-        const sy = H - ((t * speed + (i * 53) % H) % (H + 20));
-        g.fillStyle = i % 3 ? PAL.gold : PAL.bone;
-        g.fillRect(sx, Math.round(sy), 1, 1);
-      }
-    }
-    const k = Math.min(1, t / 0.5);
-    const scale = Math.max(2, Math.min(4, Math.floor(W / 120)));
-    const title = won ? 'VICTORY' : 'DEFEAT';
-    const ty = Math.round(H / 2 - 30 - (1 - k) * 12);
-    bigText(g, title, W / 2, ty, color, won ? PAL.wine : PAL.night, scale);
-    if (t > 0.45) {
-      const winner = o.winner >= 0 ? this.g.factions[o.winner] : null;
-      const sub = won ? 'You are crowned Hegemarch.' : winner && o.victory !== 'defeat' ? `${winner.name} is crowned Hegemarch.` : 'Your Hearth has gone dark.';
-      textCenter(g, sub, W / 2, ty + scale * 7 + 10, PAL.bone);
-      const lines = wrap(o.reason, Math.min(W - 40, 300), 'main').slice(0, 2);
-      lines.forEach((l, i) => textCenter(g, l, W / 2, ty + scale * 7 + 24 + i * 10, PAL.mist));
-    }
-    if (t > 1.2 && Math.floor(t * 2) % 2 === 0) textCenter(g, 'CLICK TO CONTINUE', W / 2, H - 22, PAL.dusk, 'tiny');
-    this.ui.add({ id: 'ending', x: 0, y: 0, w: W, h: H, onClick: () => t > 0.8 && this.s.hooks.showResults?.() });
   }
 
   private scanlines() {

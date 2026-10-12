@@ -118,7 +118,7 @@ const state = (page) =>
       return r.left >= pg.left && r.right <= pg.right && r.height < 40;
     })(),
   }));
-  check(listed.tracks.length >= 11 && new Set(listed.tracks).size === listed.tracks.length && listed.groups.length === 4 && listed.old === 0 && listed.box, `Settings has the tracks in one selector (${listed.tracks.length} tracks, ${listed.groups.join(', ')})`);
+  check(listed.tracks.length >= 11 && new Set(listed.tracks).size === listed.tracks.length && listed.groups.length === 5 && listed.old === 0 && listed.box, `Settings has the tracks in one selector (${listed.tracks.length} tracks, ${listed.groups.join(', ')})`);
   const now = () =>
     page.evaluate(() => ({
       title: window.__app.music.title,
@@ -143,11 +143,15 @@ const state = (page) =>
   await page.waitForTimeout(300);
   t = await now();
   check(t.title === 'Long Road' && t.shown === 'Long Road', `the arrow keys go through them (${t.title})`);
-  // NEXT goes on down the list, and round to the top.
+  // NEXT goes on down the list (to the last of it, the tune of a crowning), and round to the top.
   await page.click('[data-sa="track-next"]');
   await page.waitForTimeout(300);
   t = await now();
-  check(t.title === 'Hegemarch' && t.shown === 'Hegemarch', `NEXT plays the next in the list, round to the first (${t.title})`);
+  check(t.title === 'The Crowning' && t.shown === 'The Crowning' && t.mood === 'crown', `NEXT plays the next in the list (${t.title})`);
+  await page.click('[data-sa="track-next"]');
+  await page.waitForTimeout(300);
+  t = await now();
+  check(t.title === 'Hegemarch' && t.shown === 'Hegemarch', `and from the last of it, round to the first (${t.title})`);
   await page.click('[data-sa="track-next"]');
   await page.waitForTimeout(300);
   t = await now();

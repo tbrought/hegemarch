@@ -20,7 +20,7 @@ const check = (ok, what) => {
 };
 const PROFILE = { tutorialDone: true, runs: 4, wins: 1, legacy: 140, maxDifficulty: 1, seenTips: ['role', 'raid', 'anomaly', 'fleet', 'hangar', 'boonReady', 'anomalySeen'], settings: { autoPause: false } };
 
-async function open(context = {}) {
+async function open(context = {}, hash = '') {
   const browser = await chromium.launch({ executablePath, headless: true, args: ['--autoplay-policy=no-user-gesture-required'] });
   const ctx = await browser.newContext({ viewport: { width: 1280, height: 720 }, ...context });
   const page = await ctx.newPage();
@@ -33,7 +33,7 @@ async function open(context = {}) {
       sessionStorage.setItem('seeded', '1');
     }
   }, PROFILE);
-  await page.goto(url);
+  await page.goto(url + hash);
   await page.waitForTimeout(1600);
   return { browser, page };
 }
@@ -504,7 +504,13 @@ const screen = (page) => ev(page, () => window.__app.screen);
   });
   await page.waitForTimeout(1200);
   let end = await ev(page, () => ({ mood: window.__app.music.playing, notes: window.__notes.filter((t) => t > window.__ended + 0.35).length, screen: window.__app.screen }));
-  check(end.mood === null && end.notes === 0 && end.screen === 'game', `when the run ends the music stops for the fanfare, and stays stopped (${end.mood}, ${end.notes} notes since)`);
+  check(end.mood === 'crown' && end.notes === 0 && end.screen === 'game', `when the run is won the music stops for the fanfare, and the crowning's own waits for it to be over (${end.mood}, ${end.notes} notes since)`);
+  // One press skips the ending to its tally; the next goes on to the results.
+  await page.keyboard.press('Enter');
+  await page.waitForTimeout(150);
+  const skipped = await ev(page, () => ({ done: window.__app.hud.ending.done, screen: window.__app.screen, tally: window.__app.session.endTally.map((l) => l.label) }));
+  check(skipped.done && skipped.screen === 'game' && skipped.tally.length === 5 && skipped.tally[0] === 'TIME TO THE CROWN', `a key skips the crowning to its tally (${skipped.tally.join(', ')})`);
+  await page.screenshot({ path: '.shots/qol-crowning.png' });
   await page.keyboard.press('Enter');
   await page.waitForFunction(() => window.__app?.screen === 'results', null, { timeout: 15000 });
   end = await ev(page, () => ({ mood: window.__app.music.playing, wait: window.__app.music.startAt - window.__app.sfx.ctx.currentTime, since: window.__app.sfx.ctx.currentTime - window.__ended }));
@@ -567,7 +573,29 @@ const screen = (page) => ev(page, () => window.__app.screen);
   await page.keyboard.press('ArrowLeft');
   const keyed = await ev(page, () => ({ hidden: document.querySelector('.rc-tip').hidden, head: document.querySelector('.rc-tip-head')?.textContent, screen: window.__app.screen }));
   check(!keyed.hidden && keyed.screen === 'results', `and the arrow keys read the charts too (${keyed.head})`);
+  // The run to tell someone else: three lines to paste, and a link to the same sector.
+  const share = await ev(page, () => ({ ...window.__app.results.share, shown: document.querySelector('.share-text')?.textContent, config: (({ seed, size, difficulty }) => ({ seed, size, difficulty }))(window.__app.session.game.config) }));
+  check(share.shown === share.text && /^HEGEMARCH · .+, crowned by Conquest in \d+:\d\d\n.+ sector · .+ · Worlds \d+ · Destroyed \d+ · Lost \d+ · Boons \d+\nPlay the same sector: https:\/\/hegemarch\.com\/play\/#c\.[A-Za-z0-9_-]+$/.test(share.text), `the results have the run to paste (${share.text.split('\n')[0]})`);
+  await page.click('[data-sa="copy-share"]');
+  await page.waitForTimeout(300);
+  const copied = await ev(page, () => ({ label: document.querySelector('[data-sa="copy-share"]').textContent, box: document.querySelector('#share-box').hidden ? null : document.querySelector('#share-box').value }));
+  check(copied.label === 'COPIED' || copied.box === share.text, `COPY RESULT copies it (or, where the clipboard is refused, shows it to select: ${copied.label})`);
+  // The Hall keeps the records the run set.
+  await page.click('[data-sa="results-hall"]');
+  await page.waitForTimeout(400);
+  const rec = await ev(page, () => ({ rows: document.querySelectorAll('table.records tr').length, text: document.querySelector('table.records')?.innerText.replace(/\s+/g, ' '), kinds: Object.keys(window.__app.profile.records) }));
+  check(rec.rows === 2 && rec.kinds.length === 1 && /Fastest crown|FASTEST CROWN/i.test(rec.text ?? ''), `the Hall of Heirs lists the records of the kind of run that was played (${rec.kinds.join(', ')}: ${rec.text?.slice(-60)})`);
   await browser.close();
+
+  // Whoever follows the link: the setup, on that sector, with the result to beat.
+  const friend = await open({}, '#' + share.link.split('#')[1]);
+  const ch = await ev(friend.page, () => ({ screen: window.__app.screen, hash: location.hash, banner: document.querySelector('.challenge')?.innerText.replace(/\s+/g, ' ') ?? '', opts: !!document.querySelector('.opts') }));
+  check(ch.screen === 'setup' && ch.hash === '' && /crowned by Conquest in \d+:\d\d/.test(ch.banner) && !ch.opts, `a challenge link opens the setup on that sector, with the result to beat (${ch.banner.slice(0, 90)})`);
+  await friend.page.click('[data-sa="launch"]');
+  await friend.page.waitForFunction(() => window.__app?.screen === 'game', null, { timeout: 60000 });
+  const same = await ev(friend.page, () => { const c = window.__app.session.game.config; return { seed: c.seed, size: c.size, difficulty: c.difficulty, challenge: !!c.challenge, guided: !!c.tutorial }; });
+  check(same.seed === share.config.seed && same.size === share.config.size && same.difficulty === share.config.difficulty && same.challenge && !same.guided, `and launches the same sector: seed, size and difficulty (${same.seed} ${same.size} ${same.difficulty})`);
+  await friend.browser.close();
 }
 
 if (errors.length) console.log('errors:', errors);

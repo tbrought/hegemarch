@@ -14,7 +14,7 @@ import type { Sfx } from './Sfx';
 
 const midi = (n: number) => 440 * Math.pow(2, (n - 69) / 12);
 
-export type Mood = 'title' | 'night' | 'war' | 'cradle';
+export type Mood = 'title' | 'night' | 'war' | 'cradle' | 'crown';
 /** (A mood was one song once.) */
 export type SongId = Mood;
 
@@ -292,6 +292,27 @@ export const TRACKS: Track[] = [
     form: [['A', 'ab'], ['A', 'abl'], ['B', 'ablh'], ['A', 'able'], ['B', 'abl']],
     leadWave: 'tri', leadVol: 0.3, arpVol: 0.05, bassVol: 0.24, arp: [1, 2, 3, 2, 3, 2, 1, 2], bass: 'long', kit: 'tribal',
   },
+  // ------------------------------------------------------------------ a crowning (the end of a run that was won)
+  {
+    // In the major, the key of the fanfare it follows, at a walk: a tune that climbs to its home note
+    // and stays there. It plays from its first bar every time, while the house is crowned and its run is told.
+    name: 'The Crowning', mood: 'crown', bpm: 104, steps: 8, scale: key(0, MAJOR),
+    parts: {
+      A: part([C, F, G, C, Am, F, G, C], `
+        G4 . C5 . E5 . G5 -    A5 - - - F5 - C5 -
+        B4 . D5 . G5 . B5 -    C6 - - - G5 - E5 -
+        A4 . C5 . E5 . A5 -    A5 - G5 - F5 - C5 -
+        D5 . G5 . B5 - D6 -    C6 - - - - - . .`),
+      // The answer comes down where the call went up, and climbs home again.
+      B: part([F, C, G, Am, F, C, G, C], `
+        A5 - F5 - C5 - F5 -    G5 - E5 - C5 - E5 -
+        B5 - G5 - D5 - G5 -    C6 - A5 - E5 - - -
+        F5 . A5 . C6 - A5 -    E5 . G5 . C6 - G5 -
+        D6 - B5 - G5 - B5 -    C6 - - - - - . .`),
+    },
+    form: [['A', 'abl'], ['A', 'ablde'], ['B', 'ablde'], ['A', 'ablde'], ['B', 'able'], ['A', 'ablde']],
+    leadWave: 'p25', leadVol: 0.2, arpVol: 0.07, bassVol: 0.3, arp: [1, 2, 3, 2, 1, 2, 3, 2], bass: 'octave', kit: 'march',
+  },
 ];
 
 /** How long one pass through a track's form lasts, in seconds. */
@@ -357,7 +378,8 @@ export class Music {
    */
   play(mood: Mood | null, wait = 0) {
     if (mood === this.mood) return;
-    if (this.mood && this.track) this.held[this.mood] = { track: this.track, seg: this.seg };
+    // (A crowning is not picked up where it was left: it is played from its first bar every time.)
+    if (this.mood && this.track && this.mood !== 'crown') this.held[this.mood] = { track: this.track, seg: this.seg };
     this.mood = mood;
     this.cut();
     const c = this.sfx.ctx;
@@ -377,7 +399,7 @@ export class Music {
   playTrack(name: string) {
     const t = TRACKS.find((x) => x.name === name);
     if (!t) return;
-    if (this.mood && this.track && this.mood !== t.mood) this.held[this.mood] = { track: this.track, seg: this.seg };
+    if (this.mood && this.track && this.mood !== t.mood && this.mood !== 'crown') this.held[this.mood] = { track: this.track, seg: this.seg };
     this.mood = t.mood;
     this.cut();
     this.track = t;

@@ -13,7 +13,9 @@ import { TRAIT_BY_ID } from '../game/data/traits';
 import { VICTORIES } from '../game/data/victories';
 import { dailySeed, hashString, randomSeed } from '../game/rng';
 import type { Difficulty, GameConfig, MapSize } from '../game/types';
-import { applyRunToProfile, computeLegacy, perkDesc, PERKS, perksSpent, UNLOCKS, type LegacyReport } from '../meta/legacy';
+import { applyRunToProfile, computeLegacy, perkDesc, PERKS, perksSpent, runFigures, runTime, UNLOCKS, type LegacyReport } from '../meta/legacy';
+import { applyRecords, bracketOf, recordsOf, type RecordKey } from '../meta/records';
+import type { TallyLine } from '../ui/Ending';
 import { clearRun, defaultProfile, hasRun, loadProfile, loadRun, saveProfile, saveRun, todayKey, type Profile } from '../meta/profile';
 import { fmtTime, Renderer } from '../render/Renderer';
 import { Attract } from './Attract';
@@ -30,6 +32,7 @@ import { glossHtml } from '../ui/glossary';
 import { Hud } from '../ui/Hud';
 import { Input } from '../ui/Input';
 import { chartsHtml, mountCharts, runCharts, type RunCharts } from './charts';
+import { challengeFromHash, challengeLink, shareLine, shareText, versus, type Challenge } from './share';
 import { runData } from './rundata';
 import { Session } from './Session';
 
@@ -41,7 +44,10 @@ interface ResultsData {
   won: boolean;
   title: string;
   reason: string;
-  stats: [string, string][];
+  /** Each with what stands beside it, if anything: the record it beat, or the record that stands. */
+  stats: [label: string, value: string, note?: { fresh: boolean; text: string }][];
+  /** The run to tell someone else: a few lines, a link to the same sector, and how it went against a challenge. */
+  share: { text: string; line: string; link: string; daily: boolean; versus: string | null };
   cards: string[];
   relics: string[];
   heir: string;
@@ -82,7 +88,7 @@ function perkPic(id: string): string {
 }
 
 /** The moods of the music, as the list of tracks under Settings names them. */
-const MOODS: [Mood, string][] = [['title', 'Title screen'], ['night', 'Quiet night'], ['war', 'Battle'], ['cradle', 'Ages cradle']];
+const MOODS: [Mood, string][] = [['title', 'Title screen'], ['night', 'Quiet night'], ['war', 'Battle'], ['cradle', 'Ages cradle'], ['crown', 'A crowning']];
 
 const PIXEL_TIPS = {
   small: 'Small pixels: see more of the sector at once (640×360 game pixels).',
@@ -121,6 +127,8 @@ export class App {
   private savedRun = '';
   /** The Legacy the saved run earns if a new run ends it now (null: it cannot be read), worked out when the question is asked. */
   private savedLegacy: number | null = null;
+  /** A challenge taken up from a link and not yet played (app/share.ts): the setup opens on its sector. */
+  private challenge: Challenge | null = null;
   /** The day (UTC) the title screen was drawn for: when it turns, the daily run is a new one. */
   private menuDay = '';
   /** The sound button in the corner of every menu screen, and what it says now (see `syncSound`). */
@@ -199,7 +207,21 @@ export class App {
       this.sfx.hush(document.hidden);
     });
     window.addEventListener('beforeunload', () => this.autosave());
-    this.showMenu();
+    // Opened by a challenge link: the setup, on that sector. (The link's tail is dropped from the address,
+    // so that a page that is loaded again is the game and not the challenge once more.)
+    this.challenge = challengeFromHash(location.hash);
+    if (this.challenge) {
+      try {
+        history.replaceState(null, '', location.pathname + location.search);
+      } catch {
+        /* (An address that cannot be rewritten is no reason not to play.) */
+      }
+      this.setup.daily = false;
+      this.setup.ages = this.challenge.ages;
+      if (this.profile.heirs.includes(this.challenge.heir)) this.setup.heir = this.challenge.heir;
+      this.savedRun = this.describeSavedRun();
+      this.showSetup();
+    } else this.showMenu();
     void this.attract.start();
     requestAnimationFrame(this.loop);
     // Dev-only hook for automated browser tests.
@@ -318,6 +340,17 @@ export class App {
 
   private buildConfig(): GameConfig {
     const st = this.setup;
+    // A challenge is the sector it names, as it was played: its seed, its size, its difficulty.
+    const c = this.challenge;
+    if (c) {
+      this.challenge = null;
+      return {
+        seed: c.seed, size: c.size, difficulty: c.difficulty, heir: st.heir,
+        perks: { ...this.profile.perks }, unlockLegendary: this.profile.unlockLegendary, unlockPacts: this.profile.unlockPacts,
+        ...(c.ages ? { mode: 'ages' as const, stage: 'cradle' as const } : {}),
+        challenge: { heir: c.heir, won: c.won, time: c.time, victory: c.victory },
+      };
+    }
     let seed: number;
     if (st.daily) seed = dailySeed();
     else if (st.seed.trim()) seed = /^\d+$/.test(st.seed.trim()) ? parseInt(st.seed.trim(), 10) >>> 0 : hashString(st.seed.trim());
@@ -454,7 +487,9 @@ export class App {
       abandon: () => {
         g.ascended = false;
         g.declareWinner(-1, 'defeat', 'You abandoned the run.');
-        this.endRun();
+        // (A run that was walked away from is not told as a fall, and sets no records: straight to its results.)
+        this.endRun(true);
+        this.showResults();
       },
       ascend: () => void this.toStars(g),
       saveProfile: () => saveProfile(this.profile),
@@ -643,7 +678,54 @@ export class App {
     for (const el of this.ui.querySelectorAll('.screen')) el.classList.toggle('crt', this.profile.settings.crt);
   }
 
-  private endRun() {
+  /**
+   * Copy a text for the button that was clicked. (A copy has to start in the click itself; where the
+   * clipboard is refused, the text is put in a box and selected, to be copied by hand.)
+   */
+  private copy(el: HTMLElement, text: string, boxSel: string) {
+    const done = () => (el.textContent = 'COPIED');
+    const show = () => {
+      const box = this.ui.querySelector<HTMLTextAreaElement>(boxSel);
+      if (!box) return;
+      box.value = text;
+      box.hidden = false;
+      box.focus();
+      box.select();
+    };
+    try {
+      navigator.clipboard.writeText(text).then(done, show);
+    } catch {
+      show();
+    }
+  }
+
+  /** A run that has ended, to tell someone else (app/share.ts). */
+  private shareOf(g: Game): ResultsData['share'] {
+    const p = g.player;
+    const o = g.outcome!;
+    const vname = (v: string) => VICTORIES[v as keyof typeof VICTORIES]?.name ?? '';
+    const time = runTime(g);
+    const mine: Challenge = { seed: g.config.seed, size: g.config.size, difficulty: g.config.difficulty, ages: g.config.mode === 'ages', heir: p.heir, won: o.playerWon, time, victory: o.playerWon ? o.victory : '' };
+    const link = challengeLink(mine);
+    const run = {
+      house: HEIR_BY_ID[p.heir]?.name ?? p.name, won: o.playerWon, by: o.playerWon ? vname(o.victory) : '', time: fmtTime(time),
+      size: g.config.size, difficulty: DIFFICULTY_NAMES[g.config.difficulty], daily: g.config.daily ? todayKey() : null, ages: g.config.mode === 'ages',
+      worlds: p.stats.maxWorlds, kills: p.stats.kills, lost: p.stats.shipsLost, boons: p.boons, link,
+    };
+    // Against the challenge it was, if it was one: the same sector, played by someone else.
+    const c = g.config.challenge;
+    let vs: string | null = null;
+    if (c) {
+      const them = `${HEIR_BY_ID[c.heir]?.name ?? 'The challenger'} ${c.won ? `was crowned${vname(c.victory) ? ` by ${vname(c.victory)}` : ''} in ${fmtTime(c.time)}` : `fell after ${fmtTime(c.time)}`}`;
+      const you = o.playerWon ? `You were crowned in ${fmtTime(time)}` : `You fell after ${fmtTime(time)}`;
+      const verdict = o.playerWon && c.won ? `: ${versus(time, c.time, fmtTime)}.` : !o.playerWon && !c.won ? `: you lasted ${versus(time, c.time, fmtTime).replace('faster', 'less long').replace('slower', 'longer')}.` : o.playerWon ? ', where they fell.' : ', where they were crowned.';
+      vs = `The challenge: ${them}. ${you}${verdict}`;
+    }
+    return { text: shareText(run), line: shareLine(run), link, daily: !!g.config.daily, versus: vs };
+  }
+
+  /** `abandoned`: the player gave the run up (no records are set by it: a run can be sat out). */
+  private endRun(abandoned = false) {
     const s = this.session!;
     const g = s.game;
     g.outcomeHandled = true;
@@ -652,16 +734,33 @@ export class App {
     // (A run that ended on the cradle is told in the cradle's words: lands, units.)
     if (g.cradle) for (const l of report.lines) l[0] = cradleVocabulary(LAST_CRADLE_ERA + 1)(l[0]);
     const unlocked = applyRunToProfile(this.profile, g, report.total);
+    // The run against the player's records of its kind (the First Night sets none: it is a lesson).
+    const figures = runFigures(g, report.total);
+    const marks = g.config.tutorial || abandoned ? {} : applyRecords(this.profile.records, bracketOf(g.config), figures);
     if (g.config.daily) this.profile.lastDaily = todayKey();
     if (g.config.tutorial) this.profile.tutorialDone = true;
     saveProfile(this.profile);
     clearRun();
     const p = g.player;
     this.sfx.play(o.playerWon ? 'victory' : 'defeat', 0.9);
+    // A crowning has its own music, which comes in when the fanfare is over; a fall is left in silence.
     this.music.play(null);
+    if (o.playerWon) this.music.play('crown', FANFARE);
     this.fanfareEnds = (this.sfx.ctx?.currentTime ?? 0) + FANFARE;
+    // What the ending counts up (ui/Ending.ts), in the cradle's words if the run ended there.
+    const says = g.cradle ? cradleVocabulary(LAST_CRADLE_ERA + 1) : (x: string) => x;
+    const line = (label: string, key: RecordKey, kind: TallyLine['kind']): TallyLine => ({ label: says(label).toUpperCase(), value: recordsOf(figures)[key] ?? 0, kind, record: !!marks[key]?.beaten, was: marks[key]?.was });
+    s.endTally = o.playerWon
+      ? [line('Time to the crown', 'crown', 'time'), line('Most worlds held', 'worlds', 'count'), line('Enemy ships destroyed', 'kills', 'count'), line('Boons', 'boons', 'count'), line('Legacy earned', 'legacy', 'legacy')]
+      : [line('You lasted', 'stand', 'time'), line('Most worlds held', 'worlds', 'count'), line('Enemy ships destroyed', 'kills', 'count'), line('Legacy earned', 'legacy', 'legacy')];
     const winner = o.winner >= 0 ? g.factions[o.winner] : null;
     const vname = (v: string) => VICTORIES[v as keyof typeof VICTORIES]?.name ?? v;
+    // What stands beside a figure of the results: the record it beat, or the record that still stands.
+    const note = (key: RecordKey, show: (v: number) => string): { fresh: boolean; text: string } | undefined => {
+      const m = marks[key];
+      if (!m || m.was === undefined) return undefined;
+      return m.beaten ? { fresh: true, text: `NEW RECORD · was ${show(m.was)}` } : { fresh: false, text: `best ${show(m.was)}` };
+    };
     this.results = {
       report,
       unlocked,
@@ -675,14 +774,14 @@ export class App {
       stats: (
         [
         // (An Ages run: the time on the cradle, plus the time among the stars since the player arrived there.)
-        ['Run time', fmtTime(g.config.ages ? g.config.ages.cradleTime + Math.max(0, o.time - g.config.ages.arrival) : o.time)],
-        ['Most worlds held', String(p.stats.maxWorlds)],
+        ['Run time', fmtTime(runTime(g)), note(o.playerWon ? 'crown' : 'stand', fmtTime)],
+        ['Most worlds held', String(p.stats.maxWorlds), note('worlds', String)],
         ['Worlds kindled', String(p.stats.worldsKindled)],
         ['Worlds captured', String(p.stats.worldsCaptured)],
         ['Ships built', String(p.stats.shipsBuilt)],
-        ['Enemy ships destroyed', String(p.stats.kills)],
+        ['Enemy ships destroyed', String(p.stats.kills), note('kills', String)],
         ['Ships lost', String(p.stats.shipsLost)],
-        ['Boons from Lore', String(p.boons)],
+        ['Boons from Lore', String(p.boons), note('boons', String)],
         ['Anomalies resolved', String(p.stats.eventsResolved)],
         ['Embers earned', fmt(p.stats.embersEarned)],
         ['Omens', g.traits.map((t) => TRAIT_BY_ID[t]?.name ?? t).join(', ')],
@@ -691,11 +790,12 @@ export class App {
         // An Ages run: how long the cradle took (or, if the run ended there, how far the climb came).
         ...(g.config.ages ? [['Time on the cradle', fmtTime(g.config.ages.cradleTime)], ['Lands held when the Ark left', String(g.config.ages.lands)]] : []),
         ...(g.cradle ? [['Age reached', ERAS[Math.min(p.era, LAST_CRADLE_ERA)].name]] : []),
-        ] as [string, string][]
+        ] as ResultsData['stats']
       )
         .filter(([, v]) => v !== '')
         // (A run that ended on the cradle is told in the cradle's words: lands, units.)
-        .map(([k, v]) => [g.cradle ? cradleVocabulary(LAST_CRADLE_ERA + 1)(k) : k, v] as [string, string]),
+        .map(([k, v, n]) => [g.cradle ? cradleVocabulary(LAST_CRADLE_ERA + 1)(k) : k, v, n] as ResultsData['stats'][number]),
+      share: this.shareOf(g),
       cards: [...p.cards],
       relics: [...p.relics],
       heir: p.heir,
@@ -714,9 +814,8 @@ export class App {
     };
     s.modal = null;
     s.paused = true;
-    window.setTimeout(() => {
-      if (this.session === s && this.screen === 'game') this.showResults();
-    }, 4200);
+    // (The results come when the player goes on from the ending's tally: it used to give way to them
+    // by itself after four seconds, which is no time to be crowned in.)
   }
 
   // =====================================================================
@@ -934,24 +1033,22 @@ export class App {
         }
         this.showSettings();
         break;
-      case 'copy-run': {
-        // (A copy has to start in the click itself; where the clipboard is refused, show the text to select.)
-        const text = this.results?.details ?? '';
-        const done = () => (el.textContent = 'COPIED');
-        const show = () => {
-          const box = this.ui.querySelector<HTMLTextAreaElement>('#run-details');
-          if (!box) return;
-          box.hidden = false;
-          box.focus();
-          box.select();
-        };
-        try {
-          navigator.clipboard.writeText(text).then(done, show);
-        } catch {
-          show();
-        }
+      case 'copy-run':
+        this.copy(el, this.results?.details ?? '', '#run-details');
         break;
-      }
+      case 'copy-share':
+        this.copy(el, this.results?.share.text ?? '', '#share-box');
+        break;
+      case 'copy-link':
+        this.copy(el, this.results?.share.link ?? '', '#share-box');
+        break;
+      case 'copy-line':
+        this.copy(el, this.results?.share.line ?? '', '#share-box');
+        break;
+      case 'drop-challenge':
+        this.challenge = null;
+        this.showSetup();
+        break;
       case 'results-hall':
         this.teardownSession();
         this.showHall();
@@ -1180,17 +1277,30 @@ export class App {
         ];
     const diffHelp = ['Rivals earn less and attack late. Good for learning.', 'A fair fight.', 'Richer, faster, bolder rivals.', 'Merciless.'];
     const daily = st.daily;
+    // A challenge taken up from a link: its sector is fixed (that is the challenge); the house is the player's to choose.
+    const ch = this.challenge;
+    const vn = (v: string) => VICTORIES[v as keyof typeof VICTORIES]?.name ?? '';
+    const challenge = ch
+      ? `<div class="px-box challenge">
+          <h3>A CHALLENGE</h3>
+          <p><b>${esc(HEIR_BY_ID[ch.heir]?.name ?? 'Another house')}</b> played this sector and ${ch.won ? `was crowned${vn(ch.victory) ? ` by ${esc(vn(ch.victory))}` : ''} in <b class="gold">${fmtTime(ch.time)}</b>` : `fell after <b class="gold">${fmtTime(ch.time)}</b>`}.
+            ${ch.won ? 'Take the crown faster.' : 'Last longer, or take the crown.'}</p>
+          <p class="dim">${ch.ages ? 'An Ages run · ' : ''}${ch.size[0].toUpperCase() + ch.size.slice(1)} sector · ${DIFFICULTY_NAMES[ch.difficulty]} · seed ${ch.seed}. The sector is the challenge: choose your house and launch.</p>
+          <button class="small" data-sa="drop-challenge" data-tip="Forget the challenge and set up a run of your own.">PLAY SOMETHING ELSE</button>
+        </div>`
+      : '';
     // The ways to play, as tabs: a change of mind costs one click here, not a trip back to the title screen.
     const tab = (sa: string, name: string, on: boolean) => `<button class="small${on ? ' active' : ''}" data-sa="${sa}" role="tab" aria-selected="${on}">${name}</button>`;
     this.put('setup', `<div class="screen${this.crt()}"><div class="page">
       <h1>NEW RUN</h1>
-      <div class="mode-tabs" role="tablist">${tab('setup', 'CLASSIC RUN', !daily && !ages)}${tab('ages', 'AGES RUN', ages)}${tab('daily', `DAILY RUN${p.lastDaily === todayKey() ? ' ✓' : ''}`, daily)}</div>
-      <div class="lead">${daily ? `Today's sector is the same for everyone: medium, Normal, seed ${dailySeed()}. Legacy ×1.25.` : ages ? 'A longer game. Every house begins as a tribe in the Stone Age, all on one cradle world. Climb through the ages, build your Ark, and carry what you have won to the stars, where the crown is decided.' : 'Choose a house to bid for the crown of Hegemarch. The sector, your rivals, your Destinies and your Boons are new every run.'}</div>
+      ${challenge}
+      ${ch ? '' : `<div class="mode-tabs" role="tablist">${tab('setup', 'CLASSIC RUN', !daily && !ages)}${tab('ages', 'AGES RUN', ages)}${tab('daily', `DAILY RUN${p.lastDaily === todayKey() ? ' ✓' : ''}`, daily)}</div>`}
+      <div class="lead"${ch ? ' hidden' : ''}>${daily ? `Today's sector is the same for everyone: medium, Normal, seed ${dailySeed()}. Legacy ×1.25.` : ages ? 'A longer game. Every house begins as a tribe in the Stone Age, all on one cradle world. Climb through the ages, build your Ark, and carry what you have won to the stars, where the crown is decided.' : 'Choose a house to bid for the crown of Hegemarch. The sector, your rivals, your Destinies and your Boons are new every run.'}</div>
       ${ages ? `<div class="px-box ages-head"><canvas class="mode-art" data-art="ages" aria-hidden="true"></canvas>
         <div class="ages-names">${ERAS.map((e) => `<span>${e.short}</span>`).join('')}</div></div>` : ''}
       ${ages && !p.tutorialDone ? '<div class="px-box notice wide"><span>New to Hegemarch? An Ages run is the long game. The guided First Night (a Classic run with GUIDE ticked) teaches the basics in a few minutes.</span></div>' : ''}
       <div class="heirs">${heirs}</div>
-      ${daily ? '' : `<div class="opts">
+      ${daily || ch ? '' : `<div class="opts">
         <div class="opt px-box"><h4>${ages ? 'SIZE' : 'SECTOR'}</h4><div class="row">${sizes.map(([k, n, d]) => `<button class="small ${st.size === k ? 'active' : ''}" data-sa="size:${k}" data-tip="${esc(d)}">${n}</button>`).join('')}</div>
           <div class="help">${sizes.find((x) => x[0] === st.size)![2]}</div></div>
         <div class="opt px-box"><h4>DIFFICULTY</h4><div class="row">${DIFFICULTY_NAMES.map((n, i) => `<button class="small ${st.difficulty === i ? 'active' : ''} ${i > p.maxDifficulty ? 'disabled' : ''}" data-sa="diff:${i}" data-tip="${esc(i > p.maxDifficulty ? `Locked: win a run on ${DIFFICULTY_NAMES[i - 1]} to unlock it.` : diffHelp[i])}">${n.toUpperCase()}${i > p.maxDifficulty ? ' ×' : ''}</button>`).join('')}</div>
@@ -1249,12 +1359,27 @@ export class App {
           )
           .join('')}</table>`
       : '<div class="dim">No runs yet. The first heir is waiting.</div>';
+    // The player's records, a line for each kind of run played: the sector's size and the difficulty
+    // (and Ages runs apart), in the order of the setup's own buttons.
+    const kinds = Object.keys(p.records).map((k) => ({ k, part: k.split(':') })).sort((x, y) =>
+      x.part[0].localeCompare(y.part[0]) * -1 || ['small', 'medium', 'large'].indexOf(x.part[1]) - ['small', 'medium', 'large'].indexOf(y.part[1]) || Number(x.part[2]) - Number(y.part[2]));
+    const cell = (v: number | undefined, show: (n: number) => string) => `<td>${v === undefined ? '<span class="dim">—</span>' : show(v)}</td>`;
+    const records = kinds.length
+      ? `<table class="history records"><tr><th>RUN</th><th>FASTEST CROWN</th><th>LONGEST STAND</th><th>WORLDS</th><th>SHIPS DESTROYED</th><th>BOONS</th><th>LEGACY</th></tr>${kinds
+          .map(({ k, part }) => {
+            const r = p.records[k];
+            return `<tr><td>${part[0] === 'ages' ? 'Ages · ' : ''}${part[1][0].toUpperCase() + part[1].slice(1)} · ${DIFFICULTY_NAMES[Number(part[2])] ?? ''}</td>${cell(r.crown, fmtTime)}${cell(r.stand, fmtTime)}${cell(r.worlds, String)}${cell(r.kills, String)}${cell(r.boons, String)}${cell(r.legacy, (n) => `<span class="gold">◆${n}</span>`)}</tr>`;
+          })
+          .join('')}</table>
+        <div class="dim" style="margin-top:8px">The best of each figure, for each kind of run. A run that beats one is told so at its end. (The longest stand is the longest your house lasted in a run it lost.)</div>`
+      : '<div class="dim">No records yet: the first run of each kind sets them, and every run after is measured against them.</div>';
     this.put('hall', `<div class="screen${this.crt()}"><div class="page">
       <h1>HALL OF HEIRS</h1>
       <div class="lead">Every heir who falls leaves a legacy for the next. Every run earns Legacy, win or lose; what you buy with it here is yours in every run after. <span class="gl" data-gl="legacy">Legacy</span>: <span class="legacy-badge">◆${p.legacy}</span> <span class="dim">(${p.totalLegacy} earned in all)</span></div>
       <h2>HOUSES</h2><div class="heirs">${heirs}</div>
       <h2 class="h-with">INHERITANCE${refund}</h2><div class="perks">${perks}</div>
       <h2>FORBIDDEN KNOWLEDGE</h2><div class="perks">${unlocks}</div>
+      <h2>RECORDS</h2><div class="px-box">${records}</div>
       <h2>CHRONICLE · ${p.runs} RUNS · ${p.wins} ${p.wins === 1 ? 'HEGEMARCH' : 'HEGEMARCHS'} CROWNED</h2><div class="px-box">${hist}</div>
       <div class="foot-actions"><button data-sa="menu">BACK</button><button class="primary" data-sa="setup">NEW RUN</button></div>
     </div></div>`);
@@ -1346,7 +1471,7 @@ export class App {
       <div class="reason">${esc(r.reason)}</div>
       ${legacyHero}
       <div class="cols">
-        <div class="px-box"><h3>THE REIGN OF ${esc((heir ? (heir.short ?? `the ${heir.name}`) : 'your house').toUpperCase())}</h3><table class="stats">${r.stats.map(([k, v]) => `<tr><td>${k}</td><td>${esc(v)}</td></tr>`).join('')}</table></div>
+        <div class="px-box"><h3>THE REIGN OF ${esc((heir ? (heir.short ?? `the ${heir.name}`) : 'your house').toUpperCase())}</h3><table class="stats">${r.stats.map(([k, v, n]) => `<tr><td>${k}</td><td>${esc(v)}${n ? ` <span class="rec${n.fresh ? ' fresh' : ''}">${esc(n.text)}</span>` : ''}</td></tr>`).join('')}</table></div>
         <div class="px-box"><h3>LEGACY EARNED</h3><table class="stats">
           ${r.report.lines.filter(([k]) => !k.startsWith('Ambition')).map(([k, v]) => `<tr><td>${esc(k)}</td><td>+${v}</td></tr>`).join('')}
           <tr><td>Difficulty${daily ? ' and daily' : ''} multiplier</td><td>×${r.report.multiplier.toFixed(2)}</td></tr>
@@ -1356,6 +1481,18 @@ export class App {
       </div>
       <div class="px-box" style="margin-top:16px"><h3>BOONS</h3><div class="chips">${cards || '<span class="dim">None</span>'}</div>
         ${relics ? `<h3 style="margin-top:12px">RELICS</h3><div class="chips">${relics}</div>` : ''}</div>
+      <div class="px-box share">
+        <h3>SHARE THIS RUN</h3>
+        ${r.share.versus ? `<p class="share-vs">${esc(r.share.versus)}</p>` : ''}
+        <pre class="share-text">${esc(r.share.text)}</pre>
+        <div class="row">
+          <button class="small primary" data-sa="copy-share" data-tip="Copies these lines, to paste where your friends are.">COPY RESULT</button>
+          <button class="small" data-sa="copy-link" data-tip="Copies the link alone. Whoever opens it plays this same sector, with the same size and difficulty, and sees your result as the one to beat.">COPY CHALLENGE LINK</button>
+          ${r.share.daily ? '<button class="small" data-sa="copy-line" data-tip="Copies today\'s result as one line: every player had the same sector today.">COPY DAILY LINE</button>' : ''}
+        </div>
+        <textarea id="share-box" readonly hidden rows="4"></textarea>
+        <p class="dim">The link opens this same sector for whoever follows it: same seed, same size, same difficulty. Your result goes with it, as the one to beat.</p>
+      </div>
       ${r.charts ? chartsHtml(r.charts, (type, color) => shipPic(type, color, 'rc-pic')) : ''}
       <div class="run-details">
         <button class="small" data-sa="copy-run" data-tip="Copies this run's version, seed, setup and outcome, to send with a bug report or to play the same sector again.">COPY RUN DETAILS</button>

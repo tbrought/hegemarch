@@ -234,9 +234,13 @@ try {
   }
   st = await state();
   check('after the run has ended no key orders anything or opens anything', (await snap()) === before && st.modal === null && st.mode === 'none', JSON.stringify(st));
+  // The ending is skipped with one press (to its tally), and left with the next.
+  await page.keyboard.press('Enter');
+  await wait(300);
+  check('Enter skips the ending to its tally, and the run is still on the screen', (await page.$('.results')) === null && (await page.evaluate(() => window.__app.hud.ending.done)));
   await page.keyboard.press('Enter');
   await page.waitForSelector('.results', { timeout: 10000 }).catch(() => {});
-  check('Enter shows the results', (await page.$('.results')) !== null);
+  check('Enter again shows the results', (await page.$('.results')) !== null);
 } catch (e) {
   failures++;
   console.error('FAILED:', e);

@@ -345,6 +345,8 @@ export interface Faction {
   explored: number[];
   visible: number[];
   seenOwner: number[];
+  /** The place where the house's Hearth stood when the house fell (its `capital` is -1 from then on). */
+  lostHearth?: number;
   hangarUsed: number;
   hangarCap: number;
   /** Hangar Bays bought at the Hearth (+5 hangar each). */
@@ -450,6 +452,8 @@ export interface GameConfig {
   houses?: number;
   /** Ages, among the stars: what the cradle left behind (`arrival`: the game time at which the player arrives). */
   ages?: { cradleTime: number; lands: number; arrival: number };
+  /** The run is a challenge taken up from a link (app/share.ts): what the one who sent it made of this sector. */
+  challenge?: { heir: string; won: boolean; time: number; victory: string };
 }
 
 export interface Raid {
