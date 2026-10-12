@@ -496,3 +496,6 @@ export interface Outcome {
   playerWon: boolean;
   reason: string;
 }
+
+/** A reason a command cannot be carried out, or null when it can. */
+export type QueueCheck = string | null;
