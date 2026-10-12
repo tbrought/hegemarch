@@ -25,6 +25,8 @@ import { fmt } from './format';
 import { gloss, termsIn } from './glossary';
 import { MARK, marksOf } from './Ui';
 import type { Hud } from './Hud';
+import { destinyProgress } from './hud/destinies';
+import { flyBoon } from './hud/tray';
 import { TIPS } from './Tips';
 
 const BLUEPRINT_SHIP: Record<string, UnitType> = { bpCarrier: 'carrier', bpLancer: 'lancer', bpDread: 'dreadnought', bpStarbase: 'starbase' };
@@ -255,7 +257,7 @@ export class Modals {
     if (this.g.cmdChooseCard(p.id, id)) {
       this.s.sfx.play(card.cat === 'blueprint' ? 'capture' : 'good', 0.6);
       this.s.showToast(`${card.name}: ${card.desc}`, boonColor(card), 5);
-      this.hud.flyBoon(id, r ? r.x + r.w / 2 : this.hud.W / 2, r ? r.y + 18 : this.hud.H / 2);
+      flyBoon(this.hud, id, r ? r.x + r.w / 2 : this.hud.W / 2, r ? r.y + 18 : this.hud.H / 2);
       this.hud.tips.onBoon(card.cat === 'blueprint');
       if (p.pendingDrafts <= 0) this.s.modal = null;
       else this.afterChoice();
@@ -622,7 +624,7 @@ export class Modals {
         let ly = cy;
         for (const v of this.g.victories) {
           const d = VICTORIES[v];
-          const pr = this.hud.destinyProgress(p, v);
+          const pr = destinyProgress(this.hud, p, v);
           const top = ly;
           icon(g, v, cx, ly);
           text(g, d.name.toUpperCase(), cx + 9, ly, PAL.gold);

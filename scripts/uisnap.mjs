@@ -134,6 +134,18 @@ async function launch(t, seed) {
   await t.frames(400);
 }
 
+/**
+ * Load the game once and let it be. (After a change to the code the dev server builds what changed on
+ * the first request, and may then reload the page under whoever asked: better that it is this one.)
+ */
+async function warmUp() {
+  const { browser, page } = await openBrowser({ viewport: { width: 1280, height: 720 } });
+  await page.goto(DEV_URL);
+  await page.waitForFunction(() => window.__app, null, { timeout: 60000 }).catch(() => {});
+  await page.waitForTimeout(2500);
+  await browser.close();
+}
+
 /** Stage every scene once. */
 async function stageAll() {
   scenes = {};
@@ -523,6 +535,7 @@ async function stageAll() {
 if (mode === 'record') {
   // Twice: what is not the same both times cannot be compared later. (Buttons, tooltips and pages always
   // are; of the pixels, a scene or two has something that turns on a millisecond.)
+  await warmUp();
   const first = await stageAll();
   const second = await stageAll();
   const loose = [];
@@ -541,6 +554,7 @@ if (mode === 'record') {
   console.log(`${second.order.length} scenes recorded in ${FILE}${loose.length ? ` (pixels not compared in ${loose.length}: ${loose.join(', ')})` : ', pixels and all'}`);
   process.exit(allErrors.length ? 1 : 0);
 }
+await warmUp();
 await stageAll();
 if (allErrors.length) console.log('ERRORS in the page:\n  ' + allErrors.slice(0, 8).join('\n  '));
 if (!fs.existsSync(FILE)) {

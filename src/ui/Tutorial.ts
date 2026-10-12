@@ -10,6 +10,7 @@ import { PAL } from '../render/palette';
 import { box, ring, type Ctx } from '../render/pixel';
 import { icon } from '../render/sprites';
 import type { Hud } from './Hud';
+import { fleetLabel } from './hud/overlays';
 
 /** How many guided steps there are; game.ui.tut is one more than this once the First Night is over. */
 export const TUTORIAL_STEPS = 6;
@@ -331,7 +332,7 @@ export class Tutorial {
           const seeding = g.unitList.some((u) => !u.dead && u.owner === g.playerId && u.type === 'seed' && u.order === 'kindle');
           return { text: seeding ? `${stepOf(4)} · Your seed ship is on its way. Wait for the new world to light up…` : `${stepOf(4)} · Get ready: a raider is coming.`, color: PAL.gold };
         }
-        return { text: `${stepOf(4)} · A pirate raids your new world! Click your fleet's badge ${IC.fleet}, then the world.`, color: PAL.ember, badge: this.hud.fleetLabel(this.biggestFleet()), sub: 'Ships fight by themselves once they are where the enemy is.' };
+        return { text: `${stepOf(4)} · A pirate raids your new world! Click your fleet's badge ${IC.fleet}, then the world.`, color: PAL.ember, badge: fleetLabel(this.hud, this.biggestFleet()), sub: 'Ships fight by themselves once they are where the enemy is.' };
       }
       case 5: {
         const why = 'A Scout charts the dark, world after world. It keeps out of places it can see are guarded.';
@@ -340,7 +341,7 @@ export class Tutorial {
         return {
           text: `${stepOf(5)} · Send your Scout ${IC.scout} to explore: click its fleet badge ${IC.fleet}, then EXPLORE.`,
           color: PAL.gold,
-          badge: this.hud.fleetLabel(sc && !sc.lane ? sc.node : -1),
+          badge: fleetLabel(this.hud, sc && !sc.lane ? sc.node : -1),
           sub: why,
         };
       }
