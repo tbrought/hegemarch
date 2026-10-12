@@ -4,6 +4,7 @@
 //   node scripts/favicon.mjs        (needs Edge or Chrome, to draw the PNGs)
 import { chromium } from 'playwright-core';
 import fs from 'node:fs';
+import { browserPath } from './lib/browser.mjs';
 
 const PAL = { V: '#0b0a1a', R: '#e0402f', E: '#ff8a1f', G: '#ffd23f', B: '#fff4e0' };
 // The flame: where there is fire...
@@ -77,7 +78,7 @@ if (!link.test(page)) throw new Error('index.html: the icon link was not found')
 fs.writeFileSync('index.html', page.replace(link, `<link rel="icon" href="${uri}" />`));
 
 // The PNGs, drawn by a browser at their own sizes.
-const executablePath = ['C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe', 'C:/Program Files/Google/Chrome/Application/chrome.exe', '/usr/bin/google-chrome'].find((p) => fs.existsSync(p));
+const executablePath = browserPath();
 const browser = await chromium.launch({ executablePath, headless: true });
 async function png(markup, px) {
   const p = await (await browser.newContext({ viewport: { width: px, height: px }, deviceScaleFactor: 1 })).newPage();

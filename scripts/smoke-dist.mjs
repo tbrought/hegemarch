@@ -4,13 +4,10 @@ import { chromium } from 'playwright-core';
 import fs from 'node:fs';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
+import { browserPath } from './lib/browser.mjs';
 
 const file = pathToFileURL(path.resolve(process.argv[2] ?? 'dist/hegemarch.html')).href;
-const executablePath = [
-  'C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe',
-  'C:/Program Files/Google/Chrome/Application/chrome.exe',
-  '/usr/bin/google-chrome',
-].find((p) => fs.existsSync(p));
+const executablePath = browserPath();
 fs.mkdirSync('.shots', { recursive: true });
 const browser = await chromium.launch({ executablePath, headless: true });
 const page = await browser.newPage({ viewport: { width: 1440, height: 810 } });

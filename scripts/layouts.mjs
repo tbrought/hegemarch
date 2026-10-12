@@ -3,12 +3,9 @@
 //   node scripts/layouts.mjs     (needs a dev server on port 5173)
 import { chromium } from 'playwright-core';
 import fs from 'node:fs';
+import { browserPath } from './lib/browser.mjs';
 
-const executablePath = [
-  'C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe',
-  'C:/Program Files/Google/Chrome/Application/chrome.exe',
-  '/usr/bin/google-chrome',
-].find((p) => fs.existsSync(p));
+const executablePath = browserPath();
 fs.mkdirSync('.shots', { recursive: true });
 const browser = await chromium.launch({ executablePath, headless: true });
 const errors = [];

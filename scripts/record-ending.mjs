@@ -6,11 +6,12 @@
 // pixels: MP4 where the browser can write one, WebM otherwise or with --webm (the file's ending says which).
 import { chromium } from 'playwright-core';
 import fs from 'node:fs';
+import { browserPath } from './lib/browser.mjs';
 
 const kind = process.argv[2] === 'defeat' ? 'defeat' : 'victory';
 const out = process.argv.slice(3).find((a) => !a.startsWith('--')) ?? `.shots/ending-${kind}`;
 const url = 'http://localhost:5173/';
-const executablePath = ['C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe', 'C:/Program Files/Google/Chrome/Application/chrome.exe', '/usr/bin/google-chrome'].find((p) => fs.existsSync(p));
+const executablePath = browserPath();
 fs.mkdirSync('.shots', { recursive: true });
 
 const browser = await chromium.launch({ executablePath, headless: true, args: ['--autoplay-policy=no-user-gesture-required'] });

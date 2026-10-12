@@ -2,9 +2,10 @@
 // (tests/music.test.ts checks the notes on paper). Each must sound, none may clip, nothing may throw.
 //   node scripts/music.mjs [url]     (needs a dev server: npx vite --port 5173 --strictPort)
 import { chromium } from 'playwright-core';
+import { browserPath } from './lib/browser.mjs';
 
 const browser = await chromium.launch({
-  executablePath: 'C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe',
+  executablePath: browserPath(),
   headless: true,
   args: ['--autoplay-policy=no-user-gesture-required'],
 });

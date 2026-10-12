@@ -2,9 +2,10 @@
 // wobble in pitch, and that must never leak into the music) and the final mix must not clip.
 //   node scripts/audio.mjs [url]     (needs a dev server: npx vite --port 5173 --strictPort)
 import { chromium } from 'playwright-core';
+import { browserPath } from './lib/browser.mjs';
 
 const browser = await chromium.launch({
-  executablePath: 'C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe',
+  executablePath: browserPath(),
   headless: true,
   args: ['--autoplay-policy=no-user-gesture-required'],
 });

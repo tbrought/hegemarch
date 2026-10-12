@@ -2,14 +2,11 @@
 //   node scripts/perf.mjs [url] [shipsPerSide]
 import { chromium } from 'playwright-core';
 import fs from 'node:fs';
+import { browserPath } from './lib/browser.mjs';
 
 const url = process.argv[2] ?? 'http://localhost:5173/';
 const per = Number(process.argv[3] ?? 90);
-const executablePath = [
-  'C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe',
-  'C:/Program Files/Google/Chrome/Application/chrome.exe',
-  '/usr/bin/google-chrome',
-].find((p) => fs.existsSync(p));
+const executablePath = browserPath();
 fs.mkdirSync('.shots', { recursive: true });
 const browser = await chromium.launch({ executablePath, headless: true });
 const page = await browser.newPage({ viewport: { width: 1600, height: 900 } });

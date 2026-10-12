@@ -6,7 +6,6 @@
  */
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { Game } from '../src/game/Game';
-import { TICK } from '../src/game/constants';
 import { ABILITY_BY_ID, CONVERT_HULL, CONVERT_HULL_PER_LEVEL, CONVERT_MEND, LEARNABLE_ABILITIES } from '../src/game/data/abilities';
 import { heirIdNow, HEIR_BY_ID, HEIRS, houseShort, ZEAL_MAX, ZEAL_STEP, ZEAL_TIME } from '../src/game/data/heirs';
 import { UNITS } from '../src/game/data/units';
@@ -15,17 +14,10 @@ import { recomputeHangar } from '../src/game/systems/economy';
 import type { GameConfig, Unit, UnitType } from '../src/game/types';
 import { loadProfile } from '../src/meta/profile';
 import { GLOSS_BY_ID } from '../src/ui/glossary';
+import { run } from './helpers';
 
 function mk(opts: Partial<GameConfig> = {}): Game {
   return Game.create({ seed: 4242, size: 'medium', difficulty: 1, heir: 'choir', perks: {}, unlockLegendary: true, unlockPacts: true, ...opts });
-}
-
-function run(g: Game, seconds: number) {
-  const n = Math.round(seconds / TICK);
-  for (let i = 0; i < n && !g.outcome; i++) {
-    g.step();
-    g.fx.length = 0;
-  }
 }
 
 const rivalOf = (g: Game) => g.empires().find((f) => f.id !== g.playerId)!;

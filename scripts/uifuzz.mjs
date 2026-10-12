@@ -6,6 +6,7 @@
 // builds the Ark and crosses to the stars.
 import { chromium } from 'playwright-core';
 import fs from 'node:fs';
+import { browserPath } from './lib/browser.mjs';
 
 const AGES = process.argv.includes('--ages');
 const SECONDS = Number(process.argv[2] ?? 240);
@@ -15,11 +16,7 @@ const rand = () => {
   return seed / 0x7fffffff;
 };
 const pick = (a) => a[Math.floor(rand() * a.length)];
-const executablePath = [
-  'C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe',
-  'C:/Program Files/Google/Chrome/Application/chrome.exe',
-  '/usr/bin/google-chrome',
-].find((p) => fs.existsSync(p));
+const executablePath = browserPath();
 fs.mkdirSync('.shots', { recursive: true });
 const browser = await chromium.launch({ executablePath, headless: true });
 const page = await browser.newPage({ viewport: { width: 1280, height: 720 } });

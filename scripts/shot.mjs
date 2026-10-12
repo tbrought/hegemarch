@@ -2,15 +2,10 @@
 //   node scripts/shot.mjs [url]     (needs a dev server: npx vite --port 5173 --strictPort)
 import { chromium } from 'playwright-core';
 import fs from 'node:fs';
+import { browserPath } from './lib/browser.mjs';
 
 const url = process.argv[2] ?? 'http://localhost:5173/';
-const candidates = [
-  'C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe',
-  'C:/Program Files/Google/Chrome/Application/chrome.exe',
-  '/usr/bin/google-chrome',
-  '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
-];
-const executablePath = candidates.find((p) => fs.existsSync(p));
+const executablePath = browserPath();
 fs.mkdirSync('.shots', { recursive: true });
 const browser = await chromium.launch({ executablePath, headless: true });
 const vw = Number(process.env.VW ?? 1440);

@@ -6,6 +6,7 @@ import { chromium } from 'playwright-core';
 import fs from 'node:fs';
 import http from 'node:http';
 import path from 'node:path';
+import { browserPath } from './lib/browser.mjs';
 
 const ROOT = path.resolve('release/site');
 if (!fs.existsSync(path.join(ROOT, 'site.js'))) throw new Error('site: run `npm run package` first');
@@ -21,11 +22,7 @@ const server = http.createServer((req, res) => {
 await new Promise((r) => server.listen(0, '127.0.0.1', r));
 const base = `http://127.0.0.1:${server.address().port}/`;
 
-const executablePath = [
-  'C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe',
-  'C:/Program Files/Google/Chrome/Application/chrome.exe',
-  '/usr/bin/google-chrome',
-].find((p) => fs.existsSync(p));
+const executablePath = browserPath();
 fs.mkdirSync('.shots', { recursive: true });
 const browser = await chromium.launch({ executablePath, headless: true, args: ['--autoplay-policy=no-user-gesture-required'] });
 
