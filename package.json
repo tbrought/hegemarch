@@ -35,6 +35,9 @@
     "test:qol": "node scripts/qol.mjs",
     "test:uifuzz": "node scripts/uifuzz.mjs",
     "test:fuzz": "tsx scripts/fuzz.ts",
+    "golden": "tsx scripts/golden.ts",
+    "test:uisnap": "node scripts/uisnap.mjs",
+    "verify": "node scripts/verify.mjs",
     "record:ending": "node scripts/record-ending.mjs",
     "favicon": "node scripts/favicon.mjs"
   },
