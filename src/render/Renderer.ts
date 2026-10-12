@@ -427,6 +427,9 @@ export class Renderer {
         else ring(ctx, x, y, rr, visible ? f.color : shade(f.color));
         if (n.capitalOf >= 0 && r >= 3) icon(ctx, 'conquest', x - 2, y - r - (r > 6 ? 12 : 9), f.color, true);
         if (visible && n.lastHit < 1.5 && Math.floor(t * 6) % 2 === 0) ring(ctx, x, y, rr + 2, PAL.red, 1);
+        // Protected by a Bastion it is linked with: a ring of the field's violet close about it, which
+        // flares white for a moment when it takes a hit for the world.
+        if (visible && r >= 3 && this.game?.guardsOf(n).length) ring(ctx, x, y, rr + 4, n.lastHit < 0.25 ? PAL.bone : PAL.violet, 1);
       }
       // A seed ship at work: progress ring.
       if (visible && owner < 0) {

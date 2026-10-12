@@ -12,7 +12,7 @@ import { ABILITY_LEVELS, DMG_TABLE, DREADNOUGHT_CAP, isWarship, LEVEL_XP, MAX_LE
 import { PERK_EMBERS, PERK_HEARTH, PERK_HULL, PERK_LORE, PERK_WALLS } from '../meta/perks';
 import { ASCENSION_BOONS, OPTIONAL_VICTORIES } from './data/victories';
 import {
-  AI_INCOME, CRISIS_AWAKEN, CRISIS_OFFSET, JUMP_CHARGE, LEVEL_STEP, LINK_REACH, PHASE_SPEED, PIRATE_FIRST_RAID, POWER_BOON, POWER_WRECK, HOLD_FIELD, QUEUE_MAX, SAVE_VERSION, TICK,
+  AI_INCOME, CRISIS_AWAKEN, CRISIS_OFFSET, JUMP_CHARGE, LEVEL_STEP, LINK_GUARD, LINK_REACH, PHASE_SPEED, PIRATE_FIRST_RAID, POWER_BOON, POWER_WRECK, HOLD_FIELD, QUEUE_MAX, SAVE_VERSION, TICK,
 } from './constants';
 import { computePaths, EMPIRES_BY_SIZE, generateCradle, generateMap, type SystemInfo } from './mapgen';
 import { baseMods, mul } from './mods';
@@ -104,6 +104,8 @@ interface FieldState {
   nodes: GNode[];
   links: FieldLink[];
   over: Map<number, number[]>;
+  /** For each world that is protected: the Bastions that protect it. */
+  guards: Map<number, number[]>;
 }
 
 const NO_FIELDS: number[] = [];
@@ -904,6 +906,22 @@ export class Game {
     return this.fields().links;
   }
 
+  /**
+   * The Bastions that protect a world: those its field is linked with. While one of them stands the world
+   * takes `LINK_GUARD` less damage (`damagePlanet`). A Bastion protects the other end of its link, not
+   * itself: linked with a Hearth it is the way in, and two Bastions linked protect each other.
+   */
+  guardsOf(n: GNode): number[] {
+    return this.fields().guards.get(n.id) ?? NO_FIELDS;
+  }
+
+  /** The worlds a Bastion protects (the other way round). */
+  guardedBy(n: GNode): number[] {
+    const out: number[] = [];
+    for (const [id, list] of this.fields().guards) if (list.includes(n.id)) out.push(id);
+    return out;
+  }
+
   /** The houses whose anti-warp fields hold a place: its own world's field, and the links that run through it. */
   fieldsOver(n: GNode): number[] {
     return this.fields().over.get(n.id) ?? NO_FIELDS;
@@ -921,10 +939,18 @@ export class Game {
     if (c && c.tick === this.tick && c.sig === sig && c.nodes === this.nodes) return c;
     const links: FieldLink[] = [];
     const over = new Map<number, number[]>();
+    const guards = new Map<number, number[]>();
     const hold = (id: number, owner: number) => {
       const l = over.get(id);
       if (!l) over.set(id, [owner]);
       else if (!l.includes(owner)) l.push(owner);
+    };
+    const bastion = (n: GNode) => n.capitalOf < 0 && this.hasRole(n, 'bastion');
+    const guard = (world: GNode, by: GNode) => {
+      if (this.cradle || !bastion(by)) return;
+      const l = guards.get(world.id);
+      if (!l) guards.set(world.id, [by.id]);
+      else if (!l.includes(by.id)) l.push(by.id);
     };
     const worlds = this.nodes.filter((n) => this.fieldAt(n));
     for (const n of worlds) hold(n.id, n.owner);
@@ -939,9 +965,11 @@ export class Game {
         if (way[way.length - 1] !== b.id) continue;
         links.push({ owner: a.owner, a: a.id, b: b.id, way });
         for (const id of way) hold(id, a.owner);
+        guard(a, b);
+        guard(b, a);
       }
     }
-    this.fieldCache = { tick: this.tick, sig, nodes: this.nodes, links, over };
+    this.fieldCache = { tick: this.tick, sig, nodes: this.nodes, links, over, guards };
     return this.fieldCache;
   }
 
@@ -1289,6 +1317,8 @@ export class Game {
     if (n.owner < 0 || n.kind !== 'planet' || this.asleep(n.owner)) return;
     let dmg = amount * DMG_TABLE[type].planet;
     if (dmg <= 0) return;
+    // A world a Bastion protects takes less (`LINK_GUARD`), for as long as that Bastion stands.
+    if (this.guardsOf(n).length) dmg *= 1 - LINK_GUARD;
     const owner = this.factions[n.owner];
     if (n.lastHit > 25 && byFaction >= 0) {
       const who = this.factions[byFaction];

@@ -24,6 +24,14 @@ export const LEVEL_STEP = 0.08;
  * them), across to the next system at level III (both stars of the starlane between).
  */
 export const LINK_REACH = [0, 0, 2, 3];
+/**
+ * A Bastion protects the worlds its field is linked with: they take this much less damage while it
+ * stands (`Game.guardsOf`). It is what a Bastion is built for: the Hearth it is linked with is slow to
+ * crack until the Bastion is taken, so "ignore every world and go for the Hearth" has an answer, and
+ * the answer takes nothing from a fleet that flies where it likes. (Protection does not add up: one
+ * Bastion or three, it is this much; but all three must fall before it is gone.)
+ */
+export const LINK_GUARD = 0.4;
 /** A ship that was hit this many seconds ago or less is under fire... */
 export const UNDER_FIRE = 2;
 /** ...and its drive spools at this share of its speed: running from a fight costs time. */

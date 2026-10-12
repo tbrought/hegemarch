@@ -73,7 +73,9 @@ terms do the same.
   field up (a violet ring): enemy ships there take 6 seconds longer to jump away. A Bastion alone
   holds only its own world; from level II its field **links** with another field of yours up to 2
   jumps away (3 at level III), and every place on the starlanes between them is held too (a violet
-  line on the map). Under fire, every
+  line on the map). A Bastion also **protects** the world it is linked with: that world takes 40%
+  less damage while the Bastion stands, so a Hearth with a Bastion is cracked by taking the Bastion
+  first. Under fire, every
   ship's drive spools at half speed. Raiders that keep running can be caught at a Bastion, or made
   to come home by going for their Hearth.
 - **Lore** fills over time. Each time it fills, choose a **Boon**: upgrades, economy tricks, Pacts,

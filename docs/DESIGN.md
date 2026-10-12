@@ -87,6 +87,22 @@ the depth into the draft and the screen into a "one thing at a time" model.
     Bastion on an isolated leg did nothing for the way past it, and nothing said so. Fields do not
     add up: one is one. Lose or retool one end and the link is gone. In the cradle a Bastion holds
     its own land only.
+    **A Bastion protects the world it is linked with** (`Game.guardsOf`, `LINK_GUARD`): that world
+    takes 40% less damage for as long as the Bastion stands. It is what a Bastion is for. The third
+    playtest's host did not see why he would build one, and said that going straight for the Hearth
+    and ignoring every other world was the one tactic there was; he asked for Bastions that bar the
+    way, or cost a fleet its shields and a share of its hull for flying past. Both tax movement,
+    which is bad to play: a fleet is punished for going where it was sent. Protection takes nothing
+    from anyone. A fleet flies where it likes; a Hearth linked with a Bastion is simply slow to
+    crack, and taking the Bastion first is the better play, which also gives ships that break worlds
+    their job. A Bastion protects the other end of its link, not itself (linked with a Hearth it is
+    the way in); two Bastions linked protect each other. Protection does not add up, but every
+    Bastion a world is linked with must fall before it is gone. The world wears a thin violet ring
+    that flares when it takes a hit, and the cards say it from both sides ("PROTECTED BY MIRACH I:
+    40% LESS DAMAGE", "PROTECTS AURELIA: 40% LESS DAMAGE THERE"). (The word is "protected", not
+    "walled": a Hearth's walls are its strength in the first minutes, another thing.) Rival houses
+    count a protected world as that much harder, and the Bastion that protects a Hearth as worth
+    going for. An early rush is not touched by it: a link takes a Bastion at level II.
     So the choices are real ones: two level II Bastions in a system cost two worlds' roles and
     little else; one level III Bastion a system, each linked to the next system's, costs fewer
     worlds and more Embers, and the whole chain falls with one of its links. A world that only hangs

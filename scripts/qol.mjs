@@ -389,7 +389,7 @@ const screen = (page) => ev(page, () => window.__app.screen);
     return { before, name: world.name };
   });
   await page.waitForTimeout(300);
-  const cardLine = () => ev(page, () => window.__app.hud.ui.lastHints.map((h) => h.key).filter((k) => k.startsWith('card-line:') && /LINK|BETWEEN/.test(k)).map((k) => k.slice(10)));
+  const cardLine = () => ev(page, () => window.__app.hud.ui.lastHints.map((h) => h.key).filter((k) => k.startsWith('card-line:') && /LINK|BETWEEN|PROTECT/.test(k)).map((k) => k.slice(10)));
   const lone = await cardLine();
   check(linked.before === 0 && lone.some((t) => /^AT LEVEL II ITS FIELD LINKS/.test(t)), `a Bastion at level I links with nothing, and its card says what level II brings (${lone.join(' | ')})`);
   const link = await ev(page, () => {
@@ -404,6 +404,13 @@ const screen = (page) => ev(page, () => window.__app.screen);
   await page.waitForTimeout(300);
   const joined = await cardLine();
   check(link && link.length === 3 && joined.some((t) => t.startsWith('LINKED WITH') && t.includes(link[1].toUpperCase())), `at level II it links with the Hearth, and the place between is held (${joined.join(' | ')})`);
+  // What a Bastion is for: the Hearth it is linked with takes less damage while it stands.
+  check(joined.some((t) => /^PROTECTS .+: 40% LESS DAMAGE THERE$/.test(t)), `and it protects the Hearth it is linked with (${joined.find((t) => t.startsWith('PROTECTS')) ?? 'no line'})`);
+  await ev(page, () => window.__app.session.selectNode(window.__app.session.game.player.capital));
+  await page.waitForTimeout(300);
+  const hearthCard = await cardLine();
+  const guarded = await ev(page, () => { const g = window.__app.session.game; return g.guardsOf(g.nodes[g.player.capital]).length; });
+  check(guarded === 1 && hearthCard.some((t) => /^PROTECTED BY .+: 40% LESS DAMAGE$/.test(t)), `the Hearth's card says what protects it (${hearthCard.find((t) => t.startsWith('PROTECTED')) ?? 'no line'})`);
   await ev(page, () => window.__app.session.selectNode(window.__between));
   await page.waitForTimeout(300);
   const mid = await cardLine();

@@ -4,7 +4,7 @@
  */
 import { describe, expect, it } from 'vitest';
 import { Game, HISTORY_EVERY } from '../src/game/Game';
-import { FIRE_SPOOL, HOLD_FIELD, JUMP_CHARGE, TICK, UNDER_FIRE } from '../src/game/constants';
+import { FIRE_SPOOL, HOLD_FIELD, JUMP_CHARGE, LINK_GUARD, TICK, UNDER_FIRE } from '../src/game/constants';
 import { CARD_BY_ID, LEGENDARY_BY } from '../src/game/data/cards';
 import { EVENT_BY_ID, offering } from '../src/game/data/events';
 import { GOAL_REWARD, GOALS } from '../src/game/data/goals';
@@ -1356,5 +1356,99 @@ describe("the Whispering Rift takes a ship that can be offered", () => {
     run(g, 1);
     expect(captain.cond!(g, p, ctx)).toBe(false);
     expect(captain.why!(g, p, ctx)).toMatch(/^Your Ark is lost/);
+  });
+});
+
+describe("a Bastion protects the worlds it is linked with (the third playtest: why build one?)", () => {
+  /** The player's Hearth, and worlds of the player's two jumps from it, ready to be made Bastions. */
+  function home() {
+    const g = mk({ size: 'medium' });
+    const p = g.player;
+    const rival = g.empires().find((f) => f.id !== p.id)!;
+    const hearth = g.nodes[p.capital];
+    const near = g.nodes.filter((n) => n.kind === 'planet' && n.owner < 0 && g.hops(n.id, hearth.id) === 2).slice(0, 2);
+    for (const n of near) {
+      for (const u of [...g.buckets[n.id]]) g.killUnit(u, -1);
+      g.kindleWorld(n, p.id);
+    }
+    g.flushDeferred();
+    const bastion = (n: (typeof near)[number], level: number) => {
+      n.role = 'bastion';
+      n.retool = 0;
+      g.setLevel(n, level);
+    };
+    /** What a hit of a hundred takes off a world (its shields and hull together). */
+    const hit = (n: typeof hearth) => {
+      n.hp = n.maxHp;
+      n.sh = n.maxSh;
+      g.damagePlanet(n, 100, 'siege', rival.id);
+      return n.maxHp + n.maxSh - n.hp - n.sh;
+    };
+    return { g, p, rival, hearth, near, bastion, hit };
+  }
+
+  it('the Hearth takes that much less while a Bastion linked with it stands; the Bastion itself is the way in', () => {
+    const { g, p, hearth, near, bastion, hit } = home();
+    const full = hit(hearth);
+    const open = hit(near[0]);
+    expect(g.guardsOf(hearth)).toEqual([]);
+    // A Bastion at level I links with nothing, and protects nothing.
+    bastion(near[0], 1);
+    expect(hit(hearth)).toBeCloseTo(full, 5);
+    // At level II it is linked with the Hearth two jumps away, and protects it.
+    bastion(near[0], 2);
+    expect(g.guardsOf(hearth)).toEqual([near[0].id]);
+    expect(g.guardedBy(near[0])).toEqual([hearth.id]);
+    expect(hit(hearth)).toBeCloseTo(full * (1 - LINK_GUARD), 5);
+    // The Bastion is not protected by the Hearth: it takes what a Bastion takes.
+    expect(g.guardsOf(near[0])).toEqual([]);
+    const asBastion = hit(near[0]);
+    expect(asBastion).toBeCloseTo(open, 5);
+    // Retooled (or taken), the protection is gone with the link.
+    expect(g.cmdSetRole(p.id, near[0].id, 'mine')).toBe(true);
+    expect(g.guardsOf(hearth)).toEqual([]);
+    expect(hit(hearth)).toBeCloseTo(full, 5);
+  });
+
+  it('it does not add up, but every Bastion must fall before it is gone', () => {
+    const { g, p, rival, hearth, near, bastion, hit } = home();
+    const full = hit(hearth);
+    bastion(near[0], 2);
+    bastion(near[1], 2);
+    expect([...g.guardsOf(hearth)].sort()).toEqual([near[0].id, near[1].id].sort());
+    expect(hit(hearth)).toBeCloseTo(full * (1 - LINK_GUARD), 5);
+    g.planetDefeated(near[0], rival.id);
+    g.flushDeferred();
+    expect(g.guardsOf(hearth)).toEqual([near[1].id]);
+    expect(hit(hearth)).toBeCloseTo(full * (1 - LINK_GUARD), 5);
+    expect(g.cmdSetRole(p.id, near[1].id, 'mine')).toBe(true);
+    expect(hit(hearth)).toBeCloseTo(full, 5);
+  });
+
+  it('two Bastions linked protect each other; a world with a Starbase is protected by its Bastion, and protects nothing', () => {
+    const g = mk({ size: 'medium' });
+    const p = g.player;
+    const rival = g.empires().find((f) => f.id !== p.id)!;
+    const beside = (star: { id: number; system: number }) => g.nodes.filter((n) => n.kind === 'planet' && n.capitalOf < 0 && n.owner < 0 && n.system === star.system && g.hops(n.id, star.id) === 1);
+    const star = g.nodes.find((n) => n.kind === 'star' && g.hops(n.id, rival.capital) >= 3 && g.hops(n.id, p.capital) >= 3 && beside(n).some((x) => beside(n).some((y) => y.id !== x.id && g.hops(x.id, y.id) === 2)))!;
+    const a = beside(star).find((x) => beside(star).some((y) => y.id !== x.id && g.hops(x.id, y.id) === 2))!;
+    const b = beside(star).find((y) => y.id !== a.id && g.hops(a.id, y.id) === 2)!;
+    for (const n of [a, b]) {
+      for (const u of [...g.buckets[n.id]]) g.killUnit(u, -1);
+      g.kindleWorld(n, rival.id);
+    }
+    g.flushDeferred();
+    a.role = 'bastion';
+    a.retool = 0;
+    g.setLevel(a, 2);
+    // b with a Starbase: a field, linked by a's reach.
+    g.spawnUnit('starbase', rival.id, b.id);
+    expect(g.guardsOf(b)).toEqual([a.id]);
+    expect(g.guardsOf(a)).toEqual([]);
+    // b a Bastion too (even at level I: it is linked by the other's reach): each protects the other.
+    b.role = 'bastion';
+    b.retool = 0;
+    expect(g.guardsOf(a)).toEqual([b.id]);
+    expect(g.guardsOf(b)).toEqual([a.id]);
   });
 });

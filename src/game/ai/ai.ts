@@ -1,5 +1,5 @@
 import type { Game } from '../Game';
-import { AI_ATTACK_RATIO, AI_FIRST_ATTACK, AI_RUSH, AI_THINK, LINK_REACH } from '../constants';
+import { AI_ATTACK_RATIO, AI_FIRST_ATTACK, AI_RUSH, AI_THINK, LINK_GUARD, LINK_REACH } from '../constants';
 import { CARD_BY_ID, type CardCat } from '../data/cards';
 import { ERAS, LAST_CRADLE_ERA } from '../data/eras';
 import { isWarship, UNITS } from '../data/units';
@@ -472,7 +472,12 @@ function chooseTarget(g: Game, f: Faction, armyPower: number, from: number): { n
       if (n.owner === f.ai!.grudge && g.time - f.ai!.grudgeAt < 600) value *= 2.5;
       if (g.factions[n.owner].gate?.node === n.id) value *= 3;
       if (g.factions[n.owner].isPlayer) value *= 1 + 0.12 * d;
-      def += n.hp / (n.capitalOf >= 0 ? 900 : 1600);
+      // (A world a Bastion protects takes that much longer to crack; the Bastion that protects a Hearth
+      // is the way in, and worth going for.)
+      def += n.hp / (n.capitalOf >= 0 ? 900 : 1600) / (g.guardsOf(n).length ? 1 - LINK_GUARD : 1);
+      const wards = g.guardedBy(n);
+      if (wards.some((id) => g.nodes[id].capitalOf >= 0)) value += 14;
+      else if (wards.length) value += 4;
     } else if (n.kind === 'planet' && n.owner === -1 && g.hasHostiles(n.id, f.id)) {
       value = 6 + SIZE_VALUE[n.size] * 3;
     } else if (n.kind === 'relic' && n.relic) {

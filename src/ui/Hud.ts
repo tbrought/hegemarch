@@ -6,7 +6,7 @@ import { ERAS, LAST_CRADLE_ERA, LINE_SHORT, SPACE } from '../game/data/eras';
 import { RELIC_BY_ID } from '../game/data/relics';
 import { isWarship, UNITS } from '../game/data/units';
 import { ASCENSION_BOONS, DOMINATION_HOLD, DOMINATION_SHARE, GATE_CHARGE, RELIC_HOLD, relicsRequired, TREASURY_HOLD, treasuryTarget, VICTORIES } from '../game/data/victories';
-import { FIRE_SPOOL, HOLD_FIELD, JUMP_CHARGE, LINK_REACH, UNDER_FIRE } from '../game/constants';
+import { FIRE_SPOOL, HOLD_FIELD, JUMP_CHARGE, LINK_GUARD, LINK_REACH, UNDER_FIRE } from '../game/constants';
 import { ECON, PLANETS, ROLES, ROLE_ORDER } from '../game/data/worlds';
 import type { Faction, GNode, Note, Unit, UnitType, VictoryId } from '../game/types';
 import { roman } from '../game/util';
@@ -69,7 +69,7 @@ interface Project {
 }
 
 /** How fields link, for the tips of the cards. */
-const LINK_TIP = `A Bastion alone holds only its own world. From level II its field links with another field of yours (a Bastion's, your Hearth's, a Starbase's) up to ${LINK_REACH[2]} jumps away, at level III up to ${LINK_REACH[3]}: every place on the starlanes between them is held too, and enemy ships there take ${HOLD_FIELD}s longer to jump away. Lose or retool one end and the link is gone.`;
+const LINK_TIP = `A Bastion alone holds only its own world. From level II its field links with another field of yours (a Bastion's, your Hearth's, a Starbase's) up to ${LINK_REACH[2]} jumps away, at level III up to ${LINK_REACH[3]}: every place on the starlanes between them is held too, and enemy ships there take ${HOLD_FIELD}s longer to jump away. A Bastion also protects the world it is linked with: that world takes ${Math.round(LINK_GUARD * 100)}% less damage while the Bastion stands. Lose or retool one end and the link is gone.`;
 
 /** How long a drive charges with nothing holding it, for the words of a tip. */
 const JUMP_CHARGE_TEXT = `${JUMP_CHARGE} s`;
@@ -1780,6 +1780,30 @@ export class Hud {
     const row = (t: string, tip: string) => rows.push(this.line(t.toUpperCase(), PAL.violet, 'tiny', { tip: `${tip} ${LINK_TIP}`, terms: gloss('field') }));
     const links = game.fieldLinks().filter((l) => l.way.includes(n.id));
     const ends = links.filter((l) => l.a === n.id || l.b === n.id);
+    // Protection: what protects this world, and what it protects. (The word is "protected", not
+    // "walled": a Hearth's walls are another thing, its strength in the first minutes.)
+    const less = `${Math.round(LINK_GUARD * 100)}% less damage`;
+    const by = game.guardsOf(n);
+    const wards = game.guardedBy(n);
+    const mine = n.owner === p.id;
+    const both = by.length > 0 && by.length === wards.length && by.every((id) => wards.includes(id));
+    const protection = () => {
+      if (both) {
+        row(`Each protects the other: ${less}`, `${n.name} and ${by.map(name).join(', ')} are linked Bastions: each takes ${less} while the other stands.`);
+        return;
+      }
+      if (by.length) {
+        const who = by.length <= 2 ? by.map(name).join(' and ') : `${by.length} Bastions`;
+        const text = `Protected by ${who}: ${less}`;
+        row(text.length <= 46 ? text : `Protected by ${by.length > 1 ? `${by.length} Bastions` : 'a Bastion'}: ${less}`, mine
+          ? `${n.name} takes ${less} while ${by.map(name).join(' or ')} stands. Lose every Bastion it is linked with and the protection is gone.`
+          : `${n.name} takes ${less} while ${by.map(name).join(' or ')} stands. Take ${by.length > 1 ? 'those Bastions' : 'that Bastion'} first (or see ${by.length > 1 ? 'them' : 'it'} retooled) and the protection is gone.`);
+      }
+      if (wards.length) {
+        const text = `Protects ${list(wards)}: ${less} there`;
+        row(text.length <= 46 ? text : `Protects ${wards.length} worlds: ${less}`, `${wards.map(name).join(', ')} ${wards.length > 1 ? 'take' : 'takes'} ${less} while ${n.name} stands.`);
+      }
+    };
     if (game.fieldAt(n)) {
       if (ends.length) {
         const partners = [...new Set(ends.map((l) => (l.a === n.id ? l.b : l.a)))];
@@ -1788,6 +1812,7 @@ export class Hud {
         const full = `Linked with ${list(partners)}: ${held.length ? `${list(held)} held too` : 'nothing lies between'}`;
         const short = `Linked with ${partners.length} ${partners.length > 1 ? 'fields' : 'field'}: ${held.length ? `${held.length} ${held.length > 1 ? 'places' : 'place'} held too` : 'nothing lies between'}`;
         row(full.length <= 46 ? full : short, `Its field is linked with ${partners.map(name).join(', ')}${held.length ? `, and holds ${held.map(name).join(', ')} between them` : ', which is next door: no place lies between them to be held'}.`);
+        protection();
       } else if (n.owner === p.id && n.capitalOf < 0 && game.hasRole(n, 'bastion')) {
         const reach = game.linkReach(n);
         if (!reach) row(`At level II its field links ${LINK_REACH[2]} jumps away`, 'Alone and at level I, this Bastion holds only its own world.');
@@ -1796,10 +1821,10 @@ export class Hud {
       return rows;
     }
     // A place between two fields.
-    const mine = links.filter((l) => l.owner === p.id);
+    const ours = links.filter((l) => l.owner === p.id);
     const theirs = links.filter((l) => game.hostile(l.owner, p.id));
     const between = (ls: typeof links) => ls.map((l) => `${name(l.a)} and ${name(l.b)}`).join('; ');
-    if (mine.length) row(`Between your fields: enemies jump ${HOLD_FIELD}s slower`, `This place lies between ${between(mine)}, whose fields are linked.`);
+    if (ours.length) row(`Between your fields: enemies jump ${HOLD_FIELD}s slower`, `This place lies between ${between(ours)}, whose fields are linked.`);
     if (theirs.length) row(`Between enemy fields: you jump ${HOLD_FIELD}s slower`, `This place lies between ${between(theirs)}, whose fields are linked.`);
     return rows;
   }

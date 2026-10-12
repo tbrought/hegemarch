@@ -46,7 +46,7 @@ export const GLOSSARY: GlossEntry[] = [
   term('mine', 'Mine', 'mines?', 'A world role: the world makes [75% more Embers].'),
   term('forge', 'Forge', 'forges?', 'A world role: builds ships. Higher levels build faster.'),
   term('observatory', 'Observatory', 'observator(?:y|ies)', 'A world role: makes [Lore] and sees one starlane further.'),
-  term('bastion', 'Bastion', 'bastions?', 'A world role: orbital guns, [+50% hull and shields], repairs for your ships there, and an anti-warp field.'),
+  term('bastion', 'Bastion', 'bastions?', 'A world role: orbital guns, [+50% hull and shields], repairs for your ships there, and an anti-warp field. From level II it links with another field of yours, and the world it is linked with takes [40% less damage] while the Bastion stands.'),
   term('level', 'World level', 'world levels?|world upgrades?|levels? (?:I|II|III)|up to III|rises one level', 'Worlds rise from level I to III. Each level adds output, hull and hangar room.'),
   term('hangar', 'Hangar', 'hangars?', 'Room for your fleet. Every world adds room, more at higher levels. When it is full you cannot build ships.'),
   term('bay', 'Hangar Bay', 'hangar bays?', 'Built at your Hearth: [+5 hangar room] each. Every bay costs more than the last.'),
