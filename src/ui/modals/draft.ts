@@ -19,6 +19,7 @@ import { flyBoon } from '../hud/tray';
 import { boonSubjects, drawSubjects, starWindow, subjectNames, subjectsSize, type Look } from '../subjects';
 import { MARK, marksOf } from '../Ui';
 import type { Modals } from '../Modals';
+import type { CardDef } from '../../game/data/cards';
 
 export const BLUEPRINT_SHIP: Record<string, UnitType> = { bpCarrier: 'carrier', bpLancer: 'lancer', bpDread: 'dreadnought', bpStarbase: 'starbase' };
 
@@ -91,6 +92,30 @@ function glint(modals: Modals, g: Ctx, x: number, y: number, w: number, h: numbe
   rect(g, px, py, 1, 1, PAL.bone);
 }
 
+/** The window a Boon card shows what it affects in: its height, and the room it takes with the line under it. */
+const WIN = 28;
+const ART = WIN + 1;
+
+/** A Boon on offer, with what the draft has worked out about it: what it would change, its name in lines, the height its card needs, what it affects. */
+interface DraftCard {
+  id: string;
+  c: CardDef;
+  deltas: StatDelta[];
+  names: string[];
+  hgt: number;
+  subs: ReturnType<typeof boonSubjects>;
+}
+
+/** Where the cards of a draft stand: the width and height of one, the first one's corner, the room for text, and whether each has a window for its pictures. */
+interface DraftLayout {
+  cw: number;
+  ch: number;
+  cx0: number;
+  cy: number;
+  inner: number;
+  strip: boolean;
+}
+
 export function draft(modals: Modals, g: Ctx) {
   const p = modals.g.player;
   const offer = modals.g.ensureOffer(p);
@@ -115,8 +140,6 @@ export function draft(modals: Modals, g: Ctx) {
   // The pictures get a window of their own under the header (deep space, with the ship turning in
   // it) when every card has the room; on a small screen with long texts they sit small in the
   // header instead (and a Blueprint keeps its big ship).
-  const WIN = 28;
-  const ART = WIN + 1;
   const maxH = modals.hud.H - 70;
   const strip = Math.max(...cards.map((k) => k.hgt)) + ART <= maxH;
   for (const k of cards) k.hgt += strip ? ART : BLUEPRINT_SHIP[k.id] ? 30 : 0;
@@ -132,92 +155,7 @@ export function draft(modals: Modals, g: Ctx) {
     modals.dealt = offer;
     modals.dealtAt = modals.ui.time;
   }
-  cards.forEach(({ id, c, deltas, names, subs }, i) => {
-    const cx = cx0 + i * (cw + 4);
-    const hid = 'card-' + i;
-    const hot = modals.ui.isHot(hid);
-    const col = boonColor(c);
-    // Dealt one after another: each card slides up into place.
-    const k = Math.max(0, Math.min(1, (modals.ui.time - modals.dealtAt - i * 0.06) / 0.22));
-    const slide = Math.round((1 - k) * (1 - k) * 40);
-    const ty = cy - (hot ? 2 : 0) + slide;
-    box(g, cx, ty, cw, ch, hot ? PAL.indigo : PAL.night, hot ? PAL.bone : col);
-    if (c.rarity === 'epic' || c.rarity === 'legendary' || c.pact) box(g, cx + 1, ty + 1, cw - 2, ch - 2, null, shade(col));
-    if (c.rarity === 'legendary') glint(modals, g, cx, ty, cw, ch);
-    rect(g, cx + 2, ty + 2, cw - 4, 9, c.cat === 'blueprint' ? PAL.wine : PAL.void);
-    icon(g, catIcon(c.cat), cx + 4, ty + 4, col);
-    const ship = BLUEPRINT_SHIP[id];
-    // Small pictures at the right of the header when there is no window for them.
-    const small = strip || ship ? [] : subs;
-    const smallW = small.length ? drawSubjects(g, small, cx + cw - 4, ty + 2, 9, { color: p.color, scale: 1, t: modals.ui.time, lively: hot }, 'right') : 0;
-    const headW = cw - 15 - (smallW ? smallW + 3 : 0);
-    const head = `${c.rarity.toUpperCase()} · ${CAT_LABEL[c.cat].toUpperCase()}`;
-    text(g, fit(textWidth(head, 'tiny') <= headW ? head : c.rarity.toUpperCase(), headW, 'tiny'), cx + 11, ty + 4, col, 'tiny');
-    let ly = ty + 14;
-    const tip = `This Boon affects: ${subjectNames(subs)}.`;
-    if (strip) {
-      // The window: stars drifting by, and what the Boon affects, alive, in the middle of it.
-      const wx = cx + 3;
-      const wy = ty + 12;
-      const ww = cw - 6;
-      starWindow(g, wx, wy, ww, WIN, [...id].reduce((a, ch) => a + ch.charCodeAt(0), i * 31), modals.ui.time, hot);
-      // Ships at twice their size and icons at three times; smaller when three of them crowd the window.
-      let look: Look = { color: p.color, scale: 2, iconScale: 3, t: modals.ui.time, lively: hot, turn: true };
-      if (subjectsSize(subs, look).w > ww - 4) look = { ...look, iconScale: 2 };
-      if (subjectsSize(subs, look).w > ww - 4) look = { ...look, scale: 1 };
-      g.save();
-      g.beginPath();
-      g.rect(wx, wy, ww, WIN);
-      g.clip();
-      drawSubjects(g, subs, wx + ww / 2, wy, WIN, look, 'center');
-      g.restore();
-      // A thin frame: the rarity's color under the pointer.
-      box(g, wx, wy, ww, WIN, null, hot ? col : PAL.indigo);
-      ly += ART;
-      if (subs.length) modals.ui.hint('card-sub-' + i, wx, wy, ww, WIN, { tip });
-    } else if (smallW) modals.ui.hint('card-sub-' + i, cx + cw - 5 - smallW, ty + 2, smallW + 2, 9, { tip });
-    for (const l of names) {
-      text(g, l, cx + 4, ly, c.rarity === 'legendary' ? PAL.gold : c.pact ? PAL.red : PAL.bone);
-      ly += 10;
-    }
-    ly += 3;
-    if (ship && !strip) {
-      const spr = shipSprite(ship, p.color, 0);
-      const sc = spr.width * 3 <= cw - 16 ? 3 : 2;
-      g.drawImage(spr, Math.round(cx + cw / 2 - (spr.width * sc) / 2), ly + 2, spr.width * sc, spr.height * sc);
-      ly += spr.height * sc + 6;
-    }
-    // (The words of the card that the boxes beside it explain are marked.)
-    const cardTerms = termsIn(`${c.name}. ${c.desc}${c.pact ? ' Pact' : ''}`, { max: 4 });
-    ly = drawRich(g, c.desc, cx + 4, ly, inner, {}, 'main', 8, marksOf(modals.ui.termsFor({ terms: cardTerms })), MARK);
-    const deltaTop = ly;
-    if (deltas.length) {
-      ly += 1;
-      rect(g, cx + 4, ly, inner, 1, PAL.indigo);
-      ly += 4;
-      for (const d of deltas) ly += drawDelta(modals, g, d, cx + 4, ly, inner);
-    }
-    const owned = modals.g.cardCount(p, id);
-    text(g, `[${i + 1}]`, cx + 4, ty + ch - 9, PAL.slate, 'tiny');
-    const tag = owned ? `STACK ×${owned}→×${owned + 1}` : 'NEW';
-    const tagW = textWidth(tag, 'tiny');
-    text(g, tag, cx + cw - 4 - tagW, ty + ch - 9, owned ? PAL.gold : PAL.teal, 'tiny');
-    modals.ui.add({
-      id: hid, x: cx, y: cy - 2 + slide, w: cw, h: ch + 2, onClick: () => choose(modals, id, i),
-      terms: cardTerms, termsBeside: true,
-    });
-    modals.ui.hint('card-tag-' + i, cx + cw - 6 - tagW, ty + ch - 11, tagW + 4, 9, {
-      tip: owned
-        ? `You already have ${c.name} ×${owned}. Taking it again stacks its effect (up to ×${c.max}).`
-        : `You don't have ${c.name} yet.${c.max > 1 ? ` It can stack up to ×${c.max}.` : ''}`,
-    });
-    if (deltas.length) {
-      modals.ui.hint('card-delta-' + i, cx + 2, deltaTop, cw - 4, ly - deltaTop, {
-        tip: 'Your total bonus now → after taking this Boon, counting your house, the omens, your Boons and your relics.',
-      });
-    }
-    modals.ui.hint('card-key-' + i, cx + 2, ty + ch - 11, 14, 9, { tip: `Press ${i + 1} to take this Boon.` });
-  });
+  cards.forEach((card, i) => draftCard(modals, g, card, i, { cw, ch, cx0, cy, inner, strip }));
   const by = y + h - 16;
   const rr = `REROLL (${p.rerolls})`;
   modals.ui.button(g, 'reroll', x + 8, by, textWidth(rr, 'tiny') + 12, 12, rr, () => {
@@ -232,4 +170,95 @@ export function draft(modals: Modals, g: Ctx) {
   }, { font: 'tiny', tip: `Take ${modals.g.skipValue(p)} Embers instead of a Boon. Your next Boon still costs the same Lore.` });
   const lw = 'LATER';
   modals.ui.button(g, 'later', x + w / 2 - 20, by, 40, 12, lw, () => modals.close(), { font: 'tiny', tip: 'Decide later. The Boon will wait. (Esc)' });
+}
+
+/** One card of the draft: its rarity and kind, what it affects (in a window of its own, or small in the header), its name and text, what it would change in figures, and whether the house has it already. */
+function draftCard(modals: Modals, g: Ctx, card: DraftCard, i: number, lay: DraftLayout) {
+  const { id, c, deltas, names, subs } = card;
+  const { cw, ch, cx0, cy, inner, strip } = lay;
+  const p = modals.g.player;
+  const cx = cx0 + i * (cw + 4);
+  const hid = 'card-' + i;
+  const hot = modals.ui.isHot(hid);
+  const col = boonColor(c);
+  // Dealt one after another: each card slides up into place.
+  const k = Math.max(0, Math.min(1, (modals.ui.time - modals.dealtAt - i * 0.06) / 0.22));
+  const slide = Math.round((1 - k) * (1 - k) * 40);
+  const ty = cy - (hot ? 2 : 0) + slide;
+  box(g, cx, ty, cw, ch, hot ? PAL.indigo : PAL.night, hot ? PAL.bone : col);
+  if (c.rarity === 'epic' || c.rarity === 'legendary' || c.pact) box(g, cx + 1, ty + 1, cw - 2, ch - 2, null, shade(col));
+  if (c.rarity === 'legendary') glint(modals, g, cx, ty, cw, ch);
+  rect(g, cx + 2, ty + 2, cw - 4, 9, c.cat === 'blueprint' ? PAL.wine : PAL.void);
+  icon(g, catIcon(c.cat), cx + 4, ty + 4, col);
+  const ship = BLUEPRINT_SHIP[id];
+  // Small pictures at the right of the header when there is no window for them.
+  const small = strip || ship ? [] : subs;
+  const smallW = small.length ? drawSubjects(g, small, cx + cw - 4, ty + 2, 9, { color: p.color, scale: 1, t: modals.ui.time, lively: hot }, 'right') : 0;
+  const headW = cw - 15 - (smallW ? smallW + 3 : 0);
+  const head = `${c.rarity.toUpperCase()} · ${CAT_LABEL[c.cat].toUpperCase()}`;
+  text(g, fit(textWidth(head, 'tiny') <= headW ? head : c.rarity.toUpperCase(), headW, 'tiny'), cx + 11, ty + 4, col, 'tiny');
+  let ly = ty + 14;
+  const tip = `This Boon affects: ${subjectNames(subs)}.`;
+  if (strip) {
+    // The window: stars drifting by, and what the Boon affects, alive, in the middle of it.
+    const wx = cx + 3;
+    const wy = ty + 12;
+    const ww = cw - 6;
+    starWindow(g, wx, wy, ww, WIN, [...id].reduce((a, ch) => a + ch.charCodeAt(0), i * 31), modals.ui.time, hot);
+    // Ships at twice their size and icons at three times; smaller when three of them crowd the window.
+    let look: Look = { color: p.color, scale: 2, iconScale: 3, t: modals.ui.time, lively: hot, turn: true };
+    if (subjectsSize(subs, look).w > ww - 4) look = { ...look, iconScale: 2 };
+    if (subjectsSize(subs, look).w > ww - 4) look = { ...look, scale: 1 };
+    g.save();
+    g.beginPath();
+    g.rect(wx, wy, ww, WIN);
+    g.clip();
+    drawSubjects(g, subs, wx + ww / 2, wy, WIN, look, 'center');
+    g.restore();
+    // A thin frame: the rarity's color under the pointer.
+    box(g, wx, wy, ww, WIN, null, hot ? col : PAL.indigo);
+    ly += ART;
+    if (subs.length) modals.ui.hint('card-sub-' + i, wx, wy, ww, WIN, { tip });
+  } else if (smallW) modals.ui.hint('card-sub-' + i, cx + cw - 5 - smallW, ty + 2, smallW + 2, 9, { tip });
+  for (const l of names) {
+    text(g, l, cx + 4, ly, c.rarity === 'legendary' ? PAL.gold : c.pact ? PAL.red : PAL.bone);
+    ly += 10;
+  }
+  ly += 3;
+  if (ship && !strip) {
+    const spr = shipSprite(ship, p.color, 0);
+    const sc = spr.width * 3 <= cw - 16 ? 3 : 2;
+    g.drawImage(spr, Math.round(cx + cw / 2 - (spr.width * sc) / 2), ly + 2, spr.width * sc, spr.height * sc);
+    ly += spr.height * sc + 6;
+  }
+  // (The words of the card that the boxes beside it explain are marked.)
+  const cardTerms = termsIn(`${c.name}. ${c.desc}${c.pact ? ' Pact' : ''}`, { max: 4 });
+  ly = drawRich(g, c.desc, cx + 4, ly, inner, {}, 'main', 8, marksOf(modals.ui.termsFor({ terms: cardTerms })), MARK);
+  const deltaTop = ly;
+  if (deltas.length) {
+    ly += 1;
+    rect(g, cx + 4, ly, inner, 1, PAL.indigo);
+    ly += 4;
+    for (const d of deltas) ly += drawDelta(modals, g, d, cx + 4, ly, inner);
+  }
+  const owned = modals.g.cardCount(p, id);
+  text(g, `[${i + 1}]`, cx + 4, ty + ch - 9, PAL.slate, 'tiny');
+  const tag = owned ? `STACK ×${owned}→×${owned + 1}` : 'NEW';
+  const tagW = textWidth(tag, 'tiny');
+  text(g, tag, cx + cw - 4 - tagW, ty + ch - 9, owned ? PAL.gold : PAL.teal, 'tiny');
+  modals.ui.add({
+    id: hid, x: cx, y: cy - 2 + slide, w: cw, h: ch + 2, onClick: () => choose(modals, id, i),
+    terms: cardTerms, termsBeside: true,
+  });
+  modals.ui.hint('card-tag-' + i, cx + cw - 6 - tagW, ty + ch - 11, tagW + 4, 9, {
+    tip: owned
+      ? `You already have ${c.name} ×${owned}. Taking it again stacks its effect (up to ×${c.max}).`
+      : `You don't have ${c.name} yet.${c.max > 1 ? ` It can stack up to ×${c.max}.` : ''}`,
+  });
+  if (deltas.length) {
+    modals.ui.hint('card-delta-' + i, cx + 2, deltaTop, cw - 4, ly - deltaTop, {
+      tip: 'Your total bonus now → after taking this Boon, counting your house, the omens, your Boons and your relics.',
+    });
+  }
+  modals.ui.hint('card-key-' + i, cx + 2, ty + ch - 11, 14, 9, { tip: `Press ${i + 1} to take this Boon.` });
 }

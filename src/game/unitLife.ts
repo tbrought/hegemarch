@@ -207,7 +207,13 @@ export function convertUnits(g: Game, list: Unit[], to: number, by: Unit | null)
   if (by && g.fxEnabled) g.fx.push({ k: 'text', x: by.x, y: by.y - 24, text: `CONVERTED ${ids.size}`, color: gainer.color, node: by.node });
 }
 
-export function killUnit(g: Game, u: Unit, byFaction: number, src: Unit | null = null) {
+/**
+ * A ship is destroyed. What that sets off, in this order: the loss is counted and told, the house that
+ * did it is paid, the Boons that answer a death take effect (zeal, a martyr's blast, the fleet that
+ * returns), its fighters go with it, and if it was the last of its kind (an Ark, a Gate, the Corsairs'
+ * Stronghold, the Rift Heart) that has consequences of its own.
+ */
+export function killUnit(g: Game, u: Unit, byFaction: number, _src: Unit | null = null) {
   if (u.dead) return;
   u.dead = true;
   u.hp = 0;
@@ -224,6 +230,23 @@ export function killUnit(g: Game, u: Unit, byFaction: number, src: Unit | null =
   }
   // No ship of the player's is ever lost silently. (The seed ship, the Ark and the Gate have words of their own.)
   if (owner.isPlayer && isShip && u.type !== 'seed' && u.type !== 'ark' && u.type !== 'gate') noteLoss(g, u, byFaction);
+  creditKill(g, u, byFaction, isShip);
+  raiseZeal(g, u, isShip);
+  martyrBlast(g, u, isShip);
+  eternalReturn(g, u, isShip);
+  if (def.fighters) {
+    for (const o of g.unitList) if (o.parent === u.id && !o.dead) g.killUnit(o, -1);
+  }
+  if (u.type === 'fighter' && u.parent > 0) {
+    const p = g.units.get(u.parent);
+    if (p) p.launched = Math.max(0, p.launched - 1);
+  }
+  lastOfItsKind(g, u, byFaction);
+}
+
+/** The house that destroyed a ship: a kill to its name, Embers or Lore if its Boons pay for kills, and experience for its capital ships there. */
+function creditKill(g: Game, u: Unit, byFaction: number, isShip: boolean) {
+  const def = UNITS[u.type];
   if (byFaction >= 0 && byFaction !== u.owner && isShip) {
     const killer = g.factions[byFaction];
     killer.stats.kills++;
@@ -238,8 +261,11 @@ export function killUnit(g: Game, u: Unit, byFaction: number, src: Unit | null =
       }
     }
   }
-  void src;
-  // Zeal (the Choir of the First Flame): a ship lost is a martyr to the rest of its house at that world.
+}
+
+/** Zeal (the Choir of the First Flame): a ship lost is a martyr to the rest of its house at that world. */
+function raiseZeal(g: Game, u: Unit, isShip: boolean) {
+  const owner = g.factions[u.owner];
   const zeal = owner.mods.flags.zeal ?? 0;
   if (zeal > 0 && isShip && u.node >= 0 && !u.lane) {
     let risen = 0;
@@ -253,7 +279,12 @@ export function killUnit(g: Game, u: Unit, byFaction: number, src: Unit | null =
     // (Said where the ship died, each time the zeal rises: both sides can see what the loss has cost.)
     if (risen > 0 && g.fxEnabled) g.fx.push({ k: 'text', x: u.x, y: u.y - 14, text: `ZEAL +${Math.round(risen * zeal * 100)}%`, color: owner.color, node: u.node });
   }
-  // Martyr Cores
+}
+
+/** Martyr Cores: a ship that dies takes a share of its hull out of the enemies around it. */
+function martyrBlast(g: Game, u: Unit, isShip: boolean) {
+  const def = UNITS[u.type];
+  const owner = g.factions[u.owner];
   const martyr = owner.mods.flags.martyr ?? 0;
   if (martyr > 0 && u.node >= 0 && isShip) {
     const nodeId = u.node;
@@ -269,7 +300,12 @@ export function killUnit(g: Game, u: Unit, byFaction: number, src: Unit | null =
       }
     });
   }
-  // Eternal Fleet
+}
+
+/** Eternal Fleet: a warship that dies may be back at its Hearth. (The one roll of the dice in a death.) */
+function eternalReturn(g: Game, u: Unit, isShip: boolean) {
+  const def = UNITS[u.type];
+  const owner = g.factions[u.owner];
   const eternal = owner.mods.flags.eternal ?? 0;
   if (eternal > 0 && isShip && ['combat', 'siege', 'carrier'].includes(def.role) && owner.alive && owner.capital >= 0 && g.rng.chance(eternal)) {
     const t = u.type;
@@ -278,13 +314,11 @@ export function killUnit(g: Game, u: Unit, byFaction: number, src: Unit | null =
       if (g.factions[oid].alive && g.factions[oid].capital >= 0) g.spawnUnit(t, oid, g.factions[oid].capital);
     });
   }
-  if (def.fighters) {
-    for (const o of g.unitList) if (o.parent === u.id && !o.dead) g.killUnit(o, -1);
-  }
-  if (u.type === 'fighter' && u.parent > 0) {
-    const p = g.units.get(u.parent);
-    if (p) p.launched = Math.max(0, p.launched - 1);
-  }
+}
+
+/** An Ark keeps what it had learned for the one built after it; a Gate is gone; the Stronghold ends the raids; the Rift Heart ends the Hollow. */
+function lastOfItsKind(g: Game, u: Unit, byFaction: number) {
+  const owner = g.factions[u.owner];
   if (u.type === 'ark' && owner.ark === u.id) {
     owner.ark = -1;
     owner.arkLevel = u.level;

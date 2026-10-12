@@ -185,18 +185,7 @@ export class Tutorial {
     }
     switch (this.step) {
       case 1: {
-        let tw = g.ui.tutWorld ?? -1;
-        // Taken by someone else, or (in a run saved by an older version) out of sight: pick again.
-        if (tw < 0 || (g.nodes[tw].owner >= 0 && g.nodes[tw].owner !== p.id) || (g.nodes[tw].owner < 0 && !p.explored[tw])) {
-          tw = this.pickWorld();
-          g.ui.tutWorld = tw;
-        }
-        const seeding = g.unitList.some((u) => !u.dead && u.owner === p.id && u.type === 'seed' && u.order === 'kindle');
-        if (seeding || p.stats.worldsKindled > 0) {
-          const s = g.unitList.find((u) => !u.dead && u.owner === p.id && u.type === 'seed' && u.order === 'kindle');
-          if (s) g.ui.tutWorld = s.orderTarget;
-          this.step = 2;
-        } else if (tw >= 0) view.highlightNode = tw;
+        this.stepKindle();
         break;
       }
       case 2: {
@@ -210,63 +199,11 @@ export class Tutorial {
         if (p.pendingDrafts <= 0 || p.cards.length > 0) this.step = 4;
         break;
       case 4: {
-        const raiderId = g.ui.tutRaider ?? 0;
-        if (!raiderId) {
-          // Raid the new world; if the seed ship never made it, raid the Hearth instead.
-          const seeding = g.unitList.some((u) => !u.dead && u.owner === p.id && u.type === 'seed' && u.order === 'kindle');
-          let w = this.newWorld();
-          if (w < 0 && !seeding && this.t - this.stepSince > 6) w = p.capital;
-          if (w >= 0 && this.t - this.stepSince > 2) {
-            const r = g.spawnTutorialRaider(w);
-            g.ui.tutRaider = r ? r.id : -1;
-            g.ui.tutRaidAt = g.time;
-            if (r) {
-              this.s.sfx.play('alert', 0.5);
-              this.frameOr([w, this.biggestFleet()], 0.08);
-              this.lookedAtRaid = false;
-            }
-          }
-          break;
-        }
-        const r = raiderId > 0 ? g.units.get(raiderId) : undefined;
-        const w = this.newWorld();
-        if (!r || r.dead) {
-          this.step = 5;
-          this.s.showToast(g.ui.tutRaidFled ? 'The raider slipped away. Next time, send your fleet.' : 'The raider is gone. Well flown!', PAL.teal, 4);
-          break;
-        }
-        if (g.time - (g.ui.tutRaidAt ?? g.time) > 180) {
-          // The player never engaged; let the lesson go.
-          g.ui.tutRaidFled = 1;
-          g.killUnit(r, -1);
-          break;
-        }
-        if (w >= 0 && (this.s.view.orderMode || this.s.ownSelected().length)) {
-          view.highlightNode = w;
-          // Fleet picked: make sure the raided world is on screen to click.
-          if (!this.lookedAtRaid) {
-            this.lookedAtRaid = true;
-            const sc = this.hud.nodeScreen(w);
-            if (sc.x < 10 || sc.y < 46 || sc.x > this.hud.W - 10 || sc.y > this.hud.H - 110) this.frame([w], Math.max(0.1, this.s.renderer.cam.tzoom));
-          }
-        }
+        this.stepRaid();
         break;
       }
       case 5: {
-        // Send the Scout out. Nothing to teach once one explores, with no Scout left, or with nothing left to chart.
-        const scouts = this.scouts();
-        // (`ui.scouted`: the order was given. A Scout with no safe way on is home again within a tick.)
-        if (scouts.some((u) => u.order === 'explore') || g.ui.scouted || !scouts.length || !g.hasUncharted(p)) {
-          this.step = 6;
-          break;
-        }
-        const at = scouts[0].lane ? scouts[0].lane.to : scouts[0].node;
-        if (!this.lookedAtScout && at >= 0) {
-          // Make sure the Scout's fleet badge is on screen to click.
-          this.lookedAtScout = true;
-          const sc = this.hud.nodeScreen(at);
-          if (sc.x < 10 || sc.y < 46 || sc.x > this.hud.W - 10 || sc.y > this.hud.H - 110) this.frame([at], Math.max(0.1, this.s.renderer.cam.tzoom));
-        }
+        this.stepScout();
         break;
       }
       case 6:
@@ -281,6 +218,92 @@ export class Tutorial {
           this.onDestiniesClosed();
         }
         break;
+    }
+  }
+
+  /** Step 1: kindle the world the guide points at. Done once a seed ship is on its way. */
+  private stepKindle() {
+    const g = this.g;
+    const p = g.player;
+    const view = this.s.view;
+    let tw = g.ui.tutWorld ?? -1;
+    // Taken by someone else, or (in a run saved by an older version) out of sight: pick again.
+    if (tw < 0 || (g.nodes[tw].owner >= 0 && g.nodes[tw].owner !== p.id) || (g.nodes[tw].owner < 0 && !p.explored[tw])) {
+      tw = this.pickWorld();
+      g.ui.tutWorld = tw;
+    }
+    const seeding = g.unitList.some((u) => !u.dead && u.owner === p.id && u.type === 'seed' && u.order === 'kindle');
+    if (seeding || p.stats.worldsKindled > 0) {
+      const s = g.unitList.find((u) => !u.dead && u.owner === p.id && u.type === 'seed' && u.order === 'kindle');
+      if (s) g.ui.tutWorld = s.orderTarget;
+      this.step = 2;
+    } else if (tw >= 0) view.highlightNode = tw;
+  }
+
+  /** Step 4: a raider comes for the new world (or the Hearth); the lesson is to send the fleet. It ends when the raider is gone, one way or another. */
+  private stepRaid() {
+    const g = this.g;
+    const p = g.player;
+    const view = this.s.view;
+    const raiderId = g.ui.tutRaider ?? 0;
+    if (!raiderId) {
+      // Raid the new world; if the seed ship never made it, raid the Hearth instead.
+      const seeding = g.unitList.some((u) => !u.dead && u.owner === p.id && u.type === 'seed' && u.order === 'kindle');
+      let w = this.newWorld();
+      if (w < 0 && !seeding && this.t - this.stepSince > 6) w = p.capital;
+      if (w >= 0 && this.t - this.stepSince > 2) {
+        const r = g.spawnTutorialRaider(w);
+        g.ui.tutRaider = r ? r.id : -1;
+        g.ui.tutRaidAt = g.time;
+        if (r) {
+          this.s.sfx.play('alert', 0.5);
+          this.frameOr([w, this.biggestFleet()], 0.08);
+          this.lookedAtRaid = false;
+        }
+      }
+      return;
+    }
+    const r = raiderId > 0 ? g.units.get(raiderId) : undefined;
+    const w = this.newWorld();
+    if (!r || r.dead) {
+      this.step = 5;
+      this.s.showToast(g.ui.tutRaidFled ? 'The raider slipped away. Next time, send your fleet.' : 'The raider is gone. Well flown!', PAL.teal, 4);
+      return;
+    }
+    if (g.time - (g.ui.tutRaidAt ?? g.time) > 180) {
+      // The player never engaged; let the lesson go.
+      g.ui.tutRaidFled = 1;
+      g.killUnit(r, -1);
+      return;
+    }
+    if (w >= 0 && (this.s.view.orderMode || this.s.ownSelected().length)) {
+      view.highlightNode = w;
+      // Fleet picked: make sure the raided world is on screen to click.
+      if (!this.lookedAtRaid) {
+        this.lookedAtRaid = true;
+        const sc = this.hud.nodeScreen(w);
+        if (sc.x < 10 || sc.y < 46 || sc.x > this.hud.W - 10 || sc.y > this.hud.H - 110) this.frame([w], Math.max(0.1, this.s.renderer.cam.tzoom));
+      }
+    }
+  }
+
+  /** Step 5: send the Scout exploring. (Nothing to teach once one explores, with no Scout left, or with nothing left to chart.) */
+  private stepScout() {
+    const g = this.g;
+    const p = g.player;
+    // Send the Scout out. Nothing to teach once one explores, with no Scout left, or with nothing left to chart.
+    const scouts = this.scouts();
+    // (`ui.scouted`: the order was given. A Scout with no safe way on is home again within a tick.)
+    if (scouts.some((u) => u.order === 'explore') || g.ui.scouted || !scouts.length || !g.hasUncharted(p)) {
+      this.step = 6;
+      return;
+    }
+    const at = scouts[0].lane ? scouts[0].lane.to : scouts[0].node;
+    if (!this.lookedAtScout && at >= 0) {
+      // Make sure the Scout's fleet badge is on screen to click.
+      this.lookedAtScout = true;
+      const sc = this.hud.nodeScreen(at);
+      if (sc.x < 10 || sc.y < 46 || sc.x > this.hud.W - 10 || sc.y > this.hud.H - 110) this.frame([at], Math.max(0.1, this.s.renderer.cam.tzoom));
     }
   }
 

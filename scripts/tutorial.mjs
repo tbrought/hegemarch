@@ -127,6 +127,9 @@ try {
   await throughStep3();
   check('kindle, Striker and Boon reach step 4', (await step()) === 4);
   await fastForward(40);
+  // (The First Night's sector is another one every time, and in one in a few dozen the seed ship's way
+  // is longer than forty seconds: wait for the world to be lit, as the raider does.)
+  for (let i = 0; i < 8 && !(await ev(() => window.__app.session.game.worldsOf(window.__app.session.game.playerId).length > 1)); i++) await fastForward(10);
   await tick(3);
   const raider = await ev(() => window.__app.session.game.ui.tutRaider ?? 0);
   check('the raider arrives at the new world', raider > 0);

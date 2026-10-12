@@ -403,6 +403,8 @@ export class Renderer {
     const pv = view.fieldPreview ?? -1;
     const previewed = pv >= 0 && (pv === n.id || g.neighbours(pv).includes(n.id));
     const blink = Math.floor(t * 4) % 2 === 0;
+    /** This world would be protected by the Bastion the player is thinking of (it blinks). */
+    const ghost = previewed && blink && pv !== n.id && n.owner === g.nodes[pv].owner;
     if (z >= 0.08 && ((visible && g.fieldsOver(n).length) || (previewed && blink))) ring(ctx, x, y, Math.max(wellR - 3, this.nodeR(n) * 2 + 6), PAL.violet, 8);
 
     if (n.kind === 'star') {
@@ -411,54 +413,86 @@ export class Renderer {
       if (n.hazard && n.hazard.warn > 0 && Math.floor(t * 4) % 2 === 0) ring(ctx, x, y, r * 2 + 3, PAL.red, 2);
       if (n.hazard && n.hazard.warn <= 0) ring(ctx, x, y, r * 2.2 + 2 + (Math.floor(t * 10) % 3), PAL.ember, 1);
     } else if (n.kind === 'planet') {
-      // Kindle dissolve: track a visual "lit" amount per world.
-      const target = owner >= 0 ? 1 : 0;
-      let l = this.lit.get(n.id);
-      if (l === undefined) l = target;
-      if (l !== target) l = target > l ? Math.min(1, l + dt / 1.3) : Math.max(0, l - dt / 1.0);
-      this.lit.set(n.id, l);
-      if (r <= 2) {
-        ctx.fillStyle = l > 0.5 ? (this.ground && owner >= 0 ? g.factions[owner].color : worldColor(n, true)) : PAL.slate;
-        ctx.fillRect(x - 1, y - 1, 3, 3);
-        if (r === 2) {
-          ctx.fillRect(x - 2, y, 1, 1);
-          ctx.fillRect(x + 2, y, 1, 1);
-          ctx.fillRect(x, y - 2, 1, 1);
-          ctx.fillRect(x, y + 2, 1, 1);
-        }
-      } else if (this.ground) {
-        // A land of the cradle: its settlement, on ground lit in its house's color.
-        const f = owner >= 0 ? g.factions[owner] : null;
-        if (f && visible) drawHolding(ctx, x, y, Math.round(r * 2.4 + 5), f.color);
-        drawSettlement(ctx, n, x, y, r, { era: f ? f.era : -1, color: f ? f.color : PAL.slate, level: n.level, hearth: n.capitalOf >= 0, lit: l, t });
-      } else {
-        const qr = quantRadius(r);
-        drawWorldBlend(ctx, n, r, x - qr, y - qr, l);
+      this.drawPlanet(ctx, g, n, x, y, r, visible, owner, dt, ghost);
+    } else this.drawSite(ctx, g, n, x, y, r, visible);
+
+    // Claims (relic digs, derelicts): a progress ring.
+    if (visible && n.claim && n.claim.f >= 0 && n.claim.t > 0) {
+      const need = n.claim.what === 'relic' ? 45 : 15;
+      this.arcRing(ctx, x, y, r + 6, n.claim.t / need, g.factions[n.claim.f].color, PAL.night);
+    }
+    if (visible && n.claim?.what === 'derelict' && z > 0.02) icon(ctx, 'skull', x + r + 3, y - r - 3);
+
+    // Selection, hover, tutorial highlight.
+    if (view.selectedNode === n.id) {
+      const rr = r + 6;
+      this.brackets(ctx, x - rr, y - rr, rr * 2, rr * 2, PAL.bone);
+    } else if (view.hoverNode === n.id) {
+      const rr = r + 5;
+      this.brackets(ctx, x - rr, y - rr, rr * 2, rr * 2, view.orderMode ? PAL.gold : PAL.dusk);
+    }
+    if (view.highlightNode === n.id) {
+      const k = (t * 1.5) % 1;
+      ring(ctx, x, y, r + 6 + Math.round(k * 10), k < 0.5 ? PAL.gold : PAL.ember, 2);
+    }
+  }
+
+  /** A world: lit or dark (a kindling dissolves in), its house's ring with the glow it has reached, a Hearth's crown, the red of a world under fire, the violet of one a Bastion protects, and a seed ship's progress. */
+  private drawPlanet(ctx: Ctx, g: Game, n: GNode, x: number, y: number, r: number, visible: boolean, owner: number, dt: number, ghost: boolean) {
+    const t = this.time;
+    // Kindle dissolve: track a visual "lit" amount per world.
+    const target = owner >= 0 ? 1 : 0;
+    let l = this.lit.get(n.id);
+    if (l === undefined) l = target;
+    if (l !== target) l = target > l ? Math.min(1, l + dt / 1.3) : Math.max(0, l - dt / 1.0);
+    this.lit.set(n.id, l);
+    if (r <= 2) {
+      ctx.fillStyle = l > 0.5 ? (this.ground && owner >= 0 ? g.factions[owner].color : worldColor(n, true)) : PAL.slate;
+      ctx.fillRect(x - 1, y - 1, 3, 3);
+      if (r === 2) {
+        ctx.fillRect(x - 2, y, 1, 1);
+        ctx.fillRect(x + 2, y, 1, 1);
+        ctx.fillRect(x, y - 2, 1, 1);
+        ctx.fillRect(x, y + 2, 1, 1);
       }
-      if (!visible) dither(ctx, x - r - 1, y - r - 1, r * 2 + 3, r * 2 + 3, PAL.void, 5);
-      // House ring (arc = glow).
-      if (owner >= 0) {
-        const f = g.factions[owner];
-        const rr = r + (r > 6 ? 3 : 2);
-        if (visible && n.glow < 1 && n.owner === owner) this.arcRing(ctx, x, y, rr, n.glow, f.color, shade(f.color));
-        else ring(ctx, x, y, rr, visible ? f.color : shade(f.color));
-        if (n.capitalOf >= 0 && r >= 3) icon(ctx, 'conquest', x - 2, y - r - (r > 6 ? 12 : 9), f.color, true);
-        if (visible && n.lastHit < 1.5 && Math.floor(t * 6) % 2 === 0) ring(ctx, x, y, rr + 2, PAL.red, 1);
-        // Protected by a Bastion next door: a ring of the field's violet close about it, which flares
-        // white for a moment when it takes a hit for the world. (Blinking, for a world that would be.)
-        if (visible && r >= 3 && g.guardsOf(n).length) ring(ctx, x, y, rr + 4, n.lastHit < 0.25 ? PAL.bone : PAL.violet, 1);
-        else if (previewed && blink && r >= 3 && pv !== n.id && n.owner === g.nodes[pv].owner) ring(ctx, x, y, rr + 4, PAL.violet, 1);
+    } else if (this.ground) {
+      // A land of the cradle: its settlement, on ground lit in its house's color.
+      const f = owner >= 0 ? g.factions[owner] : null;
+      if (f && visible) drawHolding(ctx, x, y, Math.round(r * 2.4 + 5), f.color);
+      drawSettlement(ctx, n, x, y, r, { era: f ? f.era : -1, color: f ? f.color : PAL.slate, level: n.level, hearth: n.capitalOf >= 0, lit: l, t });
+    } else {
+      const qr = quantRadius(r);
+      drawWorldBlend(ctx, n, r, x - qr, y - qr, l);
+    }
+    if (!visible) dither(ctx, x - r - 1, y - r - 1, r * 2 + 3, r * 2 + 3, PAL.void, 5);
+    // House ring (arc = glow).
+    if (owner >= 0) {
+      const f = g.factions[owner];
+      const rr = r + (r > 6 ? 3 : 2);
+      if (visible && n.glow < 1 && n.owner === owner) this.arcRing(ctx, x, y, rr, n.glow, f.color, shade(f.color));
+      else ring(ctx, x, y, rr, visible ? f.color : shade(f.color));
+      if (n.capitalOf >= 0 && r >= 3) icon(ctx, 'conquest', x - 2, y - r - (r > 6 ? 12 : 9), f.color, true);
+      if (visible && n.lastHit < 1.5 && Math.floor(t * 6) % 2 === 0) ring(ctx, x, y, rr + 2, PAL.red, 1);
+      // Protected by a Bastion next door: a ring of the field's violet close about it, which flares
+      // white for a moment when it takes a hit for the world. (Blinking, for a world that would be.)
+      if (visible && r >= 3 && g.guardsOf(n).length) ring(ctx, x, y, rr + 4, n.lastHit < 0.25 ? PAL.bone : PAL.violet, 1);
+      else if (ghost && r >= 3) ring(ctx, x, y, rr + 4, PAL.violet, 1);
+    }
+    // A seed ship at work: progress ring.
+    if (visible && owner < 0) {
+      for (const u of g.buckets[n.id]) {
+        if (u.type !== 'seed' || u.order !== 'kindle' || u.orderTarget !== n.id || u.kindle <= 0) continue;
+        const c = g.factions[u.owner].color;
+        this.arcRing(ctx, x, y, r + 3, u.kindle / 20, c, PAL.night);
+        break;
       }
-      // A seed ship at work: progress ring.
-      if (visible && owner < 0) {
-        for (const u of g.buckets[n.id]) {
-          if (u.type !== 'seed' || u.order !== 'kindle' || u.orderTarget !== n.id || u.kindle <= 0) continue;
-          const c = g.factions[u.owner].color;
-          this.arcRing(ctx, x, y, r + 3, u.kindle / 20, c, PAL.night);
-          break;
-        }
-      }
-    } else if (n.kind === 'anomaly') {
+    }
+  }
+
+  /** A place that is neither a star nor a world: an anomaly (a swirl, dark once it is spent), a vault, the Corsairs' base, the Maw. */
+  private drawSite(ctx: Ctx, g: Game, n: GNode, x: number, y: number, r: number, visible: boolean) {
+    const t = this.time;
+    if (n.kind === 'anomaly') {
       const frameN = Math.floor(t * 3) % 8;
       const s = n.anomaly ? swirlSprite(Math.max(3, r), ANOMALY_RAMP, n.seed, frameN) : swirlSprite(Math.max(3, r), DARK_RAMP, n.seed, 0);
       ctx.drawImage(s, x - (s.width >> 1), y - (s.height >> 1));
@@ -481,26 +515,6 @@ export class Renderer {
       const frameN = awake ? Math.floor(t * 4) % 8 : Math.floor(t) % 8;
       const s = swirlSprite(Math.max(4, r), awake ? MAW_RAMP : MAW_DORMANT_RAMP, n.seed, frameN);
       ctx.drawImage(s, x - (s.width >> 1), y - (s.height >> 1));
-    }
-
-    // Claims (relic digs, derelicts): a progress ring.
-    if (visible && n.claim && n.claim.f >= 0 && n.claim.t > 0) {
-      const need = n.claim.what === 'relic' ? 45 : 15;
-      this.arcRing(ctx, x, y, r + 6, n.claim.t / need, g.factions[n.claim.f].color, PAL.night);
-    }
-    if (visible && n.claim?.what === 'derelict' && z > 0.02) icon(ctx, 'skull', x + r + 3, y - r - 3);
-
-    // Selection, hover, tutorial highlight.
-    if (view.selectedNode === n.id) {
-      const rr = r + 6;
-      this.brackets(ctx, x - rr, y - rr, rr * 2, rr * 2, PAL.bone);
-    } else if (view.hoverNode === n.id) {
-      const rr = r + 5;
-      this.brackets(ctx, x - rr, y - rr, rr * 2, rr * 2, view.orderMode ? PAL.gold : PAL.dusk);
-    }
-    if (view.highlightNode === n.id) {
-      const k = (t * 1.5) % 1;
-      ring(ctx, x, y, r + 6 + Math.round(k * 10), k < 0.5 ? PAL.gold : PAL.ember, 2);
     }
   }
 

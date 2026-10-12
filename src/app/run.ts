@@ -33,6 +33,7 @@ import type { ResultsData } from './screens/results';
 import { applySettings, fullscreen, toggleFullscreen } from './display';
 import { Session } from './Session';
 import { challengeLink, shareLine, shareText, versus, type Challenge } from './share';
+import type { Outcome } from '../game/types';
 
 export function buildConfig(app: App): GameConfig {
   const st = app.setup;
@@ -299,6 +300,9 @@ function shareOf(g: Game): ResultsData['share'] {
   return { text: shareText(run), line: shareLine(run), link, daily: !!g.config.daily, versus: vs };
 }
 
+/** A Destiny's name, as the results say it. */
+const vname = (v: string) => VICTORIES[v as keyof typeof VICTORIES]?.name ?? v;
+
 /** `abandoned`: the player gave the run up (no records are set by it: a run can be sat out). */
 export function endRun(app: App, abandoned = false) {
   const s = app.session!;
@@ -329,7 +333,6 @@ export function endRun(app: App, abandoned = false) {
     ? [line('Time to the crown', 'crown', 'time'), line('Most worlds held', 'worlds', 'count'), line('Enemy ships destroyed', 'kills', 'count'), line('Boons', 'boons', 'count'), line('Legacy earned', 'legacy', 'legacy')]
     : [line('You lasted', 'stand', 'time'), line('Most worlds held', 'worlds', 'count'), line('Enemy ships destroyed', 'kills', 'count'), line('Legacy earned', 'legacy', 'legacy')];
   const winner = o.winner >= 0 ? g.factions[o.winner] : null;
-  const vname = (v: string) => VICTORIES[v as keyof typeof VICTORIES]?.name ?? v;
   // What stands beside a figure of the results: the record it beat, or the record that still stands.
   const note = (key: RecordKey, show: (v: number) => string): { fresh: boolean; text: string } | undefined => {
     const m = marks[key];
@@ -346,51 +349,63 @@ export function endRun(app: App, abandoned = false) {
       : winner && o.victory !== 'defeat'
         ? `${winner.name} is crowned Hegemarch by ${vname(o.victory)}. ${o.reason}`
         : o.reason,
-    stats: (
-      [
-      // (An Ages run: the time on the cradle, plus the time among the stars since the player arrived there.)
-      ['Run time', fmtTime(runTime(g)), note(o.playerWon ? 'crown' : 'stand', fmtTime)],
-      ['Most worlds held', String(p.stats.maxWorlds), note('worlds', String)],
-      ['Worlds kindled', String(p.stats.worldsKindled)],
-      ['Worlds captured', String(p.stats.worldsCaptured)],
-      ['Ships built', String(p.stats.shipsBuilt)],
-      ['Enemy ships destroyed', String(p.stats.kills), note('kills', String)],
-      ['Ships lost', String(p.stats.shipsLost)],
-      ['Boons from Lore', String(p.boons), note('boons', String)],
-      ['Anomalies resolved', String(p.stats.eventsResolved)],
-      ['Embers earned', fmt(p.stats.embersEarned)],
-      ['Omens', g.traits.map((t) => TRAIT_BY_ID[t]?.name ?? t).join(', ')],
-      // (The seed rebuilds the same sector: with the setup beside it, a run can be played again.)
-      ['Seed', `${g.config.seed} · ${g.config.size[0].toUpperCase() + g.config.size.slice(1)} · ${DIFFICULTY_NAMES[g.config.difficulty]}`],
-      // An Ages run: how long the cradle took (or, if the run ended there, how far the climb came).
-      ...(g.config.ages ? [['Time on the cradle', fmtTime(g.config.ages.cradleTime)], ['Lands held when the Ark left', String(g.config.ages.lands)]] : []),
-      ...(g.cradle ? [['Age reached', ERAS[Math.min(p.era, LAST_CRADLE_ERA)].name]] : []),
-      ] as ResultsData['stats']
-    )
-      .filter(([, v]) => v !== '')
-      // (A run that ended on the cradle is told in the cradle's words: lands, units.)
-      .map(([k, v, n]) => [g.cradle ? cradleVocabulary(LAST_CRADLE_ERA + 1)(k) : k, v, n] as ResultsData['stats'][number]),
+    stats: resultStats(g, o, note),
     share: shareOf(g),
     cards: [...p.cards],
     relics: [...p.relics],
     heir: p.heir,
     ambition: g.ambition,
     charts: runCharts(g),
-    details: [
-      `Hegemarch v${GAME_VERSION}`,
-      `${g.config.mode === 'ages' ? 'Ages run' : g.config.daily ? 'Daily run' : g.config.tutorial ? 'First Night' : 'Classic run'}, seed ${g.config.seed}, ${g.config.size}, ${DIFFICULTY_NAMES[g.config.difficulty]}, ${HEIR_BY_ID[p.heir]?.name ?? p.heir}`,
-      `${o.playerWon ? 'Victory' : 'Defeat'} by ${vname(o.victory)} at ${fmtTime(o.time)}: ${o.reason}`,
-      `Destinies: ${g.victories.map(vname).join(', ')}. Omens: ${g.traits.map((t) => TRAIT_BY_ID[t]?.name ?? t).join(', ') || 'none'}.`,
-      `Boons: ${groupBoons(p.cards).map(({ id, count }) => (CARD_BY_ID[id]?.name ?? id) + (count > 1 ? ` x${count}` : '')).join(', ') || 'none'}.`,
-      `Worlds ${p.stats.maxWorlds} at most, ships built ${p.stats.shipsBuilt}, lost ${p.stats.shipsLost}, destroyed ${p.stats.kills}.`,
-      // The same and more, for a machine to read: JSON, in base64 so that no chat mangles it.
-      `Data: ${runData(g, GAME_VERSION)}`,
-    ].join('\n'),
+    details: runDetails(g, o),
   };
   s.modal = null;
   s.paused = true;
   // (The results come when the player goes on from the ending's tally: it used to give way to them
   // by itself after four seconds, which is no time to be crowned in.)
+}
+
+/** The figures of a run as the results list them, each with the record it beat or the record that stands beside it. */
+function resultStats(g: Game, o: Outcome, note: (key: RecordKey, show: (v: number) => string) => { fresh: boolean; text: string } | undefined): ResultsData['stats'] {
+  const p = g.player;
+  return (
+    [
+    // (An Ages run: the time on the cradle, plus the time among the stars since the player arrived there.)
+    ['Run time', fmtTime(runTime(g)), note(o.playerWon ? 'crown' : 'stand', fmtTime)],
+    ['Most worlds held', String(p.stats.maxWorlds), note('worlds', String)],
+    ['Worlds kindled', String(p.stats.worldsKindled)],
+    ['Worlds captured', String(p.stats.worldsCaptured)],
+    ['Ships built', String(p.stats.shipsBuilt)],
+    ['Enemy ships destroyed', String(p.stats.kills), note('kills', String)],
+    ['Ships lost', String(p.stats.shipsLost)],
+    ['Boons from Lore', String(p.boons), note('boons', String)],
+    ['Anomalies resolved', String(p.stats.eventsResolved)],
+    ['Embers earned', fmt(p.stats.embersEarned)],
+    ['Omens', g.traits.map((t) => TRAIT_BY_ID[t]?.name ?? t).join(', ')],
+    // (The seed rebuilds the same sector: with the setup beside it, a run can be played again.)
+    ['Seed', `${g.config.seed} · ${g.config.size[0].toUpperCase() + g.config.size.slice(1)} · ${DIFFICULTY_NAMES[g.config.difficulty]}`],
+    // An Ages run: how long the cradle took (or, if the run ended there, how far the climb came).
+    ...(g.config.ages ? [['Time on the cradle', fmtTime(g.config.ages.cradleTime)], ['Lands held when the Ark left', String(g.config.ages.lands)]] : []),
+    ...(g.cradle ? [['Age reached', ERAS[Math.min(p.era, LAST_CRADLE_ERA)].name]] : []),
+    ] as ResultsData['stats']
+  )
+    .filter(([, v]) => v !== '')
+    // (A run that ended on the cradle is told in the cradle's words: lands, units.)
+    .map(([k, v, n]) => [g.cradle ? cradleVocabulary(LAST_CRADLE_ERA + 1)(k) : k, v, n] as ResultsData['stats'][number]);
+}
+
+/** The run in one paragraph, for a bug report: the version, the seed and the setup, how it ended, its Destinies, omens and Boons; and the same for a machine to read. */
+function runDetails(g: Game, o: Outcome): string {
+  const p = g.player;
+  return [
+    `Hegemarch v${GAME_VERSION}`,
+    `${g.config.mode === 'ages' ? 'Ages run' : g.config.daily ? 'Daily run' : g.config.tutorial ? 'First Night' : 'Classic run'}, seed ${g.config.seed}, ${g.config.size}, ${DIFFICULTY_NAMES[g.config.difficulty]}, ${HEIR_BY_ID[p.heir]?.name ?? p.heir}`,
+    `${o.playerWon ? 'Victory' : 'Defeat'} by ${vname(o.victory)} at ${fmtTime(o.time)}: ${o.reason}`,
+    `Destinies: ${g.victories.map(vname).join(', ')}. Omens: ${g.traits.map((t) => TRAIT_BY_ID[t]?.name ?? t).join(', ') || 'none'}.`,
+    `Boons: ${groupBoons(p.cards).map(({ id, count }) => (CARD_BY_ID[id]?.name ?? id) + (count > 1 ? ` x${count}` : '')).join(', ') || 'none'}.`,
+    `Worlds ${p.stats.maxWorlds} at most, ships built ${p.stats.shipsBuilt}, lost ${p.stats.shipsLost}, destroyed ${p.stats.kills}.`,
+    // The same and more, for a machine to read: JSON, in base64 so that no chat mangles it.
+    `Data: ${runData(g, GAME_VERSION)}`,
+  ].join('\n');
 }
 
 /**

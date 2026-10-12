@@ -526,6 +526,12 @@ function rallyFor(g: Game, f: Faction, target: number): number {
   return best;
 }
 
+/**
+ * What a rival house does with its warships, every time it thinks: first the ships it needs at home
+ * (`defend`), then a ship or two for a derelict near by (`claimDerelicts`), and with the rest, its
+ * army, whatever its mood calls for: gather and pick a target (`muster`), meet at the rally point
+ * (`gather`), or press the attack and know when to give it up (`press`).
+ */
 function military(g: Game, f: Faction, ctx: Ctx) {
   const ai = f.ai!;
   const all = ctx.military;
@@ -533,9 +539,20 @@ function military(g: Game, f: Faction, ctx: Ctx) {
     ai.mode = 'build';
     return;
   }
-
-  // ---- Defense ----
   const assigned = new Set<number>();
+  defend(g, f, ctx, all, assigned);
+  claimDerelicts(g, f, all, assigned);
+  const army = all.filter((u) => !assigned.has(u.id));
+  const armyPower = power(g, army);
+  const minArmy = (12 + ctx.minutes * 1.5) * ERAS[f.era].power;
+  if (ai.mode === 'build') muster(g, f, ctx, army, armyPower, minArmy);
+  else if (ai.mode === 'rally') gather(g, f, army, armyPower);
+  else if (ai.mode === 'attack') press(g, f, army, armyPower, minArmy);
+}
+
+/** Ships for the worlds under threat, the Hearth first. Those it sends, or leaves on the job, are `assigned`: the army does without them. */
+function defend(g: Game, f: Faction, ctx: Ctx, all: Unit[], assigned: Set<number>) {
+  const ai = f.ai!;
   const threats = [...ctx.threats].sort(
     (a, b) => (g.nodes[b.node].capitalOf === f.id ? 1 : 0) - (g.nodes[a.node].capitalOf === f.id ? 1 : 0) || b.power - a.power,
   );
@@ -584,12 +601,15 @@ function military(g: Game, f: Faction, ctx: Ctx) {
     }
     if (isHearth && send.length && ai.mode !== 'build') ai.mode = 'build';
   }
+}
 
-  // ---- A drifting derelict is worth a detour ----
-  // A derelict Dreadnought goes to the house that holds its place alone for a few seconds. As a target
-  // for the whole army it almost never won out, so derelicts sat unclaimed for minutes, even at a
-  // house's own home star. Now two ships that are near and free go and hold it. If someone else is
-  // there, it is a fight, and that is the army's business as before.
+/**
+ * A derelict Dreadnought goes to the house that holds its place alone for a few seconds. As a target
+ * for the whole army it almost never won out, so derelicts sat unclaimed for minutes, even at a
+ * house's own home star. Now two ships that are near and free go and hold it. If someone else is
+ * there, it is a fight, and that is the army's business as before.
+ */
+function claimDerelicts(g: Game, f: Faction, all: Unit[], assigned: Set<number>) {
   for (const n of g.nodes) {
     if (n.claim?.what !== 'derelict' || !f.explored[n.id] || g.hostilePowerAt(n.id, f.id) > 0) continue;
     const holding = all.filter((u) => !assigned.has(u.id) && (u.node === n.id || u.dest === n.id));
@@ -605,104 +625,103 @@ function military(g: Game, f: Faction, ctx: Ctx) {
     g.cmdMove(f.id, free.map((u) => u.id), n.id);
     for (const u of free) assigned.add(u.id);
   }
+}
 
-  const army = all.filter((u) => !assigned.has(u.id));
-  const armyPower = power(g, army);
+/** At peace: the army gathers at the staging world, and when it is strong enough (and the time has come) picks a target and a place to rally. */
+function muster(g: Game, f: Faction, ctx: Ctx, army: Unit[], armyPower: number, minArmy: number) {
+  const ai = f.ai!;
   const age = ERAS[f.era].power;
-  const minArmy = (12 + ctx.minutes * 1.5) * age;
+  const idle = army.filter((u) => u.node !== ctx.staging && !u.lane && u.path.length === 0 && u.order === 'idle' && u.lastHit > 6);
+  // (Not to a staging world that an enemy is sitting on: new ships would fly into it one at a time.)
+  if (idle.length && ctx.staging >= 0 && g.hostilePowerAt(ctx.staging, f.id) === 0) sendIfNeeded(g, f, idle, ctx.staging);
+  // Before the first big attack, still clear guarded dark worlds nearby.
+  const canAttack = g.time >= ai.firstAttackAt && g.time - ai.lastAttack > 45 && armyPower >= minArmy;
+  const canClear = g.time < ai.firstAttackAt && g.time > 240 && g.time - ai.lastAttack > 60 && armyPower >= 8 * age;
+  if (canAttack || canClear) {
+    const t = chooseTarget(g, f, armyPower, ctx.staging >= 0 ? ctx.staging : f.capital);
+    const ok = t && (canAttack || fairTarget(g, f, t.node));
+    if (t && ok) {
+      ai.target = t.node;
+      ai.rally = rallyFor(g, f, t.node);
+      ai.mode = 'rally';
+      ai.modeSince = g.time;
+      sendIfNeeded(g, f, army, ai.rally, false);
+    }
+  }
+}
 
-  switch (ai.mode) {
-    case 'build': {
-      const idle = army.filter((u) => u.node !== ctx.staging && !u.lane && u.path.length === 0 && u.order === 'idle' && u.lastHit > 6);
-      // (Not to a staging world that an enemy is sitting on: new ships would fly into it one at a time.)
-      if (idle.length && ctx.staging >= 0 && g.hostilePowerAt(ctx.staging, f.id) === 0) sendIfNeeded(g, f, idle, ctx.staging);
-      // Before the first big attack, still clear guarded dark worlds nearby.
-      const canAttack = g.time >= ai.firstAttackAt && g.time - ai.lastAttack > 45 && armyPower >= minArmy;
-      const canClear = g.time < ai.firstAttackAt && g.time > 240 && g.time - ai.lastAttack > 60 && armyPower >= 8 * age;
-      if (canAttack || canClear) {
-        const t = chooseTarget(g, f, armyPower, ctx.staging >= 0 ? ctx.staging : f.capital);
-        const ok = t && (canAttack || fairTarget(g, f, t.node));
-        if (t && ok) {
-          ai.target = t.node;
-          ai.rally = rallyFor(g, f, t.node);
-          ai.mode = 'rally';
-          ai.modeSince = g.time;
-          sendIfNeeded(g, f, army, ai.rally, false);
-        }
-      }
-      break;
+/** On the way: the army meets at the rally point, and goes in together once most of it is there (or a minute has passed). */
+function gather(g: Game, f: Faction, army: Unit[], armyPower: number) {
+  const ai = f.ai!;
+  if (!targetValid(g, f, ai.target) || !fairTarget(g, f, ai.target)) {
+    ai.mode = 'build';
+    return;
+  }
+  const at = army.filter((u) => u.node === ai.rally);
+  sendIfNeeded(g, f, army.filter((u) => u.node !== ai.rally), ai.rally);
+  if (power(g, at) >= armyPower * 0.75 || g.time - ai.modeSince > 60) {
+    ai.mode = 'attack';
+    ai.modeSince = g.time;
+    if (!isNeutralTarget(g, ai.target)) ai.attackCount++;
+    sendIfNeeded(g, f, army, ai.target, false);
+  }
+}
+
+/** At the target: on to the next one near by when this one is done; home when the fight is lost, the siege gets nowhere, or it has gone on too long. */
+function press(g: Game, f: Faction, army: Unit[], armyPower: number, minArmy: number) {
+  const ai = f.ai!;
+  const tn = ai.target;
+  if (!targetValid(g, f, tn)) {
+    const next = armyPower > minArmy * 0.7 ? chooseTarget(g, f, armyPower, tn) : null;
+    if (next && g.hops(tn, next.node) <= 2 && fairTarget(g, f, next.node)) {
+      ai.target = next.node;
+      ai.modeSince = g.time;
+      sendIfNeeded(g, f, army, next.node, false);
+    } else {
+      ai.mode = 'build';
+      ai.lastAttack = g.time;
     }
-    case 'rally': {
-      if (!targetValid(g, f, ai.target) || !fairTarget(g, f, ai.target)) {
-        ai.mode = 'build';
-        break;
-      }
-      const at = army.filter((u) => u.node === ai.rally);
-      sendIfNeeded(g, f, army.filter((u) => u.node !== ai.rally), ai.rally);
-      if (power(g, at) >= armyPower * 0.75 || g.time - ai.modeSince > 60) {
-        ai.mode = 'attack';
-        ai.modeSince = g.time;
-        if (!isNeutralTarget(g, ai.target)) ai.attackCount++;
-        sendIfNeeded(g, f, army, ai.target, false);
-      }
-      break;
-    }
-    case 'attack': {
-      const tn = ai.target;
-      if (!targetValid(g, f, tn)) {
-        const next = armyPower > minArmy * 0.7 ? chooseTarget(g, f, armyPower, tn) : null;
-        if (next && g.hops(tn, next.node) <= 2 && fairTarget(g, f, next.node)) {
-          ai.target = next.node;
-          ai.modeSince = g.time;
-          sendIfNeeded(g, f, army, next.node, false);
-        } else {
-          ai.mode = 'build';
-          ai.lastAttack = g.time;
-        }
-        break;
-      }
-      // Before its first attack the AI only clears neutral ground (or answers a grudge): no accidental wars.
-      if (!fairTarget(g, f, tn)) {
-        ai.mode = 'build';
-        ai.lastAttack = g.time;
-        break;
-      }
-      const ours = g.powerAt(tn, f.id);
-      const theirs = g.hostilePowerAt(tn, f.id);
-      const arrived = army.filter((u) => u.node === tn).length;
-      if (arrived > army.length * 0.5 && ours > 0 && theirs > ours * 1.8) {
+    return;
+  }
+  // Before its first attack the AI only clears neutral ground (or answers a grudge): no accidental wars.
+  if (!fairTarget(g, f, tn)) {
+    ai.mode = 'build';
+    ai.lastAttack = g.time;
+    return;
+  }
+  const ours = g.powerAt(tn, f.id);
+  const theirs = g.hostilePowerAt(tn, f.id);
+  const arrived = army.filter((u) => u.node === tn).length;
+  if (arrived > army.length * 0.5 && ours > 0 && theirs > ours * 1.8) {
+    g.cmdRetreat(f.id, army.map((u) => u.id));
+    ai.mode = 'build';
+    ai.lastAttack = g.time;
+    return;
+  }
+  // A siege that is getting nowhere is called off. (A fleet without the guns for it would sit at a world
+  // for minutes, doing nothing a player could see.) Every 50 seconds the world must have lost some of
+  // its hull and shields, or there must be a battle on.
+  const tnode = g.nodes[tn];
+  if (arrived > army.length * 0.5 && tnode.kind === 'planet' && tnode.owner >= 0) {
+    const left = tnode.hp + tnode.sh;
+    if (!ai.siege || ai.siege.node !== tn) ai.siege = { node: tn, at: g.time, left };
+    else if (g.time - ai.siege.at > 50) {
+      if (left > ai.siege.left * 0.97 && theirs < ours * 0.4) {
         g.cmdRetreat(f.id, army.map((u) => u.id));
         ai.mode = 'build';
         ai.lastAttack = g.time;
-        break;
+        ai.siege = undefined;
+        return;
       }
-      // A siege that is getting nowhere is called off. (A fleet without the guns for it would sit at a world
-      // for minutes, doing nothing a player could see.) Every 50 seconds the world must have lost some of
-      // its hull and shields, or there must be a battle on.
-      const tnode = g.nodes[tn];
-      if (arrived > army.length * 0.5 && tnode.kind === 'planet' && tnode.owner >= 0) {
-        const left = tnode.hp + tnode.sh;
-        if (!ai.siege || ai.siege.node !== tn) ai.siege = { node: tn, at: g.time, left };
-        else if (g.time - ai.siege.at > 50) {
-          if (left > ai.siege.left * 0.97 && theirs < ours * 0.4) {
-            g.cmdRetreat(f.id, army.map((u) => u.id));
-            ai.mode = 'build';
-            ai.lastAttack = g.time;
-            ai.siege = undefined;
-            break;
-          }
-          ai.siege = { node: tn, at: g.time, left };
-        }
-      }
-      const stragglers = army.filter((u) => u.node !== tn && u.dest !== tn && !u.lane && u.path.length === 0);
-      if (stragglers.length) sendIfNeeded(g, f, stragglers, tn);
-      if (g.time - ai.modeSince > 360) {
-        g.cmdRetreat(f.id, army.map((u) => u.id));
-        ai.mode = 'build';
-        ai.lastAttack = g.time;
-      }
-      break;
+      ai.siege = { node: tn, at: g.time, left };
     }
+  }
+  const stragglers = army.filter((u) => u.node !== tn && u.dest !== tn && !u.lane && u.path.length === 0);
+  if (stragglers.length) sendIfNeeded(g, f, stragglers, tn);
+  if (g.time - ai.modeSince > 360) {
+    g.cmdRetreat(f.id, army.map((u) => u.id));
+    ai.mode = 'build';
+    ai.lastAttack = g.time;
   }
 }
 

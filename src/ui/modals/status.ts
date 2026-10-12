@@ -24,6 +24,7 @@ import { gloss, termsIn } from '../glossary';
 import { destinyProgress } from '../hud/destinies';
 import type { Modals, StatusTab } from '../Modals';
 import { BOOK_H, BOOK_W } from './book';
+import type { Faction } from '../../game/types';
 
 export function status(modals: Modals, g: Ctx) {
   const W = modals.hud.W;
@@ -51,119 +52,134 @@ export function status(modals: Modals, g: Ctx) {
         agesTab(modals, g, cx, cy, cw, y + h - 5);
         break;
       }
-      let ly = cy;
-      for (const v of modals.g.victories) {
-        const d = VICTORIES[v];
-        const pr = destinyProgress(modals.hud, p, v);
-        const top = ly;
-        icon(g, v, cx, ly);
-        text(g, d.name.toUpperCase(), cx + 9, ly, PAL.gold);
-        text(g, pr.label, cx + cw - textWidth(pr.label, 'tiny'), ly + 1, PAL.mist, 'tiny');
-        bar(g, cx + 9, ly + 9, cw - 9, 2, pr.frac, pr.frac >= 1 ? PAL.teal : PAL.gold, PAL.indigo);
-        ly += 13;
-        for (const l of wrap(d.desc, cw - 9, 'main').slice(0, 2)) {
-          text(g, l, cx + 9, ly, PAL.dusk);
-          ly += 10;
-        }
-        modals.ui.hint('st-dest-' + v, cx, top, cw, ly - top, { tip: `${d.name}: ${d.desc}`, terms: termsIn(d.desc, { exclude: d.name }) });
-        ly += 3;
-      }
-      rect(g, cx, ly, cw, 1, PAL.indigo);
-      ly += 4;
-      text(g, 'OMENS', cx, ly, PAL.violet, 'tiny');
-      ly += 7;
-      modals.ui.hint('st-omens', cx, ly - 7, 30, 7, { terms: gloss('omen') });
-      for (const t of modals.g.traits) {
-        const tr = TRAIT_BY_ID[t];
-        if (!tr) continue;
-        const top = ly;
-        ly = drawRich(g, `${tr.name}: ${tr.desc}`, cx, ly, cw, {}, 'main', 2);
-        modals.ui.hint('st-omen-' + t, cx, top, cw, ly - top, { terms: termsIn(tr.desc), scan: tr.name });
-      }
-      const amb = AMBITION_BY_ID[modals.g.ambition];
-      if (amb && ly < y + h - 18) {
-        ly += 2;
-        const top = ly;
-        text(g, 'AMBITION', cx, ly, PAL.gold, 'tiny');
-        ly += 7;
-        const done = amb.check(modals.g, p, false);
-        text(g, fit(`${amb.name}: ${amb.desc} (+${amb.reward} Legacy)`, cw, 'main'), cx, ly, done ? PAL.teal : PAL.mist);
-        modals.ui.hint('st-amb', cx, top, cw, ly + 9 - top, {
-          tip: `${amb.name}: ${amb.desc} Complete it for [+${amb.reward} Legacy] at the end of the run.${done ? ' Done so far!' : ''}`,
-          terms: [...termsIn(amb.desc, { max: 2 }), ...gloss('ambition', 'legacy')],
-        });
-      }
+      destiniesTab(modals, g, cx, cy, cw, y, h, p);
       break;
     }
     case 'boons':
       boonsTab(modals, g, cx, cy, cw, y + h - cy - 5);
       break;
     case 'rivals': {
-      let ly = cy;
-      for (const f of modals.g.empires()) {
-        const heir = HEIR_BY_ID[f.heir];
-        const worlds = modals.g.worldsOf(f.id).length;
-        rect(g, cx, ly + 1, 6, 6, f.color);
-        text(g, `${modals.g.shortName(f)}${f.isPlayer ? ' (YOU)' : ''}`, cx + 10, ly, f.alive ? PAL.bone : PAL.slate);
-        const status = !f.alive ? (f.launchedAt >= 0 && modals.g.cradle ? `LEFT FOR THE STARS AT ${fmtTime(f.launchedAt)}` : `OUT AT ${fmtTime(f.eliminatedAt)}`) : modals.g.asleep(f.id) ? `STILL ON ITS WAY · ARRIVES IN ${fmtTime(f.asleepUntil - modals.g.time)}` : `${worlds} WORLDS · ${f.boons} BOONS`;
-        text(g, status, cx + cw - textWidth(status, 'tiny'), ly + 1, f.alive ? PAL.mist : PAL.slate, 'tiny');
-        ly += 10;
-        const notes: string[] = [];
-        if (heir) notes.push(heir.title);
-        if (f.gate) notes.push('RAISING A STARFIRE GATE!');
-        if (f.holdTimer > 0) notes.push('HOLDS DOMINION!');
-        if (f.treasuryTimer > 0) notes.push('HOARDING EMBERS!');
-        if (f.relicTimer > 0) notes.push('HOLDS THE RELICS!');
-        text(g, fit(notes.join(' · '), cw - 10, 'tiny'), cx + 10, ly, notes.length > 1 ? PAL.red : PAL.dusk, 'tiny');
-        const warn: string[] = [];
-        if (f.gate) warn.push('[!Raising a Starfire Gate]: destroy it before it charges, or they win by Ascension.');
-        if (f.holdTimer > 0) warn.push('[!Holds 60% of all worlds]: take worlds back before the hold completes, or they win by Dominion.');
-        if (f.treasuryTimer > 0) warn.push('[!Hoarding Embers]: take their worlds to seize part of the hoard, or they win by Ember Hoard.');
-        if (f.relicTimer > 0) warn.push('[!Holds most of the relics]: take their Hearth before time runs out, or they win by Relic Hunt.');
-        if (heir) {
-          modals.ui.hint('st-rival-' + f.id, cx, ly - 10, cw, 19, {
-            tipTitle: f.isPlayer ? `${f.name} (you)` : f.name,
-            tipColor: f.color,
-            tip: [`${heir.title}. ${heir.desc}`, heir.bonuses.join(' · '), ...warn].join('\n'),
-          });
-        }
-        ly += 11;
-      }
-      ly += 4;
-      const pir = modals.g.pirates;
-      text(g, pir.alive ? `CORSAIRS: ${pir.raidCount} RAIDS SO FAR · NEXT ~${fmtTime(Math.max(modals.g.time, pir.nextRaid))}` : 'CORSAIRS: DESTROYED', cx, ly, PAL.mist, 'tiny');
-      modals.ui.hint('st-corsairs', cx, ly - 1, cw, 8, { terms: gloss('corsairs', 'stronghold') });
-      ly += 9;
-      const c = modals.g.crisis;
-      if (c) {
-        text(g, c.dead ? 'THE HOLLOW: PURGED' : c.awake ? 'THE HOLLOW: LOOSE IN THE SECTOR' : `THE HOLLOW: THE MAW STIRS (~${fmtTime(c.awakenAt)})`, cx, ly, PAL.pink, 'tiny');
-        modals.ui.hint('st-hollow', cx, ly - 1, cw, 8, { terms: gloss('hollow', 'maw', 'riftHeart') });
-      }
+      rivalsTab(modals, g, cx, cy, cw);
       break;
     }
     case 'run': {
-      const st = p.stats;
-      const rows: [string, string][] = [
-        ['House', HEIR_BY_ID[p.heir]?.name ?? ''],
-        ['Time', fmtTime(modals.g.time)],
-        ['Sector', `${modals.g.config.size} · ${DIFFICULTY_NAMES[modals.g.config.difficulty]}${modals.g.config.daily ? ' · daily' : ''}`],
-        ['Seed', String(modals.g.config.seed)],
-        ['Worlds held / most', `${modals.g.worldsOf(p.id).length} / ${st.maxWorlds}`],
-        ['Kindled / captured / lost', `${st.worldsKindled} / ${st.worldsCaptured} / ${st.worldsLost}`],
-        ['Ships built / lost', `${st.shipsBuilt} / ${st.shipsLost}`],
-        ['Enemy ships destroyed', String(st.kills)],
-        ['Embers earned', fmt(st.embersEarned)],
-        ['Boons from Lore', String(p.boons)],
-        ['Anomalies resolved', String(st.eventsResolved)],
-      ];
-      let ly = cy;
-      for (const [k, v] of rows) {
-        text(g, k, cx, ly, PAL.dusk);
-        text(g, v, cx + cw - textWidth(v), ly, PAL.bone);
-        ly += 10;
-      }
+      runTab(modals, g, cx, cy, cw, p);
       break;
     }
+  }
+}
+
+/** Rivals: each house, how many worlds it holds, and what it is doing that could win it the run; then the Corsairs and the Hollow. */
+function rivalsTab(modals: Modals, g: Ctx, cx: number, cy: number, cw: number) {
+  let ly = cy;
+  for (const f of modals.g.empires()) {
+    const heir = HEIR_BY_ID[f.heir];
+    const worlds = modals.g.worldsOf(f.id).length;
+    rect(g, cx, ly + 1, 6, 6, f.color);
+    text(g, `${modals.g.shortName(f)}${f.isPlayer ? ' (YOU)' : ''}`, cx + 10, ly, f.alive ? PAL.bone : PAL.slate);
+    const status = !f.alive ? (f.launchedAt >= 0 && modals.g.cradle ? `LEFT FOR THE STARS AT ${fmtTime(f.launchedAt)}` : `OUT AT ${fmtTime(f.eliminatedAt)}`) : modals.g.asleep(f.id) ? `STILL ON ITS WAY · ARRIVES IN ${fmtTime(f.asleepUntil - modals.g.time)}` : `${worlds} WORLDS · ${f.boons} BOONS`;
+    text(g, status, cx + cw - textWidth(status, 'tiny'), ly + 1, f.alive ? PAL.mist : PAL.slate, 'tiny');
+    ly += 10;
+    const notes: string[] = [];
+    if (heir) notes.push(heir.title);
+    if (f.gate) notes.push('RAISING A STARFIRE GATE!');
+    if (f.holdTimer > 0) notes.push('HOLDS DOMINION!');
+    if (f.treasuryTimer > 0) notes.push('HOARDING EMBERS!');
+    if (f.relicTimer > 0) notes.push('HOLDS THE RELICS!');
+    text(g, fit(notes.join(' · '), cw - 10, 'tiny'), cx + 10, ly, notes.length > 1 ? PAL.red : PAL.dusk, 'tiny');
+    const warn: string[] = [];
+    if (f.gate) warn.push('[!Raising a Starfire Gate]: destroy it before it charges, or they win by Ascension.');
+    if (f.holdTimer > 0) warn.push('[!Holds 60% of all worlds]: take worlds back before the hold completes, or they win by Dominion.');
+    if (f.treasuryTimer > 0) warn.push('[!Hoarding Embers]: take their worlds to seize part of the hoard, or they win by Ember Hoard.');
+    if (f.relicTimer > 0) warn.push('[!Holds most of the relics]: take their Hearth before time runs out, or they win by Relic Hunt.');
+    if (heir) {
+      modals.ui.hint('st-rival-' + f.id, cx, ly - 10, cw, 19, {
+        tipTitle: f.isPlayer ? `${f.name} (you)` : f.name,
+        tipColor: f.color,
+        tip: [`${heir.title}. ${heir.desc}`, heir.bonuses.join(' · '), ...warn].join('\n'),
+      });
+    }
+    ly += 11;
+  }
+  ly += 4;
+  const pir = modals.g.pirates;
+  text(g, pir.alive ? `CORSAIRS: ${pir.raidCount} RAIDS SO FAR · NEXT ~${fmtTime(Math.max(modals.g.time, pir.nextRaid))}` : 'CORSAIRS: DESTROYED', cx, ly, PAL.mist, 'tiny');
+  modals.ui.hint('st-corsairs', cx, ly - 1, cw, 8, { terms: gloss('corsairs', 'stronghold') });
+  ly += 9;
+  const c = modals.g.crisis;
+  if (c) {
+    text(g, c.dead ? 'THE HOLLOW: PURGED' : c.awake ? 'THE HOLLOW: LOOSE IN THE SECTOR' : `THE HOLLOW: THE MAW STIRS (~${fmtTime(c.awakenAt)})`, cx, ly, PAL.pink, 'tiny');
+    modals.ui.hint('st-hollow', cx, ly - 1, cw, 8, { terms: gloss('hollow', 'maw', 'riftHeart') });
+  }
+}
+
+/** Destinies: each way to the crown and how far the player is on it; then the run's omens and its ambition. */
+function destiniesTab(modals: Modals, g: Ctx, cx: number, cy: number, cw: number, y: number, h: number, p: Faction) {
+  let ly = cy;
+  for (const v of modals.g.victories) {
+    const d = VICTORIES[v];
+    const pr = destinyProgress(modals.hud, p, v);
+    const top = ly;
+    icon(g, v, cx, ly);
+    text(g, d.name.toUpperCase(), cx + 9, ly, PAL.gold);
+    text(g, pr.label, cx + cw - textWidth(pr.label, 'tiny'), ly + 1, PAL.mist, 'tiny');
+    bar(g, cx + 9, ly + 9, cw - 9, 2, pr.frac, pr.frac >= 1 ? PAL.teal : PAL.gold, PAL.indigo);
+    ly += 13;
+    for (const l of wrap(d.desc, cw - 9, 'main').slice(0, 2)) {
+      text(g, l, cx + 9, ly, PAL.dusk);
+      ly += 10;
+    }
+    modals.ui.hint('st-dest-' + v, cx, top, cw, ly - top, { tip: `${d.name}: ${d.desc}`, terms: termsIn(d.desc, { exclude: d.name }) });
+    ly += 3;
+  }
+  rect(g, cx, ly, cw, 1, PAL.indigo);
+  ly += 4;
+  text(g, 'OMENS', cx, ly, PAL.violet, 'tiny');
+  ly += 7;
+  modals.ui.hint('st-omens', cx, ly - 7, 30, 7, { terms: gloss('omen') });
+  for (const t of modals.g.traits) {
+    const tr = TRAIT_BY_ID[t];
+    if (!tr) continue;
+    const top = ly;
+    ly = drawRich(g, `${tr.name}: ${tr.desc}`, cx, ly, cw, {}, 'main', 2);
+    modals.ui.hint('st-omen-' + t, cx, top, cw, ly - top, { terms: termsIn(tr.desc), scan: tr.name });
+  }
+  const amb = AMBITION_BY_ID[modals.g.ambition];
+  if (amb && ly < y + h - 18) {
+    ly += 2;
+    const top = ly;
+    text(g, 'AMBITION', cx, ly, PAL.gold, 'tiny');
+    ly += 7;
+    const done = amb.check(modals.g, p, false);
+    text(g, fit(`${amb.name}: ${amb.desc} (+${amb.reward} Legacy)`, cw, 'main'), cx, ly, done ? PAL.teal : PAL.mist);
+    modals.ui.hint('st-amb', cx, top, cw, ly + 9 - top, {
+      tip: `${amb.name}: ${amb.desc} Complete it for [+${amb.reward} Legacy] at the end of the run.${done ? ' Done so far!' : ''}`,
+      terms: [...termsIn(amb.desc, { max: 2 }), ...gloss('ambition', 'legacy')],
+    });
+  }
+}
+
+/** This run: the figures of it so far (the house, the time, the sector and its seed, worlds, ships, Embers, Boons). */
+function runTab(modals: Modals, g: Ctx, cx: number, cy: number, cw: number, p: Faction) {
+  const st = p.stats;
+  const rows: [string, string][] = [
+    ['House', HEIR_BY_ID[p.heir]?.name ?? ''],
+    ['Time', fmtTime(modals.g.time)],
+    ['Sector', `${modals.g.config.size} · ${DIFFICULTY_NAMES[modals.g.config.difficulty]}${modals.g.config.daily ? ' · daily' : ''}`],
+    ['Seed', String(modals.g.config.seed)],
+    ['Worlds held / most', `${modals.g.worldsOf(p.id).length} / ${st.maxWorlds}`],
+    ['Kindled / captured / lost', `${st.worldsKindled} / ${st.worldsCaptured} / ${st.worldsLost}`],
+    ['Ships built / lost', `${st.shipsBuilt} / ${st.shipsLost}`],
+    ['Enemy ships destroyed', String(st.kills)],
+    ['Embers earned', fmt(st.embersEarned)],
+    ['Boons from Lore', String(p.boons)],
+    ['Anomalies resolved', String(st.eventsResolved)],
+  ];
+  let ly = cy;
+  for (const [k, v] of rows) {
+    text(g, k, cx, ly, PAL.dusk);
+    text(g, v, cx + cw - textWidth(v), ly, PAL.bone);
+    ly += 10;
   }
 }
 
@@ -230,6 +246,12 @@ function boonsTab(modals: Modals, g: Ctx, x: number, y: number, w: number, h: nu
     head('OMENS · EVERY HOUSE', 'star', PAL.violet);
     for (const t of traits) entry(t.name, PAL.violet, 1, t.desc);
   }
+  scrollBoonList(modals, g, items, x, y, lw, h);
+  boonTotals(modals, g, x, y, lw, tw, h);
+}
+
+/** The list of Boons in its column, as far as the wheel has scrolled it, with a bar at its side when it is longer than the column. */
+function scrollBoonList(modals: Modals, g: Ctx, items: { h: number; draw: (ly: number) => void; terms?: ReturnType<typeof termsIn> }[], x: number, y: number, lw: number, h: number) {
   // The list scrolls inside its column.
   const total = items.reduce((a, it) => a + it.h, 0);
   modals.boonScrollMax = Math.max(0, total - h);
@@ -254,6 +276,11 @@ function boonsTab(modals: Modals, g: Ctx, x: number, y: number, w: number, h: nu
     const th = Math.max(10, Math.round((h * h) / total));
     rect(g, sx, y + Math.round(((h - th) * modals.boonScroll) / modals.boonScrollMax), 1, th, PAL.dusk);
   }
+}
+
+/** At the right of the Boons: every bonus the house has, added up from all its sources (a line's tooltip says which). */
+function boonTotals(modals: Modals, g: Ctx, x: number, y: number, lw: number, tw: number, h: number) {
+  const p = modals.g.player;
   // Totals from every source.
   const rx = x + lw + 9;
   box(g, rx - 3, y - 1, tw + 3, h + 2, PAL.void, PAL.indigo);

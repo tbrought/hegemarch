@@ -53,7 +53,6 @@ export function jumpWaitText(w: { left: number; held: boolean; fire: boolean; sn
 
 export function fleetRows(hud: Hud, units: Unit[]): CardRow[] {
   const game = hud.g;
-  const gx = hud.s.screen.g;
   const p = game.player;
   const rows: CardRow[] = [];
   const n0 = units[0].node;
@@ -86,52 +85,20 @@ export function fleetRows(hud: Hud, units: Unit[]): CardRow[] {
   // Composition: click a type to keep only those.
   const counts = new Map<UnitType, number>();
   for (const u of units) counts.set(u.type, (counts.get(u.type) ?? 0) + 1);
-  rows.push({
-    h: 13,
-    draw: (x, y, w) => {
-      let bx = x;
-      for (const [t, c] of counts) {
-        const label = `×${c}`;
-        // (The chip is as wide as its ship: a Dreadnought is wider than the rest, and used to get no picture at all.)
-        const spr = shipSprite(t, p.color, 0);
-        const iw = Math.max(12, spr.width + 2);
-        const bw = iw + 1 + textWidth(label, 'tiny');
-        if (bx + bw > x + w) break;
-        const id = 'comp-' + t;
-        box(gx, bx, y, bw, 12, hud.ui.isHot(id) ? PAL.indigo : PAL.night, PAL.indigo);
-        gx.drawImage(spr, bx + Math.round(iw / 2) - (spr.width >> 1), y + 6 - (spr.height >> 1));
-        text(gx, label, bx + iw, y + 4, PAL.mist, 'tiny');
-        hud.ui.add({ id, x: bx, y, w: bw, h: 12, onClick: () => hud.s.selectType(t), tipTitle: `${UNITS[t].name} ×${c}`, tip: `${GLOSS_BY_ID[t]?.text ?? UNITS[t].short} Click to select only these.` });
-        bx += bw + 2;
-      }
-    },
-  });
-  let hp = 0;
-  let max = 0;
-  let sh = 0;
-  let shMax = 0;
-  for (const u of units) {
-    hp += u.hp;
-    max += u.maxHp;
-    sh += u.sh;
-    shMax += u.maxSh;
-  }
-  rows.push({
-    h: 8,
-    draw: (x, y, w) => {
-      // ("HEALTH", as the cradle calls it, is a longer word than "HULL".)
-      const off = game.cradle ? textWidth('HEALTH', 'tiny') + 4 : 18;
-      text(gx, 'HULL', x, y, PAL.dusk, 'tiny');
-      bar(gx, x + off, y + 1, Math.min(90, w - off - 2), 2, hp / Math.max(1, max), PAL.teal, PAL.indigo);
-      if (shMax > 0) bar(gx, x + off, y + 4, Math.min(90, w - off - 2), 1, sh / shMax, PAL.sky, PAL.night, undefined, 0);
-      hud.ui.hint('fleet-hp', x - 1, y - 1, Math.min(90, w - off - 2) + off + 2, 8, {
-        tip: `Hull ${fmt(hp)} / ${fmt(max)} (green)${shMax > 0 ? ` · shields ${fmt(sh)} / ${fmt(shMax)} (blue)` : ''}. Shields soak up damage first and recharge out of battle. Bastions and Starbases repair hulls.`,
-      });
-    },
-  });
+  rows.push(compositionRow(hud, counts));
+  rows.push(fleetHullRow(hud, units));
   rows.push(line(hud, hud.s.view.orderMode ? 'CLICK A WORLD TO SEND THEM · ESC TO CANCEL' : 'RIGHT-CLICK A WORLD TO SEND THEM', hud.s.view.orderMode ? PAL.gold : PAL.dusk));
   rows.push(gap(1));
-  rows.push({
+  rows.push(ordersRow(hud, units));
+  return rows;
+}
+
+/** The orders a fleet can be given by button: move, stop, retreat; explore, for its Scouts; and the ability a ship has to learn. */
+function ordersRow(hud: Hud, units: Unit[]): CardRow {
+  const game = hud.g;
+  const gx = hud.s.screen.g;
+  const p = game.player;
+  return {
     h: 13,
     draw: (x, y) => {
       let bx = x;
@@ -157,8 +124,62 @@ export function fleetRows(hud: Hud, units: Unit[]): CardRow[] {
       const lv = units.find((u) => u.pendingAbil.length);
       if (lv) btn('learn', 'LEARN!', () => hud.modals.open({ kind: 'ability', unitId: lv.id }), 'Choose a new ability.', { pulse: true });
     },
-  });
-  return rows;
+  };
+}
+
+/** The hull and shields of the whole fleet, added up. */
+function fleetHullRow(hud: Hud, units: Unit[]): CardRow {
+  const game = hud.g;
+  const gx = hud.s.screen.g;
+  let hp = 0;
+  let max = 0;
+  let sh = 0;
+  let shMax = 0;
+  for (const u of units) {
+    hp += u.hp;
+    max += u.maxHp;
+    sh += u.sh;
+    shMax += u.maxSh;
+  }
+  return {
+    h: 8,
+    draw: (x, y, w) => {
+      // ("HEALTH", as the cradle calls it, is a longer word than "HULL".)
+      const off = game.cradle ? textWidth('HEALTH', 'tiny') + 4 : 18;
+      text(gx, 'HULL', x, y, PAL.dusk, 'tiny');
+      bar(gx, x + off, y + 1, Math.min(90, w - off - 2), 2, hp / Math.max(1, max), PAL.teal, PAL.indigo);
+      if (shMax > 0) bar(gx, x + off, y + 4, Math.min(90, w - off - 2), 1, sh / shMax, PAL.sky, PAL.night, undefined, 0);
+      hud.ui.hint('fleet-hp', x - 1, y - 1, Math.min(90, w - off - 2) + off + 2, 8, {
+        tip: `Hull ${fmt(hp)} / ${fmt(max)} (green)${shMax > 0 ? ` · shields ${fmt(sh)} / ${fmt(shMax)} (blue)` : ''}. Shields soak up damage first and recharge out of battle. Bastions and Starbases repair hulls.`,
+      });
+    },
+  };
+}
+
+/** What is in the fleet: a chip for each kind of ship, with how many. A click keeps only that kind selected. */
+function compositionRow(hud: Hud, counts: Map<UnitType, number>): CardRow {
+  const gx = hud.s.screen.g;
+  const p = hud.g.player;
+  return {
+    h: 13,
+    draw: (x, y, w) => {
+      let bx = x;
+      for (const [t, c] of counts) {
+        const label = `×${c}`;
+        // (The chip is as wide as its ship: a Dreadnought is wider than the rest, and used to get no picture at all.)
+        const spr = shipSprite(t, p.color, 0);
+        const iw = Math.max(12, spr.width + 2);
+        const bw = iw + 1 + textWidth(label, 'tiny');
+        if (bx + bw > x + w) break;
+        const id = 'comp-' + t;
+        box(gx, bx, y, bw, 12, hud.ui.isHot(id) ? PAL.indigo : PAL.night, PAL.indigo);
+        gx.drawImage(spr, bx + Math.round(iw / 2) - (spr.width >> 1), y + 6 - (spr.height >> 1));
+        text(gx, label, bx + iw, y + 4, PAL.mist, 'tiny');
+        hud.ui.add({ id, x: bx, y, w: bw, h: 12, onClick: () => hud.s.selectType(t), tipTitle: `${UNITS[t].name} ×${c}`, tip: `${GLOSS_BY_ID[t]?.text ?? UNITS[t].short} Click to select only these.` });
+        bx += bw + 2;
+      }
+    },
+  };
 }
 
 export function enemyRows(hud: Hud, units: Unit[]): CardRow[] {

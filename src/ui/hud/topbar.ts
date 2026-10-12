@@ -53,12 +53,22 @@ export function drawPaused(hud: Hud) {
 
 export function drawTopBar(hud: Hud, R: ReturnType<Session['reveal']>) {
   const g = hud.s.screen.g;
-  const p = hud.g.player;
   const W = hud.W;
   hud.barTips = [];
   rect(g, 0, 0, W, 13, PAL.night);
   rect(g, 0, 13, W, 1, PAL.indigo);
   hud.ui.add({ id: 'topbar', x: 0, y: 0, w: W, h: 14, block: true });
+  let x = barEmbers(hud);
+  x = barLore(hud, R, x);
+  x = barHangar(hud, R, x);
+  barIdleForges(hud, R, x);
+  barControls(hud);
+}
+
+/** Embers and what they earn a second. Returns where the next thing in the bar begins. */
+function barEmbers(hud: Hud): number {
+  const g = hud.s.screen.g;
+  const p = hud.g.player;
   // Embers: the count rolls toward the real value, and lump gains or spends pop below it.
   if (hud.embersShown < 0 || hud.lastEmbers < 0) hud.embersShown = hud.lastEmbers = p.embers;
   const delta = p.embers - hud.lastEmbers;
@@ -89,6 +99,13 @@ export function drawTopBar(hud: Hud, R: ReturnType<Session['reveal']>) {
   hud.emberPops = hud.emberPops.filter((pop) => pop.t <= 1.4);
   barTip(hud, 'embers', 1, 0, x + 1, 13, () => `Embers: your only currency. You earn ${fmtRate(p.income)} every second from your worlds. Spend them on ships, kindling and world upgrades.`);
   x += 8;
+  return x;
+}
+
+/** Lore: the bar that fills toward the next Boon, or the button of a Boon that waits (on the cradle, the age). Returns where the next thing begins. */
+function barLore(hud: Hud, R: ReturnType<Session['reveal']>, x: number): number {
+  const g = hud.s.screen.g;
+  const p = hud.g.player;
   // Lore
   if (R.lore && hud.g.cradle) x = drawAge(hud, x);
   else if (R.lore) {
@@ -108,6 +125,13 @@ export function drawTopBar(hud: Hud, R: ReturnType<Session['reveal']>) {
       x += 42;
     }
   }
+  return x;
+}
+
+/** The hangar: how much of it is used. Returns where the next thing in the bar begins. */
+function barHangar(hud: Hud, R: ReturnType<Session['reveal']>, x: number): number {
+  const g = hud.s.screen.g;
+  const p = hud.g.player;
   // Hangar: always there (it showed only near the limit, and until then a player had to guess at the
   // room that was left). Quiet while there is room, bright as it runs out, red when full; in figures of
   // one width, with room for as many digits as the limit has, so what follows keeps its place.
@@ -123,6 +147,12 @@ export function drawTopBar(hud: Hud, R: ReturnType<Session['reveal']>) {
     barTip(hud, 'hangar', x - 1, 0, ex - x + 2, 13, () => `Hangar: ${p.hangarUsed} of ${p.hangarCap} used${full ? ', and full: you cannot build' : `, room for ${p.hangarCap - p.hangarUsed} more`}. Every world you hold adds room, and higher-level worlds add more. Hangar Bays at your Hearth add more.`);
     x = ex + 6;
   }
+  return x;
+}
+
+/** The Forges with nothing to build: a button that counts them and goes to the next. */
+function barIdleForges(hud: Hud, R: ReturnType<Session['reveal']>, x: number) {
+  const g = hud.s.screen.g;
   // Forges that build nothing: how many, and a click (or Tab) to go to the next of them. A button and
   // not a figure (as a bare number beside an anvil it read as one more rate, like the Embers'), and it
   // flashes for a few seconds whenever a Forge has just run out of work: something to see to.
@@ -145,6 +175,12 @@ export function drawTopBar(hud: Hud, R: ReturnType<Session['reveal']>) {
     }
     x += bw + 4;
   }
+}
+
+/** At the right: the clock, pause, the speeds, the menu. */
+function barControls(hud: Hud) {
+  const g = hud.s.screen.g;
+  const W = hud.W;
   // Right side: menu, speeds, pause, clock.
   let rx = W - 2;
   rx -= 11;

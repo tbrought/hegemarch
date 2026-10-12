@@ -132,6 +132,52 @@ export function help(modals: Modals, g: Ctx) {
   const cx = x + 8;
   const top = y + 31;
   const cw = w - 16;
+  const paras = helpText(modals);
+  // Lay out, then draw inside a clipped area that scrolls with the wheel.
+  const lh = lineHeight('main');
+  // (A tip hangs from its star, a numbered step from its number; a heading stands on a line of its own.)
+  const blocks = paras.map((p) => {
+    const indent = p.star ? 9 : p.n ? 13 : 0;
+    return { ...p, indent, lines: wrap(p.text, cw - indent, 'main'), gap: p.head ? 7 : 4 };
+  });
+  const total = blocks.reduce((a, b) => a + (b.head ? lh + 1 : 0) + b.lines.length * lh + b.gap, 0);
+  const ah = y + h - 6 - top;
+  modals.helpScrollMax = Math.max(0, total - ah);
+  modals.helpScroll = Math.min(modals.helpScroll, modals.helpScrollMax);
+  g.save();
+  g.beginPath();
+  g.rect(cx, top - 1, cw + 1, ah + 1);
+  g.clip();
+  let ly = top - modals.helpScroll;
+  for (const b of blocks) {
+    if (b.head) {
+      if (ly + lh > top && ly < top + ah) {
+        if (b.n) {
+          rect(g, cx, ly - 1, 9, 9, PAL.gold);
+          text(g, String(b.n), cx + 2, ly, PAL.void);
+        }
+        text(g, b.head, cx + b.indent, ly, PAL.gold);
+      }
+      ly += lh + 1;
+    }
+    if (b.star) icon(g, 'star', cx, ly, b.color === PAL.mist ? undefined : PAL.slate, b.color !== PAL.mist);
+    for (const l of b.lines) {
+      if (ly + lh > top && ly < top + ah) text(g, l, cx + b.indent, ly, b.color);
+      ly += lh;
+    }
+    ly += b.gap;
+  }
+  g.restore();
+  if (modals.helpScrollMax > 0) {
+    const sx = x + w - 5;
+    rect(g, sx, top, 1, ah, PAL.indigo);
+    const th = Math.max(10, Math.round((ah * ah) / total));
+    rect(g, sx, top + Math.round(((ah - th) * modals.helpScroll) / modals.helpScrollMax), 1, th, PAL.dusk);
+  }
+}
+
+/** What How to Play says under the tab that is open: the game in five numbered moves (the cradle's, on the cradle), the controls, or every tip again. */
+function helpText(modals: Modals): { text: string; color: string; star?: boolean; head?: string; n?: number }[] {
   const seen = modals.s.profile.seenTips;
   // THE BASICS is the game in five numbered moves, each under its own heading, like How to Play on the
   // title screen (app/howto.ts): a page of paragraphs is opened and not read.
@@ -178,47 +224,7 @@ export function help(modals: Modals, g: Ctx) {
               text: TIPS[id], color: seen.includes(id) ? PAL.mist : PAL.dusk, star: true,
             })),
           ];
-  // Lay out, then draw inside a clipped area that scrolls with the wheel.
-  const lh = lineHeight('main');
-  // (A tip hangs from its star, a numbered step from its number; a heading stands on a line of its own.)
-  const blocks = paras.map((p) => {
-    const indent = p.star ? 9 : p.n ? 13 : 0;
-    return { ...p, indent, lines: wrap(p.text, cw - indent, 'main'), gap: p.head ? 7 : 4 };
-  });
-  const total = blocks.reduce((a, b) => a + (b.head ? lh + 1 : 0) + b.lines.length * lh + b.gap, 0);
-  const ah = y + h - 6 - top;
-  modals.helpScrollMax = Math.max(0, total - ah);
-  modals.helpScroll = Math.min(modals.helpScroll, modals.helpScrollMax);
-  g.save();
-  g.beginPath();
-  g.rect(cx, top - 1, cw + 1, ah + 1);
-  g.clip();
-  let ly = top - modals.helpScroll;
-  for (const b of blocks) {
-    if (b.head) {
-      if (ly + lh > top && ly < top + ah) {
-        if (b.n) {
-          rect(g, cx, ly - 1, 9, 9, PAL.gold);
-          text(g, String(b.n), cx + 2, ly, PAL.void);
-        }
-        text(g, b.head, cx + b.indent, ly, PAL.gold);
-      }
-      ly += lh + 1;
-    }
-    if (b.star) icon(g, 'star', cx, ly, b.color === PAL.mist ? undefined : PAL.slate, b.color !== PAL.mist);
-    for (const l of b.lines) {
-      if (ly + lh > top && ly < top + ah) text(g, l, cx + b.indent, ly, b.color);
-      ly += lh;
-    }
-    ly += b.gap;
-  }
-  g.restore();
-  if (modals.helpScrollMax > 0) {
-    const sx = x + w - 5;
-    rect(g, sx, top, 1, ah, PAL.indigo);
-    const th = Math.max(10, Math.round((ah * ah) / total));
-    rect(g, sx, top + Math.round(((ah - th) * modals.helpScroll) / modals.helpScrollMax), 1, th, PAL.dusk);
-  }
+  return paras;
 }
 
 export function logView(modals: Modals, g: Ctx) {

@@ -157,180 +157,34 @@ export function scale(v: number, whole = false): { max: number; step: number } {
 }
 
 /** Draw the charts into the section and make them answer the pointer and the keyboard. */
+/** The room about a chart's plot: its scale at the left, the names at the ends of its lines at the right. */
+const M = { l: 34, r: 78, t: 8, b: 20 };
+
+/** What the charts of a run show at the moment: the rival that is compared, and the sample under the crosshair (-1: none) with the chart it is read in. */
+interface ChartView {
+  pick: number;
+  at: number;
+  hover: Key | null;
+}
+
 export function mountCharts(root: HTMLElement, c: RunCharts): void {
   const box = root.querySelector<HTMLElement>('#run-charts');
   if (!box) return;
   const tip = box.querySelector<HTMLElement>('.rc-tip')!;
   const plots = [...box.querySelectorAll<HTMLElement>('.rc-chart')];
   const T = c.samples[c.samples.length - 1].t || 1;
-  let pick = c.pick;
-  /** The sample under the crosshair (-1: none), and the chart it is read in. */
-  let at = -1;
-  let hover: Key | null = null;
-  const M = { l: 34, r: 78, t: 8, b: 20 };
+  const view: ChartView = { pick: c.pick, at: -1, hover: null };
 
   const draw = () => {
-    for (const fig of plots) {
-      const key = fig.dataset.key as Key;
-      const m = METRICS.find((x) => x.key === key)!;
-      const host = fig.querySelector<HTMLElement>('.rc-plot')!;
-      const W = Math.max(220, Math.floor(host.clientWidth));
-      const H = 150;
-      const pw = W - M.l - M.r;
-      const ph = H - M.t - M.b;
-      const top = Math.max(0, ...c.samples.flatMap((s) => s.h.map((x) => x[key])));
-      const { max, step } = scale(top, m.whole);
-      const X = (t: number) => M.l + (t / T) * pw;
-      const Y = (v: number) => M.t + ph - (v / max) * ph;
-      const svg = el('svg', { width: W, height: H, viewBox: `0 0 ${W} ${H}`, 'aria-hidden': 'true' });
-      // The grid: solid hairlines, one shade off the surface, and round numbers beside them.
-      for (let v = 0; v <= max + 1e-9; v += step) {
-        svg.append(el('line', { x1: M.l, x2: M.l + pw, y1: Math.round(Y(v)) + 0.5, y2: Math.round(Y(v)) + 0.5, class: 'rc-grid-line' }));
-        svg.append(el('text', { x: M.l - 5, y: Y(v) + 4, class: 'rc-tick', 'text-anchor': 'end' }, m.fmt(v).replace(/\.0$/, '')));
-      }
-      // (Times far enough apart to be read: at least fifty pixels between two of them.)
-      const tick = [300, 600, 900, 1200, 1800, 3600].find((s) => (s / T) * pw >= 50) ?? 3600;
-      let lastTick = 0;
-      for (let t = 0; t <= T + 1e-6; t += tick) {
-        svg.append(el('text', { x: X(t), y: H - 5, class: 'rc-tick', 'text-anchor': t === 0 ? 'start' : 'middle' }, time(t)));
-        lastTick = t;
-      }
-      // (And when the run ended, if that is not beside the last of them.)
-      if (X(T) - X(lastTick) >= 44) svg.append(el('text', { x: X(T), y: H - 5, class: 'rc-tick', 'text-anchor': 'end' }, time(T)));
-      // The lines: the other houses in grey underneath, then the rival that is compared, then the player.
-      const order = [...c.houses].sort((a, b) => rank(a) - rank(b));
-      const ends: { h: ChartHouse; x: number; y: number; v: number }[] = [];
-      for (const h of order) {
-        const pts = c.samples.map((s) => ({ t: s.t, x: s.h.find((v) => v.f === h.f) })).filter((p) => p.x);
-        if (pts.length < 2) continue;
-        const d = pts.map((p, i) => `${i ? 'L' : 'M'}${X(p.t).toFixed(1)} ${Y(p.x![key]).toFixed(1)}`).join('');
-        const lit = h.you || h.f === pick;
-        svg.append(el('path', { d, class: lit ? 'rc-line' : 'rc-line rest', ...(lit ? { stroke: h.color } : {}) }));
-        const lastP = pts[pts.length - 1];
-        if (lit) ends.push({ h, x: X(lastP.t), y: Y(lastP.x![key]), v: lastP.x![key] });
-      }
-      // Where a coloured line ends: a dot ringed in the surface, and its name and figure. If the two
-      // would sit on top of each other, the rival's gives way (the legend and the read-out still name it).
-      const youEnd = ends.find((e) => e.h.you);
-      for (const e of ends) {
-        svg.append(el('circle', { cx: e.x, cy: e.y, r: 4, fill: e.h.color, class: 'rc-dot' }));
-        const clash = !e.h.you && youEnd && Math.abs(youEnd.y - e.y) < 13 && Math.abs(youEnd.x - e.x) < M.r;
-        const room = e.x + 8 + 60 <= W;
-        if (!clash && room) svg.append(el('text', { x: e.x + 8, y: e.y + 4, class: e.h.you ? 'rc-end you' : 'rc-end' }, `${e.h.short} ${m.fmt(e.v)}`));
-      }
-      // The crosshair, at the sample that is read.
-      if (at >= 0) {
-        const x = Math.round(X(c.samples[at].t)) + 0.5;
-        svg.append(el('line', { x1: x, x2: x, y1: M.t, y2: M.t + ph, class: 'rc-cross' }));
-        for (const e of order) {
-          const v = c.samples[at].h.find((s) => s.f === e.f);
-          if (v && (e.you || e.f === pick)) svg.append(el('circle', { cx: X(c.samples[at].t), cy: Y(v[key]), r: 4, fill: e.color, class: 'rc-dot' }));
-        }
-      }
-      host.replaceChildren(svg);
-    }
-    for (const b of box.querySelectorAll<HTMLElement>('.rc-pick')) b.setAttribute('aria-pressed', String(Number(b.dataset.f) === pick));
+    for (const fig of plots) drawChart(fig, c, view, T);
+    for (const b of box.querySelectorAll<HTMLElement>('.rc-pick')) b.setAttribute('aria-pressed', String(Number(b.dataset.f) === view.pick));
   };
-  const rank = (h: ChartHouse) => (h.you ? 2 : h.f === pick ? 1 : 0);
-
-  /** The read-out: the time, then every house, the highest figure first. */
-  const read = (fig: HTMLElement, px: number, py: number) => {
-    if (at < 0 || !hover) {
-      tip.hidden = true;
-      return;
-    }
-    const m = METRICS.find((x) => x.key === hover)!;
-    const s = c.samples[at];
-    tip.replaceChildren();
-    const head = document.createElement('div');
-    head.className = 'rc-tip-head';
-    head.textContent = `${m.title} · ${time(s.t)}`;
-    tip.append(head);
-    const list = c.houses.map((h) => ({ h, v: s.h.find((x) => x.f === h.f) })).sort((a, b) => (b.v ? b.v[m.key] : -1) - (a.v ? a.v[m.key] : -1));
-    for (const { h, v } of list) {
-      const row = document.createElement('div');
-      row.className = 'rc-tip-row';
-      const key = document.createElement('i');
-      key.className = h.you || h.f === pick ? 'rc-key' : 'rc-key rest';
-      if (h.you || h.f === pick) key.style.setProperty('--c', h.color);
-      const val = document.createElement('b');
-      val.textContent = v ? m.fmt(v[m.key]) : '—';
-      const name = document.createElement('span');
-      name.textContent = h.you ? `${h.name} (you)` : v ? h.name : `${h.name} (out)`;
-      row.append(key, val, name);
-      tip.append(row);
-    }
-    tip.hidden = false;
-    // Beside the pointer, inside the section, never under it.
-    const b = box.getBoundingClientRect();
-    const f = fig.getBoundingClientRect();
-    const w = tip.offsetWidth;
-    let x = f.left - b.left + px + 14;
-    if (x + w > b.width - 8) x = f.left - b.left + px - w - 14;
-    tip.style.left = `${Math.max(8, x)}px`;
-    tip.style.top = `${Math.max(8, f.top - b.top + py - 10)}px`;
-  };
-
-  const nearest = (host: HTMLElement, clientX: number): number => {
-    const r = host.getBoundingClientRect();
-    const pw = r.width - M.l - M.r;
-    const t = Math.min(T, Math.max(0, ((clientX - r.left - M.l) / Math.max(1, pw)) * T));
-    let best = 0;
-    for (let i = 1; i < c.samples.length; i++) if (Math.abs(c.samples[i].t - t) < Math.abs(c.samples[best].t - t)) best = i;
-    return best;
-  };
-
-  for (const fig of plots) {
-    const host = fig.querySelector<HTMLElement>('.rc-plot')!;
-    const key = fig.dataset.key as Key;
-    // (Entering counts too: a chart can come under a pointer that does not move, when the page scrolls.)
-    const point = (e: PointerEvent) => {
-      at = nearest(host, e.clientX);
-      hover = key;
-      draw();
-      const r = host.getBoundingClientRect();
-      read(fig, e.clientX - r.left, e.clientY - r.top);
-    };
-    host.addEventListener('pointermove', point);
-    host.addEventListener('pointerenter', point);
-    host.addEventListener('pointerleave', () => {
-      at = -1;
-      hover = null;
-      draw();
-      tip.hidden = true;
-    });
-    // The keyboard reads what the pointer reads: the arrows move through the run.
-    const place = () => {
-      const r = host.getBoundingClientRect();
-      read(fig, M.l + (c.samples[at].t / T) * (r.width - M.l - M.r), M.t + 20);
-    };
-    host.addEventListener('focus', () => {
-      if (at < 0) at = c.samples.length - 1;
-      hover = key;
-      draw();
-      place();
-    });
-    host.addEventListener('blur', () => {
-      at = -1;
-      hover = null;
-      draw();
-      tip.hidden = true;
-    });
-    host.addEventListener('keydown', (e) => {
-      const step = e.key === 'ArrowLeft' ? -1 : e.key === 'ArrowRight' ? 1 : e.key === 'Home' ? -1e9 : e.key === 'End' ? 1e9 : 0;
-      if (!step) return;
-      e.preventDefault();
-      e.stopPropagation();
-      at = Math.min(c.samples.length - 1, Math.max(0, (at < 0 ? c.samples.length - 1 : at) + step));
-      hover = key;
-      draw();
-      place();
-    });
-  }
+  const read = (fig: HTMLElement, px: number, py: number) => readOut(box, tip, fig, c, view, px, py);
+  for (const fig of plots) listen(fig, c, view, T, tip, draw, read);
   for (const b of box.querySelectorAll<HTMLElement>('.rc-pick')) {
     b.addEventListener('click', () => {
-      pick = Number(b.dataset.f);
-      c.pick = pick;
+      view.pick = Number(b.dataset.f);
+      c.pick = view.pick;
       draw();
     });
   }
@@ -350,4 +204,163 @@ export function mountCharts(root: HTMLElement, c: RunCharts): void {
     });
     ro.observe(box);
   }
+}
+
+/** What a chart answers to: the pointer over it (the crosshair goes to the nearest sample, and the read-out with it), and the keyboard (the arrows move through the run). */
+function listen(fig: HTMLElement, c: RunCharts, view: ChartView, T: number, tip: HTMLElement, draw: () => void, read: (fig: HTMLElement, px: number, py: number) => void) {
+  const host = fig.querySelector<HTMLElement>('.rc-plot')!;
+  const key = fig.dataset.key as Key;
+  // (Entering counts too: a chart can come under a pointer that does not move, when the page scrolls.)
+  const point = (e: PointerEvent) => {
+    view.at = nearestSample(host, c, T, e.clientX);
+    view.hover = key;
+    draw();
+    const r = host.getBoundingClientRect();
+    read(fig, e.clientX - r.left, e.clientY - r.top);
+  };
+  host.addEventListener('pointermove', point);
+  host.addEventListener('pointerenter', point);
+  host.addEventListener('pointerleave', () => {
+    view.at = -1;
+    view.hover = null;
+    draw();
+    tip.hidden = true;
+  });
+  // The keyboard reads what the pointer reads: the arrows move through the run.
+  const place = () => {
+    const r = host.getBoundingClientRect();
+    read(fig, M.l + (c.samples[view.at].t / T) * (r.width - M.l - M.r), M.t + 20);
+  };
+  host.addEventListener('focus', () => {
+    if (view.at < 0) view.at = c.samples.length - 1;
+    view.hover = key;
+    draw();
+    place();
+  });
+  host.addEventListener('blur', () => {
+    view.at = -1;
+    view.hover = null;
+    draw();
+    tip.hidden = true;
+  });
+  host.addEventListener('keydown', (e) => {
+    const step = e.key === 'ArrowLeft' ? -1 : e.key === 'ArrowRight' ? 1 : e.key === 'Home' ? -1e9 : e.key === 'End' ? 1e9 : 0;
+    if (!step) return;
+    e.preventDefault();
+    e.stopPropagation();
+    view.at = Math.min(c.samples.length - 1, Math.max(0, (view.at < 0 ? c.samples.length - 1 : view.at) + step));
+    view.hover = key;
+    draw();
+    place();
+  });
+}
+
+/** The sample of the run nearest to a place across a chart. */
+function nearestSample(host: HTMLElement, c: RunCharts, T: number, clientX: number): number {
+  const r = host.getBoundingClientRect();
+  const pw = r.width - M.l - M.r;
+  const t = Math.min(T, Math.max(0, ((clientX - r.left - M.l) / Math.max(1, pw)) * T));
+  let best = 0;
+  for (let i = 1; i < c.samples.length; i++) if (Math.abs(c.samples[i].t - t) < Math.abs(c.samples[best].t - t)) best = i;
+  return best;
+}
+
+/** The read-out beside the pointer: the time under the crosshair, then every house, the highest figure first. */
+function readOut(box: HTMLElement, tip: HTMLElement, fig: HTMLElement, c: RunCharts, view: ChartView, px: number, py: number) {
+  if (view.at < 0 || !view.hover) {
+    tip.hidden = true;
+    return;
+  }
+  const m = METRICS.find((x) => x.key === view.hover)!;
+  const s = c.samples[view.at];
+  tip.replaceChildren();
+  const head = document.createElement('div');
+  head.className = 'rc-tip-head';
+  head.textContent = `${m.title} · ${time(s.t)}`;
+  tip.append(head);
+  const list = c.houses.map((h) => ({ h, v: s.h.find((x) => x.f === h.f) })).sort((a, b) => (b.v ? b.v[m.key] : -1) - (a.v ? a.v[m.key] : -1));
+  for (const { h, v } of list) {
+    const row = document.createElement('div');
+    row.className = 'rc-tip-row';
+    const key = document.createElement('i');
+    key.className = h.you || h.f === view.pick ? 'rc-key' : 'rc-key rest';
+    if (h.you || h.f === view.pick) key.style.setProperty('--c', h.color);
+    const val = document.createElement('b');
+    val.textContent = v ? m.fmt(v[m.key]) : '—';
+    const name = document.createElement('span');
+    name.textContent = h.you ? `${h.name} (you)` : v ? h.name : `${h.name} (out)`;
+    row.append(key, val, name);
+    tip.append(row);
+  }
+  tip.hidden = false;
+  // Beside the pointer, inside the section, never under it.
+  const b = box.getBoundingClientRect();
+  const f = fig.getBoundingClientRect();
+  const w = tip.offsetWidth;
+  let x = f.left - b.left + px + 14;
+  if (x + w > b.width - 8) x = f.left - b.left + px - w - 14;
+  tip.style.left = `${Math.max(8, x)}px`;
+  tip.style.top = `${Math.max(8, f.top - b.top + py - 10)}px`;
+}
+
+/** One chart, drawn to the width it has: the grid and its round numbers, a line for every house (the player's and the compared rival's in colour, over the others in grey), their names where they end, and the crosshair. */
+function drawChart(fig: HTMLElement, c: RunCharts, view: ChartView, T: number) {
+  const rank = (h: ChartHouse) => (h.you ? 2 : h.f === view.pick ? 1 : 0);
+  const key = fig.dataset.key as Key;
+  const m = METRICS.find((x) => x.key === key)!;
+  const host = fig.querySelector<HTMLElement>('.rc-plot')!;
+  const W = Math.max(220, Math.floor(host.clientWidth));
+  const H = 150;
+  const pw = W - M.l - M.r;
+  const ph = H - M.t - M.b;
+  const top = Math.max(0, ...c.samples.flatMap((s) => s.h.map((x) => x[key])));
+  const { max, step } = scale(top, m.whole);
+  const X = (t: number) => M.l + (t / T) * pw;
+  const Y = (v: number) => M.t + ph - (v / max) * ph;
+  const svg = el('svg', { width: W, height: H, viewBox: `0 0 ${W} ${H}`, 'aria-hidden': 'true' });
+  // The grid: solid hairlines, one shade off the surface, and round numbers beside them.
+  for (let v = 0; v <= max + 1e-9; v += step) {
+    svg.append(el('line', { x1: M.l, x2: M.l + pw, y1: Math.round(Y(v)) + 0.5, y2: Math.round(Y(v)) + 0.5, class: 'rc-grid-line' }));
+    svg.append(el('text', { x: M.l - 5, y: Y(v) + 4, class: 'rc-tick', 'text-anchor': 'end' }, m.fmt(v).replace(/\.0$/, '')));
+  }
+  // (Times far enough apart to be read: at least fifty pixels between two of them.)
+  const tick = [300, 600, 900, 1200, 1800, 3600].find((s) => (s / T) * pw >= 50) ?? 3600;
+  let lastTick = 0;
+  for (let t = 0; t <= T + 1e-6; t += tick) {
+    svg.append(el('text', { x: X(t), y: H - 5, class: 'rc-tick', 'text-anchor': t === 0 ? 'start' : 'middle' }, time(t)));
+    lastTick = t;
+  }
+  // (And when the run ended, if that is not beside the last of them.)
+  if (X(T) - X(lastTick) >= 44) svg.append(el('text', { x: X(T), y: H - 5, class: 'rc-tick', 'text-anchor': 'end' }, time(T)));
+  // The lines: the other houses in grey underneath, then the rival that is compared, then the player.
+  const order = [...c.houses].sort((a, b) => rank(a) - rank(b));
+  const ends: { h: ChartHouse; x: number; y: number; v: number }[] = [];
+  for (const h of order) {
+    const pts = c.samples.map((s) => ({ t: s.t, x: s.h.find((v) => v.f === h.f) })).filter((p) => p.x);
+    if (pts.length < 2) continue;
+    const d = pts.map((p, i) => `${i ? 'L' : 'M'}${X(p.t).toFixed(1)} ${Y(p.x![key]).toFixed(1)}`).join('');
+    const lit = h.you || h.f === view.pick;
+    svg.append(el('path', { d, class: lit ? 'rc-line' : 'rc-line rest', ...(lit ? { stroke: h.color } : {}) }));
+    const lastP = pts[pts.length - 1];
+    if (lit) ends.push({ h, x: X(lastP.t), y: Y(lastP.x![key]), v: lastP.x![key] });
+  }
+  // Where a coloured line ends: a dot ringed in the surface, and its name and figure. If the two
+  // would sit on top of each other, the rival's gives way (the legend and the read-out still name it).
+  const youEnd = ends.find((e) => e.h.you);
+  for (const e of ends) {
+    svg.append(el('circle', { cx: e.x, cy: e.y, r: 4, fill: e.h.color, class: 'rc-dot' }));
+    const clash = !e.h.you && youEnd && Math.abs(youEnd.y - e.y) < 13 && Math.abs(youEnd.x - e.x) < M.r;
+    const room = e.x + 8 + 60 <= W;
+    if (!clash && room) svg.append(el('text', { x: e.x + 8, y: e.y + 4, class: e.h.you ? 'rc-end you' : 'rc-end' }, `${e.h.short} ${m.fmt(e.v)}`));
+  }
+  // The crosshair, at the sample that is read.
+  if (view.at >= 0) {
+    const x = Math.round(X(c.samples[view.at].t)) + 0.5;
+    svg.append(el('line', { x1: x, x2: x, y1: M.t, y2: M.t + ph, class: 'rc-cross' }));
+    for (const e of order) {
+      const v = c.samples[view.at].h.find((s) => s.f === e.f);
+      if (v && (e.you || e.f === view.pick)) svg.append(el('circle', { cx: X(c.samples[view.at].t), cy: Y(v[key]), r: 4, fill: e.color, class: 'rc-dot' }));
+    }
+  }
+  host.replaceChildren(svg);
 }
