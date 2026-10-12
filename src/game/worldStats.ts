@@ -12,6 +12,11 @@ import type { Faction, GNode, WorldRole } from './types';
 import { clamp } from './util';
 import type { Game } from './Game';
 
+/** Is this world a Hearth (of a house that stands, or one that has fallen)? */
+export function isHearth(n: GNode): boolean {
+  return n.capitalOf >= 0;
+}
+
 export function affinityOf(n: GNode): WorldRole | null {
   return n.ptype ? PLANETS[n.ptype].affinity : null;
 }
@@ -19,7 +24,7 @@ export function affinityOf(n: GNode): WorldRole | null {
 /** Whether a world currently benefits from a role. The Hearth has every role. */
 export function hasRole(n: GNode, role: WorldRole): boolean {
   if (n.kind !== 'planet' || n.owner < 0) return false;
-  if (n.capitalOf >= 0) return true;
+  if (isHearth(n)) return true;
   return n.role === role && n.retool <= 0;
 }
 
@@ -29,12 +34,12 @@ export function hasRole(n: GNode, role: WorldRole): boolean {
  */
 export function roleBonus(g: Game, n: GNode, role: WorldRole): number {
   const m = n.owner >= 0 ? g.factions[n.owner].mods : null;
-  return 1 + (role !== 'forge' && g.affinityOf(n) === role && n.capitalOf < 0 ? ECON.affinity : 0) + (m ? m.role[role] : 0);
+  return 1 + (role !== 'forge' && g.affinityOf(n) === role && !isHearth(n) ? ECON.affinity : 0) + (m ? m.role[role] : 0);
 }
 
 /** A Forge on a world that suits it (never the Hearth): its ships cost `ECON.forgeFitDiscount` less. */
 export function forgeFit(g: Game, n: GNode): boolean {
-  return n.capitalOf < 0 && n.role === 'forge' && g.affinityOf(n) === 'forge';
+  return !isHearth(n) && n.role === 'forge' && g.affinityOf(n) === 'forge';
 }
 
 export function levelMulOf(n: GNode): number {
@@ -46,7 +51,7 @@ export function worldEmbers(g: Game, n: GNode): number {
   const f = g.factions[n.owner];
   if (f.kind !== 'empire') return 0;
   let e: number;
-  if (n.capitalOf >= 0) e = (ECON.hearthEmbers * g.levelMulOf(n)) / ECON.levelMul[2];
+  if (isHearth(n)) e = (ECON.hearthEmbers * g.levelMulOf(n)) / ECON.levelMul[2];
   else {
     e = ECON.embers[n.size] * g.levelMulOf(n);
     if (g.hasRole(n, 'mine')) e *= 1 + ECON.mineBonus * g.roleBonus(n, 'mine');
@@ -60,7 +65,7 @@ export function worldLore(g: Game, n: GNode): number {
   const f = g.factions[n.owner];
   if (f.kind !== 'empire') return 0;
   let l = ECON.worldLore;
-  if (n.capitalOf >= 0) l += (ECON.hearthLore * g.levelMulOf(n)) / ECON.levelMul[2];
+  if (isHearth(n)) l += (ECON.hearthLore * g.levelMulOf(n)) / ECON.levelMul[2];
   else if (g.hasRole(n, 'observatory')) l += ECON.observatoryLore * g.levelMulOf(n) * g.roleBonus(n, 'observatory');
   return l * n.glow;
 }
@@ -68,16 +73,16 @@ export function worldLore(g: Game, n: GNode): number {
 /** Ship build speed multiplier of a Forge (or the Hearth). 0 if it cannot build. */
 export function forgeMul(g: Game, n: GNode): number {
   if (!g.hasRole(n, 'forge')) return 0;
-  return (1 + ECON.forgeBuildPerLevel * (n.level - 1)) * (n.capitalOf >= 0 ? 1 : g.roleBonus(n, 'forge'));
+  return (1 + ECON.forgeBuildPerLevel * (n.level - 1)) * (isHearth(n) ? 1 : g.roleBonus(n, 'forge'));
 }
 
 export function isForge(n: GNode): boolean {
-  return n.kind === 'planet' && n.owner >= 0 && (n.capitalOf >= 0 || n.role === 'forge');
+  return n.kind === 'planet' && n.owner >= 0 && (isHearth(n) || n.role === 'forge');
 }
 
 /** How far a Hearth's walls have risen (0.45 at the start, 1 after 12 minutes). Other worlds: 1. */
 export function wallsOf(g: Game, n: GNode): number {
-  if (n.capitalOf < 0) return 1;
+  if (!isHearth(n)) return 1;
   // By the whole second: a Hearth's walls are rebuilt once a second (economyTick), and a game saved
   // between two seconds must come back with the walls it had. (Loading rebuilds every world, so with
   // the time to the tick a loaded Hearth stood a hair taller than the one that was saved.)
@@ -90,7 +95,7 @@ export function worldGun(g: Game, n: GNode): { dmg: number; cd: number; range: n
   const f = g.factions[n.owner];
   if (f.kind !== 'empire') return null;
   const m = f.mods;
-  const cap = n.capitalOf >= 0;
+  const cap = isHearth(n);
   let dmg = 0;
   if (cap) dmg = (100 + 20 * (n.level - 2)) * g.wallsOf(n);
   else if (g.hasRole(n, 'bastion')) dmg = (30 + 14 * (n.level - 1)) * g.roleBonus(n, 'bastion');
@@ -103,7 +108,7 @@ export function worldGun(g: Game, n: GNode): { dmg: number; cd: number; range: n
 export function refreshWorld(g: Game, n: GNode) {
   if (n.kind !== 'planet' || !n.ptype) return;
   const m = n.owner >= 0 && g.factions[n.owner].kind === 'empire' ? g.factions[n.owner].mods : null;
-  const cap = n.capitalOf >= 0;
+  const cap = isHearth(n);
   let base = cap ? ECON.hearthHp * (1 + ECON.hpPerLevel * (n.level - 2)) * g.wallsOf(n) : ECON.hp[n.size] * (1 + ECON.hpPerLevel * (n.level - 1));
   if (!cap && n.owner >= 0 && n.role === 'bastion') base *= 1 + ECON.bastionHp * g.roleBonus(n, 'bastion');
   // (Walls are as strong as the age of the house that holds them.)

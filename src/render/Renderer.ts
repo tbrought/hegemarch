@@ -5,11 +5,12 @@ import { Camera } from './Camera';
 import { Effects } from './Effects';
 import { fit, text, textCenter, textOutline, textWidth } from './font';
 import { buildGround, drawHolding, drawSettlement, type Ground } from './ground';
-import { PAL, light, shade } from './palette';
+import { light, PAL, shade } from './palette';
 import { clipSeg, dither, frame, line, rect, ring, type Ctx } from './pixel';
 import type { Screen } from './Screen';
 import { drawShip, facing, icon, isTroopArt, shipSprite, silhouette, spriteSize } from './sprites';
 import { ANOMALY_RAMP, DARK_RAMP, drawWorldBlend, forgetWorlds, MAW_DORMANT_RAMP, MAW_RAMP, quantRadius, starSprite, swirlSprite, worldColor, worldSprite } from './worlds';
+import { isHearth } from '../game/worldStats';
 
 export interface ViewState {
   selected: Set<number>;
@@ -459,7 +460,7 @@ export class Renderer {
       // A land of the cradle: its settlement, on ground lit in its house's color.
       const f = owner >= 0 ? g.factions[owner] : null;
       if (f && visible) drawHolding(ctx, x, y, Math.round(r * 2.4 + 5), f.color);
-      drawSettlement(ctx, n, x, y, r, { era: f ? f.era : -1, color: f ? f.color : PAL.slate, level: n.level, hearth: n.capitalOf >= 0, lit: l, t });
+      drawSettlement(ctx, n, x, y, r, { era: f ? f.era : -1, color: f ? f.color : PAL.slate, level: n.level, hearth: isHearth(n), lit: l, t });
     } else {
       const qr = quantRadius(r);
       drawWorldBlend(ctx, n, r, x - qr, y - qr, l);
@@ -471,7 +472,7 @@ export class Renderer {
       const rr = r + (r > 6 ? 3 : 2);
       if (visible && n.glow < 1 && n.owner === owner) this.arcRing(ctx, x, y, rr, n.glow, f.color, shade(f.color));
       else ring(ctx, x, y, rr, visible ? f.color : shade(f.color));
-      if (n.capitalOf >= 0 && r >= 3) icon(ctx, 'conquest', x - 2, y - r - (r > 6 ? 12 : 9), f.color, true);
+      if (isHearth(n) && r >= 3) icon(ctx, 'conquest', x - 2, y - r - (r > 6 ? 12 : 9), f.color, true);
       if (visible && n.lastHit < 1.5 && Math.floor(t * 6) % 2 === 0) ring(ctx, x, y, rr + 2, PAL.red, 1);
       // Protected by a Bastion next door: a ring of the field's violet close about it, which flares
       // white for a moment when it takes a hit for the world. (Blinking, for a world that would be.)
@@ -753,7 +754,7 @@ export class Renderer {
       // that shows the name (so the worlds still to raise can be found without clicking through them).
       if (n.kind === 'planet' && owner >= 0 && (owner === g.playerId || vis(n.id))) this.levelPips(ctx, lx - 9, y - 1, n, c, owner === g.playerId);
       if (near && n.kind === 'planet' && vis(n.id)) {
-        const sub = owner >= 0 ? `${'I'.repeat(n.level)}${n.capitalOf >= 0 ? ' HEARTH' : n.role ? ' ' + n.role.toUpperCase() : ''}` : this.ground ? 'WILD LAND' : `${n.size} WORLD`;
+        const sub = owner >= 0 ? `${'I'.repeat(n.level)}${isHearth(n) ? ' HEARTH' : n.role ? ' ' + n.role.toUpperCase() : ''}` : this.ground ? 'WILD LAND' : `${n.size} WORLD`;
         textOutline(ctx, sub, x - Math.round(textWidth(sub, 'tiny') / 2), y + 6, owner >= 0 ? shade(c) === PAL.indigo ? PAL.dusk : light(shade(c)) : PAL.slate, PAL.void, 'tiny');
       }
     }

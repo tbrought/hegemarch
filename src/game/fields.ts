@@ -8,6 +8,7 @@ import { FIELD_GUARD } from './constants';
 import type { GNode } from './types';
 import { clamp } from './util';
 import type { Game } from './Game';
+import { isHearth } from './worldStats';
 
 /** A Bastion's field reaching a place next to it: `from` is the Bastion, `to` the place one jump away. */
 export interface FieldReach {
@@ -49,7 +50,7 @@ export function fieldAt(g: Game, n: GNode): boolean {
  * hold their own world only, and so does a Bastion in the cradle.
  */
 export function isBastion(g: Game, n: GNode): boolean {
-  return !g.cradle && n.capitalOf < 0 && n.owner >= 0 && g.hasRole(n, 'bastion') && g.factions[n.owner].kind === 'empire';
+  return !g.cradle && !isHearth(n) && n.owner >= 0 && g.hasRole(n, 'bastion') && g.factions[n.owner].kind === 'empire';
 }
 
 /**

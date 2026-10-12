@@ -24,6 +24,7 @@ import { dailySeed } from '../game/rng';
 import { PAL, SHADE } from '../render/palette';
 import { bar, box, ctx2d, line, px, rect, type Ctx } from '../render/pixel';
 import { iconCanvas, ICONS, pixelCanvas, shipSprite, silhouette } from '../render/sprites';
+import { isHearth } from '../game/worldStats';
 
 const SCALE = 3;
 const HOW_SCALE = 4;
@@ -237,7 +238,7 @@ function todaysChart(): Chart {
     }
     for (const n of game.nodes) {
       if (n.kind === 'star') continue;
-      chart.dots.push([fx(n.x), fy(n.y), n.kind === 'planet' ? PAL.slate : PAL.violet, n.capitalOf >= 0 ? 'hearth' : 'world']);
+      chart.dots.push([fx(n.x), fy(n.y), n.kind === 'planet' ? PAL.slate : PAL.violet, isHearth(n) ? 'hearth' : 'world']);
     }
     for (const s of game.systems) chart.dots.push([fx(s.x), fy(s.y), s.color, 'star']);
   } catch {

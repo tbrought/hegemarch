@@ -19,6 +19,7 @@ import type { TipOpts } from '../Ui';
 
 
 import type { Hud } from '../Hud';
+import { isHearth } from '../../game/worldStats';
 
 export interface CardRow {
   h: number;
@@ -35,7 +36,7 @@ export function header(hud: Hud, name: string, color: string, n: GNode | null, r
         const lit = n.owner >= 0;
         if (hud.g.cradle) {
           const f = lit ? hud.g.factions[n.owner] : null;
-          drawSettlement(g, n, x + 5, y + 6, 5, { era: f ? f.era : -1, color: f ? f.color : PAL.slate, level: 1, hearth: n.capitalOf >= 0, lit: lit ? 1 : 0, t: hud.ui.time });
+          drawSettlement(g, n, x + 5, y + 6, 5, { era: f ? f.era : -1, color: f ? f.color : PAL.slate, level: 1, hearth: isHearth(n), lit: lit ? 1 : 0, t: hud.ui.time });
         } else g.drawImage(worldSprite(n, 5, lit), x, y);
         tx += 14;
       }

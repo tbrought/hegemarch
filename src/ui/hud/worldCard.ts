@@ -24,6 +24,8 @@ import { unitDesc } from '../vocab';
 import { gap, header, line, para, type CardRow } from './rows';
 import { advanceTip } from './destinies';
 import type { Hud } from '../Hud';
+import { WHY } from '../../game/commands/checks';
+import { isHearth } from '../../game/worldStats';
 
 /** What a world that suits its role gets: a Forge builds cheaper, the other roles do more. */
 export const FIT_TEXT = (role: string) => (role === 'forge' ? `its ships cost [${Math.round(ECON.forgeFitDiscount * 100)}% less]` : `[+${Math.round(ECON.affinity * 100)}%] at it`);
@@ -81,11 +83,11 @@ export function nodeRows(hud: Hud, n: GNode): CardRow[] {
   if (owner === p.id) return ownWorldRows(hud, n, innerW);
   if (owner >= 0) {
     const f = game.factions[owner];
-    rows.push(header(hud, n.name.toUpperCase(), f.color, n, n.capitalOf >= 0 ? 'HEARTH' : `LEVEL ${roman(n.level)}`, f.color,
-      n.capitalOf >= 0 ? { terms: gloss('hearth', 'fealty') } : { tip: `Level ${roman(n.level)} of III.`, terms: gloss('level') }));
+    rows.push(header(hud, n.name.toUpperCase(), f.color, n, isHearth(n) ? 'HEARTH' : `LEVEL ${roman(n.level)}`, f.color,
+      isHearth(n) ? { terms: gloss('hearth', 'fealty') } : { tip: `Level ${roman(n.level)} of III.`, terms: gloss('level') }));
     rows.push(line(hud, `${game.shortName(f).toUpperCase()} · ${n.size} WORLD${n.role ? ' · ' + n.role.toUpperCase() : ''}`, PAL.dusk, 'tiny', roleTip(hud, n)));
     if (visible) rows.push(hpRow(hud, n));
-    const walls = n.capitalOf >= 0 && f.kind === 'empire' ? game.wallsOf(n) : 1;
+    const walls = isHearth(n) && f.kind === 'empire' ? game.wallsOf(n) : 1;
     if (walls < 1) rows.push(line(hud, `WALLS ${pct(walls)}: WEAKER NOW, FULL AT ${fmtTime(ECON.wallsTime)}`, PAL.ember, 'tiny', { terms: gloss('walls') }));
     if (visible && game.fieldAt(n)) rows.push(line(hud, `ANTI-WARP FIELD: YOUR SHIPS JUMP AWAY ${HOLD_FIELD}S SLOWER`, PAL.violet, 'tiny', { terms: gloss('field') }));
     if (visible) rows.push(...fieldRows(hud, n));
@@ -95,7 +97,7 @@ export function nodeRows(hud: Hud, n: GNode): CardRow[] {
     const why = away
       ? 'Nothing can touch this Hearth until its house arrives.'
       : f.kind === 'empire'
-        ? n.capitalOf >= 0
+        ? isHearth(n)
           ? 'Take this Hearth and the whole house falls: its worlds swear to you. Bring Breakers.'
           : 'Breakers take worlds fastest. Clear its defenders first.'
         : '';
@@ -142,7 +144,7 @@ export function nodeRows(hud: Hud, n: GNode): CardRow[] {
               ? `Your waiting seed ship goes to ${n.name}, kindles it and is used up. It is already paid for, so this costs nothing. (K)`
               : `Pay ${cost} Embers for a seed ship: it goes to ${n.name}, kindles it and is used up. If it is destroyed on the way, the Embers are lost. (K)`,
         });
-        if (why && why !== 'Not enough Embers') text(hud.s.screen.g, fit(why.toUpperCase(), w - 116, 'tiny'), x + 116, y + 4, PAL.slate, 'tiny');
+        if (why && why !== WHY.embers) text(hud.s.screen.g, fit(why.toUpperCase(), w - 116, 'tiny'), x + 116, y + 4, PAL.slate, 'tiny');
       },
     });
   }
@@ -270,7 +272,7 @@ function rolesRow(hud: Hud, n: GNode): CardRow {
         const why = game.checkUpgrade(p.id, n.id);
         const label = `RAISE TO ${roman(n.level + 1)}`;
         hud.ui.button(gx, 'upgrade', bx, y, Math.min(w - (bx - x), 104), 12, label, () => hud.actions.upgrade(n.id), {
-          disabled: !!why && why !== 'Not enough Embers' ? true : !!why, right: `${IC.ember}${cost}`, font: 'tiny',
+          disabled: !!why && why !== WHY.embers ? true : !!why, right: `${IC.ember}${cost}`, font: 'tiny',
           tip: `Raise ${n.name} to level ${roman(n.level + 1)}: +50% output, more hull and more hangar room.${game.isBastion(n) ? ` As a Bastion it then protects your worlds one jump away by ${pct(FIELD_GUARD[Math.min(3, n.level + 1)])}, up from ${pct(FIELD_GUARD[n.level])}.` : ''}${why ? ` (${why})` : ''}`,
         });
       } else if (rising) {
@@ -302,14 +304,14 @@ function buildRows(hud: Hud, n: GNode): CardRow[] {
           const cost = game.shipCost(p, t, n);
           const id = 'build-' + t;
           const hot = hud.ui.isHot(id);
-          const blocked = !!why && why !== 'Not enough Embers' && why !== 'Hangar full' && why !== 'Queue full';
+          const blocked = !!why && why !== WHY.embers && why !== WHY.hangar && why !== WHY.queue;
           box(gx, bx, y, bw, 17, hot && !blocked ? PAL.indigo : PAL.night, hot ? PAL.dusk : why ? PAL.indigo : PAL.slate);
           // (Its key, in the corner: Q W E R T Y, in the order of the buttons. See ui/keys.ts.)
           const key = BUILD_LABELS[k];
           if (key) text(gx, key, bx + 2, y + 2, hot ? PAL.mist : PAL.dusk, 'tiny');
           const spr = shipSprite(t, why ? PAL.slate : p.color, 0);
           gx.drawImage(spr, bx + 2 + Math.max(0, Math.floor((9 - spr.width) / 2)), y + 10 - (spr.height >> 1));
-          text(gx, String(cost), bx + 12, y + 8, why === 'Not enough Embers' ? PAL.red : why ? PAL.slate : PAL.gold, 'tiny');
+          text(gx, String(cost), bx + 12, y + 8, why === WHY.embers ? PAL.red : why ? PAL.slate : PAL.gold, 'tiny');
           const def = UNITS[t];
           hud.ui.add({
             id, x: bx, y, w: bw, h: 17, onClick: () => hud.actions.build(n.id, t), disabled: blocked,
@@ -384,7 +386,7 @@ function projects(hud: Hud, n: GNode): Project[] {
     const last = p.era >= LAST_CRADLE_ERA;
     extras.push({ id: 'advance-card', label: last ? 'BUILD THE ARK' : `TO THE ${ERAS[p.era + 1].short} AGE`, cost: ERAS[p.era].cost, icon: 'up', accent: PAL.teal, act: () => hud.actions.advance(), tip: advanceTip(hud), dis: game.checkAdvance(p.id) });
   }
-  if (hearth && !game.cradle && game.checkArk(p.id) !== 'Your Ark still flies') {
+  if (hearth && !game.cradle && game.checkArk(p.id) !== WHY.arkFlies) {
     extras.push({ id: 'ark', label: 'REBUILD ARK', cost: game.shipCost(p, 'ark'), icon: 'hearth', accent: PAL.gold, act: () => hud.actions.ark(), tip: 'Rebuild your Ark. It keeps its levels and abilities.', dis: game.checkArk(p.id), calls: true });
   }
   if (hearth && game.victories.includes('ascension') && !p.gate) {
@@ -492,7 +494,7 @@ function projectWidth(e: Project): number {
 function drawProject(hud: Hud, e: Project, x: number, y: number, w: number) {
   const g = hud.s.screen.g;
   const H = 12;
-  const poor = e.dis === 'Not enough Embers';
+  const poor = e.dis === WHY.embers;
   const locked = !!e.dis && !poor;
   const ready = !e.dis;
   const hot = hud.ui.isHot(e.id) && !locked;
@@ -575,7 +577,7 @@ function bastionHere(hud: Hud, n: GNode): string {
   const game = hud.g;
   const reach = game.neighbours(n.id);
   const wards = reach.filter((id) => game.nodes[id].kind === 'planet' && game.nodes[id].owner === n.owner);
-  const names = wards.map((id) => (game.nodes[id].capitalOf >= 0 ? 'your Hearth' : game.nodes[id].name));
+  const names = wards.map((id) => (isHearth(game.nodes[id]) ? 'your Hearth' : game.nodes[id].name));
   const places = `${reach.length} ${reach.length === 1 ? 'place' : 'places'}`;
   return wards.length
     ? `Here its field would reach ${places} and protect ${names.length > 1 ? `${names.slice(0, -1).join(', ')} and ${names[names.length - 1]}` : names[0]}.`

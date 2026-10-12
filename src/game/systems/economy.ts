@@ -3,6 +3,7 @@ import { ECON } from '../data/worlds';
 import { UNITS } from '../data/units';
 import { mul } from '../mods';
 import type { Faction, UnitType } from '../types';
+import { isHearth } from '../worldStats';
 
 export function recomputeHangar(g: Game, f: Faction) {
   if (f.kind !== 'empire') return;
@@ -87,7 +88,7 @@ export function economyTick(g: Game, dt: number) {
 
   if (g.tick % 10 === 0) for (const f of g.factions) recomputeHangar(g, f);
   // Hearth walls rise through the opening.
-  if (g.tick % 20 === 0 && g.time <= ECON.wallsTime + 1) for (const n of g.nodes) if (n.capitalOf >= 0) g.refreshWorld(n);
+  if (g.tick % 20 === 0 && g.time <= ECON.wallsTime + 1) for (const n of g.nodes) if (isHearth(n)) g.refreshWorld(n);
   for (const n of g.nodes) {
     if (n.militiaCd > 0) n.militiaCd -= dt;
   }

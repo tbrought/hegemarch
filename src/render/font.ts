@@ -378,12 +378,6 @@ export function bigText(g: Ctx, s: string, cx: number, y: number, color: string,
   g.imageSmoothingEnabled = smooth;
 }
 
-/** Text with a 1px drop shadow (down-right), for legibility over the map. */
-export function textShadow(g: Ctx, s: string, x: number, y: number, color: string, shadow: string, font: FontId = 'main'): number {
-  text(g, s, x + 1, y + 1, shadow, font);
-  return text(g, s, x, y, color, font);
-}
-
 /** Text with a full 1px outline. */
 export function textOutline(g: Ctx, s: string, x: number, y: number, color: string, outline: string, font: FontId = 'main'): number {
   for (const [dx, dy] of [[-1, 0], [1, 0], [0, -1], [0, 1]]) text(g, s, x + dx, y + dy, outline, font);

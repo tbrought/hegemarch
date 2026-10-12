@@ -8,6 +8,7 @@ import { UNITS } from '../data/units';
 import type { Faction, QueueCheck, Unit } from '../types';
 import { dist, TAU } from '../util';
 import type { Game } from '../Game';
+import { cannotPay, WHY } from './checks';
 
 function orderPath(g: Game, u: Unit, dest: number, avoid?: (nodeId: number) => number) {
   const start = u.lane ? u.lane.to : u.node;
@@ -108,7 +109,7 @@ export function checkKindle(g: Game, fid: number, nodeId: number): QueueCheck {
   if (!f.explored[nodeId]) return 'Not yet charted';
   if (g.seedFor(fid, nodeId)) return 'A seed ship is on its way';
   if (g.kindleSource(fid, nodeId) < 0 && !g.idleSeed(fid)) return 'No world can reach it';
-  if (!g.idleSeed(fid) && f.embers < g.kindleCost(f) - 1e-6) return 'Not enough Embers';
+  if (!g.idleSeed(fid) && cannotPay(f, g.kindleCost(f))) return WHY.embers;
   return null;
 }
 

@@ -5,6 +5,8 @@ import { ERAS, LAST_CRADLE_ERA } from '../data/eras';
 import { isWarship, UNITS } from '../data/units';
 import { ASCENSION_BOONS, relicsRequired, treasuryTarget } from '../data/victories';
 import type { AIState, Faction, GNode, Rarity, Unit, UnitType, WorldRole, WorldSize } from '../types';
+import { WHY } from '../commands/checks';
+import { isHearth } from '../worldStats';
 
 type Personality = AIState['personality'];
 
@@ -277,7 +279,7 @@ function kindle(g: Game, f: Faction, ctx: Ctx) {
 
 function roles(g: Game, f: Faction, ctx: Ctx) {
   const p = f.ai!.personality;
-  const plain = ctx.worlds.filter((w) => w.capitalOf < 0);
+  const plain = ctx.worlds.filter((w) => !isHearth(w));
   const count = (r: WorldRole) => plain.filter((w) => w.role === r).length;
   const n = ctx.worlds.length;
   const want: [WorldRole, number][] = [
@@ -308,7 +310,7 @@ function roles(g: Game, f: Faction, ctx: Ctx) {
       if (role === 'bastion' && !g.cradle) {
         for (const id of g.neighbours(w.id)) {
           const o = g.nodes[id];
-          if (o.kind === 'planet' && o.owner === f.id) s += o.capitalOf >= 0 && open ? 5 : 0.6;
+          if (o.kind === 'planet' && o.owner === f.id) s += isHearth(o) && open ? 5 : 0.6;
         }
       }
       return s;
@@ -330,7 +332,7 @@ function upgrades(g: Game, f: Faction, ctx: Ctx) {
   };
   if (cap && ctx.minutes > 6) tryUp(cap);
   const order = [...ctx.worlds]
-    .filter((w) => w.capitalOf < 0 && w.level < 3 && w.glow > 0.7)
+    .filter((w) => !isHearth(w) && w.level < 3 && w.glow > 0.7)
     .sort((a, b) => SIZE_VALUE[b.size] + (b.role === 'mine' ? 1 : 0) - (SIZE_VALUE[a.size] + (a.role === 'mine' ? 1 : 0)));
   for (const w of order.slice(0, 2)) tryUp(w, 120);
 
@@ -372,7 +374,7 @@ function buildShips(g: Game, f: Faction, ctx: Ctx, max: number) {
     // Pick by doctrine among ships we could field, then save up for it rather than settling for something cheaper.
     const type = g.rng.weighted(types, (t) => {
       const why = g.checkShip(f.id, forge.id, t);
-      return why && why !== 'Not enough Embers' ? 0 : (W[t] ?? 0);
+      return why && why !== WHY.embers ? 0 : (W[t] ?? 0);
     });
     if (!type) break;
     if (g.cmdQueueShip(f.id, forge.id, type)) built++;
@@ -482,16 +484,16 @@ function chooseTarget(g: Game, f: Faction, armyPower: number, from: number): { n
       if (owner.kind !== 'empire' || !g.hostile(n.owner, f.id)) continue;
       // (Ages: a house newly arrived among the stars is left alone for a while, unless it struck first.)
       if (g.time < owner.graceUntil && f.ai!.grudge !== n.owner) continue;
-      value = 10 + SIZE_VALUE[n.size] * 3 + n.level * 2 + (n.capitalOf >= 0 ? 25 : 0);
+      value = 10 + SIZE_VALUE[n.size] * 3 + n.level * 2 + (isHearth(n) ? 25 : 0);
       value *= rivalThreat(g, n.owner);
       if (n.owner === f.ai!.grudge && g.time - f.ai!.grudgeAt < 600) value *= 2.5;
       if (g.factions[n.owner].gate?.node === n.id) value *= 3;
       if (g.factions[n.owner].isPlayer) value *= 1 + 0.12 * d;
       // (A world a Bastion protects takes that much longer to crack; the Bastion that protects a Hearth
       // is the way in, and worth going for.)
-      def += n.hp / (n.capitalOf >= 0 ? 900 : 1600) / (1 - g.guardOf(n));
+      def += n.hp / (isHearth(n) ? 900 : 1600) / (1 - g.guardOf(n));
       const wards = g.guardedBy(n);
-      if (wards.some((id) => g.nodes[id].capitalOf >= 0)) value += 14;
+      if (wards.some((id) => isHearth(g.nodes[id]))) value += 14;
       else if (wards.length) value += 4;
     } else if (n.kind === 'planet' && n.owner === -1 && g.hasHostiles(n.id, f.id)) {
       value = 6 + SIZE_VALUE[n.size] * 3;

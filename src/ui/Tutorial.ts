@@ -11,6 +11,7 @@ import { box, ring, type Ctx } from '../render/pixel';
 import { icon } from '../render/sprites';
 import type { Hud } from './Hud';
 import { fleetLabel } from './hud/overlays';
+import { isHearth } from '../game/worldStats';
 
 /** How many guided steps there are; game.ui.tut is one more than this once the First Night is over. */
 export const TUTORIAL_STEPS = 6;
@@ -137,7 +138,7 @@ export class Tutorial {
     const g = this.g;
     const tw = g.ui.tutWorld ?? -1;
     if (tw >= 0 && g.nodes[tw].owner === g.playerId) return tw;
-    const w = g.worldsOf(g.playerId).find((n) => n.capitalOf < 0);
+    const w = g.worldsOf(g.playerId).find((n) => !isHearth(n));
     return w ? w.id : -1;
   }
 

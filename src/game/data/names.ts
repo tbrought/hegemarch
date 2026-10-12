@@ -24,5 +24,3 @@ export const LAND_NAMES = [
   'Highmoor', 'Kingsmead', 'Lowcross', 'Mistvale', 'Nettlebank', 'Old Hythe', 'Ravenscar', 'Stonebridge', 'Tallowmere', 'Wolfden',
   'Bramblecote', 'Copperlode', 'Driftwood Bay', 'Elderholt', 'Flintcombe', 'Goldenhay', 'Heronwick', 'Larkrise', 'Mossgiel', 'Whitecliff',
 ];
-
-export const AI_RULER_TITLES = ['Archon', 'Matriarch', 'Tyrant', 'Regent', 'Pretender', 'Exarch', 'Warden', 'Usurper'];

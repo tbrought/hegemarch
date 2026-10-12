@@ -8,6 +8,7 @@ import { ECON } from './data/worlds';
 import { recomputeHangar } from './systems/economy';
 import type { DmgType, GNode, VictoryId } from './types';
 import type { Game } from './Game';
+import { isHearth } from './worldStats';
 
 export function damagePlanet(g: Game, n: GNode, amount: number, type: DmgType, byFaction: number) {
   if (n.owner < 0 || n.kind !== 'planet' || g.asleep(n.owner)) return;
@@ -18,7 +19,7 @@ export function damagePlanet(g: Game, n: GNode, amount: number, type: DmgType, b
   const owner = g.factions[n.owner];
   if (n.lastHit > 25 && byFaction >= 0) {
     const who = g.factions[byFaction];
-    const hearth = n.capitalOf >= 0;
+    const hearth = isHearth(n);
     g.notify(n.owner, `${hearth ? 'Your Hearth, ' : ''}${n.name} is under attack${who ? ' by ' + who.name : ''}!`, 'alert', n.id, hearth);
   }
   const absorbed = Math.min(n.sh, dmg);
@@ -38,7 +39,7 @@ export function damagePlanet(g: Game, n: GNode, amount: number, type: DmgType, b
     g.notify(owner.id, `Militia muster to defend ${n.name}.`, 'good', n.id);
   }
   // Last stand at the Hearth
-  if (n.capitalOf >= 0 && !n.lastStand && n.hp < n.maxHp * 0.3) {
+  if (isHearth(n) && !n.lastStand && n.hp < n.maxHp * 0.3) {
     n.lastStand = true;
     const k = owner.id === g.playerId && !g.config.autoplay ? 1 + (g.config.perks?.secondBreath ?? 0) : 1;
     for (let j = 0; j < k; j++) {
@@ -95,7 +96,7 @@ export function planetDefeated(g: Game, n: GNode, byFaction: number) {
     return;
   }
   if (att.kind === 'crisis') {
-    if (n.capitalOf >= 0) g.eliminate(n.capitalOf, byFaction);
+    if (isHearth(n)) g.eliminate(n.capitalOf, byFaction);
     darken(g, n);
     n.hp = n.maxHp * 0.3;
     destroyDefenses(g, n, prev);
@@ -105,7 +106,7 @@ export function planetDefeated(g: Game, n: GNode, byFaction: number) {
     return;
   }
   // A rival house takes the world.
-  const wasHearth = n.capitalOf >= 0;
+  const wasHearth = isHearth(n);
   const scorched = prevF.mods.flags.scorched ?? 0;
   if (scorched > 0) {
     for (const u of [...g.buckets[n.id]]) if (!u.dead && g.hostile(u.owner, prev)) g.damageUnitRaw(u, scorched, prev);

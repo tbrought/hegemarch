@@ -13,6 +13,8 @@ import { mul } from '../mods';
 import { recomputeHangar } from '../systems/economy';
 import type { Faction, GNode, QueueCheck, UnitType, WorldRole } from '../types';
 import type { Game } from '../Game';
+import { cannotPay, WHY } from './checks';
+import { isHearth } from '../worldStats';
 
 /** What a ship costs the house; at a Forge that fits its world (`at`), less (`forgeFit`). */
 export function shipCost(g: Game, f: Faction, type: UnitType, at?: GNode): number {
@@ -52,9 +54,9 @@ export function checkShip(g: Game, fid: number, nodeId: number, type: UnitType):
   if (n.retool > 0) return 'Retooling';
   if (def.blueprint && !g.hasCard(f, def.blueprint)) return 'Needs its Blueprint Boon';
   if (type === 'dreadnought' && g.dreadnoughtCount(fid) >= DREADNOUGHT_CAP) return `Limit ${DREADNOUGHT_CAP} Dreadnoughts`;
-  if (n.shipQ.length >= QUEUE_MAX) return 'Queue full';
-  if (f.hangarUsed + def.hangar > f.hangarCap) return 'Hangar full';
-  if (f.embers < g.shipCost(f, type, n) - 1e-6) return 'Not enough Embers';
+  if (n.shipQ.length >= QUEUE_MAX) return WHY.queue;
+  if (f.hangarUsed + def.hangar > f.hangarCap) return WHY.hangar;
+  if (cannotPay(f, g.shipCost(f, type, n))) return WHY.embers;
   return null;
 }
 
@@ -75,8 +77,8 @@ export function checkUpgrade(g: Game, fid: number, nodeId: number): QueueCheck {
   if (n.level >= 3) return 'Already level III';
   if (n.level >= ERAS[f.era].maxLevel) return 'Needs a later age';
   if (n.buildQ.some((q) => q.kind === 'upgrade')) return 'Already rising';
-  if (n.buildQ.length >= QUEUE_MAX) return 'Queue full';
-  if (f.embers < (g.upgradeCost(f, n) ?? Infinity) - 1e-6) return 'Not enough Embers';
+  if (n.buildQ.length >= QUEUE_MAX) return WHY.queue;
+  if (cannotPay(f, (g.upgradeCost(f, n) ?? Infinity))) return WHY.embers;
   return null;
 }
 
@@ -95,9 +97,9 @@ export function checkRole(g: Game, fid: number, nodeId: number, role: WorldRole)
   const n = g.nodeAt(nodeId);
   if (!n || n.owner !== fid) return 'Not your world';
   if (!ROLE_ORDER.includes(role)) return 'Not a role';
-  if (n.capitalOf >= 0) return 'Your Hearth already does everything';
+  if (isHearth(n)) return 'Your Hearth already does everything';
   if (!ERAS[g.factions[fid].era].roles.includes(role)) return 'Needs a later age';
-  if (n.role === role) return 'Already its role';
+  if (n.role === role) return WHY.sameRole;
   return null;
 }
 
@@ -136,8 +138,8 @@ export function checkStarbase(g: Game, fid: number, nodeId: number): QueueCheck 
   if (!f || !n || n.owner !== fid) return 'Not your world';
   if (!g.hasCard(f, 'bpStarbase')) return 'Needs its Blueprint Boon';
   if (g.starbaseAt(n) >= 1) return 'One Starbase per world';
-  if (n.buildQ.length >= QUEUE_MAX) return 'Queue full';
-  if (f.embers < g.shipCost(f, 'starbase') - 1e-6) return 'Not enough Embers';
+  if (n.buildQ.length >= QUEUE_MAX) return WHY.queue;
+  if (cannotPay(f, g.shipCost(f, 'starbase'))) return WHY.embers;
   return null;
 }
 
@@ -158,7 +160,7 @@ export function checkGate(g: Game, fid: number, nodeId: number): QueueCheck {
   if (f.boons < ASCENSION_BOONS) return `Needs ${ASCENSION_BOONS} Boons from Lore`;
   if (f.gate) return 'Gate already raised';
   if (g.nodes.some((x) => x.owner === fid && x.buildQ.some((q) => q.kind === 'gate'))) return 'Gate already rising';
-  if (f.embers < g.shipCost(f, 'gate') - 1e-6) return 'Not enough Embers';
+  if (cannotPay(f, g.shipCost(f, 'gate'))) return WHY.embers;
   return null;
 }
 
@@ -180,7 +182,7 @@ export function checkBay(g: Game, fid: number): QueueCheck {
   const f = g.factions[fid];
   if (f.capital < 0) return 'No Hearth';
   if ((f.bays ?? 0) >= ECON.bayMax) return 'No room for more bays';
-  if (f.embers < g.bayCost(f) - 1e-6) return 'Not enough Embers';
+  if (cannotPay(f, g.bayCost(f))) return WHY.embers;
   return null;
 }
 
@@ -197,12 +199,12 @@ export function cmdBuyBay(g: Game, fid: number): boolean {
 export function checkArk(g: Game, fid: number): QueueCheck {
   const f = g.factions[fid];
   if (g.cradle) return 'The Ark belongs to the Space Age';
-  if (f.ark >= 0 && g.units.has(f.ark)) return 'Your Ark still flies';
+  if (f.ark >= 0 && g.units.has(f.ark)) return WHY.arkFlies;
   if (f.capital < 0) return 'No Hearth';
   const n = g.nodes[f.capital];
   if (n.shipQ.some((q) => q.kind === 'ark')) return 'Already rebuilding';
-  if (n.shipQ.length >= QUEUE_MAX) return 'Queue full';
-  if (f.embers < g.shipCost(f, 'ark') - 1e-6) return 'Not enough Embers';
+  if (n.shipQ.length >= QUEUE_MAX) return WHY.queue;
+  if (cannotPay(f, g.shipCost(f, 'ark'))) return WHY.embers;
   return null;
 }
 

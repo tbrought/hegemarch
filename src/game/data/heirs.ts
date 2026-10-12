@@ -190,4 +190,3 @@ export function houseShort(heir: string, name: string): string {
 export const PIRATE_COLOR = PAL.mist;
 export const GUARDIAN_COLOR = PAL.dusk;
 export const CRISIS_COLOR = PAL.pink;
-export const NEUTRAL_COLOR = PAL.slate;

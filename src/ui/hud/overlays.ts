@@ -14,6 +14,7 @@ import { fleetBadge, icon } from '../../render/sprites';
 import { destinyClocks } from './destinies';
 import { fleetSummary, jumpWait, jumpWaitText } from './fleetCard';
 import type { Hud } from '../Hud';
+import { isHearth } from '../../game/worldStats';
 
 export const KIND_COLOR: Record<Note['kind'], string> = { info: PAL.mist, good: PAL.teal, bad: PAL.red, alert: PAL.ember, event: PAL.violet };
 
@@ -254,7 +255,7 @@ export function drawMinimap(hud: Hud) {
     else if (n.kind === 'relic' && n.relic) c = PAL.sky;
     else if (n.kind === 'rift') c = PAL.pink;
     g.fillStyle = c;
-    const size = n.capitalOf >= 0 ? 2 : 1;
+    const size = isHearth(n) ? 2 : 1;
     g.fillRect(mx(n.x), my(n.y), size, size);
     if (hud.s.visible(n.id) && game.hasHostiles(n.id, p.id) && game.buckets[n.id].some((u) => u.owner === p.id) && Math.floor(hud.clock * 3) % 2 === 0) {
       g.fillStyle = PAL.red;

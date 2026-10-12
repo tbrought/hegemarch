@@ -2,6 +2,7 @@ import type { Game } from '../Game';
 import { PIRATE_MUL } from '../constants';
 import { UNITS } from '../data/units';
 import type { Faction, GNode, UnitType } from '../types';
+import { isHearth } from '../worldStats';
 
 export function piratesTick(g: Game, _dt: number) {
   const P = g.pirates;
@@ -75,7 +76,7 @@ function launchRaid(g: Game) {
   if (!victim) return;
   const planets = g.worldsOf(victim.id).filter((p) => isFinite(g.pathLen(P.base, p.id)));
   if (!planets.length) return;
-  planets.sort((a, b) => g.pathLen(P.base, a.id) + (a.capitalOf >= 0 ? 5000 : 0) - (g.pathLen(P.base, b.id) + (b.capitalOf >= 0 ? 5000 : 0)));
+  planets.sort((a, b) => g.pathLen(P.base, a.id) + (isHearth(a) ? 5000 : 0) - (g.pathLen(P.base, b.id) + (isHearth(b) ? 5000 : 0)));
   const target = planets[0];
   const minutes = g.time / 60;
   let budget = (4 + minutes * 0.7) * PIRATE_MUL[g.config.difficulty] * (g.traits.includes('haven') ? 1.5 : 1);

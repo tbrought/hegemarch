@@ -7,6 +7,7 @@ import { darken } from '../conquest';
 import { ERAS, LAST_CRADLE_ERA, SPACE, UPGRADE_MAX, UPGRADE_SPREAD } from '../data/eras';
 import type { Faction, QueueCheck } from '../types';
 import type { Game } from '../Game';
+import { cannotPay, WHY } from './checks';
 
 /** Why this house cannot take the step to the next age (or, from the last one, build its Ark), or null if it can. */
 export function checkAdvance(g: Game, fid: number): QueueCheck {
@@ -16,7 +17,7 @@ export function checkAdvance(g: Game, fid: number): QueueCheck {
   if (f.advance) return f.era === LAST_CRADLE_ERA ? 'The Ark is rising' : 'Already under way';
   const era = ERAS[f.era];
   if (f.lore < era.lore - 1e-6) return 'Not enough Lore';
-  if (f.embers < era.cost - 1e-6) return 'Not enough Embers';
+  if (cannotPay(f, era.cost)) return WHY.embers;
   return null;
 }
 

@@ -2,6 +2,7 @@ import type { Game } from '../Game';
 import { PIRATE_MUL } from '../constants';
 import { UNITS } from '../data/units';
 import type { UnitType } from '../types';
+import { isHearth } from '../worldStats';
 
 export function crisisTick(g: Game, dt: number) {
   const C = g.crisis;
@@ -85,7 +86,7 @@ function driveCrisis(g: Game) {
     let bd = Infinity;
     for (const n of g.nodes) {
       if (n.kind !== 'planet' || n.owner < 0 || g.factions[n.owner].kind !== 'empire') continue;
-      const d = g.pathLen(nodeId, n.id) + (n.capitalOf >= 0 ? 3000 : 0);
+      const d = g.pathLen(nodeId, n.id) + (isHearth(n) ? 3000 : 0);
       if (d < bd) {
         bd = d;
         best = n.id;

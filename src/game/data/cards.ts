@@ -1,6 +1,7 @@
 import { addU, flag } from '../mods';
 import type { Faction, Mods, Rarity } from '../types';
 import type { Game } from '../Game';
+import { isHearth } from '../worldStats';
 
 /** Boons. (Files and ids still say "card"; players only ever see "Boon".) */
 export type CardCat = 'war' | 'wealth' | 'growth' | 'lore' | 'ward' | 'blueprint' | 'pact';
@@ -212,7 +213,7 @@ export const CARDS: CardDef[] = [
     id: 'worldforge', name: 'Worldforge', rarity: 'legendary', cat: 'growth', max: 1, desc: 'Every world you own [rises one level] (up to III), and worlds gain [25% hull].',
     mods: (m) => (m.worldHp += 0.25),
     onPick: (g, f) => {
-      for (const n of g.worldsOf(f.id)) if (n.capitalOf < 0 && n.level < 3) g.setLevel(n, n.level + 1);
+      for (const n of g.worldsOf(f.id)) if (!isHearth(n) && n.level < 3) g.setLevel(n, n.level + 1);
     },
   },
   { id: 'stormcaller', name: 'Storm Caller', rarity: 'legendary', cat: 'war', max: 1, desc: 'Every 15 seconds, lightning strikes [up to 3 enemy ships] in each of your battles (300 damage).', mods: (m) => flag(m, 'storm', 1) },

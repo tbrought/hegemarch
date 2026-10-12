@@ -1,16 +1,17 @@
 import type { Session } from '../app/Session';
 import { ERAS, LAST_CRADLE_ERA } from '../game/data/eras';
 import { UNITS } from '../game/data/units';
-import type { Unit, UnitType, WorldRole } from '../game/types';
+import type { QueueCheck, Unit, UnitType, WorldRole } from '../game/types';
 import { PAL } from '../render/palette';
+import { WHY } from '../game/commands/checks';
+
+/** Seconds the way of an order is drawn bright (then it stays, dim, while the ships are selected). */
+export const ROUTE_FLASH = 1.6;
 
 /**
  * Player commands with feedback (sound, markers, a short reason when something can't be done).
  * Every order the player can give goes through here, and none is taken once the run is over.
  */
-/** Seconds the way of an order is drawn bright (then it stays, dim, while the ships are selected). */
-export const ROUTE_FLASH = 1.6;
-
 export class Actions {
   constructor(private s: Session) {}
 
@@ -30,6 +31,22 @@ export class Actions {
   /** May an order be given right now? At any time, paused or not, until the run is over (see `Session.mode`). */
   private ready(): boolean {
     return this.s.mode === 'play';
+  }
+
+  /**
+   * An order that the game checks and then carries out: if the check has a reason against it, the reason
+   * is said (and nothing is done); otherwise the order is given, with its sound.
+   */
+  private attempt(check: () => QueueCheck, run: () => void, sound: Parameters<Session['sfx']['play']>[0], volume = 0.5): boolean {
+    if (!this.ready()) return false;
+    const why = check();
+    if (why) {
+      this.fail(why);
+      return false;
+    }
+    run();
+    this.s.sfx.play(sound, volume);
+    return true;
   }
 
   kindle(nodeId: number): boolean {
@@ -121,22 +138,14 @@ export class Actions {
   }
 
   upgrade(nodeId: number): boolean {
-    if (!this.ready()) return false;
-    const why = this.g.checkUpgrade(this.pid, nodeId);
-    if (why) {
-      this.fail(why);
-      return false;
-    }
-    this.g.cmdUpgrade(this.pid, nodeId);
-    this.s.sfx.play('build', 0.5);
-    return true;
+    return this.attempt(() => this.g.checkUpgrade(this.pid, nodeId), () => this.g.cmdUpgrade(this.pid, nodeId), 'build');
   }
 
   role(nodeId: number, role: WorldRole): boolean {
     if (!this.ready()) return false;
     const why = this.g.checkRole(this.pid, nodeId, role);
     if (why) {
-      if (why !== 'Already its role') this.fail(why);
+      if (why !== WHY.sameRole) this.fail(why);
       return false;
     }
     this.g.cmdSetRole(this.pid, nodeId, role);
@@ -145,50 +154,19 @@ export class Actions {
   }
 
   starbase(nodeId: number): boolean {
-    if (!this.ready()) return false;
-    const why = this.g.checkStarbase(this.pid, nodeId);
-    if (why) {
-      this.fail(why);
-      return false;
-    }
-    this.g.cmdQueueStarbase(this.pid, nodeId);
-    this.s.sfx.play('build', 0.5);
-    return true;
+    return this.attempt(() => this.g.checkStarbase(this.pid, nodeId), () => this.g.cmdQueueStarbase(this.pid, nodeId), 'build');
   }
 
   gate(nodeId: number): boolean {
-    if (!this.ready()) return false;
-    const why = this.g.checkGate(this.pid, nodeId);
-    if (why) {
-      this.fail(why);
-      return false;
-    }
-    this.g.cmdQueueGate(this.pid, nodeId);
-    this.s.sfx.play('good', 0.6);
-    return true;
+    return this.attempt(() => this.g.checkGate(this.pid, nodeId), () => this.g.cmdQueueGate(this.pid, nodeId), 'good', 0.6);
   }
 
   ark(): boolean {
-    if (!this.ready()) return false;
-    const why = this.g.checkArk(this.pid);
-    if (why) {
-      this.fail(why);
-      return false;
-    }
-    this.g.cmdRebuildArk(this.pid);
-    this.s.sfx.play('build', 0.5);
-    return true;
+    return this.attempt(() => this.g.checkArk(this.pid), () => this.g.cmdRebuildArk(this.pid), 'build');
   }
 
   bay(): boolean {
-    if (!this.ready()) return false;
-    const why = this.g.checkBay(this.pid);
-    if (why) {
-      this.fail(why);
-      return false;
-    }
-    this.g.cmdBuyBay(this.pid);
-    this.s.sfx.play('build', 0.5);
+    if (!this.attempt(() => this.g.checkBay(this.pid), () => this.g.cmdBuyBay(this.pid), 'build')) return false;
     this.s.showToast('A new Hangar Bay opens at your Hearth: +5 room for ships.', PAL.teal, 3);
     return true;
   }

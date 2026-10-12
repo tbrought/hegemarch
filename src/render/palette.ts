@@ -1,11 +1,6 @@
 import { PAL } from '../game/data/heirs';
 
 export { PAL };
-export type PalName = keyof typeof PAL;
-
-/** Every color the game draws with (the Ember-16 palette). */
-export const PALETTE: string[] = Object.values(PAL);
-
 /** A darker companion for each bright color, for shading sprites and borders. */
 export const SHADE: Record<string, string> = {
   [PAL.gold]: PAL.ember,
