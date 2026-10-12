@@ -5,10 +5,9 @@
 
 import { DMG_TABLE, UNITS } from './data/units';
 import { ECON } from './data/worlds';
-import { recomputeHangar } from './systems/economy';
 import type { DmgType, GNode, VictoryId } from './types';
 import type { Game } from './Game';
-import { isHearth } from './worldStats';
+import { isHearth, recomputeHangar } from './worldStats';
 
 export function damagePlanet(g: Game, n: GNode, amount: number, type: DmgType, byFaction: number) {
   if (n.owner < 0 || n.kind !== 'planet' || g.asleep(n.owner)) return;

@@ -9,7 +9,7 @@ import { HEIR_BY_ID } from './data/heirs';
 import { RELIC_BY_ID } from './data/relics';
 import { TRAIT_BY_ID } from './data/traits';
 import { baseMods } from './mods';
-import { recomputeHangar } from './systems/economy';
+import { recomputeHangar } from './worldStats';
 import type { Faction, Mods } from './types';
 import type { Game } from './Game';
 

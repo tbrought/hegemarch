@@ -561,6 +561,19 @@ if (!fs.existsSync(FILE)) {
 const want = JSON.parse(fs.readFileSync(FILE, 'utf8'));
 const wantFull = fs.existsSync(FULL) ? JSON.parse(fs.readFileSync(FULL, 'utf8')) : {};
 
+/** A page without the game's version on it: a new version number is not a change to the page. */
+const sansVersion = (html) =>
+  html
+    .replace(/\bv\d+\.\d+\.\d+\b/g, 'v#')
+    // (the results page says it again in the run's details for a machine: JSON in base64, see app/rundata.ts)
+    .replace(/Data: ([A-Za-z0-9+/=]+)/g, (all, b64) => {
+      try {
+        return 'Data: ' + JSON.stringify({ ...JSON.parse(Buffer.from(b64, 'base64').toString('utf8')), v: '#' });
+      } catch {
+        return all;
+      }
+    });
+
 /** What differs between the recording and the scenes as they were just staged: scene name -> what to say of it. */
 function compare() {
   const out = new Map();
@@ -572,7 +585,8 @@ function compare() {
       out.set(name, a ? 'no longer staged' : 'not recorded');
       continue;
     }
-    const parts = ['screen', 'html', 'regions', 'hints', 'pixels'].filter((k) => a[k] !== b[k] && !(k === 'pixels' && a.pixels === undefined));
+    let parts = ['screen', 'html', 'regions', 'hints', 'pixels'].filter((k) => a[k] !== b[k] && !(k === 'pixels' && a.pixels === undefined));
+    if (parts.includes('html') && wantFull[name]?.html !== undefined && sansVersion(wantFull[name].html) === sansVersion(full[name].html ?? '')) parts = parts.filter((k) => k !== 'html');
     if (!parts.length) continue;
     const why = [];
     for (const k of ['regions', 'hints']) {

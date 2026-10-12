@@ -172,7 +172,13 @@ own data and code, so they stay true when the game changes. Look at it before up
 
 ## Development
 
+New to the code? Start with [docs/CODE_TOUR.md](docs/CODE_TOUR.md): where everything lives, how a
+frame and an order flow, and how to add a ship, a Boon, an event or a dialog.
+
 ```bash
+npm run verify             # everything below in one command (starts its own dev server for the
+                           # browser suites); -- --quick leaves the browser out, -- --release also
+                           # builds, packages and checks the build and the site
 npm run typecheck          # tsc --noEmit
 npm test                   # Vitest: rules, combat triangle, victories, determinism, save/load, AI soak runs
 npm run simulate -- 5 medium 1 60 [-v]   # headless AI-vs-AI games with pacing stats
@@ -211,4 +217,13 @@ npm run test:fuzz -- 24 90 --ai       # the AI plays every house: reaches late w
 npm run test:fuzz -- 12 55 --ages     # Ages runs: the cradle, the crossing, and on among the stars
 ```
 
-See [docs/DESIGN.md](docs/DESIGN.md) for the design and architecture.
+A change that must not alter the game at all (a refactoring) has two checks of its own:
+
+```bash
+npm run golden -- record       # before: the whole saved state of 24 fixed runs, fingerprinted every 30 s
+npm run test:uisnap -- record  # before: 73 staged scenes (pixels, every button and tooltip, menu HTML)
+npm run verify                 # after: compares both, to the byte, and runs everything else
+```
+
+See [docs/CODE_TOUR.md](docs/CODE_TOUR.md) for the code and [docs/DESIGN.md](docs/DESIGN.md) for the
+design.

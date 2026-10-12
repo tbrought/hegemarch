@@ -8,7 +8,7 @@ import { CONVERT_MEND, LEARNABLE_ABILITIES } from './data/abilities';
 import { HEIR_BY_ID, ZEAL_MAX, ZEAL_TIME } from './data/heirs';
 import { ABILITY_LEVELS, DMG_TABLE, LEVEL_XP, MAX_LEVEL, UNITS } from './data/units';
 import { mul } from './mods';
-import { recomputeHangar } from './systems/economy';
+import { recomputeHangar } from './worldStats';
 import type { DmgType, Unit, UnitType } from './types';
 import { dist, TAU } from './util';
 import type { Game } from './Game';

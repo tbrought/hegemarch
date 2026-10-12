@@ -773,21 +773,31 @@ and not pictures of it, and it cannot drift from the rules.
 
 ## 7. Architecture
 
+[CODE_TOUR.md](CODE_TOUR.md) is the way in for a developer: the folders, one frame, one order, how to
+add a ship, a Boon, an event or a dialog, and how to check a change. In short:
+
 ```
 src/game/      deterministic simulation (no DOM)
-  Game.ts        state, queries, commands (shared by the player's UI and the AI), save/load
-  systems/       economy, production, movement (lanes, kindling), combat, status, visibility,
-                 events, pirates, crisis, victory
+  Game.ts        the state, the short queries, and one line for everything longer, which hands the
+                 game to the module that does the work:
+  setup, save    a new game; saving and loading
+  worldStats, shipStats, fields, pathing, boons, modSources   what is so
+  unitLife, conquest   what follows from a hit, a death, a world taken, a Hearth fallen
+  commands/      what a house can order (the player's UI and the AI alike), each with its check
+  systems/       what happens by itself every tick: economy, production, movement (lanes, kindling),
+                 combat, status, visibility, events, pirates, crisis, victory
   ai/ai.ts       AI houses: drafting, kindling, roles, upgrades, counter-building, attack planning
   data/          units, worlds, Boons, houses, relics, events, omens, Destinies, ambitions
 src/render/    pixel canvas: Screen (scaling), Camera, Renderer, worlds, sprites, fonts, effects
-src/ui/        immediate-mode HUD: Ui toolkit, Hud, Modals, Actions, Input, Tutorial, Tips, Ending
-               (how a run ends, on the map)
+src/ui/        immediate-mode HUD: the Ui toolkit; Hud (state and draw order) with its parts in hud/;
+               Modals (open, close, guard) with each dialog in modals/; Actions, Input, Tutorial,
+               Tips, Ending (how a run ends, on the map)
 src/audio/     Sfx (synth) and Music (sequencer)
-src/app/       App (menus, loop, results), Attract (the sector that plays itself behind the menus
-               and on the website), houseArt and modeArt (the pictures the menus draw), charts (the
-               graphs of the results), share (a run to paste, and the link to its sector), rundata and
-               Session (one run's shared UI state)
+src/app/       App (the frame loop and the shared state), run (a run's life), sound, the menu pages
+               in screens/ (each draws itself and has a table of what its buttons do), Attract (the
+               sector that plays itself behind the menus and on the website), houseArt and modeArt
+               (the pictures the menus draw), charts (the graphs of the results), share (a run to
+               paste, and the link to its sector), rundata and Session (one run's shared UI state)
 src/site/      the website's script: the live sector, houses, fleet, Boon draft (see "The website")
 src/meta/      profile, settings, Legacy and the player's records
 ```
@@ -795,13 +805,38 @@ src/meta/      profile, settings, Legacy and the player's records
 The simulation never touches the DOM or `Math.random` (visual jitter does), so the same seed gives
 the same game with or without rendering, and a saved run continues identically.
 
+A class here holds state and says in what order things happen; what happens is a function in a module
+that takes the class's object (`killUnit(g, u)`, `drawTopBar(hud, R)`, `showSetup(app)`). `Game.ts`
+keeps a one-line method for each of its modules' functions, so that every caller says `g.cmdMove(...)`
+as before. (Until 1.16.2 four files were a third of the code: Game 2,700 lines, Hud 2,000, App 1,500,
+Modals 1,400, each several things at once. They were taken apart along the seams they already had,
+by a script that moved the code and did not retype it, and checked against the golden traces and the
+UI snapshot of section 8: nothing in the game changed.)
+
 ## 8. Testing
 
-- `npm test`: rules (kindling, roles, levels, hangar, Boons, Blueprint pity, events, omens), the
+- `npm test` (`tests/`, one file per subject, what they share in `tests/helpers.ts`): rules (kindling,
+  roles, levels, hangar, Boons, Blueprint pity, events, omens), the
   combat triangle with equal budgets, early strikes and AI restraint, Hearth walls, spoils and
   fealty, every victory, effect-text markup in every data file, Boon previews and totals,
   determinism with and without effects, save/load round trips, and long AI-vs-AI soak games on
   every sector size.
+- `npm run verify` (`scripts/verify.mjs`): everything below in one command (types, unit tests, the
+  fuzzers, the golden traces and the UI snapshot if they were recorded, and every browser suite, for
+  which it starts its own dev server). `--quick` leaves the browser out; `--release` builds, packages
+  and checks the build and the site as well.
+- **Golden traces** (`npm run golden -- record|check`, `scripts/golden.ts`): the proof that a change to
+  the code changed nothing in the game. 24 fixed runs are played (rival houses alone, random commands,
+  both together, Ages runs from the cradle to the stars, runs loaded from their own save half way) and
+  the whole saved state is fingerprinted every 30 seconds of game time, with the effects asked for.
+  `record` before a refactoring, `check` after: identical to the byte, or it says where they part.
+- **The UI snapshot** (`npm run test:uisnap -- record|check`, `scripts/uisnap.mjs`): the same for what
+  is on the screen. In a browser whose clock the script holds (and whose `Math.random` is seeded) 73
+  scenes are staged: the menus, every card and dialog, the end of a run, an Ages cradle. Of each it
+  writes down the pixels of the game's canvas, every HUD button with its place and tooltip, and the
+  HTML of a menu page (but for the version number on the title page). Both recordings live in
+  `.golden/`, outside git: they are true of one version of the rules, and a change that is meant to
+  be felt makes new ones.
 - `npm run simulate` / `npm run balance:passive`: pacing and balance numbers.
 - Browser tests through `playwright-core` with the installed Edge or Chrome: `test:e2e` (about 50
   assertions over real input, including the Boon tray, the Boons screen and hover help),

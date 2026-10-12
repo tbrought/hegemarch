@@ -1,14 +1,15 @@
 /**
  * What a world is worth and can do: its role and how well it suits it, the Embers and Lore it makes,
- * its hull and guns, a Hearth's walls, and what kindling or raising a world costs.
+ * its hull and guns, a Hearth's walls, what kindling or raising a world costs, and the hangar a
+ * house's worlds give it.
  */
 
 import { TICK } from './constants';
 import { ERAS } from './data/eras';
+import { UNITS } from './data/units';
 import { ECON, PLANETS } from './data/worlds';
 import { mul } from './mods';
-import { recomputeHangar } from './systems/economy';
-import type { Faction, GNode, WorldRole } from './types';
+import type { Faction, GNode, UnitType, WorldRole } from './types';
 import { clamp } from './util';
 import type { Game } from './Game';
 
@@ -134,6 +135,20 @@ export function hangarCapOf(g: Game, f: Faction): number {
   let space = ECON.hangarBase + f.mods.hangar + ECON.bayHangar * (f.bays ?? 0);
   for (const n of g.nodes) if (n.owner === f.id && n.kind === 'planet') space += ECON.hangarPerWorld + (n.level - 1);
   return Math.floor(space * mul(f.mods.hangarMul, 0.3));
+}
+
+/** Count again what a house's hangar holds and how much of it is taken (by ships that fly and ships in the queues). */
+export function recomputeHangar(g: Game, f: Faction) {
+  if (f.kind !== 'empire') return;
+  f.hangarCap = g.hangarCapOf(f);
+  let used = 0;
+  // (A ship that came over from another house was never built here: it takes no room.)
+  for (const u of g.unitList) if (!u.dead && u.owner === f.id && !u.temp && !u.guest) used += UNITS[u.type].hangar;
+  for (const n of g.nodes) {
+    if (n.owner !== f.id) continue;
+    for (const q of n.shipQ) if (q.kind === 'ship') used += UNITS[q.id as UnitType].hangar;
+  }
+  f.hangarUsed = used;
 }
 
 /** Embers to kindle the next dark world. */

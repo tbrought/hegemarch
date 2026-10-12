@@ -1,22 +1,8 @@
 import type { Game } from '../Game';
 import { ECON } from '../data/worlds';
-import { UNITS } from '../data/units';
 import { mul } from '../mods';
-import type { Faction, UnitType } from '../types';
-import { isHearth } from '../worldStats';
-
-export function recomputeHangar(g: Game, f: Faction) {
-  if (f.kind !== 'empire') return;
-  f.hangarCap = g.hangarCapOf(f);
-  let used = 0;
-  // (A ship that came over from another house was never built here: it takes no room.)
-  for (const u of g.unitList) if (!u.dead && u.owner === f.id && !u.temp && !u.guest) used += UNITS[u.type].hangar;
-  for (const n of g.nodes) {
-    if (n.owner !== f.id) continue;
-    for (const q of n.shipQ) if (q.kind === 'ship') used += UNITS[q.id as UnitType].hangar;
-  }
-  f.hangarUsed = used;
-}
+import type { Faction } from '../types';
+import { isHearth, recomputeHangar } from '../worldStats';
 
 export function economyTick(g: Game, dt: number) {
   const nF = g.factions.length;

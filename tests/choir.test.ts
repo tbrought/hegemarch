@@ -10,7 +10,7 @@ import { ABILITY_BY_ID, CONVERT_HULL, CONVERT_HULL_PER_LEVEL, CONVERT_MEND, LEAR
 import { heirIdNow, HEIR_BY_ID, HEIRS, houseShort, ZEAL_MAX, ZEAL_STEP, ZEAL_TIME } from '../src/game/data/heirs';
 import { UNITS } from '../src/game/data/units';
 import { convertible } from '../src/game/systems/abilities';
-import { recomputeHangar } from '../src/game/systems/economy';
+import { recomputeHangar } from '../src/game/worldStats';
 import type { GameConfig, Unit, UnitType } from '../src/game/types';
 import { loadProfile } from '../src/meta/profile';
 import { GLOSS_BY_ID } from '../src/ui/glossary';

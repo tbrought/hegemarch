@@ -10,11 +10,10 @@ import { DREADNOUGHT_CAP, UNITS } from '../data/units';
 import { ASCENSION_BOONS } from '../data/victories';
 import { ECON, ROLE_ORDER } from '../data/worlds';
 import { mul } from '../mods';
-import { recomputeHangar } from '../systems/economy';
 import type { Faction, GNode, QueueCheck, UnitType, WorldRole } from '../types';
 import type { Game } from '../Game';
 import { cannotPay, WHY } from './checks';
-import { isHearth } from '../worldStats';
+import { isHearth, recomputeHangar } from '../worldStats';
 
 /** What a ship costs the house; at a Forge that fits its world (`at`), less (`forgeFit`). */
 export function shipCost(g: Game, f: Faction, type: UnitType, at?: GNode): number {
