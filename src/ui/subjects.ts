@@ -44,6 +44,7 @@ const SUBJECTS: Record<string, SubjectDef> = {
   carrier: { name: 'Carriers', ship: 'carrier', words: /carriers?/i },
   dreadnought: { name: 'Dreadnoughts', ship: 'dreadnought', words: /dreadnoughts?/i },
   starbase: { name: 'Starbases', ship: 'starbase', words: /starbases?/i },
+  starfall: { name: 'The Starfall', ship: 'starfall', words: /starfalls?/i },
   scout: { name: 'Scouts', ship: 'scout', words: /scouts?/i },
   ark: { name: 'Your Ark', ship: 'ark', words: /\bark\b/i },
   fighters: { name: 'Fighters', icon: 'fighters', words: /fighters?/i, move: 'march', fps: 10 },

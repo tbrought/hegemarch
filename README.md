@@ -206,6 +206,7 @@ npm run test:audio         # a big battle on screen: the music stays exactly in 
 npm run test:music         # every part of all eleven tracks, played through the real sound engine
 npm run test:qol           # the small things: remembered setup, Escape, keyboard, fullscreen, a silent hidden tab
 npm run test:starfall      # the Starfall: built, armed, a star that erupts and burns, an order through the fire
+npm run record:starfall    # films a Starfall from arming to the burning star (.shots/starfall.mp4) and takes its pictures
 npm run test:menus         # screenshots of every menu screen over the live sector
 npm run test:ages          # an Ages run end to end: cradle, ages, Ark, the crossing, arrival, saves
 npm run test:layouts       # every dialog at the smallest and largest screens, biggest offers and texts

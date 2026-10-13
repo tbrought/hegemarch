@@ -162,7 +162,7 @@ export const CARDS: CardDef[] = [
   {
     // (Not in the First Night: a new player has enough to learn without a weapon that ends systems.)
     id: 'bpStarfall', name: 'Blueprint: Starfall', rarity: 'epic', cat: 'blueprint', max: 1, when: (g) => !g.config.tutorial,
-    desc: 'Your Hearth [can now build] a Starfall. Armed at a star, it makes the star erupt 2 minutes later: every ship in that system is destroyed and every world scorched. [!Yours too, and every house will hold it against you.]',
+    desc: 'Your Hearth [can now build] a Starfall: armed at a star, it makes the star erupt. [!No ship there survives.]',
   },
 
   // ---------------- Epic ----------------

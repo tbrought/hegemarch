@@ -60,6 +60,8 @@ interface Flash {
   dur: number;
   r: number;
   c: string;
+  /** Drawn as a disc (a star's eruption); a ship's small flash is a square. */
+  round?: boolean;
 }
 
 /** A ring that sweeps the map (the change of a new age, spreading from a Hearth), in world units. */
@@ -180,7 +182,7 @@ export class Effects {
         case 'nova': {
           // The star goes up: rings that run out over the whole system, a white flash, and the screen shakes.
           for (let i = 0; i < 4; i++) this.rings.push({ x: f.x, y: f.y, r0: 40, r1: 1400 + i * 900, t: -i * 0.2, dur: 1.5 + i * 0.4, c: i % 2 ? PAL.gold : PAL.bone, world: true, dotted: false });
-          this.flashes.push({ x: f.x, y: f.y, t: 0, dur: 0.7, r: Math.max(10, 500 * zoom), c: PAL.bone });
+          this.flashes.push({ x: f.x, y: f.y, t: 0, dur: 0.7, r: Math.max(10, 500 * zoom), c: PAL.bone, round: true });
           this.burst(f.x, f.y, 60, 700, 1.8, [PAL.bone, PAL.gold, PAL.ember, PAL.red], true);
           this.shake = 3;
           break;
@@ -250,7 +252,13 @@ export class Effects {
     for (const f of this.flashes) {
       const r = Math.max(1, Math.round(f.r * (1 - f.t / f.dur)));
       g.fillStyle = f.c;
-      g.fillRect(sx(f.x) - r, sy(f.y) - r, r * 2 + 1, r * 2 + 1);
+      if (f.round) {
+        // (Row by row: a disc of whole pixels.)
+        for (let dy = -r; dy <= r; dy++) {
+          const w = Math.floor(Math.sqrt(r * r - dy * dy));
+          g.fillRect(sx(f.x) - w, sy(f.y) + dy, w * 2 + 1, 1);
+        }
+      } else g.fillRect(sx(f.x) - r, sy(f.y) - r, r * 2 + 1, r * 2 + 1);
     }
     for (const r of this.rings) {
       if (r.t < 0) continue;

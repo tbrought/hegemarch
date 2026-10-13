@@ -432,6 +432,13 @@ ordinary means then stopped to save for it and march to a star: a rival armed on
 games, 30 were decided where 35 had been, and conquests fell from 10 to 4. A Starfall is for the wall
 that would not fall.)
 
+`npm run record:starfall` films one from the game's own canvas and sound (a fleet brings a Starfall to
+a rival's home star, the rival's ships come for it, the fleet leaves at the last moment, the star
+erupts and burns) and takes pictures of every state on the way; `scripts/film-frames.mjs` takes stills
+from a film, for checking one without watching it. (Looking at those pictures found what no test had:
+the Blueprint's card had no picture, because the cards could not draw a Starfall, and its text ran off
+the card; and the flash of an eruption was a white square half a screen wide. 1.17.1.)
+
 On screen: STARFALL is on the Hearth's card from the moment the Blueprint is drafted, and ARM on the
 Starfall's card from the day it is built; both are greyed with the reason when they cannot be pressed
 ("One Starfall at a time", "Only at a star"). A star with an armed Starfall blinks as before a flare

@@ -71,7 +71,7 @@ for (const [label, vw, vh, pixels] of [
   await ev(() => {
     const app = window.__app;
     const p = app.session.game.player;
-    p.draftOffer = ['bpDread', 'scorchedEarth', 'stormcaller', 'militia', 'dreadDoctrine'];
+    p.draftOffer = ['bpDread', 'scorchedEarth', 'stormcaller', 'bpStarfall', 'dreadDoctrine'];
   });
   await wait(300);
   await shot('draft-long');
@@ -152,6 +152,8 @@ for (const [label, vw, vh, pixels] of [
     g.cmdArm(rival.id, g.spawnUnit('starfall', rival.id, star.id).id);
     g.cmdArm(p.id, d.id);
     app.session.selectUnits([d.id, scout.id, ...(ark ? [ark.id] : [])], false, false);
+    // (From far enough out that the star and the Hearth are both in view: a fleet badge off the screen would be counted as a fault.)
+    app.session.focusNode(star.id, 0.05);
   });
   await wait(600);
   await shot('starfall-card');
