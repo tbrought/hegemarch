@@ -3,6 +3,7 @@
  * is known to be dangerous, and what a house knows of the dangers on it.
  */
 
+import { fireCost, fires } from './starfall';
 import type { Faction } from './types';
 import type { Game } from './Game';
 
@@ -44,6 +45,7 @@ export function wayLen(g: Game, from: number, way: number[]): number {
  * The way from `a` to `b` (the places to jump to, in order) that keeps clear of trouble: every place
  * on the way counts as `extra(place)` further than it is, so the way goes round a place with a high
  * cost when there is another way, and through it when there is none. The ends themselves are free.
+ * A star that burns from a Starfall always counts as very far, whoever asks.
  */
 export function pathAvoiding(g: Game, a: number, b: number, extra: (nodeId: number) => number): number[] {
   const N = g.nodes.length;
@@ -52,10 +54,10 @@ export function pathAvoiding(g: Game, a: number, b: number, extra: (nodeId: numb
   let any = false;
   for (let i = 0; i < N; i++) {
     if (i === a || i === b) continue;
-    pen[i] = Math.max(0, extra(i));
+    pen[i] = Math.max(0, extra(i)) + fireCost(g, i);
     if (pen[i] > 0) any = true;
   }
-  if (!any) return g.pathTo(a, b);
+  if (!any) return tableWay(g, a, b);
   const far = new Float64Array(N).fill(Infinity);
   const prev = new Int32Array(N).fill(-1);
   const done = new Uint8Array(N);
@@ -88,7 +90,15 @@ export function pathAvoiding(g: Game, a: number, b: number, extra: (nodeId: numb
   return out.reverse();
 }
 
+/** The way from `a` to `b`: the shortest, or, while a star burns, the shortest that goes round the fire where it can. */
 export function pathTo(g: Game, a: number, b: number): number[] {
+  return fires(g).length ? pathAvoiding(g, a, b, NO_COST) : tableWay(g, a, b);
+}
+
+const NO_COST = () => 0;
+
+/** The shortest way, read off the sector's table of ways (which knows nothing of fires). */
+function tableWay(g: Game, a: number, b: number): number[] {
   const out: number[] = [];
   const N = g.nodes.length;
   let cur = a;

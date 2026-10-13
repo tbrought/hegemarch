@@ -28,8 +28,32 @@ export function randomCommand(g: Game, r: RNG, log: string[]) {
     for (let i = 0; i < n; i++) out.push(r.pick(units).id);
     return out;
   };
-  const k = r.int(0, g.cradle ? 23 : 20);
+  const k = r.int(0, g.cradle ? 23 : 22);
   let what = '';
+  if (!g.cradle && k >= 21) {
+    // The Starfall: built (given its Blueprint and its price, some of the time, so that it is reached at
+    // all), sent to a star, and armed there. Sometimes nonsense, like everything here.
+    const d = g.starfallOf(fid);
+    if (!d || r.chance(0.1)) {
+      what = 'starfall';
+      if (r.chance(0.5) && f.kind === 'empire') {
+        if (!g.hasCard(f, 'bpStarfall')) g.addCard(f, 'bpStarfall');
+        f.embers += 3000;
+      }
+      g.cmdQueueStarfall(fid);
+    } else if (d.fuse === undefined && (d.node < 0 || g.nodes[d.node].kind !== 'star') && r.chance(0.8)) {
+      const s = r.pick(g.nodes.filter((n) => n.kind === 'star'));
+      what = `starfall to ${s.id}`;
+      g.cmdMove(fid, [d.id], s.id, undefined, undefined, undefined, false, r.chance(0.3));
+    } else {
+      const id = r.chance(0.9) ? d.id : r.int(-3, g.nextId + 3);
+      what = `arm ${id}`;
+      g.cmdArm(fid, id);
+    }
+    log.push(what);
+    if (log.length > 12) log.shift();
+    return;
+  }
   switch (k) {
     case 21:
     case 22:
@@ -79,8 +103,9 @@ export function randomCommand(g: Game, r: RNG, log: string[]) {
       const ids = someUnits();
       const n = anyNode();
       what = `move ${ids.length} to ${n}`;
+      // (Now and then straight through a burning star, as a player may order.)
       if (r.chance(0.3) && n >= 0 && n < g.nodes.length) g.cmdMove(fid, ids, n, g.nodes[n].x + r.float(-300, 300), g.nodes[n].y + r.float(-300, 300));
-      else g.cmdMove(fid, ids, n);
+      else g.cmdMove(fid, ids, n, undefined, undefined, undefined, false, r.chance(0.15));
       break;
     }
     case 9: {

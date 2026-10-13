@@ -243,5 +243,18 @@ export function destinyClocks(hud: Hud): { id: string; left: number; mine: boole
     if (has('treasury') && f.treasuryTimer > 0) add('treasury', TREASURY_HOLD - f.treasuryTimer, 'Your hoard is full. Keep it until this runs out and the crown is yours.', 'Take their worlds: each one seizes part of their hoard.', f.capital);
     if (has('ascension') && f.gate) add('ascension', GATE_CHARGE - f.gate.charge, 'Your Starfire Gate is charging. Protect it until this runs out and the crown is yours.', 'Destroy their Starfire Gate before it is charged.', f.gate.node);
   }
+  // An armed Starfall is a clock like a Destiny's, whoever it belongs to.
+  for (const d of g.armedStarfalls()) {
+    const f = g.factions[d.owner];
+    const mine = d.owner === g.playerId;
+    const star = g.nodes[d.node];
+    out.push({
+      id: `clock-starfall-${d.id}`, left: d.fuse!, mine, node: star.id,
+      text: mine ? `STARFALL · ${star.name.toUpperCase()} ERUPTS IN ${fmtTime(d.fuse!)}` : `${g.shortName(f).toUpperCase()} · STARFALL AT ${star.name.toUpperCase()} IN ${fmtTime(d.fuse!)}`,
+      tip: mine
+        ? `Your Starfall at ${star.name}. Keep it alive until this runs out, and have your ships out of that system by then.`
+        : `${f.name} armed a Starfall at ${star.name}. When this runs out, every ship in that system is destroyed and every world there scorched. Destroy the Starfall to stop it.`,
+    });
+  }
   return out.sort((a, b) => a.left - b.left);
 }

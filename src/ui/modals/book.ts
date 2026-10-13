@@ -18,7 +18,7 @@ export const BOOK_W = 420;
 export const BOOK_H = 250;
 
 /** Tips in the order a run usually meets them. */
-const TIP_ORDER = ['role', 'fleet', 'boonReady', 'raid', 'anomalySeen', 'anomaly', 'blueprint', 'hangar', 'arkLevel', 'lostWorld', 'converted', 'crisis'];
+const TIP_ORDER = ['role', 'fleet', 'boonReady', 'raid', 'anomalySeen', 'anomaly', 'blueprint', 'hangar', 'arkLevel', 'lostWorld', 'converted', 'crisis', 'starfall'];
 
 /** Tips of the cradle of an Ages run (listed first there, last elsewhere). */
 const AGES_TIPS = ['ageReady', 'ageNew', 'ageSiege', 'ageRival', 'ageGone', 'ageArk'];

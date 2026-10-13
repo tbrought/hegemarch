@@ -1,8 +1,9 @@
 import type { Game } from '../Game';
 import { FIRE_SPOOL, UNDER_FIRE } from '../constants';
 import { ECON } from '../data/worlds';
-import { UNITS } from '../data/units';
+import { fixed, UNITS } from '../data/units';
 import { mul } from '../mods';
+import { burning } from '../starfall';
 import type { Unit, UnitDef } from '../types';
 import { clamp, dist, turnToward } from '../util';
 
@@ -35,7 +36,7 @@ export function movementTick(g: Game, dt: number) {
       transit(g, u, dt);
       continue;
     }
-    if (def.isStatic) {
+    if (fixed(u)) {
       const tp = targetPos(g, u);
       if (tp) u.a = turnToward(u.a, Math.atan2(tp.y - u.y, tp.x - u.x), def.turn * dt);
       else u.a += dt * 0.05;
@@ -66,7 +67,10 @@ export function movementTick(g: Game, dt: number) {
     }
     if (u.order === 'explore' && u.path.length === 0 && u.charge < 0) pickExploreTarget(g, u);
     if (u.path.length > 0) {
-      if (u.charge < 0) u.charge = g.jumpChargeOf(u);
+      // (Nothing flies into a burning star by itself: a ship waits where it is until the fire is out,
+      // and goes on then. Only a house's own order sends it through.)
+      if (!u.fire && burning(g.nodes[u.path[0]])) u.charge = -1;
+      else if (u.charge < 0) u.charge = g.jumpChargeOf(u);
       else if (u.snare <= 0) {
         // (Under fire the drive spools at half speed: running from a fight costs time.)
         u.charge -= dt * (u.lastHit < UNDER_FIRE ? FIRE_SPOOL : 1);
@@ -156,6 +160,9 @@ function arrive(g: Game, u: Unit) {
       u.ay = n.y + (L.ey - n.y) * 0.55 + j2;
     }
     if (u.order === 'move' || u.order === 'retreat') u.order = 'idle';
+    // (Only where it was set: a field written to every ship that arrives would give the ships of one game many shapes,
+    // and every loop over them would be slower for it. And deleted, not set to undefined: see `ownStarfall` in ai.ts.)
+    if (u.fire) delete u.fire;
   } else {
     u.ax = u.x;
     u.ay = u.y;
@@ -310,7 +317,7 @@ function separation(g: Game) {
     // Keep ships out of planet/star bodies.
     const node = g.nodes[nid];
     for (const u of b) {
-      if (u.dead || u.lane || UNITS[u.type].isStatic) continue;
+      if (u.dead || u.lane || fixed(u)) continue;
       const minR = node.r + UNITS[u.type].radius + 6;
       const dx = u.x - node.x;
       const dy = u.y - node.y;

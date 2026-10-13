@@ -78,7 +78,7 @@ terms do the same.
   ship's drive spools at half speed. Raiders that keep running can be caught at a Bastion, or made
   to come home by going for their Hearth.
 - **Lore** fills over time. Each time it fills, choose a **Boon**: upgrades, economy tricks, Pacts,
-  and **Blueprints** that add Carriers, Lancers, Dreadnoughts and Starbases to your fleet. Boon text
+  and **Blueprints** that add Carriers, Lancers, Dreadnoughts, Starbases and the Starfall to your fleet. Boon text
   shows gains in teal, drawbacks in red and game terms (ships, roles, Embers) in gold, and every card
   shows what it changes for you (for example `DAMAGE 0→+25%`, or `STACK ×1→×2`) and pictures of
   what it affects: the ship type, the resource, your worlds. Event and ability choices show them too. Your Boons and
@@ -94,6 +94,13 @@ terms do the same.
   is reported in the log, with the place and who destroyed it.
 - **The hangar** limits your fleet. Hold more worlds and raise their level for more room.
   Dreadnoughts take none.
+- **The Starfall** (an Epic Blueprint) is built at your Hearth for 2,500 Embers, flown to any star and
+  **armed** there. Two minutes later the star erupts, unless the Starfall is destroyed first: every
+  ship in that system is destroyed, yours too, and every world there is scorched (no shields, a level
+  lost, the Glow of a new world). No world changes hands, so no Hearth falls to it. Every house is
+  told, with a clock at the top right, and every other house holds it against the one that armed it.
+  The star then burns for three minutes: fleets wait in front of the fire, and the same order given
+  twice sends them through it. Rival houses build and arm them too, and come to destroy yours.
 - **A run that is won ends in a crowning** on the map (a click skips it), and its figures are
   counted up against your records for that kind of run. **After it** the results draw the run minute
   by minute: every house's Embers per second, worlds, fleet strength and Boons, your house beside a
@@ -198,6 +205,7 @@ npm run test:tutorial      # the First Night end to end, plus its edge cases and
 npm run test:audio         # a big battle on screen: the music stays exactly in tune, the mix never clips
 npm run test:music         # every part of all eleven tracks, played through the real sound engine
 npm run test:qol           # the small things: remembered setup, Escape, keyboard, fullscreen, a silent hidden tab
+npm run test:starfall      # the Starfall: built, armed, a star that erupts and burns, an order through the fire
 npm run test:menus         # screenshots of every menu screen over the live sector
 npm run test:ages          # an Ages run end to end: cradle, ages, Ark, the crossing, arrival, saves
 npm run test:layouts       # every dialog at the smallest and largest screens, biggest offers and texts
@@ -221,7 +229,7 @@ A change that must not alter the game at all (a refactoring) has two checks of i
 
 ```bash
 npm run golden -- record       # before: the whole saved state of 24 fixed runs, fingerprinted every 30 s
-npm run test:uisnap -- record  # before: 73 staged scenes (pixels, every button and tooltip, menu HTML)
+npm run test:uisnap -- record  # before: 78 staged scenes (pixels, every button and tooltip, menu HTML)
 npm run verify                 # after: compares both, to the byte, and runs everything else
 ```
 

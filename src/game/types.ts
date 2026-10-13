@@ -14,6 +14,7 @@ export type UnitType =
   | 'fighter'
   | 'starbase'
   | 'gate'
+  | 'starfall'
   | 'raider'
   | 'marauder'
   | 'stronghold'
@@ -24,7 +25,7 @@ export type UnitType =
   | 'reaper'
   | 'leviathan'
   | 'heart';
-export type UnitRole = 'scout' | 'seed' | 'combat' | 'siege' | 'carrier' | 'capital' | 'defense' | 'fighter' | 'boss';
+export type UnitRole = 'scout' | 'seed' | 'combat' | 'siege' | 'carrier' | 'capital' | 'defense' | 'fighter' | 'boss' | 'device';
 export type ProjKind = 'beam' | 'bolt' | 'lance' | 'shell' | 'missile';
 export type PlanetType = 'terran' | 'ocean' | 'desert' | 'ice' | 'volcanic' | 'gas' | 'barren' | 'asteroid';
 export type WorldSize = 'S' | 'M' | 'L';
@@ -161,6 +162,10 @@ export interface Unit {
   rearm?: number;
   /** It came over from another house (Conversion): it takes no room in the hangar of the house it joined. */
   guest?: boolean;
+  /** A Starfall that is armed: the seconds until its star erupts. It does not move again. */
+  fuse?: number;
+  /** Its house ordered it through a burning star (nothing flies into one by itself). */
+  fire?: boolean;
 }
 
 export interface QueueItem {
@@ -213,7 +218,12 @@ export interface GNode {
   claim: null | { what: 'relic' | 'derelict'; f: number; t: number };
   lastStand: boolean;
   militiaCd: number;
-  hazard: null | { warn: number; t: number; dps: number };
+  /**
+   * A star that erupts: after `warn` seconds it burns for `t` seconds, and what is there takes `dps`. A
+   * solar flare is short; a star that a Starfall set alight (`by`: the house that armed it) burns for
+   * minutes, and nothing flies into it by itself.
+   */
+  hazard: null | { warn: number; t: number; dps: number; by?: number };
   tag: string;
   /** Rally destination for newly built ships (-1 = none). */
   rally: number;
@@ -274,6 +284,12 @@ export interface AIState {
   grudgeAt: number;
   /** The siege under way: the world, when it was last looked at, and how much hull and shield it had then. */
   siege?: { node: number; at: number; left: number };
+  /** The star the house means to set alight with its Starfall, and when it set out to. */
+  starfall?: { star: number; since: number };
+  /** The star its Starfall was armed at, and until when the worlds of that system are worth more to its army. */
+  burned?: { star: number; until: number };
+  /** Attacks on a rival's world that the house gave up since it last took one, and the world it last gave up on. */
+  stalled?: { n: number; wall: number };
 }
 
 export interface Mods {
@@ -351,6 +367,8 @@ export interface Faction {
   hangarCap: number;
   /** Hangar Bays bought at the Hearth (+5 hangar each). */
   bays: number;
+  /** Starfalls this house has built: each costs more than the last. */
+  starfalls?: number;
   stats: FactionStats;
   ai: AIState | null;
   ark: number;
@@ -421,6 +439,9 @@ export type Fx =
   | { k: 'jumpIn'; x: number; y: number; a: number; node: number; color: string }
   | { k: 'capture'; node: number; color: string }
   | { k: 'ring'; x: number; y: number; r: number; color: string; node: number }
+  /** A Starfall is armed at a star; a star erupts. */
+  | { k: 'armed'; x: number; y: number; node: number; color: string }
+  | { k: 'nova'; x: number; y: number; node: number; color: string }
   /** Ages: a unit is upgraded to its house's new age. */
   | { k: 'upgrade'; x: number; y: number; r: number; color: string; node: number }
   /** Ages: the change of a new age spreads from a Hearth: a ring that grows to `r` in `dur` seconds. */

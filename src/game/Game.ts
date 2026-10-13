@@ -40,6 +40,7 @@ import * as save from './save';
 import type { SaveData } from './save';
 import { setupGame } from './setup';
 import * as shipStats from './shipStats';
+import * as starfall from './starfall';
 import { aiTick } from './ai/ai';
 import { abilitiesTick } from './systems/abilities';
 import { combatTick, projectileTick } from './systems/combat';
@@ -49,6 +50,7 @@ import { eventsTick } from './systems/events';
 import { movementTick } from './systems/movement';
 import { piratesTick } from './systems/pirates';
 import { productionTick } from './systems/production';
+import { starfallTick } from './systems/starfall';
 import { statusTick } from './systems/status';
 import { victoryTick } from './systems/victory';
 import { visibilityTick } from './systems/visibility';
@@ -314,6 +316,17 @@ export class Game {
   /** Counts the Starbases built and lost (they make and unmake a field). */
   fieldEpoch = 0;
 
+  // ---- The Starfall, and the stars it has set alight (starfall.ts) ----
+  /** The burning stars (worked out in starfall.ts, forgotten at the end of every tick). */
+  fireCache: number[] | null = null;
+  fires(): number[] { return starfall.fires(this); }
+  fireOnWay(a: number, b: number): GNode | null { return starfall.fireOnWay(this, a, b); }
+  starOf(n: GNode): GNode | null { return starfall.starOf(this, n); }
+  armedStarfalls(): Unit[] { return starfall.armed(this); }
+  armedAt(n: GNode): Unit | null { return starfall.armedAt(this, n); }
+  starfallOf(fid: number): Unit | null { return starfall.starfallOf(this, fid); }
+  starfallCost(f: Faction): number { return starfall.starfallCost(this, f); }
+
   /** The places one starlane away (worked out once from the map, which does not change). */
   neighbours(id: number): number[] {
     if (!this.nextTo || this.nextToOf !== this.lanes) {
@@ -455,8 +468,8 @@ export class Game {
   }
 
   // ---- Commands: orders to ships (commands/orders.ts) ----
-  cmdMove(fid: number, ids: number[], dest: number, x?: number, y?: number, avoid?: (nodeId: number) => number, queue = false) {
-    return orders.cmdMove(this, fid, ids, dest, x, y, avoid, queue);
+  cmdMove(fid: number, ids: number[], dest: number, x?: number, y?: number, avoid?: (nodeId: number) => number, queue = false, through = false) {
+    return orders.cmdMove(this, fid, ids, dest, x, y, avoid, queue, through);
   }
   cmdAttack(fid: number, ids: number[], targetId: number) { return orders.cmdAttack(this, fid, ids, targetId); }
   checkKindle(fid: number, nodeId: number): QueueCheck { return orders.checkKindle(this, fid, nodeId); }
@@ -471,6 +484,8 @@ export class Game {
   hasUncharted(f: Faction): boolean { return orders.hasUncharted(f); }
   cmdExplore(fid: number, ids: number[]) { return orders.cmdExplore(this, fid, ids); }
   cmdSetRally(fid: number, nodeId: number, target: number): boolean { return orders.cmdSetRally(this, fid, nodeId, target); }
+  checkArm(fid: number, unitId: number): QueueCheck { return orders.checkArm(this, fid, unitId); }
+  cmdArm(fid: number, unitId: number): boolean { return orders.cmdArm(this, fid, unitId); }
 
   // ---- Commands: building and raising (commands/production.ts) ----
   shipCost(f: Faction, type: UnitType, at?: GNode): number { return production.shipCost(this, f, type, at); }
@@ -487,6 +502,8 @@ export class Game {
   cmdQueueStarbase(fid: number, nodeId: number): boolean { return production.cmdQueueStarbase(this, fid, nodeId); }
   checkGate(fid: number, nodeId: number): QueueCheck { return production.checkGate(this, fid, nodeId); }
   cmdQueueGate(fid: number, nodeId: number): boolean { return production.cmdQueueGate(this, fid, nodeId); }
+  checkStarfall(fid: number): QueueCheck { return production.checkStarfall(this, fid); }
+  cmdQueueStarfall(fid: number): boolean { return production.cmdQueueStarfall(this, fid); }
   bayCost(f: Faction): number { return production.bayCost(f); }
   checkBay(fid: number): QueueCheck { return production.checkBay(this, fid); }
   cmdBuyBay(fid: number): boolean { return production.cmdBuyBay(this, fid); }
@@ -544,8 +561,9 @@ export class Game {
     projectileTick(this, dt);
     movementTick(this, dt);
     statusTick(this, dt);
-    // (Corsairs, the Hollow and the anomalies belong to the stars, not to the cradle.)
+    // (Corsairs, the Hollow, the anomalies and the Starfall belong to the stars, not to the cradle.)
     if (!this.cradle) {
+      starfallTick(this, dt);
       piratesTick(this, dt);
       crisisTick(this, dt);
       eventsTick(this, dt);
@@ -558,6 +576,7 @@ export class Game {
     this.flushDeferred();
     if (this.tick % 20 === 0 || this.unitList.length > 4000) this.cleanup();
     this.fieldCache = null;
+    this.fireCache = null;
   }
 
   flushDeferred() {

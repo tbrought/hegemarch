@@ -14,9 +14,9 @@ export interface PerkDef {
 
 /**
  * How many Boon offers in a hundred hold an Epic Boon, by rank of Fortunate Stars: what the Hall of
- * Heirs tells the player the perk does. Measured, and kept true by a test (tests/playtest.test.ts).
+ * Heirs tells the player the perk does. Measured over 300 runs, and kept true by a test (tests/hall.test.ts).
  */
-export const EPIC_ODDS = [20, 27, 34, 40, 45, 50];
+export const EPIC_ODDS = [23, 30, 37, 43, 49, 54];
 
 const pc = (x: number) => `${Math.round(x * 100)}%`;
 

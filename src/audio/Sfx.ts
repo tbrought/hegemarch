@@ -6,7 +6,7 @@ import type { Settings } from '../meta/profile';
 
 export type SoundId =
   | 'ui' | 'select' | 'order' | 'error' | 'laser' | 'bolt' | 'flak' | 'shell' | 'lance' | 'missile' | 'boom' | 'bigboom'
-  | 'jump' | 'kindle' | 'capture' | 'alert' | 'good' | 'boon' | 'victory' | 'defeat' | 'ability' | 'build' | 'tick';
+  | 'jump' | 'kindle' | 'capture' | 'alert' | 'good' | 'boon' | 'victory' | 'defeat' | 'ability' | 'build' | 'tick' | 'armed' | 'nova';
 
 type Wave = 'p12' | 'p25' | 'p50' | 'tri';
 
@@ -257,6 +257,18 @@ export class Sfx {
         this.noiseBurst(dest, t, 0.8, v * 1.1, 0.3, { type: 'lowpass', f: 900 });
         this.tone(dest, 'tri', 90, 25, t, 0.6, v);
         this.noiseBurst(dest, t + 0.12, 0.5, v * 0.5, 0.25, { type: 'lowpass', f: 500 });
+        break;
+      case 'armed':
+        // A Starfall is armed: three falling notes over a low drone.
+        for (let i = 0; i < 3; i++) this.tone(dest, 'p25', 440, 220, t + i * 0.24, 0.2, v * 0.45);
+        this.tone(dest, 'tri', 55, 55, t, 0.8, v * 0.6);
+        break;
+      case 'nova':
+        // A star erupts: a rising whine, then a long roar that falls away.
+        this.tone(dest, 'p12', 200, 2400, t, 0.35, v * 0.3);
+        this.noiseBurst(dest, t + 0.3, 1.8, v * 1.1, 0.2, { type: 'lowpass', f: 700 });
+        this.tone(dest, 'tri', 120, 20, t + 0.3, 1.4, v);
+        this.noiseBurst(dest, t + 0.7, 1.2, v * 0.5, 0.2, { type: 'lowpass', f: 300 });
         break;
       case 'jump':
         this.tone(dest, 'p50', 200, 1100, t, 0.22, v * 0.35);

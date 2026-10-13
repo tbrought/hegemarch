@@ -1,4 +1,4 @@
-import type { ArmorClass, DmgType, UnitDef, UnitType, WeaponDef } from '../types';
+import type { ArmorClass, DmgType, Unit, UnitDef, UnitType, WeaponDef } from '../types';
 
 /**
  * Damage multiplier by weapon type vs armor class.
@@ -122,6 +122,16 @@ const defs: UnitDef[] = [
     cost: 3000, buildTime: 60, hangar: 0, weapons: [], power: 0, buildable: false, isStatic: true, xpValue: 400,
     prefers: [], short: '', desc: 'A gate of living starfire. Once fully charged it carries its builders beyond the dark.',
   },
+  {
+    // (A fleet must be able to destroy it in what is left of two minutes after the way home. With nobody defending it,
+    // fifteen ships of the three kinds do it in 40 seconds, eight in 73, four Breakers in 67; six Strikers or an Ark
+    // alone do not in the two minutes. With a hull of 7,000 the fifteen took a minute: more than a fleet has left.)
+    id: 'starfall', name: 'Starfall', role: 'device', armorClass: 'structure',
+    hull: 4500, shield: 1500, armor: 0.25, shieldRegen: 20, speed: 44, turn: 0.7, radius: 20,
+    cost: 2500, buildTime: 60, hangar: 0, weapons: [], power: 0, buildable: false, blueprint: 'bpStarfall', xpValue: 300,
+    prefers: [], short: 'Armed at a star, it makes the star erupt.',
+    desc: 'A device that makes a star erupt. Arm it at a star: 2 minutes later every ship in that system is destroyed and every world there is scorched, unless the Starfall is destroyed first.',
+  },
   // ---------------- Corsairs ----------------
   {
     id: 'raider', name: 'Corsair Raider', role: 'combat', armorClass: 'light',
@@ -205,6 +215,11 @@ export const LEVEL_XP = [0, 200, 550, 1100, 1850, 2850, 4150, 5800];
 export const MAX_LEVEL = LEVEL_XP.length;
 /** Levels at which a capital ship learns a new ability. */
 export const ABILITY_LEVELS = [3, 5, 7];
+
+/** Does this unit stay where it is? Structures do, and a Starfall once it is armed. */
+export function fixed(u: Unit): boolean {
+  return !!UNITS[u.type].isStatic || u.fuse !== undefined;
+}
 
 /** Warships (things that fight and can be ordered around). */
 export function isWarship(t: UnitType): boolean {

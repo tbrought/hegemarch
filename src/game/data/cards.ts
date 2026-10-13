@@ -159,6 +159,11 @@ export const CARDS: CardDef[] = [
   { id: 'bpLancer', name: 'Blueprint: Lancer', rarity: 'rare', cat: 'blueprint', max: 1, desc: 'Your Forges [can now build] Lancers: long-range snipers that kill big ships.' },
   { id: 'bpStarbase', name: 'Blueprint: Starbase', rarity: 'rare', cat: 'blueprint', max: 1, desc: 'Any of your worlds [can now build] one Starbase: an orbital fortress that also repairs your ships.' },
   { id: 'bpDread', name: 'Blueprint: Dreadnought', rarity: 'epic', cat: 'blueprint', max: 1, desc: 'Your Forges [can now build] Dreadnoughts: capital ships that level up and learn abilities. Up to 2.' },
+  {
+    // (Not in the First Night: a new player has enough to learn without a weapon that ends systems.)
+    id: 'bpStarfall', name: 'Blueprint: Starfall', rarity: 'epic', cat: 'blueprint', max: 1, when: (g) => !g.config.tutorial,
+    desc: 'Your Hearth [can now build] a Starfall. Armed at a star, it makes the star erupt 2 minutes later: every ship in that system is destroyed and every world scorched. [!Yours too, and every house will hold it against you.]',
+  },
 
   // ---------------- Epic ----------------
   { id: 'nanites', name: 'Nanite Swarm', rarity: 'epic', cat: 'war', max: 1, desc: 'All ships repair [0.8% hull per second], even in battle.', mods: (m) => flag(m, 'nanite', 0.008) },

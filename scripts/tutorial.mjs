@@ -377,7 +377,8 @@ try {
   check('and its closing card waits until the other one is gone', await ev(() => window.__app.session.modal?.kind === 'nightDone'));
   await unheld();
   await page.keyboard.press('Escape');
-  await wait(150);
+  // (The key is taken on the next frame: up to a second for it, not a fixed 150 ms.)
+  for (let i = 0; i < 10 && (await ev(() => window.__app.session.modal !== null)); i++) await wait(100);
   check('Esc on the closing card keeps playing', await ev(() => window.__app.session.modal === null && window.__app.screen === 'game'));
 
   // ---- A Scout already out exploring: step 5 is skipped ----

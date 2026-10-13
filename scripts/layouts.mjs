@@ -128,7 +128,7 @@ for (const [label, vw, vh, pixels] of [
     app.session.modal = null;
     const g = app.session.game;
     const p = g.player;
-    for (const id of ['bpStarbase', 'bpCarrier', 'bpLancer', 'bpDread']) g.addCard(p, id);
+    for (const id of ['bpStarbase', 'bpCarrier', 'bpLancer', 'bpDread', 'bpStarfall']) g.addCard(p, id);
     p.embers = 9999;
     p.boons = 15;
     app.session.selectNode(p.capital);
@@ -137,6 +137,25 @@ for (const [label, vw, vh, pixels] of [
   await wait(600);
   await shot('hearth-card');
   await onScreen('hearth card');
+  // A Starfall's card with every order a fleet can have beside ARM (a Scout with it, an Ark with an ability to learn),
+  // armed in a system that another Starfall is about to take: every line it can show.
+  await ev(() => {
+    const app = window.__app;
+    const g = app.session.game;
+    const p = g.player;
+    const star = g.starOf(g.nodes[p.capital]);
+    const d = g.spawnUnit('starfall', p.id, star.id);
+    const scout = g.spawnUnit('scout', p.id, star.id);
+    const ark = g.units.get(p.ark);
+    if (ark) ark.pendingAbil.push(['aegis', 'barrage', 'nanite']);
+    const rival = g.empires().find((f) => f.id !== p.id);
+    g.cmdArm(rival.id, g.spawnUnit('starfall', rival.id, star.id).id);
+    g.cmdArm(p.id, d.id);
+    app.session.selectUnits([d.id, scout.id, ...(ark ? [ark.id] : [])], false, false);
+  });
+  await wait(600);
+  await shot('starfall-card');
+  await onScreen('starfall card');
 
   // ---- An Ages run: the cradle's cards and bars at their fullest (six houses, the longest labels) ----
   await ev(() => window.__app.session.hooks.quit(false));

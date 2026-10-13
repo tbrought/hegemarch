@@ -27,7 +27,7 @@ export function addCard(g: Game, f: Faction, id: string) {
   def.onPick?.(g, f);
   g.recomputeMods(f);
   if (def.cat === 'blueprint' && f.isPlayer) {
-    const what = id === 'bpStarbase' ? 'Any of your worlds can now build a Starbase.' : 'Your Forges can now build it.';
+    const what = id === 'bpStarbase' ? 'Any of your worlds can now build a Starbase.' : id === 'bpStarfall' ? 'Your Hearth can now build one.' : 'Your Forges can now build it.';
     g.notify(f.id, `${def.name} learned. ${what}`, 'good');
   }
 }

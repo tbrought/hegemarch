@@ -1,6 +1,6 @@
 /**
  * Commands: what a house builds. Ships at a Forge, a world's level and role, a Starbase, the Starfire
- * Gate, a Hangar Bay, the Ark again. Each has a `check` that says why it cannot be done (or null), which
+ * Gate, a Starfall, a Hangar Bay, the Ark again. Each has a `check` that says why it cannot be done (or null), which
  * the UI shows on its button, and a `cmd` that does it.
  */
 
@@ -170,6 +170,29 @@ export function cmdQueueGate(g: Game, fid: number, nodeId: number): boolean {
   f.embers -= cost;
   g.nodes[nodeId].buildQ.push({ kind: 'gate', id: 'gate', t: 0, total: UNITS.gate.buildTime, cost });
   g.notify(-1, `${f.name} has begun raising a Starfire Gate at ${g.nodes[nodeId].name}!`, f.isPlayer ? 'good' : 'alert', nodeId);
+  return true;
+}
+
+/** Why the house cannot build a Starfall right now (null = it can). It is built at the Hearth, one at a time. */
+export function checkStarfall(g: Game, fid: number): QueueCheck {
+  const f = g.factions[fid];
+  if (g.cradle) return 'The Starfall belongs to the Space Age';
+  if (!f || !g.hasCard(f, 'bpStarfall')) return 'Needs its Blueprint Boon';
+  if (f.capital < 0) return 'No Hearth';
+  const n = g.nodes[f.capital];
+  if (n.shipQ.some((q) => q.id === 'starfall')) return 'Already being built';
+  if (g.starfallOf(fid)) return 'One Starfall at a time';
+  if (n.shipQ.length >= QUEUE_MAX) return WHY.queue;
+  if (cannotPay(f, g.starfallCost(f))) return WHY.embers;
+  return null;
+}
+
+export function cmdQueueStarfall(g: Game, fid: number): boolean {
+  if (g.checkStarfall(fid)) return false;
+  const f = g.factions[fid];
+  const cost = g.starfallCost(f);
+  f.embers -= cost;
+  g.nodes[f.capital].shipQ.push({ kind: 'ship', id: 'starfall', t: 0, total: UNITS.starfall.buildTime, cost });
   return true;
 }
 

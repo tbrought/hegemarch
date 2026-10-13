@@ -143,7 +143,7 @@ function subjectOfStat(key: string): string | null {
   }
 }
 
-const BLUEPRINT_SHIP: Record<string, string> = { bpCarrier: 'carrier', bpLancer: 'lancer', bpDread: 'dreadnought', bpStarbase: 'starbase' };
+const BLUEPRINT_SHIP: Record<string, string> = { bpCarrier: 'carrier', bpLancer: 'lancer', bpDread: 'dreadnought', bpStarbase: 'starbase', bpStarfall: 'starfall' };
 
 /**
  * What a Boon affects: its own list if it has one; else the modifiers it changes for this house, then

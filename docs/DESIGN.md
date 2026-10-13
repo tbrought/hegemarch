@@ -253,12 +253,12 @@ three minutes. If four drafts pass without a Blueprint, the next one always show
 skipping for Embers and "decide later" are available.
 
 **Rarity.** A card is drawn by weight: Common 62, Rare 27, Epic 9, Legendary 2.2 (Blueprints ×1.6,
-Pacts ×0.55). An Epic is in about 20% of offers. Two things in the Hall of Heirs change that, and
+Pacts ×0.55). An Epic is in about 23% of offers (20% before the Starfall's Blueprint joined the Epics). Two things in the Hall of Heirs change that, and
 both now say in numbers what they do, because a playtester had bought every rank of both and seen
 nothing rarer than a Rare:
 - **Fortunate Stars** (five ranks since 1.11) adds half again to the weight of Epic and Legendary
-  Boons with each rank (and moves a little from Common to Rare): an Epic in about 27%, 34%, 40%, 45%
-  and 50% of offers (`EPIC_ODDS`, measured over 300 runs and kept true by a test that deals the
+  Boons with each rank (and moves a little from Common to Rare): an Epic in about 30%, 37%, 43%, 49%
+  and 54% of offers (`EPIC_ODDS`, measured over 300 runs and kept true by a test that deals the
   offers). It used to make that 22%, 27% and 29%. The Hall shows the odds at the rank held and at
   the next one.
 - **Legendary Lineage** lets Legendary Boons appear, and a run now shows at least one: if none has
@@ -332,6 +332,120 @@ nine tenths off every hit on the Heart; a countdown stands over the Maw and in t
 (BARRIER 3:12), and the log says when it falls. The Hollow's swarms go for the nearest world of a
 house and keep clear of Sentinel vaults and the Corsair base on the way (`Game.pathAvoiding`): they
 used to walk into them and never arrive.
+
+### The Starfall
+A playtester asked for two weapons: a planet buster that blows up a world and closes the route through
+it, and a device that makes a sun go nova, planted like a bomb, with two minutes for its enemies to
+defuse it. The Starfall (1.17) is the second, with the best of the first in it.
+
+- **What it is.** An Epic Blueprint (`bpStarfall`; never offered in the First Night). With it the Hearth
+  builds a Starfall for 2,500 Embers in a minute: a slow, unarmed ship that takes no hangar room. A
+  house has one at a time, and each costs 1,000 more than its last (`STARFALL_STEP`).
+- **Arming.** ARM at any star (`cmdArm`). From then on the Starfall does not move and cannot be called
+  off. Every house is told, a clock stands over the star and at the top right of the screen, and
+  every other house holds it against the one that armed it (the grudge rival houses bear a house that
+  struck them: the playtester's own price for such a weapon).
+- **Defusing** is destroying it. There is no new verb. It is a structure, so Breakers and Lancers are
+  the ships for it. With nobody defending it, fifteen ships of the three kinds destroy it in 40
+  seconds, eight in 73, four Breakers in 67 and four Lancers in 51; six Strikers do not in the two
+  minutes, nor does an Ark alone. (Its first hull, 7,000, took the fifteen a minute: more than a
+  fleet has left after the way home.)
+- **The eruption** (`systems/starfall.ts`), 2 minutes later (`STARFALL_FUSE`): every ship at a place of
+  that system is destroyed, whoever it belongs to, the armer's too, with Starbases, a Starfire Gate
+  and the Corsairs' Stronghold. Every world of a house there is **scorched**: its shields are gone, it
+  loses a level, and its Glow is back where a new world's is. That is the rule a sacked world already
+  followed, and nothing else: no hull is touched, so **no world changes hands and no Hearth falls**.
+- **The fire.** The star then burns for 3 minutes (`STARFALL_BURN`): a ship there takes 120 damage a
+  second, which a Striker does not survive and a capital ship does. Ways are planned round a burning
+  star where there is another way. Where there is none (the worlds of that system have no other), **a
+  ship waits where it is until the fire is out, and flies on then**: rally points, Scouts, seed ships
+  and rival fleets alike. Only its house's own order sends a ship through, and for the player that is
+  the same order given twice: the first says that the ships will wait, the second sends them.
+
+What decided its shape:
+
+- **Routes run through stars, not worlds.** In twenty sectors of each size a closed star cut off the 6
+  worlds of its system, and in 31% of cases (medium) parted other systems from each other as well; a
+  closed world cut anything off in one case in five, and then one place. So the half of the planet
+  buster that was about routes belongs at a star.
+- **A world that is destroyed is gone from every later minute of the run**, from the income of the
+  sector and from "60% of all worlds", which a house could then win by deleting what it cannot hold.
+  Against a Hearth it would be a 2,500-Ember win, and against a Bastion it would do the job that 1.16
+  gave to Breakers. Scorching leaves the map whole.
+- **The price** is what a house earns in about 3 minutes from minute 15 on (a median income of 12 to 15
+  Embers a second in AI-only games; the richest earn it in 80 seconds by minute 30), and hangars are
+  95 to 98% full from minute 15 to 30: the Embers of the late game had little to go to.
+- **Two minutes** is what the way home takes with something to spare: a fleet at a rival's Hearth
+  reaches its own home star in about 70 seconds on a medium sector (53 to 90), which leaves some 50
+  seconds to destroy the Starfall. At 90 seconds one fleet in ten would come too late.
+- **Deadly, not closed.** A star that nothing can pass leaves fleets and rival houses with no way to
+  where they are going, and a map in two pieces. A fire that can be crossed at a price is the solar
+  flare the game already had, longer, and it is the playtester's own words ("transitable with
+  certain boons").
+- **A Starfall wins no Destiny by itself.** It takes no Hearth (taking one is the game's biggest prize:
+  a house gone, its worlds sworn over, up to 6,000 Embers and a free Boon), and it does not harm the
+  Rift Heart, which would hand Purge the Void to whoever held a star for two minutes while the
+  Hollow's swarms flew past. It does destroy a Gate: that is an answer to Ascension behind walls, and
+  it still takes two minutes of holding the star next to the house's whole fleet.
+
+What that leaves at a Hearth's home star: a house keeps 83% of its worlds there and three quarters of
+its Embers (AI-only games, minutes 20 and 30), so an eruption is a blow to its economy for a minute
+and a half and a level off every world; but only 3 to 6% of a rival's fleet is at home, so it kills
+little unless the fleet comes home and loses the fight for the Starfall. What the armer gains is that
+the defender must come out and fight at the star, away from the Hearth's guns. A house may burn its
+own home star: a besieger must leave, destroy the Starfall, or take the Hearth first (a fallen house's
+ships are destroyed, its Starfall with them).
+
+The smaller rulings: ships on a starlane are at no place and fly on (those bound for the star arrive
+in the fire); seed ships die and are reported; the guards of dark worlds die and the worlds stay
+dark; relics, derelicts and anomalies stay; the Choir cannot convert a Starfall; a second Starfall at
+the same star is destroyed by the first eruption, and none can be armed at a star that burns; a solar
+flare never picks a star with an armed Starfall; a house still asleep on its way from the cradle is
+not touched; the cradle builds none.
+
+**Rival houses** (`ai/ai.ts`). A house with the Blueprint builds one when its hangar is nearly full,
+nothing threatens it, and **its own attacks have got nowhere**: it gave one up on a rival's world and
+has taken none since (`AIState.stalled`; not before minute 16), or the run is past minute 35 with
+nothing decided. It keeps
+its Embers for it meanwhile (no levels, no bays, no ships beyond its standing fleet). It picks the
+star whose system is worth most to its enemies and holds no world of its own, the system that
+stopped it counting two and a half times (`starfallStar`; **on Easy never the player's home star**),
+meets its army at its world nearest that star, goes there with it and arms once the star is theirs.
+For some minutes after the fire, what it scorched is worth twice as much to its army. Every house
+with worlds in that system comes to destroy the Starfall if it is enough against the escort (for its
+Hearth's system every ship answers, from anywhere), and its Breakers, Lancers and capital ships go
+for the Starfall while the rest fight the escort. Whoever is in the system gets out before the end:
+ships at the star at the last moment, ships at its worlds 40 seconds sooner, and nobody is sent in
+during the last minute. In forty AI-only games on
+medium sectors, with the houses drafting as they do, 75 of 160 houses held the Blueprint by the end
+and 40 Starfalls were built; 20 were armed (12 of them at a house's home star, the earliest at minute
+25, the median one at minute 40), 12 stars erupted and 8 Starfalls were destroyed in time. An
+eruption scorched 5 worlds and took 2 enemy warships at the median, 56 where a fleet had come to
+fight for it, and no ship of the armer's own. A rival armed one in 11 of the 40 games, and won 6 of
+those. Pace is as it was: 34 of 40 games decided within the hour at a median of 43 minutes, against
+35 and 43 on the same seeds with the Blueprint in the pool and no house using it (and 32 and 41
+before it was in the pool: a new Boon deals every draft anew). Conquests were 6 against 10, and
+Ascensions 8 against 4.
+
+(The first rival behaviour built one whenever it could, from minute 16. A house that was winning by
+ordinary means then stopped to save for it and march to a star: a rival armed one in 18 of the 40
+games, 30 were decided where 35 had been, and conquests fell from 10 to 4. A Starfall is for the wall
+that would not fall.)
+
+On screen: STARFALL is on the Hearth's card from the moment the Blueprint is drafted, and ARM on the
+Starfall's card from the day it is built; both are greyed with the reason when they cannot be pressed
+("One Starfall at a time", "Only at a star"). A star with an armed Starfall blinks as before a flare
+with the time over it; every card in that system says what is coming ("THIS WORLD WILL BE SCORCHED",
+"GET OUT: TALITHA ERUPTS IN 1:12"); a burning star says how long it burns, and a fleet in front of it
+says that it waits and why. A tip explains a rival's Starfall the first time one is armed.
+
+Two things the code learned from it. A field that most ships never have (`Unit.fire`) is written only
+where it is set: written to every ship that arrived anywhere, it gave the ships of one game many
+shapes in memory, and every loop over them ran two to three times slower. And a field that is given
+up is deleted, not set to undefined: a save drops the one that is undefined, and the game that loads
+it then puts the field back in another place than the game that went on, so the two no longer save
+alike (found by `scripts/fuzz.ts`, which now builds, flies and arms Starfalls and sends ships through
+fire).
 
 ### Threats and pace (Normal, medium sector, 1× speed)
 | Moment | Time |
@@ -781,11 +895,11 @@ src/game/      deterministic simulation (no DOM)
   Game.ts        the state, the short queries, and one line for everything longer, which hands the
                  game to the module that does the work:
   setup, save    a new game; saving and loading
-  worldStats, shipStats, fields, pathing, boons, modSources   what is so
+  worldStats, shipStats, fields, starfall, pathing, boons, modSources   what is so
   unitLife, conquest   what follows from a hit, a death, a world taken, a Hearth fallen
   commands/      what a house can order (the player's UI and the AI alike), each with its check
   systems/       what happens by itself every tick: economy, production, movement (lanes, kindling),
-                 combat, status, visibility, events, pirates, crisis, victory
+                 combat, status, starfall, visibility, events, pirates, crisis, victory
   ai/ai.ts       AI houses: drafting, kindling, roles, upgrades, counter-building, attack planning
   data/          units, worlds, Boons, houses, relics, events, omens, Destinies, ambitions
 src/render/    pixel canvas: Screen (scaling), Camera, Renderer, worlds, sprites, fonts, effects
@@ -831,8 +945,9 @@ UI snapshot of section 8: nothing in the game changed.)
   the whole saved state is fingerprinted every 30 seconds of game time, with the effects asked for.
   `record` before a refactoring, `check` after: identical to the byte, or it says where they part.
 - **The UI snapshot** (`npm run test:uisnap -- record|check`, `scripts/uisnap.mjs`): the same for what
-  is on the screen. In a browser whose clock the script holds (and whose `Math.random` is seeded) 73
-  scenes are staged: the menus, every card and dialog, the end of a run, an Ages cradle. Of each it
+  is on the screen. In a browser whose clock the script holds (and whose `Math.random` is seeded) 78
+  scenes are staged: the menus, every card and dialog, a Starfall from its button to the star that
+  burns, the end of a run, an Ages cradle. Of each it
   writes down the pixels of the game's canvas, every HUD button with its place and tooltip, and the
   HTML of a menu page (but for the version number on the title page). Both recordings live in
   `.golden/`, outside git: they are true of one version of the rules, and a change that is meant to
@@ -850,6 +965,14 @@ UI snapshot of section 8: nothing in the game changed.)
   NaN, no negative Embers, hull within bounds, every unit somewhere, every living house holding its
   Hearth…) and every 8 minutes the game is saved, loaded and run on next to the original, which must
   stay byte-identical. `--ai` lets the AI play every house to reach late wars and every victory.
+  The random players build Starfalls, fly them to stars, arm them and send ships through the fire,
+  and an armed Starfall, a burning star and "one to a house" are among the invariants.
+- The Starfall: `tests/starfall.test.ts` (building and arming, the eruption and everything it must
+  not do, the fire and the ways round it, a save in mid-fuse, and what rival houses do: destroy one,
+  save their fleet from one, choose a star, and build one only when their attacks have got nowhere)
+  and `test:starfall` (`scripts/starfall.mjs`: the same in the browser, from the button at the Hearth
+  to an order through the fire and a rival's Starfall at home). `scripts/layouts.mjs` stages its
+  cards at their fullest on the smallest screen.
 - `test:sound`: the sound button and the first click, with a browser that waits for one and with one
   that does not, at desktop and phone widths.
 - `test:uifuzz`, `test:layouts`, `test:menus`: random play through the real UI (fails on any error or

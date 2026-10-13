@@ -73,7 +73,8 @@ function galacticEvent(g: Game) {
       return;
     }
     case 'solarFlare': {
-      const stars = g.nodes.filter((n) => n.kind === 'star' && !n.hazard);
+      // (Not a star with an armed Starfall: a flare would scorch it, and its house has paid for those two minutes.)
+      const stars = g.nodes.filter((n) => n.kind === 'star' && !n.hazard && !g.armedAt(n));
       if (!stars.length) return;
       const n = g.rng.pick(stars);
       n.hazard = { warn: 15, t: 10, dps: 70 };

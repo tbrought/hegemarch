@@ -221,7 +221,9 @@ export function killUnit(g: Game, u: Unit, byFaction: number, _src: Unit | null 
   const def = UNITS[u.type];
   const owner = g.factions[u.owner];
   if (g.fxEnabled) g.fx.push({ k: 'boom', x: u.x, y: u.y, size: def.radius, color: owner.color, node: u.node });
-  const isShip = def.role !== 'fighter' && !u.temp;
+  // (A Starfall whose fuse has run out has done what it was built for: that is no ship lost.)
+  const spent = u.type === 'starfall' && u.fuse !== undefined && u.fuse <= 0;
+  const isShip = def.role !== 'fighter' && !u.temp && !spent;
   if (isShip) owner.stats.shipsLost++;
   if (u.type === 'seed' && owner.isPlayer) {
     // Never let a kindling fail silently.

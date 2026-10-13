@@ -1,5 +1,6 @@
 import type { Game } from '../game/Game';
 import { UNITS } from '../game/data/units';
+import { burning } from '../game/starfall';
 import type { GNode, Unit } from '../game/types';
 import { Camera } from './Camera';
 import { Effects } from './Effects';
@@ -413,6 +414,16 @@ export class Renderer {
       ctx.drawImage(s, x - (s.width >> 1), y - (s.height >> 1));
       if (n.hazard && n.hazard.warn > 0 && Math.floor(t * 4) % 2 === 0) ring(ctx, x, y, r * 2 + 3, PAL.red, 2);
       if (n.hazard && n.hazard.warn <= 0) ring(ctx, x, y, r * 2.2 + 2 + (Math.floor(t * 10) % 3), PAL.ember, 1);
+      // A Starfall armed here: the star blinks as before a flare, with the time that is left over it. One
+      // that has set the star alight: a second ring of fire, and how long it still burns.
+      const armed = g.armedAt(n);
+      if (armed) {
+        if (Math.floor(t * 4) % 2 === 0) ring(ctx, x, y, r * 2 + 3, PAL.red, 2);
+        textCenter(ctx, `STARFALL ${fmtTime(Math.ceil(armed.fuse!))}`, x, y - r * 2 - 12, PAL.red, 'tiny');
+      } else if (burning(n)) {
+        ring(ctx, x, y, r * 2.8 + 3 + (Math.floor(t * 7) % 4), PAL.red, 2);
+        textCenter(ctx, `BURNS ${fmtTime(Math.ceil(n.hazard!.t))}`, x, y - r * 2.8 - 14, PAL.ember, 'tiny');
+      }
     } else if (n.kind === 'planet') {
       this.drawPlanet(ctx, g, n, x, y, r, visible, owner, dt, ghost);
     } else this.drawSite(ctx, g, n, x, y, r, visible);

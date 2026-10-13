@@ -395,11 +395,20 @@ try {
     const s = app.session;
     const g = s.game;
     const p = g.player;
-    const darks = g.nodes
-      .filter((n) => n.kind === 'planet' && n.owner === -1 && !g.checkKindle(p.id, n.id) && !g.hasHostiles(n.id, p.id))
-      .sort((a, b) => g.pathLen(p.capital, a.id) - g.pathLen(p.capital, b.id));
-    if (!darks.length) return null;
     p.embers = 5000;
+    const near = (a, b) => g.pathLen(p.capital, a.id) - g.pathLen(p.capital, b.id);
+    let darks = g.nodes.filter((n) => n.kind === 'planet' && n.owner === -1 && !g.checkKindle(p.id, n.id) && !g.hasHostiles(n.id, p.id)).sort(near);
+    if (!darks.length) {
+      // (The sector is dealt at random: in some, every dark world in reach is guarded or not yet charted.
+      // The nearest one is charted and cleared for the test, then.)
+      const n = g.nodes.filter((x) => x.kind === 'planet' && x.owner === -1).sort(near)[0];
+      if (n) {
+        p.explored[n.id] = 1;
+        for (const u of [...g.buckets[n.id]]) if (!u.dead && g.hostile(u.owner, p.id)) g.killUnit(u, -1);
+        if (!g.checkKindle(p.id, n.id)) darks = [n];
+      }
+    }
+    if (!darks.length) return null;
     app.hud.actions.kindle(darks[0].id);
     const seed = g.seedFor(p.id, darks[0].id);
     s.selectUnits([seed.id]);

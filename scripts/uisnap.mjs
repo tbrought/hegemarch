@@ -468,6 +468,80 @@ async function stageAll() {
     await t.close();
   }
 
+  // ------------------------------------------------------------------------------------ a run with a Starfall
+  {
+    const t = await open();
+    const { ev, frames, snap, page } = t;
+    await page.click('[data-sa="setup"]');
+    await frames(120);
+    await page.click('[data-sa="size:small"]');
+    await launch(t, 616161);
+    // Its button at the Hearth, once the Blueprint is drafted.
+    await ev(() => {
+      const s = window.__app.session;
+      const g = s.game;
+      s.modal = null;
+      s.paused = true;
+      for (const f of g.factions) if (!f.isPlayer) f.ai = null;
+      g.addCard(g.player, 'bpStarfall');
+      g.player.embers = 3000;
+      s.selectNode(g.player.capital);
+      s.focusNode(g.player.capital, 0.2);
+    });
+    await frames(300);
+    await hoverUi(t, 'starfall');
+    await snap('starfall-hearth');
+    // The device, just built: ARM is on its card, greyed away from a star.
+    await ev(() => {
+      const s = window.__app.session;
+      const g = s.game;
+      const d = g.spawnUnit('starfall', g.playerId, g.player.capital, { x: g.nodes[g.player.capital].x + 160, y: g.nodes[g.player.capital].y });
+      s.selectUnits([d.id], false, false);
+    });
+    await frames(300);
+    await hoverUi(t, 'arm');
+    await snap('starfall-device');
+    // Armed at the home star: the clock over the star and at the top right, and what its card says.
+    await ev(() => {
+      const s = window.__app.session;
+      const g = s.game;
+      const d = g.starfallOf(g.playerId);
+      const star = g.starOf(g.nodes[g.player.capital]);
+      g.buckets[d.node].splice(g.buckets[d.node].indexOf(d), 1);
+      d.node = star.id;
+      d.x = d.ax = star.x + 110;
+      d.y = d.ay = star.y;
+      g.buckets[star.id].push(d);
+      g.cmdArm(g.playerId, d.id);
+      s.selectUnits([d.id], false, false);
+      s.focusNode(star.id, 0.2);
+    });
+    await page.mouse.move(5, 5);
+    await frames(1500);
+    await snap('starfall-armed');
+    // A world in that system says what is coming.
+    await ev(() => {
+      const s = window.__app.session;
+      s.selectNode(s.game.player.capital);
+    });
+    await frames(300);
+    await snap('starfall-doomed');
+    // The star after the eruption, and its card.
+    await ev(() => {
+      const s = window.__app.session;
+      const g = s.game;
+      const d = g.starfallOf(g.playerId);
+      d.fuse = 0.04;
+      s.selectNode(d.node);
+      s.paused = false;
+    });
+    await frames(3000);
+    await ev(() => (window.__app.session.paused = true));
+    await frames(200);
+    await snap('starfall-burning');
+    await t.close();
+  }
+
   // ------------------------------------------------------------------------------------ an Ages run, on its cradle
   {
     const t = await open();

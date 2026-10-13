@@ -13,6 +13,7 @@ src/game/        the simulation: no DOM, no clock, no Math.random
   save.ts          saving and loading
   worldStats.ts    what a world yields and can do      shipStats.ts   what a ship can do
   fields.ts        anti-warp fields, Bastions          pathing.ts     ways through the sector
+  starfall.ts      the Starfall: what is armed, what burns, what one costs
   boons.ts         the Boon pool and offers            modSources.ts  where a house's bonuses come from
   unitLife.ts      a ship built, hit, destroyed        conquest.ts    worlds taken, houses fallen, the winner
   commands/        what a house can order: orders.ts, production.ts, choices.ts, climb.ts, checks.ts
@@ -111,7 +112,7 @@ For a change that must not alter the game at all (a refactoring):
 
 ```bash
 npm run golden -- record       # before: fingerprint 24 fixed runs
-npm run test:uisnap -- record  # before: snapshot 73 staged scenes (needs the dev server)
+npm run test:uisnap -- record  # before: snapshot 78 staged scenes (needs the dev server)
 # ...make the change...
 npm run verify                 # compares both, and runs everything else
 ```

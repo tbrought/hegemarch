@@ -20,6 +20,7 @@ const SHIPS: Partial<Record<UnitType, string[]>> = {
   dreadnought: ['.xxx.........', 'xxxxxxx......', 'xxdxxxxxxxx..', 'exxwxxxwxxxxw', 'xxdxxxxxxxx..', 'xxxxxxx......', '.xxx.........'],
   ark: ['..xx.......', '.xxxxx.....', 'xxxxxxxxx..', 'exxxwxxxxxw', 'xxxxxxxxx..', '.xxxxx.....', '..xx.......'],
   fighter: ['xw'],
+  starfall: ['...xxxxx...', '.xxdxxxdxx.', 'xxdeeeeedxx', 'exeewwweexw', 'xxdeeeeedxx', '.xxdxxxdxx.', '...xxxxx...'],
   raider: ['x.x...', '.xxx..', 'exxxxw', '.xxx..', 'x.x...'],
   marauder: ['xx.x....', 'xxxxx...', 'exxxxxxw', 'xxxxx...', 'xx.x....'],
   drone: ['.x.x.', 'xxxxx', '.xwx.', 'xxxxx', '.x.x.'],
@@ -304,6 +305,7 @@ export const ICONS: Record<string, string[]> = {
   shield: ['kkkkk', 'kwkwk', 'kkwkk', 'kkkkk', '.kkk.', '..k..', '.....'],
   star: ['..g..', '..g..', 'ggggg', '.ggg.', '.g.g.', 'g...g', '.....'],
   skull: ['.mmm.', 'mmmmm', 'm.m.m', 'mmmmm', '.m.m.', '.....', '.....'],
+  starfall: ['e.e.e', '.ege.', 'egwge', '.ege.', 'e.e.e', '.....', '.....'],
   boon: ['ggggg', 'gwwwg', 'gwgwg', 'gwwwg', 'gwgwg', 'gwwwg', 'ggggg'],
   // Boon categories, 5x5 ('c' takes the rarity color)
   catWar: ['....w', '...w.', 'c.w..', '.c...', 'c.c..'],

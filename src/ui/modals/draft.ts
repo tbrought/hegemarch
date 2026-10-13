@@ -21,7 +21,7 @@ import { MARK, marksOf } from '../Ui';
 import type { Modals } from '../Modals';
 import type { CardDef } from '../../game/data/cards';
 
-export const BLUEPRINT_SHIP: Record<string, UnitType> = { bpCarrier: 'carrier', bpLancer: 'lancer', bpDread: 'dreadnought', bpStarbase: 'starbase' };
+export const BLUEPRINT_SHIP: Record<string, UnitType> = { bpCarrier: 'carrier', bpLancer: 'lancer', bpDread: 'dreadnought', bpStarbase: 'starbase', bpStarfall: 'starfall' };
 
 export function choose(modals: Modals, id: string, slot: number) {
   const p = modals.g.player;

@@ -52,6 +52,10 @@ export function productionTick(g: Game, dt: number) {
           if (g.fxEnabled) g.fx.push({ k: 'ring', x: u.x, y: u.y, r: UNITS[type].radius * 2.5, color: f.color, node: n.id });
           if (it.kind === 'ark') {
             g.notify(f.id, `Your Ark, the ${HEIR_BY_ID[f.heir]?.arkName ?? ''}, has been rebuilt!`, 'good', n.id);
+          } else if (type === 'starfall') {
+            // (It waits at the Hearth for its orders, whatever the rally point: it is not a ship to send off alone.)
+            f.starfalls = (f.starfalls ?? 0) + 1;
+            g.notify(f.id, `Your Starfall is built at ${n.name}. Fly it to a star and arm it there.`, 'good', n.id);
           } else if (type === 'scout' && !f.isPlayer) {
             // Rival scouts go exploring; the player's follow the rally point like any other ship.
             u.order = 'explore';

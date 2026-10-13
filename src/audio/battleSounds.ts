@@ -11,6 +11,11 @@ export function playBattleSounds(fx: Fx[], nodes: { x: number; y: number }[], ca
   const R = Math.max(cam.w, cam.h) / 2 / cam.zoom;
   const zoomGain = Math.max(0.15, Math.min(1, cam.zoom * 5));
   for (const f of fx) {
+    // (A Starfall armed and a star erupting are heard wherever they are: every house is told of them.)
+    if (f.k === 'armed' || f.k === 'nova') {
+      sfx.play(f.k, f.k === 'nova' ? 0.9 : 0.5);
+      continue;
+    }
     if ('node' in f && f.node >= 0 && !visible(f.node)) continue;
     let id: SoundId | null = null;
     let base = 0.3;

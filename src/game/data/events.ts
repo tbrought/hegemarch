@@ -46,7 +46,7 @@ const byArk = (g: Game, ctx: EventCtx) => {
 };
 
 export function offering(g: Game, f: Faction, ctx: EventCtx): Unit | null {
-  const fit = (u: Unit | undefined): u is Unit => !!u && !u.dead && u.owner === f.id && u.type !== 'ark' && u.type !== 'fighter' && !UNITS[u.type].isStatic;
+  const fit = (u: Unit | undefined): u is Unit => !!u && !u.dead && u.owner === f.id && u.type !== 'ark' && u.type !== 'fighter' && u.type !== 'starfall' && !UNITS[u.type].isStatic;
   const finder = g.units.get(ctx.unit);
   if (fit(finder)) return finder;
   let best: Unit | null = null;

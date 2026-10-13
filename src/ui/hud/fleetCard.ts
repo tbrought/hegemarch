@@ -6,9 +6,11 @@
 import { FIRE_SPOOL, HOLD_FIELD, JUMP_CHARGE, UNDER_FIRE } from '../../game/constants';
 import { ABILITY_BY_ID } from '../../game/data/abilities';
 import { UNITS } from '../../game/data/units';
+import { burning, STARFALL_FUSE } from '../../game/starfall';
 import type { Unit, UnitType } from '../../game/types';
 import { text, textWidth } from '../../render/font';
 import { PAL } from '../../render/palette';
+import { fmtTime } from '../../render/Renderer';
 import { bar, box } from '../../render/pixel';
 import { shipSprite } from '../../render/sprites';
 import { fmt } from '../format';
@@ -83,6 +85,7 @@ export function fleetRows(hud: Hud, units: Unit[]): CardRow[] {
           `${HOLD_FIELD} s; under fire the drive charges at half speed; a Gravity Snare stops it for a while.`,
     }));
   }
+  rows.push(...fireRows(hud, units));
   // Composition: click a type to keep only those.
   const counts = new Map<UnitType, number>();
   for (const u of units) counts.set(u.type, (counts.get(u.type) ?? 0) + 1);
@@ -106,7 +109,7 @@ function ordersRow(hud: Hud, units: Unit[]): CardRow {
     h: 13,
     draw: (x, y) => {
       let bx = x;
-      const btn = (id: string, label: string, act: () => void, tip: string, o: { pulse?: boolean; selected?: boolean } = {}) => {
+      const btn = (id: string, label: string, act: () => void, tip: string, o: { pulse?: boolean; selected?: boolean; disabled?: boolean; danger?: boolean } = {}) => {
         const bw = textWidth(label, 'tiny') + 10;
         hud.ui.button(gx, id, bx, y, bw, 12, label, act, { font: 'tiny', tip, ...o });
         bx += bw + 2;
@@ -125,10 +128,58 @@ function ordersRow(hud: Hud, units: Unit[]): CardRow {
           : `Send the Scout${many ? 's' : ''} to chart the dark, world after world, by ${many ? 'themselves' : 'itself'}.${rest} (E)`;
         btn('explore', 'EXPLORE', () => hud.actions.explore(), tip, { pulse: !game.ui.scouted && !out, selected: out });
       }
+      // A Starfall among them: ARM is on its card from the day it is built, and says why when it cannot be pressed.
+      const device = units.find((u) => u.type === 'starfall');
+      if (device) {
+        const why = game.checkArm(p.id, device.id);
+        btn('arm', device.fuse !== undefined ? 'ARMED' : 'ARM', () => hud.actions.arm(device.id),
+          `Arm the Starfall at the star it is at. ${STARFALL_FUSE / 60} minutes later the star erupts: every ship in that system is destroyed, yours too, and ` +
+              `every world there is scorched. Every house is told, and holds it against you. It cannot be called off.${why ? ` Can't arm: ${why}.` : ''}`,
+          { disabled: !!why, danger: !why, pulse: !why });
+      }
       const lv = units.find((u) => u.pendingAbil.length);
       if (lv) btn('learn', 'LEARN!', () => hud.modals.open({ kind: 'ability', unitId: lv.id }), 'Choose a new ability.', { pulse: true });
     },
   };
+}
+
+/**
+ * What the Starfall means for these ships: one of them is armed; they are in a system that is about to
+ * erupt; or they wait in front of a burning star for the fire to go out.
+ */
+function fireRows(hud: Hud, units: Unit[]): CardRow[] {
+  const game = hud.g;
+  const rows: CardRow[] = [];
+  const own = units.find((u) => u.type === 'starfall' && u.fuse !== undefined);
+  if (own) {
+    rows.push(line(hud, `ARMED: ${game.nodes[own.node].name.toUpperCase()} ERUPTS IN ${fmtTime(Math.ceil(own.fuse!))}`, PAL.red, 'tiny', {
+      tip: 'Keep the Starfall alive until the time runs out, and have your ships out of this system by then: the eruption takes them too.', terms: gloss('starfall'),
+    }));
+  }
+  const inDanger = units.find((u) => u.type !== 'starfall' && u.node >= 0 && !!doomAt(hud, u.node));
+  if (inDanger) {
+    const d = doomAt(hud, inDanger.node)!;
+    const star = game.nodes[d.node];
+    rows.push(line(hud, `GET OUT: ${star.name.toUpperCase()} ERUPTS IN ${fmtTime(Math.ceil(d.fuse!))}`, PAL.red, 'tiny', {
+      tip: `A Starfall is armed at ${star.name}. When the time runs out every ship in this system is destroyed. Destroy the Starfall, or send these ships ` +
+          `to a place outside the system: a ship on a starlane at that moment is safe.`, terms: gloss('starfall'),
+    }));
+  }
+  const waits = units.find((u) => !u.lane && u.node >= 0 && u.path.length > 0 && !u.fire && burning(game.nodes[u.path[0]]));
+  if (waits) {
+    const star = game.nodes[waits.path[0]];
+    rows.push(line(hud, `WAITING: ${star.name.toUpperCase()} BURNS FOR ${fmtTime(Math.ceil(star.hazard!.t))}`, PAL.ember, 'tiny', {
+      tip: `The way leads through ${star.name}, which a Starfall set alight. Ships there take heavy damage, so these wait until the fire is out and fly on ` +
+          `then. Give them the same order again to send them through it now.`, terms: gloss('starfall'),
+    }));
+  }
+  return rows;
+}
+
+/** The armed Starfall whose eruption would take a ship at this place, if there is one. */
+function doomAt(hud: Hud, nodeId: number): Unit | null {
+  const star = hud.g.starOf(hud.g.nodes[nodeId]);
+  return star ? hud.g.armedAt(star) : null;
 }
 
 /** The hull and shields of the whole fleet, added up. */

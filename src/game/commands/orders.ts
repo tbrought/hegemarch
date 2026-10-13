@@ -4,7 +4,8 @@
  * the rival houses give the same orders through these.
  */
 
-import { UNITS } from '../data/units';
+import { fixed, UNITS } from '../data/units';
+import { burning, STARFALL_FUSE } from '../starfall';
 import type { Faction, QueueCheck, Unit } from '../types';
 import { dist, TAU } from '../util';
 import type { Game } from '../Game';
@@ -14,6 +15,7 @@ function orderPath(g: Game, u: Unit, dest: number, avoid?: (nodeId: number) => n
   const start = u.lane ? u.lane.to : u.node;
   if (start < 0) return;
   u.dest = dest;
+  if (u.fire) delete u.fire;
   if (start === dest) {
     u.path = [];
     if (!u.lane) u.charge = -1;
@@ -36,12 +38,13 @@ function queuePath(g: Game, u: Unit, dest: number) {
  * `avoid`: places the ships would rather not pass through, each counted as that much further (see
  * `pathAvoiding`). `queue`: the place is one more stop after the one a moving ship is bound for (Shift
  * with the order): its way there is added to the way it has, and a drive that is charging goes on
- * charging. A ship that is not on its way somewhere simply goes.
+ * charging. A ship that is not on its way somewhere simply goes. `through`: the ships fly through a
+ * burning star on their way, where they would otherwise wait for the fire to burn out.
  */
-export function cmdMove(g: Game, fid: number, ids: number[], dest: number, x?: number, y?: number, avoid?: (nodeId: number) => number, queue = false) {
+export function cmdMove(g: Game, fid: number, ids: number[], dest: number, x?: number, y?: number, avoid?: (nodeId: number) => number, queue = false, through = false) {
   const n = g.nodeAt(dest);
   if (!n) return;
-  const units = ids.map((id) => g.units.get(id)).filter((u): u is Unit => !!u && !u.dead && u.owner === fid && !UNITS[u.type].isStatic);
+  const units = ids.map((id) => g.units.get(id)).filter((u): u is Unit => !!u && !u.dead && u.owner === fid && !fixed(u));
   if (units.length === 0) return;
   const offs = formation(units.length, 34);
   // Bigger ships in the middle of the formation.
@@ -71,6 +74,7 @@ export function cmdMove(g: Game, fid: number, ids: number[], dest: number, x?: n
     }
     if (onward) queuePath(g, u, dest);
     else orderPath(g, u, dest, avoid);
+    if (through) u.fire = true;
     if (u.node === dest && !u.lane) {
       u.order = 'idle';
       if (!isNaN(u.ox)) {
@@ -176,6 +180,7 @@ export function cmdStop(g: Game, fid: number, ids: number[]) {
   for (const id of ids) {
     const u = g.units.get(id);
     if (!u || u.dead || u.owner !== fid) continue;
+    if (u.fire) delete u.fire;
     if (u.lane) {
       u.path = [];
       u.dest = u.lane.to;
@@ -210,7 +215,7 @@ export function nearestOwnedWorld(g: Game, fid: number, from: number): number {
 export function cmdRetreat(g: Game, fid: number, ids: number[]) {
   for (const id of ids) {
     const u = g.units.get(id);
-    if (!u || u.dead || u.owner !== fid || UNITS[u.type].isStatic) continue;
+    if (!u || u.dead || u.owner !== fid || fixed(u)) continue;
     const from = u.lane ? u.lane.to : u.node;
     const dest = g.nearestOwnedWorld(fid, from);
     if (dest < 0) continue;
@@ -244,6 +249,51 @@ export function cmdSetRally(g: Game, fid: number, nodeId: number, target: number
   const n = g.nodeAt(nodeId);
   if (!n || n.owner !== fid || !g.nodeAt(target)) return false;
   n.rally = target === nodeId ? -1 : target;
+  return true;
+}
+
+/** Why this Starfall cannot be armed where it is (null = it can). */
+export function checkArm(g: Game, fid: number, unitId: number): QueueCheck {
+  const u = g.units.get(unitId);
+  if (!u || u.dead || u.owner !== fid || u.type !== 'starfall') return 'Not a Starfall of yours';
+  if (u.fuse !== undefined) return 'Already armed';
+  const n = u.lane || u.node < 0 ? null : g.nodes[u.node];
+  if (!n || n.kind !== 'star') return 'Only at a star';
+  if (burning(n)) return `${n.name} burns already`;
+  if (n.hazard) return `${n.name} is flaring`;
+  return null;
+}
+
+/**
+ * Arm a Starfall at the star it is at. From now on it does not move, every house knows, and every
+ * other house holds it against the one that did it; in two minutes the star erupts
+ * (`systems/starfall.ts`), unless the Starfall is destroyed first. It cannot be called off.
+ */
+export function cmdArm(g: Game, fid: number, unitId: number): boolean {
+  if (g.checkArm(fid, unitId)) return false;
+  const u = g.units.get(unitId)!;
+  const f = g.factions[fid];
+  const n = g.nodes[u.node];
+  u.fuse = STARFALL_FUSE;
+  u.path = [];
+  u.charge = -1;
+  u.dest = u.node;
+  u.order = 'idle';
+  u.orderTarget = -1;
+  u.ax = u.x;
+  u.ay = u.y;
+  for (const r of g.factions) {
+    if (r.id === fid || r.kind !== 'empire' || !r.alive || !r.ai) continue;
+    r.ai.grudge = fid;
+    r.ai.grudgeAt = g.time;
+    r.ai.firstAttackAt = Math.min(r.ai.firstAttackAt, g.time + 20);
+  }
+  if (g.fxEnabled) g.fx.push({ k: 'armed', x: u.x, y: u.y, node: n.id, color: f.color });
+  const mine = g.nodes.some((x) => x.system === n.system && x.owner === g.playerId) || g.unitList.some((x) => !x.dead && x.owner === g.playerId && x.node >= 0 && g.nodes[x.node].system === n.system);
+  g.notify(-1, f.isPlayer
+    ? `Your Starfall is armed at ${n.name}: the star erupts in ${STARFALL_FUSE / 60} minutes. Keep it alive, and have your ships out by then.`
+    : `${g.shortName(f)} armed a Starfall at ${n.name}! The star erupts in ${STARFALL_FUSE / 60} minutes. Destroy the Starfall to stop it.`,
+    f.isPlayer ? 'good' : 'alert', n.id, !f.isPlayer && mine);
   return true;
 }
 

@@ -30,6 +30,7 @@ const steps = [
   ['tutorial', 'node scripts/tutorial.mjs', true],
   ['stopped', 'node scripts/stopped.mjs', true],
   ['qol', 'node scripts/qol.mjs', true],
+  ['starfall', 'node scripts/starfall.mjs', true],
   ['ages', 'node scripts/ages.mjs', true],
   ['layouts', 'node scripts/layouts.mjs', true],
   ['menus', 'node scripts/menus.mjs', true],

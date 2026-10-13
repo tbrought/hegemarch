@@ -7,6 +7,8 @@ import { WHY } from '../game/commands/checks';
 
 /** Seconds the way of an order is drawn bright (then it stays, dim, while the ships are selected). */
 export const ROUTE_FLASH = 1.6;
+/** Seconds within which the same order, given again, sends ships through a burning star. */
+const FIRE_AGAIN = 6;
 
 /**
  * Player commands with feedback (sound, markers, a short reason when something can't be done).
@@ -14,6 +16,9 @@ export const ROUTE_FLASH = 1.6;
  */
 export class Actions {
   constructor(private s: Session) {}
+
+  /** The order that would have led through a burning star, and when it was given: given again, it does. */
+  private fireAsked: { dest: number; at: number } | null = null;
 
   private get g() {
     return this.s.game;
@@ -95,6 +100,18 @@ export class Actions {
     this.s.sfx.play('boon', 0.5);
     if (!last) this.s.showToast(`The ${ERAS[p.era + 1].name} is coming: ${era.time} seconds of work at your Hearth.`, PAL.gold, 4);
     return true;
+  }
+
+  /** Build a Starfall at the Hearth. */
+  starfall(): boolean {
+    const ok = this.attempt(() => this.g.checkStarfall(this.pid), () => this.g.cmdQueueStarfall(this.pid), 'build');
+    if (ok) this.s.showToast('A Starfall is being built at your Hearth.', PAL.ember, 3);
+    return ok;
+  }
+
+  /** Arm a Starfall at the star it is at. */
+  arm(unitId: number): boolean {
+    return this.attempt(() => this.g.checkArm(this.pid, unitId), () => this.g.cmdArm(this.pid, unitId), 'alert', 0.6);
   }
 
   /** Queue a ship (Shift: five, or as many as fit). */
@@ -261,6 +278,18 @@ export class Actions {
       this.fail('No starlane leads there');
       return false;
     }
+    // A way that leads through a burning star: the ships wait in front of the fire by themselves. The same
+    // order given again sends them through (nothing flies into the fire on one click).
+    const fire = from >= 0 ? g.fireOnWay(from, nodeId) : null;
+    // (Ships already on their way through stay so, however often the order is repeated.)
+    const going = units.every((u) => u.fire && u.dest === nodeId);
+    const through = !!fire && (going || (!!this.fireAsked && this.fireAsked.dest === nodeId && performance.now() - this.fireAsked.at < FIRE_AGAIN * 1000));
+    this.fireAsked = fire && !through ? { dest: nodeId, at: performance.now() } : null;
+    if (fire) {
+      this.s.showToast(through
+        ? `Through the fire of ${fire.name}: ships there take heavy damage.`
+        : `The way leads through ${fire.name}, which burns. Your ships will wait in front of it. Give the order again to send them through.`, through ? PAL.red : PAL.ember, 5);
+    }
     const seeds = units.filter((u) => u.type === 'seed');
     const rest = units.filter((u) => u.type !== 'seed');
     let kindled = false;
@@ -269,7 +298,7 @@ export class Actions {
         kindled = g.cmdSendSeed(this.pid, seeds[0].id, nodeId);
         if (seeds.length > 1) g.cmdMove(this.pid, seeds.slice(1).map((u) => u.id), nodeId, undefined, undefined, undefined, queue);
       } else if (seeds.length && !seeds.every((u) => u.order === 'kindle' && u.orderTarget === nodeId)) g.cmdMove(this.pid, seeds.map((u) => u.id), nodeId, undefined, undefined, undefined, queue);
-      if (rest.length) g.cmdMove(this.pid, rest.map((u) => u.id), nodeId, wx, wy, undefined, queue);
+      if (rest.length) g.cmdMove(this.pid, rest.map((u) => u.id), nodeId, wx, wy, undefined, queue, through);
     });
     this.s.marker(wx ?? n.x, wy ?? n.y, kindled ? PAL.gold : PAL.teal);
     // The way they will take, bright for a moment: red where the house knows of danger on it.

@@ -11,6 +11,7 @@ import { EVENT_BY_ID } from '../src/game/data/events';
 import { HEIRS } from '../src/game/data/heirs';
 import { UNITS } from '../src/game/data/units';
 import { RNG } from '../src/game/rng';
+import { STARFALL_BURN, STARFALL_FUSE } from '../src/game/starfall';
 import { randomCommand } from './lib/commands';
 import type { Difficulty, MapSize } from '../src/game/types';
 
@@ -85,6 +86,23 @@ function check(g: Game): string[] {
       const d = Math.hypot(u.x - n.x, u.y - n.y);
       if (d > Math.max(4000, n.r * 30)) e.push(`${tag} drifted ${Math.round(d)} away from ${n.name}`);
     }
+    // An armed Starfall is at a star, stays there, and its fuse is within what it was set to.
+    if (u.fuse !== undefined) {
+      if (u.type !== 'starfall') e.push(`${tag} has a fuse`);
+      if (u.lane || u.node < 0 || g.nodes[u.node].kind !== 'star') e.push(`${tag} is armed and not at a star`);
+      if (u.path.length) e.push(`${tag} is armed and on its way somewhere`);
+      if (!(u.fuse >= 0 && u.fuse <= STARFALL_FUSE)) e.push(`${tag} fuse ${u.fuse}`);
+    }
+  }
+  // A star that burns is a star, burns no longer than it may, and nothing is armed in its fire. A house has one Starfall.
+  for (const n of g.nodes) {
+    if (n.hazard?.by === undefined) continue;
+    if (n.kind !== 'star') e.push(`${n.name} burns and is no star`);
+    if (!(n.hazard.t > 0 && n.hazard.t <= STARFALL_BURN)) e.push(`${n.name} burns for ${n.hazard.t}`);
+  }
+  for (const f of g.factions) {
+    const mine = g.unitList.filter((u) => !u.dead && u.owner === f.id && u.type === 'starfall').length;
+    if (mine > 1) e.push(`${f.name} has ${mine} Starfalls`);
   }
   // (World lists are rebuilt at the start of every tick, so a unit that left or died during the
   // last tick may still be listed until the next one; only missing units are an error.)

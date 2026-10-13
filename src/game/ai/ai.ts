@@ -1,11 +1,12 @@
 import type { Game } from '../Game';
-import { AI_ATTACK_RATIO, AI_FIRST_ATTACK, AI_RUSH, AI_THINK } from '../constants';
+import { AI_ATTACK_RATIO, AI_FIRST_ATTACK, AI_RUSH, AI_THINK, FIRE_SPOOL } from '../constants';
 import { CARD_BY_ID, type CardCat } from '../data/cards';
 import { ERAS, LAST_CRADLE_ERA } from '../data/eras';
 import { isWarship, UNITS } from '../data/units';
 import { ASCENSION_BOONS, relicsRequired, treasuryTarget } from '../data/victories';
 import type { AIState, Faction, GNode, Rarity, Unit, UnitType, WorldRole, WorldSize } from '../types';
 import { WHY } from '../commands/checks';
+import { burning, STARFALL_BURN } from '../starfall';
 import { isHearth } from '../worldStats';
 
 type Personality = AIState['personality'];
@@ -229,6 +230,9 @@ function economy(g: Game, f: Faction, ctx: Ctx) {
   roles(g, f, ctx);
 
   if (g.victories.includes('ascension') && f.boons >= ASCENSION_BOONS && !f.gate && f.capital >= 0) g.cmdQueueGate(f.id, f.capital);
+  // A house that means to build a Starfall keeps its Embers for it: no levels, no bays, no ships beyond its standing fleet.
+  const starfall = wantsStarfall(g, f, ctx);
+  if (starfall) g.cmdQueueStarfall(f.id);
 
   // Keep a standing fleet that grows with time (the Ark is not counted), invest the rest.
   const ark = g.units.get(f.ark);
@@ -236,9 +240,9 @@ function economy(g: Game, f: Faction, ctx: Ctx) {
   // (Strength is counted in the units of the house's own age.)
   const desired = (8 + ctx.minutes * (ai.personality === 'warlord' ? 3 : ai.personality === 'turtle' ? 2.1 : 2.5)) * ERAS[f.era].power;
   if (saving ? threatened && fleet < desired * 0.5 : threatened || fleet < desired) buildShips(g, f, ctx, 3);
-  if (!hoarding && !saving) upgrades(g, f, ctx);
+  if (!hoarding && !saving && !starfall) upgrades(g, f, ctx);
   if (saving) return;
-  if ((!hoarding && f.embers > 350 + ctx.minutes * 15) || threatened) buildShips(g, f, ctx, 2);
+  if ((!hoarding && !starfall && f.embers > 350 + ctx.minutes * 15) || threatened) buildShips(g, f, ctx, 2);
 }
 
 function kindleValue(g: Game, n: GNode): number {
@@ -398,6 +402,7 @@ const DERELICT_REACH = 5;
  * off with nothing done, and AI-only games dragged on.
  */
 function sendIfNeeded(g: Game, f: Faction, units: Unit[], node: number, careful = true) {
+  if (doomed.has(g.nodes[node].system)) return;
   const going: Unit[] = [];
   for (const u of units) {
     if (u.node === node && !u.lane && u.path.length === 0) continue;
@@ -474,6 +479,8 @@ function chooseTarget(g: Game, f: Faction, armyPower: number, from: number): { n
   // Bolder as the run drags on, so late games resolve.
   const late = g.time > 1800 ? Math.max(0.7, 1 - (g.time - 1800) / 3000) : 1;
   const ratio = AI_ATTACK_RATIO[d] * (p === 'warlord' ? 0.85 : p === 'turtle' ? 1.3 : 1) * late;
+  // (The system its own Starfall scorched: what is left there is worth going for, once the fire is out.)
+  const burned = f.ai!.burned && g.time < f.ai!.burned.until ? g.nodes[f.ai!.burned.star].system : -1;
   let best: { node: number; score: number } | null = null;
   for (const n of g.nodes) {
     if (!f.explored[n.id]) continue;
@@ -488,6 +495,7 @@ function chooseTarget(g: Game, f: Faction, armyPower: number, from: number): { n
       value *= rivalThreat(g, n.owner);
       if (n.owner === f.ai!.grudge && g.time - f.ai!.grudgeAt < 600) value *= 2.5;
       if (g.factions[n.owner].gate?.node === n.id) value *= 3;
+      if (n.system === burned) value *= 2;
       if (g.factions[n.owner].isPlayer) value *= 1 + 0.12 * d;
       // (A world a Bastion protects takes that much longer to crack; the Bastion that protects a Hearth
       // is the way in, and worth going for.)
@@ -509,6 +517,8 @@ function chooseTarget(g: Game, f: Faction, armyPower: number, from: number): { n
     if (armyPower < def * ratio) continue;
     const dist = g.pathLen(from, n.id);
     if (!isFinite(dist)) continue;
+    // (Not behind a burning star: the army would wait in front of the fire.)
+    if (g.fireOnWay(from, n.id)) continue;
     const score = value / (1 + def / Math.max(1, armyPower)) / (1 + dist / 9000);
     if (!best || score > best.score) best = { node: n.id, score };
   }
@@ -529,24 +539,32 @@ function rallyFor(g: Game, f: Faction, target: number): number {
 }
 
 /**
- * What a rival house does with its warships, every time it thinks: first the ships it needs at home
- * (`defend`), then a ship or two for a derelict near by (`claimDerelicts`), and with the rest, its
- * army, whatever its mood calls for: gather and pick a target (`muster`), meet at the rally point
- * (`gather`), or press the attack and know when to give it up (`press`).
+ * What a rival house does with its warships, every time it thinks: first of all, out of a system that is
+ * about to erupt (`flee`) and against a Starfall armed where it holds worlds (`defuse`); then the ships
+ * it needs at home (`defend`), then a ship or two for a derelict near by (`claimDerelicts`), and with
+ * the rest, its army, whatever its mood calls for: its own Starfall, if it has one and a star for it
+ * (`ownStarfall`); or gather and pick a target (`muster`), meet at the rally point (`gather`), or press
+ * the attack and know when to give it up (`press`).
  */
 function military(g: Game, f: Faction, ctx: Ctx) {
   const ai = f.ai!;
   const all = ctx.military;
+  doomed.clear();
   if (all.length === 0) {
     ai.mode = 'build';
     return;
   }
   const assigned = new Set<number>();
+  flee(g, f, all, assigned);
+  defuse(g, f, all, assigned);
   defend(g, f, ctx, all, assigned);
   claimDerelicts(g, f, all, assigned);
   const army = all.filter((u) => !assigned.has(u.id));
   const armyPower = power(g, army);
   const minArmy = (12 + ctx.minutes * 1.5) * ERAS[f.era].power;
+  if (ownStarfall(g, f, ctx, army, armyPower, minArmy)) return;
+  // (An army whose way to its target leads through a burning star thinks again.)
+  if (ai.mode !== 'build' && army.length && g.fireOnWay(at(army[0]), ai.mode === 'rally' ? ai.rally : ai.target)) ai.mode = 'build';
   if (ai.mode === 'build') muster(g, f, ctx, army, armyPower, minArmy);
   else if (ai.mode === 'rally') gather(g, f, army, armyPower);
   else if (ai.mode === 'attack') press(g, f, army, armyPower, minArmy);
@@ -683,6 +701,8 @@ function press(g: Game, f: Faction, army: Unit[], armyPower: number, minArmy: nu
   const ai = f.ai!;
   const tn = ai.target;
   if (!targetValid(g, f, tn)) {
+    // (The world is the house's now: whatever stopped it before no longer does.)
+    if (ai.stalled && g.nodes[tn]?.owner === f.id) ai.stalled = { n: 0, wall: -1 };
     const next = armyPower > minArmy * 0.7 ? chooseTarget(g, f, armyPower, tn) : null;
     if (next && g.hops(tn, next.node) <= 2 && fairTarget(g, f, next.node)) {
       ai.target = next.node;
@@ -707,6 +727,7 @@ function press(g: Game, f: Faction, army: Unit[], armyPower: number, minArmy: nu
     g.cmdRetreat(f.id, army.map((u) => u.id));
     ai.mode = 'build';
     ai.lastAttack = g.time;
+    gaveUp(g, f, tn);
     return;
   }
   // A siege that is getting nowhere is called off. (A fleet without the guns for it would sit at a world
@@ -722,6 +743,7 @@ function press(g: Game, f: Faction, army: Unit[], armyPower: number, minArmy: nu
         ai.mode = 'build';
         ai.lastAttack = g.time;
         ai.siege = undefined;
+        gaveUp(g, f, tn);
         return;
       }
       ai.siege = { node: tn, at: g.time, left };
@@ -733,7 +755,15 @@ function press(g: Game, f: Faction, army: Unit[], armyPower: number, minArmy: nu
     g.cmdRetreat(f.id, army.map((u) => u.id));
     ai.mode = 'build';
     ai.lastAttack = g.time;
+    gaveUp(g, f, tn);
   }
+}
+
+/** The house gave up an attack on a rival's world: one more that got nowhere, and the world that stopped it. */
+function gaveUp(g: Game, f: Faction, nodeId: number) {
+  const n = g.nodes[nodeId];
+  if (n.kind !== 'planet' || n.owner < 0 || n.owner === f.id || g.factions[n.owner].kind !== 'empire') return;
+  f.ai!.stalled = { n: (f.ai!.stalled?.n ?? 0) + 1, wall: nodeId };
 }
 
 /** May this AI go after a target right now? Rivals only after its first attack time, or if they struck first. */
@@ -749,6 +779,228 @@ function isNeutralTarget(g: Game, nodeId: number): boolean {
   const n = g.nodes[nodeId];
   if (n.kind === 'planet') return n.owner === -1;
   return n.claim?.what === 'derelict';
+}
+
+// ---------------------------------------------------------------------------
+// The Starfall
+// ---------------------------------------------------------------------------
+
+/** Rival houses build no Starfall before this minute: the first wars come first. */
+const STARFALL_FROM = 16;
+/** From this minute a run with nothing decided is a stalemate: any house with the Blueprint may build one. */
+const STARFALL_LATE = 35;
+/** What a system must be worth to a house's enemies before it is worth a Starfall (about a Hearth and two worlds, or four worlds). */
+const STARFALL_WORTH = 70;
+/** With less than this left on the fuse nobody new sets out to destroy a Starfall: they would not be in time. */
+const TOO_LATE = 25;
+/** Seconds a ship elsewhere in the system needs on top of one at the star: a jump to the star first. */
+const FROM_A_WORLD = 40;
+
+/** The systems that erupt so soon that a rival house sends nobody in (worked out afresh at every thought of every house, in `flee`). */
+const doomed = new Set<number>();
+
+/** Where a ship is, or will be when its jump is done. */
+function at(u: Unit): number {
+  return u.node >= 0 ? u.node : u.lane!.to;
+}
+
+/** Seconds this ship needs to be gone from where it is: its drive charged under fire, and the time until its house next thinks. */
+function leaveTime(g: Game, u: Unit): number {
+  return g.jumpChargeOf(u) / FIRE_SPOOL + AI_THINK[g.config.difficulty] * 1.2 + 2;
+}
+
+/** The nearest place outside a star's system: where ships go that get out of its way. */
+function wayOut(g: Game, f: Faction, star: GNode): number {
+  let best = -1;
+  let bd = Infinity;
+  for (const id of star.lanes) {
+    if (g.nodes[id].system === star.system || burning(g.nodes[id])) continue;
+    const d = f.capital >= 0 && g.nodes[f.capital].system !== star.system ? g.pathLen(id, f.capital) : 0;
+    if (d < bd) {
+      bd = d;
+      best = id;
+    }
+  }
+  return best;
+}
+
+/**
+ * Out of a system that is about to erupt: every warship of the house there leaves for the nearest place
+ * outside, those at the star at the last moment (they may be fighting for the Starfall), those at its
+ * worlds half a minute sooner (their way out leads through the star). It makes no difference whose
+ * Starfall it is: a house's own escort leaves like anyone.
+ */
+function flee(g: Game, f: Faction, all: Unit[], assigned: Set<number>) {
+  const own = g.starfallOf(f.id);
+  for (const d of g.armedStarfalls()) {
+    const star = g.nodes[d.node];
+    const out = wayOut(g, f, star);
+    let soon = false;
+    const go: Unit[] = [];
+    // (Its own Starfall, not armed, is worth saving too.)
+    if (own && own.fuse === undefined && g.nodes[at(own)].system === star.system && d.fuse! <= leaveTime(g, own) + FROM_A_WORLD && own.dest !== out) go.push(own);
+    for (const u of all) {
+      if (g.nodes[at(u)].system !== star.system) continue;
+      const need = leaveTime(g, u) + (at(u) === star.id ? 0 : FROM_A_WORLD);
+      if (d.fuse! > need) continue;
+      soon = true;
+      assigned.add(u.id);
+      if (out >= 0 && u.dest !== out) go.push(u);
+    }
+    if (soon || d.fuse! < FROM_A_WORLD + 20) doomed.add(star.system);
+    if (go.length) g.cmdMove(f.id, go.map((u) => u.id), out);
+  }
+}
+
+/**
+ * A Starfall of another house, armed at the star of a system where this house holds worlds: its ships go
+ * and destroy it, if they are enough against the escort and can be there in time. For its Hearth's
+ * system every ship answers, from anywhere; for other worlds, those within four jumps. At the star the
+ * ships that break structures go for the Starfall itself; the rest fight its escort.
+ */
+function defuse(g: Game, f: Faction, all: Unit[], assigned: Set<number>) {
+  for (const d of g.armedStarfalls()) {
+    if (d.owner === f.id || !g.hostile(d.owner, f.id)) continue;
+    const star = g.nodes[d.node];
+    if (!g.nodes.some((n) => n.system === star.system && n.owner === f.id)) continue;
+    const home = f.capital >= 0 && g.nodes[f.capital].system === star.system;
+    const free = all.filter((u) => !assigned.has(u.id));
+    const here = free.filter((u) => at(u) === star.id || u.dest === star.id);
+    const escort = g.hostilePowerAt(star.id, f.id);
+    const near = d.fuse! < TOO_LATE ? [] : free.filter((u) => !here.includes(u) && (home || g.hops(at(u), star.id) <= 4) && isFinite(g.pathLen(at(u), star.id)) && !g.fireOnWay(at(u), star.id));
+    // (Enough to fight the escort, or nobody goes: the rest of the fleet is better saved.)
+    if (power(g, here) + power(g, near) < escort * 0.8) continue;
+    for (const u of [...here, ...near]) assigned.add(u.id);
+    if (near.length) g.cmdMove(f.id, near.map((u) => u.id), star.id);
+    const breakers = here.filter((u) => u.node === star.id && !u.lane && u.orderTarget !== d.id && (escort < 1 || BREAKS[u.type]));
+    if (breakers.length) g.cmdAttack(f.id, breakers.map((u) => u.id), d.id);
+    if (home && f.ai!.mode !== 'build') f.ai!.mode = 'build';
+  }
+}
+
+/** The ships whose guns are made for structures: they go for the Starfall while the others fight its escort. */
+const BREAKS: Partial<Record<UnitType, boolean>> = { breaker: true, lancer: true, dreadnought: true, ark: true, carrier: true };
+
+/**
+ * Does the house want a Starfall now? It has the Blueprint, the time has come, nothing threatens it,
+ * its hangar is nearly full (so its Embers have little else to do), there is a star worth it, and its
+ * own attacks have got nowhere: it gave one up on a rival's world and has taken none since, or the run
+ * is so late (`STARFALL_LATE`) that nothing is being decided by ordinary means. (A house
+ * that built one whenever it could stopped in the middle of wars it was winning, to save for it and
+ * march to a star: in forty AI-only games five fewer were decided within the hour, and conquests fell
+ * from ten to four. A Starfall is for the wall that would not fall.)
+ */
+function wantsStarfall(g: Game, f: Faction, ctx: Ctx): boolean {
+  if (g.cradle || !g.hasCard(f, 'bpStarfall') || ctx.minutes < STARFALL_FROM || f.capital < 0 || ctx.threats.length > 0) return false;
+  if (g.starfallOf(f.id) || g.nodes[f.capital].shipQ.some((q) => q.id === 'starfall')) return false;
+  if (f.hangarUsed < f.hangarCap * 0.8 || g.time < f.ai!.firstAttackAt || !((f.ai!.stalled && f.ai!.stalled.n > 0) || ctx.minutes >= STARFALL_LATE)) return false;
+  return starfallStar(g, f) !== null;
+}
+
+/**
+ * The star a house would set alight: the one whose system is worth most to its enemies and holds no
+ * world of its own, the nearer the better. Null if none is worth a Starfall. On Easy, never the star of
+ * the player's own home system.
+ */
+export function starfallStar(g: Game, f: Faction): GNode | null {
+  const ai = f.ai!;
+  const from = f.capital;
+  const playerHome = g.player.capital >= 0 ? g.nodes[g.player.capital].system : -1;
+  // (The system of the world its last attack gave up on: that is the wall a Starfall is for.)
+  const wall = ai.stalled && ai.stalled.wall >= 0 ? g.nodes[ai.stalled.wall].system : -1;
+  let best: GNode | null = null;
+  let bs = 0;
+  for (const star of g.nodes) {
+    if (star.kind !== 'star' || !f.explored[star.id] || star.hazard || g.armedAt(star)) continue;
+    if (g.config.difficulty === 0 && star.system === playerHome) continue;
+    let worth = 0;
+    let own = false;
+    for (const n of g.nodes) {
+      if (n.system !== star.system || n.kind !== 'planet' || n.owner < 0 || !f.explored[n.id]) continue;
+      if (n.owner === f.id) {
+        own = true;
+        break;
+      }
+      const o = g.factions[n.owner];
+      if (o.kind !== 'empire' || !g.hostile(n.owner, f.id) || g.asleep(o.id) || (g.time < o.graceUntil && ai.grudge !== o.id)) continue;
+      worth += (10 + SIZE_VALUE[n.size] * 3 + n.level * 2 + (isHearth(n) ? 25 : 0)) * rivalThreat(g, n.owner) * (n.owner === ai.grudge && g.time - ai.grudgeAt < 600 ? 1.5 : 1);
+    }
+    if (own || worth < STARFALL_WORTH) continue;
+    const dist = g.pathLen(from, star.id);
+    if (!isFinite(dist) || g.fireOnWay(from, star.id)) continue;
+    const score = (worth * (star.system === wall ? 2.5 : 1)) / (1 + dist / 9000);
+    if (score > bs) {
+      bs = score;
+      best = star;
+    }
+  }
+  return best;
+}
+
+/**
+ * The house's own Starfall, if it has one: armed, the army stands by it until it is time to leave
+ * (`flee` sees to that); not yet armed, the army and the Starfall meet at the house's world nearest the
+ * star, go there together, and arm it once the star is theirs. With no star worth it, or too small an
+ * army, the Starfall waits at the Hearth and the army goes about its business. True if the army is busy
+ * with it.
+ */
+function ownStarfall(g: Game, f: Faction, ctx: Ctx, army: Unit[], armyPower: number, minArmy: number): boolean {
+  const ai = f.ai!;
+  const d = g.starfallOf(f.id);
+  // (What the house gives up is deleted, not set to undefined: a save drops an undefined field, and the game
+  // that loads it would put the field back in another place than the game that went on.)
+  if (!d) {
+    delete ai.starfall;
+    return false;
+  }
+  if (d.fuse !== undefined) {
+    // (Its work is done when the star erupts: the army has had its attack. What it scorched is worth
+    // twice as much to the army for some minutes after the fire: a Starfall is the start of an attack.)
+    ai.mode = 'build';
+    ai.lastAttack = g.time;
+    if (ai.burned?.star !== d.node || ai.burned.until < g.time) ai.burned = { star: d.node, until: g.time + d.fuse + STARFALL_BURN + 300 };
+    if (ai.stalled && ai.stalled.n > 0) ai.stalled = { n: 0, wall: ai.stalled.wall };
+    sendIfNeeded(g, f, army, d.node, false);
+    return true;
+  }
+  const home = () => {
+    delete ai.starfall;
+    if (f.capital >= 0 && at(d) !== f.capital && d.dest !== f.capital) g.cmdMove(f.id, [d.id], f.capital);
+    return false;
+  };
+  if (ctx.threats.length || armyPower < minArmy || g.time < ai.firstAttackAt || g.time - ai.lastAttack < 45) return home();
+  let star = ai.starfall ? g.nodes[ai.starfall.star] : null;
+  // (The star it chose may have changed hands, or be burning: it looks again every minute, and whenever it must.)
+  if (!star || star.hazard || g.armedAt(star) || g.time - ai.starfall!.since > 60 || g.fireOnWay(at(d), star.id)) {
+    const since = ai.starfall && star && !star.hazard ? ai.starfall.since : g.time;
+    star = starfallStar(g, f);
+    if (star) ai.starfall = { star: star.id, since: star.id === ai.starfall?.star ? since : g.time };
+    else delete ai.starfall;
+  }
+  if (!star) return home();
+  ai.mode = 'build';
+  const rally = rallyFor(g, f, star.id);
+  const all = [...army, d];
+  if (at(d) === star.id && !d.lane) {
+    // At the star: arm it when the escort holds the place; home again when the place cannot be held.
+    const ours = g.powerAt(star.id, f.id);
+    const theirs = g.hostilePowerAt(star.id, f.id);
+    if (theirs > ours * 1.8 && army.filter((u) => u.node === star.id).length > army.length * 0.5) {
+      g.cmdRetreat(f.id, army.map((u) => u.id));
+      ai.lastAttack = g.time;
+      return home();
+    }
+    sendIfNeeded(g, f, army, star.id, false);
+    if (ours >= theirs && ours >= armyPower * 0.5) g.cmdArm(f.id, d.id);
+  } else if (d.dest === star.id && (d.lane || d.path.length > 0)) {
+    // On the way there, together.
+    sendIfNeeded(g, f, army, star.id, false);
+  } else if (at(d) === rally && !d.lane && power(g, army.filter((u) => u.node === rally)) >= armyPower * 0.75) {
+    sendIfNeeded(g, f, all, star.id, false);
+  } else {
+    sendIfNeeded(g, f, all, rally, false);
+  }
+  return true;
 }
 
 function scouting(g: Game, f: Faction, ctx: Ctx) {

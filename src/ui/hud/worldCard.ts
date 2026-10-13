@@ -8,6 +8,7 @@ import { ERAS, LAST_CRADLE_ERA, LINE_SHORT, SPACE } from '../../game/data/eras';
 import { RELIC_BY_ID } from '../../game/data/relics';
 import { UNITS } from '../../game/data/units';
 import { ASCENSION_BOONS, GATE_CHARGE } from '../../game/data/victories';
+import { burning, STARFALL_BUILD, STARFALL_FUSE, STARFALL_STEP } from '../../game/starfall';
 import { ECON, PLANETS, ROLE_ORDER, ROLES } from '../../game/data/worlds';
 import type { GNode, UnitType } from '../../game/types';
 import { roman } from '../../game/util';
@@ -93,6 +94,7 @@ export function nodeRows(hud: Hud, n: GNode): CardRow[] {
     if (visible) rows.push(hpRow(hud, n));
     const walls = isHearth(n) && f.kind === 'empire' ? game.wallsOf(n) : 1;
     if (walls < 1) rows.push(line(hud, `WALLS ${pct(walls)}: WEAKER NOW, FULL AT ${fmtTime(ECON.wallsTime)}`, PAL.ember, 'tiny', { terms: gloss('walls') }));
+    rows.push(...starfallRows(hud, n));
     if (visible && game.fieldAt(n)) rows.push(line(hud, `ANTI-WARP FIELD: YOUR SHIPS JUMP AWAY ${HOLD_FIELD}S SLOWER`, PAL.violet, 'tiny', { terms: gloss('field') }));
     if (visible) rows.push(...fieldRows(hud, n));
     // (Ages: a house still on its way from the cradle holds its Hearth, and nothing can touch it until it arrives.)
@@ -183,6 +185,7 @@ function hpRow(hud: Hud, n: GNode): CardRow {
 function ownWorldRows(hud: Hud, n: GNode, innerW: number): CardRow[] {
   return [
     ...titleRows(hud, n),
+    ...starfallRows(hud, n),
     yieldRow(hud, n),
     hpRow(hud, n),
     gap(2),
@@ -407,6 +410,18 @@ function projects(hud: Hud, n: GNode): Project[] {
   if (hearth && !game.cradle && game.checkArk(p.id) !== WHY.arkFlies) {
     extras.push({ id: 'ark', label: 'REBUILD ARK', cost: game.shipCost(p, 'ark'), icon: 'hearth', accent: PAL.gold, act: () => hud.actions.ark(), tip: 'Rebuild your Ark. It keeps its levels and abilities.', dis: game.checkArk(p.id), calls: true });
   }
+  // The Starfall is on the Hearth's card from the moment its Blueprint is drafted, whatever else is so.
+  if (hearth && !game.cradle && game.hasCard(p, 'bpStarfall')) {
+    const own = game.starfallOf(p.id);
+    extras.push({
+      id: 'starfall', label: 'STARFALL', cost: game.starfallCost(p), icon: 'starfall', accent: PAL.ember, act: () => hud.actions.starfall(),
+      tip: `Build a Starfall (${STARFALL_BUILD} seconds). Fly it to any star and arm it there: ${STARFALL_FUSE / 60} minutes later the star erupts, unless the ` +
+          `Starfall is destroyed first. Every ship in that system is destroyed, yours too, and every world there is scorched: no shields, a level ` +
+          `lost, the Glow of a new world. No world changes hands. You have one at a time, and each costs ${STARFALL_STEP} Embers more than the last.` +
+          `${own ? ` Yours is ${own.fuse !== undefined ? 'armed' : 'waiting'} at ${game.nodes[own.node >= 0 ? own.node : own.lane!.to].name}.` : ''}`,
+      dis: game.checkStarfall(p.id),
+    });
+  }
   if (hearth && game.victories.includes('ascension') && !p.gate) {
     const why = game.checkGate(p.id, n.id);
     const short = p.boons < ASCENSION_BOONS;
@@ -560,6 +575,11 @@ function siteRows(hud: Hud, n: GNode, innerW: number): CardRow[] {
     case 'star':
       rows.push(header(hud, n.name.toUpperCase(), PAL.gold, null, 'STAR', undefined, { terms: gloss('starlane') }));
       rows.push(para(hud, 'A star where starlanes meet. Fleets pass through here on their way between worlds.', PAL.mist, innerW, { terms: gloss('starlane', 'spool') }));
+      if (burning(n)) {
+        rows.push(line(hud, `BURNS FOR ${fmtTime(Math.ceil(n.hazard!.t))} MORE`, PAL.ember, 'tiny', { terms: gloss('starfall') }));
+        rows.push(para(hud, 'A Starfall set this star alight. Ships that enter take heavy damage, so fleets wait in front of the fire until it is out. Order ' +
+            'yours there twice to send them through.', PAL.mist, innerW));
+      }
       break;
     case 'anomaly':
       rows.push(header(hud, n.name.toUpperCase(), PAL.violet, null, 'ANOMALY', undefined, { terms: gloss('anomaly') }));
@@ -588,8 +608,27 @@ function siteRows(hud: Hud, n: GNode, innerW: number): CardRow[] {
     }
   }
   if (n.claim?.what === 'derelict') rows.push(para(hud, 'A derelict Dreadnought drifts here. Hold this place alone for 15 seconds to claim it.', PAL.gold, innerW, { terms: gloss('dreadnought') }));
+  rows.push(...starfallRows(hud, n));
   if (hud.s.visible(n.id)) rows.push(...fieldRows(hud, n));
   return rows;
+}
+
+/** A Starfall armed at this place's star: every card in that system says so, with what it will do here and how long is left. */
+export function starfallRows(hud: Hud, n: GNode): CardRow[] {
+  const game = hud.g;
+  const star = game.starOf(n);
+  const d = star ? game.armedAt(star) : null;
+  if (!star || !d) return [];
+  const mine = d.owner === game.playerId;
+  const what = n.kind === 'planet' && n.owner >= 0 ? 'THIS WORLD WILL BE SCORCHED' : 'EVERY SHIP HERE WILL BE DESTROYED';
+  return [
+    line(hud, `STARFALL${n.id === star.id ? '' : ` AT ${star.name.toUpperCase()}`}: ERUPTS IN ${fmtTime(Math.ceil(d.fuse!))}`, PAL.red, 'tiny', {
+      tip: `${mine ? 'Your Starfall' : `A Starfall of ${game.factions[d.owner].name}`} is armed at ${star.name}. When the time runs out, every ship in this system is destroyed and ` +
+          `every world in it is scorched (no shields, a level lost, the Glow of a new world), unless the Starfall is destroyed first.`,
+      terms: gloss('starfall'),
+    }),
+    line(hud, what, PAL.ember, 'tiny'),
+  ];
 }
 
 /** What a Bastion would do at a world of the player's, for the tip of that role's button. */

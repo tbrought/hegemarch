@@ -107,7 +107,8 @@ export class Effects {
   /** Turn simulation effects into visuals. `visible` filters by node; `near` culls off-screen ones. */
   ingest(list: Fx[], visible: (node: number) => boolean, near: (x: number, y: number, pad: number) => boolean, zoom: number) {
     for (const f of list) {
-      if ('node' in f && f.node >= 0 && !visible(f.node)) continue;
+      // (A Starfall armed, a star erupting: every house is told, so they are seen wherever they are.)
+      if ('node' in f && f.node >= 0 && !visible(f.node) && f.k !== 'armed' && f.k !== 'nova') continue;
       switch (f.k) {
         case 'beam':
           if (!near(f.x1, f.y1, 800)) break;
@@ -172,6 +173,18 @@ export class Effects {
           if (!near(f.x, f.y, 200)) break;
           this.floaters.push({ x: f.x, y: f.y, t: 0, dur: 1.6, text: f.text, c: f.color });
           break;
+        case 'armed':
+          this.rings.push({ x: f.x, y: f.y, r0: 420, r1: 30, t: 0, dur: 0.9, c: PAL.red, world: true, dotted: true });
+          this.rings.push({ x: f.x, y: f.y, r0: 420, r1: 30, t: -0.3, dur: 0.9, c: PAL.ember, world: true, dotted: true });
+          break;
+        case 'nova': {
+          // The star goes up: rings that run out over the whole system, a white flash, and the screen shakes.
+          for (let i = 0; i < 4; i++) this.rings.push({ x: f.x, y: f.y, r0: 40, r1: 1400 + i * 900, t: -i * 0.2, dur: 1.5 + i * 0.4, c: i % 2 ? PAL.gold : PAL.bone, world: true, dotted: false });
+          this.flashes.push({ x: f.x, y: f.y, t: 0, dur: 0.7, r: Math.max(10, 500 * zoom), c: PAL.bone });
+          this.burst(f.x, f.y, 60, 700, 1.8, [PAL.bone, PAL.gold, PAL.ember, PAL.red], true);
+          this.shake = 3;
+          break;
+        }
         case 'ability':
           if (!near(f.x, f.y, f.r)) break;
           this.rings.push({ x: f.x, y: f.y, r0: 10, r1: f.r, t: 0, dur: 0.6, c: f.color, world: true, dotted: true });
