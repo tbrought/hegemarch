@@ -1,6 +1,6 @@
 import type { Game } from '../game/Game';
 import { UNITS } from '../game/data/units';
-import { burning } from '../game/starfall';
+import { burning, STARFALL_FUSE } from '../game/starfall';
 import type { GNode, Unit } from '../game/types';
 import { Camera } from './Camera';
 import { Effects } from './Effects';
@@ -611,6 +611,13 @@ export class Renderer {
           continue;
         }
         if (!sprites) {
+          // (A Starfall is found from any height: a cross where other ships are dots, red and blinking once it is armed.)
+          if (u.type === 'starfall') {
+            ctx.fillStyle = u.fuse !== undefined ? (flick ? PAL.red : PAL.bone) : PAL.ember;
+            ctx.fillRect(x - 2, y, 5, 1);
+            ctx.fillRect(x, y - 2, 1, 5);
+            continue;
+          }
           ctx.fillStyle = color;
           const big = def.radius >= 20 || isStatic;
           ctx.fillRect(x, y, big ? 2 : 1, big ? 2 : 1);
@@ -644,6 +651,7 @@ export class Renderer {
           const s = silhouette(u.type, PAL.bone, dir, u.era);
           ctx.drawImage(s, x - (s.width >> 1), y - (s.height >> 1));
         } else drawShip(ctx, u.type, color, x, y, a, step, u.era);
+        if (u.type === 'starfall') this.drawStarfall(ctx, x, y, u);
         if (u.stun > 0 && flick) {
           ctx.fillStyle = PAL.sky;
           ctx.fillRect(x, y - 4, 1, 1);
@@ -671,6 +679,41 @@ export class Renderer {
         }
       }
     }
+  }
+
+  /**
+   * What moves about a Starfall: three motes that circle its caged star, the faster the less time is left;
+   * and, once it is armed, a red ring that closes on it again and again, with four marks: the thing to shoot.
+   */
+  private drawStarfall(ctx: Ctx, x: number, y: number, u: Unit) {
+    const t = this.time;
+    const armed = u.fuse !== undefined;
+    const haste = armed ? 1 - Math.max(0, u.fuse!) / STARFALL_FUSE : 0;
+    const turn = t * (1.6 + haste * 7) + u.id;
+    for (let i = 0; i < 3; i++) {
+      const a = turn + (i * Math.PI * 2) / 3;
+      // (An orbit seen at a slant: wide, and flat. A mote on the near side is bright and two pixels wide.)
+      const mx = Math.round(x + Math.cos(a) * 15);
+      const my = Math.round(y + Math.sin(a) * 6);
+      const near = Math.sin(a) > 0;
+      ctx.fillStyle = near ? PAL.bone : armed ? PAL.red : PAL.gold;
+      ctx.fillRect(mx, my, near ? 2 : 1, 1);
+    }
+    if (!armed) return;
+    // The heart of it goes red and white in turn.
+    const beat = Math.floor(t * (3 + haste * 9)) % 2 === 0;
+    ctx.fillStyle = beat ? PAL.red : PAL.bone;
+    ctx.fillRect(x - 2, y - 1, 5, 3);
+    ctx.fillRect(x - 1, y - 2, 3, 5);
+    // The ring: from wide to close in a second, then again.
+    const k = (t * (1 + haste)) % 1;
+    const r = Math.round(27 - k * 10);
+    ring(ctx, x, y, r, k < 0.5 ? PAL.red : PAL.ember, 2);
+    ctx.fillStyle = PAL.red;
+    ctx.fillRect(x - r - 3, y, 3, 1);
+    ctx.fillRect(x + r + 1, y, 3, 1);
+    ctx.fillRect(x, y - r - 3, 1, 3);
+    ctx.fillRect(x, y + r + 1, 1, 3);
   }
 
   private drawHeart(ctx: Ctx, x: number, y: number, u: Unit) {

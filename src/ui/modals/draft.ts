@@ -217,7 +217,8 @@ function draftCard(modals: Modals, g: Ctx, card: DraftCard, i: number, lay: Draf
     // Ships at twice their size and icons at three times; smaller when three of them crowd the window.
     let look: Look = { color: p.color, scale: 2, iconScale: 3, t: modals.ui.time, lively: hot, turn: true };
     if (subjectsSize(subs, look).w > ww - 4) look = { ...look, iconScale: 2 };
-    if (subjectsSize(subs, look).w > ww - 4) look = { ...look, scale: 1 };
+    // (And no taller than the window: a Starfall at twice its size is.)
+    if (subjectsSize(subs, look).w > ww - 4 || subjectsSize(subs, look).h > WIN - 2) look = { ...look, scale: 1 };
     g.save();
     g.beginPath();
     g.rect(wx, wy, ww, WIN);
@@ -236,7 +237,8 @@ function draftCard(modals: Modals, g: Ctx, card: DraftCard, i: number, lay: Draf
   ly += 3;
   if (ship && !strip) {
     const spr = shipSprite(ship, p.color, 0);
-    const sc = spr.width * 3 <= cw - 16 ? 3 : 2;
+    // (As big as fits: across the card, and in the 30 pixels the card keeps for its picture.)
+    const sc = Math.max(1, Math.min(spr.width * 3 <= cw - 16 ? 3 : 2, Math.floor(24 / spr.height)));
     g.drawImage(spr, Math.round(cx + cw / 2 - (spr.width * sc) / 2), ly + 2, spr.width * sc, spr.height * sc);
     ly += spr.height * sc + 6;
   }

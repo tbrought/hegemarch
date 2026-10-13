@@ -12,7 +12,7 @@ import { text, textWidth } from '../../render/font';
 import { PAL } from '../../render/palette';
 import { fmtTime } from '../../render/Renderer';
 import { bar, box } from '../../render/pixel';
-import { shipSprite } from '../../render/sprites';
+import { icon, shipSprite } from '../../render/sprites';
 import { fmt } from '../format';
 import { gloss, GLOSS_BY_ID, termsIn } from '../glossary';
 import { unitCount, unitDesc, unitName } from '../vocab';
@@ -224,12 +224,15 @@ function compositionRow(hud: Hud, counts: Map<UnitType, number>): CardRow {
         const label = `×${c}`;
         // (The chip is as wide as its ship: a Dreadnought is wider than the rest, and used to get no picture at all.)
         const spr = shipSprite(t, p.color, 0);
-        const iw = Math.max(12, spr.width + 2);
+        // (A Starfall is taller than the chip: its sign stands for it.)
+        const tall = spr.height > 10;
+        const iw = tall ? 12 : Math.max(12, spr.width + 2);
         const bw = iw + 1 + textWidth(label, 'tiny');
         if (bx + bw > x + w) break;
         const id = 'comp-' + t;
         box(gx, bx, y, bw, 12, hud.ui.isHot(id) ? PAL.indigo : PAL.night, PAL.indigo);
-        gx.drawImage(spr, bx + Math.round(iw / 2) - (spr.width >> 1), y + 6 - (spr.height >> 1));
+        if (tall) icon(gx, 'starfall', bx + 4, y + 4);
+        else gx.drawImage(spr, bx + Math.round(iw / 2) - (spr.width >> 1), y + 6 - (spr.height >> 1));
         text(gx, label, bx + iw, y + 4, PAL.mist, 'tiny');
         hud.ui.add({ id, x: bx, y, w: bw, h: 12, onClick: () => hud.s.selectType(t), tipTitle: `${UNITS[t].name} ×${c}`, tip: `${GLOSS_BY_ID[t]?.text ?? UNITS[t].short} Click to select only these.` });
         bx += bw + 2;

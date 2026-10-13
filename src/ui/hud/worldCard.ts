@@ -363,7 +363,7 @@ function queueRows(hud: Hud, n: GNode): CardRow[] {
           box(gx, bx, y, 14, 11, hud.ui.isHot(id) ? PAL.wine : PAL.night, PAL.indigo);
           const spr = shipSprite(t, p.color, 0);
           if (spr.width <= 12) gx.drawImage(spr, bx + 7 - (spr.width >> 1), y + 5 - (spr.height >> 1));
-          else icon(gx, t === 'gate' ? 'ascension' : 'forge', bx + 4, y + 2);
+          else icon(gx, t === 'gate' ? 'ascension' : t === 'starfall' ? 'starfall' : 'forge', bx + 4, y + 2);
           const first = (e.kind === 'ship' && e.i === 0) || (e.kind === 'build' && e.i === 0);
           if (first) rect(gx, bx + 1, y + 9, Math.max(1, Math.round(12 * (e.q.t / e.q.total))), 1, PAL.teal);
           hud.ui.add({ id, x: bx, y, w: 14, h: 11, onClick: () => hud.actions.cancel(n.id, e.kind, e.i), tip: `${UNITS[t]?.name ?? t}: click to cancel and get ${e.q.cost} Embers back.` });

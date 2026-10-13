@@ -439,6 +439,19 @@ from a film, for checking one without watching it. (Looking at those pictures fo
 the Blueprint's card had no picture, because the cards could not draw a Starfall, and its text ran off
 the card; and the flash of an eruption was a white square half a screen wide. 1.17.1.)
 
+**What it looks like** (1.17.2). The first Starfall was an oval the size of an Ark, and the playtest's
+host asked for it big and plain to see, so that a player can find it and shoot it. It is a star in a
+cage now, 23 pixels across where an Ark is 11: a white-hot heart in gold and ember with a corona that
+flickers, a ring with four struts, four clamps and four prongs, the same from every side (it does not
+turn), with three motes circling it. Armed, its heart beats red and white, the motes run faster as
+the time runs out, and a red ring closes on it once a second with four marks: the thing to shoot.
+From so far out that ships are dots it is a cross (red and blinking once armed), and the minimap
+marks a star with an armed Starfall in red and a burning one in ember. Only its picture grew: what
+the simulation counts as its size is as it was, so the golden traces did not move. The few places of
+the HUD that draw a ship in a small slot (a chip of the fleet's card, a slot of the queue) show its
+sign instead, and a Boon's card draws it as big as its window allows. `scripts/starfall-look.mjs`
+takes its picture in a fleet and alone, armed and not, from every height.
+
 On screen: STARFALL is on the Hearth's card from the moment the Blueprint is drafted, and ARM on the
 Starfall's card from the day it is built; both are greyed with the reason when they cannot be pressed
 ("One Starfall at a time", "Only at a star"). A star with an armed Starfall blinks as before a flare

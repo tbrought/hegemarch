@@ -8,7 +8,7 @@ import { capHeight, IC, registerIcons, text, textWidth, type FontId } from './fo
 import { PAL, shade } from './palette';
 import { box, ctx2d, makeCanvas, type Ctx } from './pixel';
 
-// Legend: x = house color, d = house shade, w = bone, e = engine glow, k = void.
+// Legend: x = house color, d = house shade, w = bone, e = engine glow, k = void, g = gold, f = ember.
 const SHIPS: Partial<Record<UnitType, string[]>> = {
   scout: ['x...', 'exxw', 'x...'],
   seed: ['.w.', 'wxw', '.w.'],
@@ -20,7 +20,6 @@ const SHIPS: Partial<Record<UnitType, string[]>> = {
   dreadnought: ['.xxx.........', 'xxxxxxx......', 'xxdxxxxxxxx..', 'exxwxxxwxxxxw', 'xxdxxxxxxxx..', 'xxxxxxx......', '.xxx.........'],
   ark: ['..xx.......', '.xxxxx.....', 'xxxxxxxxx..', 'exxxwxxxxxw', 'xxxxxxxxx..', '.xxxxx.....', '..xx.......'],
   fighter: ['xw'],
-  starfall: ['...xxxxx...', '.xxdxxxdxx.', 'xxdeeeeedxx', 'exeewwweexw', 'xxdeeeeedxx', '.xxdxxxdxx.', '...xxxxx...'],
   raider: ['x.x...', '.xxx..', 'exxxxw', '.xxx..', 'x.x...'],
   marauder: ['xx.x....', 'xxxxx...', 'exxxxxxw', 'xxxxx...', 'xx.x....'],
   drone: ['.x.x.', 'xxxxx', '.xwx.', 'xxxxx', '.x.x.'],
@@ -33,6 +32,16 @@ const SHIPS: Partial<Record<UnitType, string[]>> = {
 
 const STRUCTURES: Partial<Record<UnitType, string[]>> = {
   starbase: ['...xxxxx...', '..x.....x..', '.x.xxxxx.x.', 'x.x.....x.x', 'x.x.www.x.x', 'x.x.wdw.x.x', 'x.x.www.x.x', 'x.x.....x.x', '.x.xxxxx.x.', '..x.....x..', '...xxxxx...'],
+  // The Starfall: a star in a cage. It is the biggest thing a house flies, to be found in any fleet (and it does not
+  // turn: it is the same from every side). g and f are gold and ember that do not flicker.
+  starfall: [
+    '...........w...........', '...........x...........', '........xxxxxxx........', '......xxx..d..xxx......',
+    '....ddd....d....ddd....', '....d......d......d....', '...xd.ee..fff..ee.dx...', '...x..e.ffgggff.e..x...',
+    '..xx...fgggggggf...xx..', '..x....fggwwwggf....x..', '..x...fggwwwwwggf...x..', 'wxxdddfggwwewwggfdddxxw',
+    '..x...fggwwwwwggf...x..', '..x....fggwwwggf....x..', '..xx...fgggggggf...xx..', '...x..e.ffgggff.e..x...',
+    '...xd.ee..fff..ee.dx...', '....d......d......d....', '....ddd....d....ddd....', '......xxx..d..xxx......',
+    '........xxxxxxx........', '...........x...........', '...........w...........',
+  ],
   militia: ['..x.x..', '.xxxxx.', 'xxdwdxx', '.xwxwx.', 'xxdwdxx', '.xxxxx.', '..x.x..'],
   sentinel: ['....x....', '...xxx...', '..xxdxx..', '.xxdwdxx.', 'xxdwwwdxx', '.xxdwdxx.', '..xxdxx..', '...xxx...', '....x....'],
   monolith: ['...xxx...', '..xxdxx..', '..xdwdx..', '..xxdxx..', '..xxxxx..', '.xxdxdxx.', '.xxxwxxx.', '.xxdxdxx.', '.xxxxxxx.', 'xxxdxdxxx', 'xxxxwxxxx', 'xxxdxdxxx', 'xxxxxxxxx', '.xxxxxxx.', '..xxxxx..'],
@@ -146,6 +155,10 @@ function paint(ch: string, color: string, flick: boolean): string | null {
       return PAL.bone;
     case 'e':
       return flick ? PAL.gold : PAL.ember;
+    case 'g':
+      return PAL.gold;
+    case 'f':
+      return PAL.ember;
     case 'k':
       return PAL.void;
     case 'l':

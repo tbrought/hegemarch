@@ -5,6 +5,7 @@
  */
 
 import { UNITS } from '../../game/data/units';
+import { burning } from '../../game/starfall';
 import type { Note, Unit } from '../../game/types';
 import { fit, text, textWidth, wrap } from '../../render/font';
 import { PAL, shade } from '../../render/palette';
@@ -263,6 +264,15 @@ export function drawMinimap(hud: Hud) {
       g.fillStyle = PAL.red;
       g.fillRect(mx(n.x) - 1, my(n.y) - 1, 3, 3);
     }
+  }
+  // A star with an armed Starfall blinks red, wherever it is: every house is told of one. A star that burns is ember.
+  for (const n of game.nodes) {
+    if (n.kind !== 'star' || !hud.s.explored(n.id)) continue;
+    const armed = !!game.armedAt(n);
+    if (!armed && !burning(n)) continue;
+    g.fillStyle = armed ? (Math.floor(hud.clock * 4) % 2 === 0 ? PAL.red : PAL.bone) : PAL.ember;
+    g.fillRect(mx(n.x) - 1, my(n.y), 3, 1);
+    g.fillRect(mx(n.x), my(n.y) - 1, 1, 3);
   }
   // Camera view.
   const cam = hud.s.renderer.cam;
