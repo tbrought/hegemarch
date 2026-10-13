@@ -35,6 +35,9 @@ const clickUi = async (id) => {
     r = await uiRect(id);
   }
   if (!r) throw new Error('no UI region ' + id);
+  // (A dialog that has just opened by itself takes no click for a moment (`Modals.guarded`): wait it out, as a player would.
+  // This suite clicked the Ark's card 0.9 s after it opened, and one run in five the click was lost.)
+  for (let i = 0; i < 60 && (await ev(() => window.__app.hud?.ui.holding())); i++) await wait(100);
   const [x, y] = await toPage(r.x + r.w / 2, r.y + r.h / 2);
   await page.mouse.click(x, y);
   await wait(140);
@@ -284,6 +287,14 @@ try {
   check('no console errors', errors.length === 0, errors.slice(0, 3).join(' | '));
 } catch (e) {
   console.log('FAIL  script error: ' + e.message);
+  // (What the page itself said, if anything: a wait that runs out usually has its reason there.)
+  if (errors.length) console.log('      page errors: ' + errors.slice(0, 3).join(' | ').slice(0, 1500));
+  const where = await ev(() => {
+    const a = window.__app;
+    const g = a?.session?.game;
+    return { screen: a?.screen, modal: a?.session?.modal?.kind ?? null, seed: g?.config.seed, stage: g?.config.stage, time: g ? Math.round(g.time) : null, outcome: g?.outcome ?? null, ascended: g?.ascended ?? null, paused: a?.session?.paused };
+  }).catch((x) => 'the page does not answer: ' + x.message);
+  console.log('      where it stood: ' + JSON.stringify(where));
   failures++;
   await shot('error');
 } finally {
