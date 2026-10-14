@@ -106,13 +106,13 @@ try {
   await page.click('[data-sa="menu"]');
   await page.click('[data-sa="hall"]');
   check('Hall of Heirs lists perks', (await page.$$('[data-sa^="perk:"]')).length >= 5);
-  // Fortunate Stars shows its odds as a table at every rank, the rank held lit (rank 0 here); without Legendary Lineage its Legendary row is grey and says why.
+  // Fortunate Stars shows its odds as a table at every rank, the rank held lit (rank 0 here). Without Legendary Lineage (as here) it has no Legendary row: none can be offered.
   const odds = await ev(() => {
     const t = [...document.querySelectorAll('.perk')].find((e) => /FORTUNATE STARS/.test(e.textContent))?.querySelector('.odds');
-    return t && { cells: t.children.length, lit: [...t.querySelectorAll('.now')].map((e) => e.textContent), off: t.querySelectorAll('.off').length, note: t.querySelector('.note')?.textContent ?? '', inside: t.getBoundingClientRect().right <= t.closest('.perk').getBoundingClientRect().right + 1 };
+    return t && { cells: t.children.length, lit: [...t.querySelectorAll('.now')].map((e) => e.textContent), legendary: !!t.querySelector('.legendary'), inside: t.getBoundingClientRect().right <= t.closest('.perk').getBoundingClientRect().right + 1 };
   });
-  check('Fortunate Stars shows its odds at every rank, the rank held lit', !!odds && odds.cells >= 21 && odds.lit.length === 3 && odds.lit[0] === '0' && /%$/.test(odds.lit[1]) && odds.inside, JSON.stringify(odds));
-  check('without Legendary Lineage, the Legendary row is grey and says what it needs', !!odds && odds.off === 7 && /Legendary Lineage/.test(odds.note), JSON.stringify(odds));
+  check('Fortunate Stars shows its odds at every rank, the rank held lit', !!odds && odds.cells === 14 && odds.lit.length === 2 && odds.lit[0] === '0' && /%$/.test(odds.lit[1]) && odds.inside, JSON.stringify(odds));
+  check('without Legendary Lineage, the table has no Legendary row', !!odds && !odds.legendary, JSON.stringify(odds));
   await page.click('[data-sa="menu"]');
 
   // ---- The title screen: a new player is offered the guided First Night first, and the ways to play under it ----

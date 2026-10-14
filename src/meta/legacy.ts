@@ -43,7 +43,7 @@ export const PERKS: PerkDef[] = [
 export const UNLOCKS = [
   { id: 'pacts', name: 'Forbidden Archives', desc: '[Every double-edged Pact] can appear among your Boons.', cost: 80 },
   { id: 'legendary', name: 'Legendary Lineage', desc: '[Legendary Boons] appear among your choices: [at least one in every run], by your fifth ' +
-      'choice. Fortunate Stars makes them more common.', cost: 120 },
+      'choice.', cost: 120 },
 ] as const;
 
 /**

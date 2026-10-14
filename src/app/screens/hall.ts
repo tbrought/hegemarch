@@ -38,23 +38,19 @@ export function perkPic(id: string): string {
 
 /**
  * Under a perk whose effect is a chance (Fortunate Stars): the chance at every rank, the rank the player
- * holds lit. A Legendary is offered to nobody without Legendary Lineage: its row is then grey, and says so.
+ * holds lit. The Legendary row is there once the player owns Legendary Lineage, which the Hall sells on
+ * the same page: until then no Legendary Boon can be offered, and a row of figures that do not apply
+ * (1.18.1 showed it grey, with a note pointing at the other card) only confused the one beside it.
  */
 function oddsTable(pk: PerkDef, rank: number, lineage: boolean): string {
-  const rows = perkOdds(pk);
+  const rows = perkOdds(pk).filter((row) => row.id !== 'legendary' || lineage);
   if (!rows.length) return '';
-  const lit = (r: number) => (r === rank ? ' now' : '');
-  const ranks = rows[0].odds.map((_, r) => `<span class="r${lit(r)}">${r}</span>`).join('');
-  const body = rows
-    .map((row) => {
-      const off = row.id === 'legendary' && !lineage ? ' off' : '';
-      return `<span class="k ${row.id}${off}">${row.label.toUpperCase()}</span>${row.odds.map((x, r) => `<span class="${(lit(r) + off).trim()}">${x}%</span>`).join('')}`;
-    })
-    .join('');
-  const note = lineage ? '' : '<span class="note">Legendary Boons need Legendary Lineage, below.</span>';
-  const tip = 'The chance that a Boon choice offers at least one Epic, or one Legendary Boon, at each rank of Fortunate Stars. Your rank is lit. In a ' +
-      'run, the Boons page (B) shows the odds of your next choice.';
-  return `<div class="odds" data-tip="${esc(tip)}"><span class="k">RANK</span>${ranks}${body}${note}</div>`;
+  const lit = (r: number) => (r === rank ? 'now' : '');
+  const ranks = rows[0].odds.map((_, r) => `<span class="r ${lit(r)}">${r}</span>`).join('');
+  const body = rows.map((row) => `<span class="k ${row.id}">${row.label.toUpperCase()}</span>${row.odds.map((x, r) => `<span class="${lit(r)}">${x}%</span>`).join('')}`).join('');
+  const tip = `The chance that a Boon choice offers at least one ${lineage ? 'Epic, or one Legendary,' : 'Epic'} Boon, at each rank of Fortunate Stars. ` +
+      'Your rank is lit. In a run, the Boons page (B) shows the odds of your next choice.';
+  return `<div class="odds" data-tip="${esc(tip)}"><span class="k">RANK</span>${ranks}${body}</div>`;
 }
 
 /** Everything in the Hall of Heirs the player does not have yet, cheapest first: its name and its price. */

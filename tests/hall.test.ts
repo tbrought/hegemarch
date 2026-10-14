@@ -77,7 +77,6 @@ describe('what the Hall of Heirs sells for rarer Boons can be felt', () => {
     for (const other of PERKS) if (other.id !== 'luck') expect(perkOdds(other)).toEqual([]);
     const lineage = UNLOCKS.find((u) => u.id === 'legendary')!;
     expect(lineage.desc).toMatch(/at least one in every run/);
-    expect(lineage.desc).toMatch(/Fortunate Stars makes them more common/);
     expect(lineage.desc).not.toMatch(/\d%/);
   });
 
