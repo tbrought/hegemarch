@@ -88,8 +88,13 @@ function win(g: Game, f: Faction, v: VictoryId, reason: string) {
   g.declareWinner(f.id, v, reason);
 }
 
+/** The countdowns of a rival's Destiny, as heralded (its hoard nearing the mark is only told). */
+const COUNTDOWN: Record<string, string> = { dom: 'DOMINATION LOOMS', gate50: 'THE GATE IS HALF CHARGED', relic: 'THE RELICS GATHER', gold: 'THE HOARD IS FULL' };
+
 function warnOnce(g: Game, f: Faction, key: string, text: string) {
   if (f.warned[key]) return;
   f.warned[key] = g.time;
-  g.notify(-1, text, f.isPlayer ? 'good' : 'alert', f.capital >= 0 ? f.capital : undefined);
+  const title = f.isPlayer ? undefined : COUNTDOWN[key];
+  g.notify(-1, text, f.isPlayer ? 'good' : 'alert', f.capital >= 0 ? f.capital : undefined, false,
+    title ? { title, sub: `${g.shortName(f)} will be crowned unless you stop them.`, tone: 'house', fid: f.id } : undefined);
 }

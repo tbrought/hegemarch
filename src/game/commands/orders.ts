@@ -293,7 +293,8 @@ export function cmdArm(g: Game, fid: number, unitId: number): boolean {
   g.notify(-1, f.isPlayer
     ? `Your Starfall is armed at ${n.name}: the star erupts in ${STARFALL_FUSE / 60} minutes. Keep it alive, and have your ships out by then.`
     : `${g.shortName(f)} armed a Starfall at ${n.name}! The star erupts in ${STARFALL_FUSE / 60} minutes. Destroy the Starfall to stop it.`,
-    f.isPlayer ? 'good' : 'alert', n.id, !f.isPlayer && mine);
+    f.isPlayer ? 'good' : 'alert', n.id, !f.isPlayer && mine,
+    f.isPlayer ? undefined : { title: 'STARFALL ARMED', sub: `${g.shortName(f)} armed one at ${n.name}: it erupts in ${STARFALL_FUSE / 60} minutes.`, tone: 'red' });
   return true;
 }
 

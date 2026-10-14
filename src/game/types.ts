@@ -418,6 +418,18 @@ export interface Prompt {
   result?: string;
 }
 
+/**
+ * A big moment of the run, announced across the screen (ui/hud/herald.ts): a title in large letters,
+ * a line under it, and its colour: a house's own (`fid`), gold for the player's triumphs, red for an
+ * alarm, pink for the Hollow.
+ */
+export interface Herald {
+  title: string;
+  sub: string;
+  tone: 'house' | 'gold' | 'red' | 'pink';
+  fid?: number;
+}
+
 export interface Note {
   id: number;
   t: number;
@@ -426,6 +438,8 @@ export interface Note {
   node?: number;
   /** Ask the client to pause (when auto-pause is on). */
   pause?: boolean;
+  /** A big moment: announced across the screen, not only told in the log. */
+  herald?: Herald;
   /**
    * This line tallies the player's ships lost at one place (`node`, -1 in flight): how many of each
    * type, who destroyed the last of them (a faction id, -1 unknown), and when the last one fell. Ships

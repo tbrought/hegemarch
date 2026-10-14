@@ -15,6 +15,7 @@ import { Ending } from './Ending';
 import { dimScreen, Ui } from './Ui';
 import { cradleVocabulary } from './vocab';
 import { drawBanner, drawPaused, drawTopBar, objective, watching } from './hud/topbar';
+import { drawHerald, herald, type HeraldShown } from './hud/herald';
 import { chipText, destinyClocks, drawAges, drawDestinies } from './hud/destinies';
 import { jumpWait, jumpWaitText } from './hud/fleetCard';
 import { drawFlyers, drawTray } from './hud/tray';
@@ -75,6 +76,10 @@ export class Hud {
   lastEmbers = -1;
   /** Seconds the count is still white: a lump of Embers has just come in (hud/emberCount.ts). */
   emberFlash = 0;
+  /** The big moments waiting to be announced across the screen, the first showing (hud/herald.ts). */
+  heralds: HeraldShown[] = [];
+  /** Where the herald showing is (zero when none): it takes no click, but a browser test points at it. */
+  heraldRect = { x: 0, y: 0, w: 0, h: 0 };
   /** "+250" / "-120" popups under the Ember counter. */
   emberPops: { text: string; color: string; t: number }[] = [];
   /** The end of the run, when it comes (ui/Ending.ts). */
@@ -155,13 +160,15 @@ export class Hud {
       const revealedLog = s.reveal().map;
       const hearthFell = /^The Hearth of .* has gone dark/.test(n.text);
       if (hearthFell) {
-        // A house falls: a banner everyone sees, a rumble, and a fanfare when it was our doing.
+        // A house falls: a herald everyone sees (below), a rumble, and a fanfare when it was our doing.
         const ours = n.kind === 'good';
-        s.showToast(n.text, ours ? PAL.gold : PAL.violet, 6);
         s.sfx.play('capture', ours ? 0.85 : 0.55);
         if (ours) s.sfx.play('boon', 0.5);
         s.renderer.fx.shake = Math.max(s.renderer.fx.shake, ours ? 3 : 2);
-      } else if (!revealedLog || n.kind === 'alert' || n.kind === 'bad') s.showToast(n.text, KIND_COLOR[n.kind], n.kind === 'alert' ? 5 : 4);
+      }
+      // A big moment is announced across the screen (the log keeps its words); any other line may show at the top.
+      if (n.herald) herald(this, n.herald, n.t);
+      else if (!hearthFell && (!revealedLog || n.kind === 'alert' || n.kind === 'bad')) s.showToast(n.text, KIND_COLOR[n.kind], n.kind === 'alert' ? 5 : 4);
       if (n.pause && s.profile.settings.autoPause && !s.paused && !g.outcome && !this.tutorial.busy()) {
         s.paused = true;
         s.showToast('PAUSED · ' + n.text, PAL.ember, 6);
@@ -272,6 +279,7 @@ export class Hud {
     if (R.lore) drawTray(this);
     if (R.map) drawAttackArrows(this);
     drawIndicators(this);
+    drawHerald(this);
     this.tips.draw(g);
     this.tutorial.draw(g);
     if (this.s.modal) {

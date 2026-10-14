@@ -169,7 +169,8 @@ export function cmdQueueGate(g: Game, fid: number, nodeId: number): boolean {
   const cost = g.shipCost(f, 'gate');
   f.embers -= cost;
   g.nodes[nodeId].buildQ.push({ kind: 'gate', id: 'gate', t: 0, total: UNITS.gate.buildTime, cost });
-  g.notify(-1, `${f.name} has begun raising a Starfire Gate at ${g.nodes[nodeId].name}!`, f.isPlayer ? 'good' : 'alert', nodeId);
+  g.notify(-1, `${f.name} has begun raising a Starfire Gate at ${g.nodes[nodeId].name}!`, f.isPlayer ? 'good' : 'alert', nodeId, false,
+    f.isPlayer ? undefined : { title: 'A STARFIRE GATE RISES', sub: `${g.shortName(f)} is raising one at ${g.nodes[nodeId].name}.`, tone: 'house', fid: f.id });
   return true;
 }
 

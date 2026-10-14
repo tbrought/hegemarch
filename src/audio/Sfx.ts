@@ -7,7 +7,7 @@ import type { Settings } from '../meta/profile';
 export type SoundId =
   | 'ui' | 'select' | 'order' | 'error' | 'laser' | 'bolt' | 'flak' | 'shell' | 'lance' | 'missile' | 'boom' | 'bigboom'
   | 'jump' | 'kindle' | 'capture' | 'alert' | 'good' | 'boon' | 'victory' | 'defeat' | 'ability' | 'build' | 'tick' | 'armed' | 'nova'
-  | 'deal' | 'rare' | 'epic' | 'legendary' | 'pact';
+  | 'deal' | 'rare' | 'epic' | 'legendary' | 'pact' | 'levelup';
 
 type Wave = 'p12' | 'p25' | 'p50' | 'tri';
 
@@ -333,6 +333,13 @@ export class Sfx {
         [98, 103, 98, 103].forEach((n, i) => this.tone(dest, 'p12', midi(n), midi(n), t + 0.55 + i * 0.07, 0.05, v * 0.12));
         break;
       }
+      case 'levelup':
+        // A ship powers up: a whine rising as the rings close on it, and a chord when it flashes (0.6 s in).
+        this.tone(dest, 'p25', 220, 880, t, 0.55, v * 0.2);
+        this.tone(dest, 'p12', 440, 1760, t + 0.1, 0.45, v * 0.1);
+        [72, 76, 79, 84].forEach((n) => this.tone(dest, 'p25', midi(n), midi(n), t + 0.6, 0.3, v * 0.2));
+        this.tone(dest, 'tri', midi(48), midi(48), t + 0.6, 0.4, v * 0.6);
+        break;
       case 'pact':
         [55, 51, 46].forEach((n, i) => this.tone(dest, 'p50', midi(n), midi(n), t + i * 0.1, 0.12, v * 0.35));
         this.noiseBurst(dest, t, 0.35, v * 0.2, 0.5, { type: 'lowpass', f: 900 });

@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { LUMP, LUMP_FLASH, rollEmbers, type EmberCount } from '../src/ui/hud/emberCount';
 import { BEAM, BEAT, LAND_GAP, planDeal, tierOf } from '../src/ui/modals/reveal';
 import { storyEnd, WORD_FADE, wordIn, WORDS_PER_SECOND } from '../src/ui/modals/storyText';
+import { LEVEL_UP, levelUpEnd } from '../src/ui/modals/event';
 import { EVENTS } from '../src/game/data/events';
 import { Ui } from '../src/ui/Ui';
 
@@ -191,5 +192,15 @@ describe('the story of a decision comes in word by word (a page of a storybook)'
       expect(marked.length, e.id).toBeGreaterThanOrEqual(1);
       expect(marked.length, e.id).toBeLessThanOrEqual(2);
     }
+  });
+});
+
+describe('a ship rising a level powers up before its abilities come in', () => {
+  it('rings close on it, the window flashes, and the abilities fade up one after another: all there in about a second and a third', () => {
+    expect(LEVEL_UP.FLASH).toBeLessThanOrEqual(LEVEL_UP.RINGS);
+    expect(LEVEL_UP.ABILITIES).toBeGreaterThan(LEVEL_UP.FLASH);
+    expect(levelUpEnd(3)).toBeCloseTo(LEVEL_UP.ABILITIES + 2 * LEVEL_UP.ABILITY_GAP + LEVEL_UP.ABILITY_FADE, 9);
+    expect(levelUpEnd(3)).toBeLessThan(1.4);
+    expect(levelUpEnd(1)).toBeLessThan(levelUpEnd(3));
   });
 });

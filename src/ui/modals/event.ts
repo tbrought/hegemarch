@@ -6,13 +6,14 @@
 import { ABILITY_BY_ID } from '../../game/data/abilities';
 import { EVENT_BY_ID } from '../../game/data/events';
 import { UNITS } from '../../game/data/units';
-import { text, textCenter } from '../../render/font';
+import { bigText, text, textCenter } from '../../render/font';
 import { PAL } from '../../render/palette';
-import { box, rect, type Ctx } from '../../render/pixel';
+import { box, rect, ring, type Ctx } from '../../render/pixel';
 import { drawRich, richLines } from '../../render/rich';
 import { termsIn } from '../glossary';
 import { drawSubjects, starWindow, subjectsIn, subjectsSize, type Look } from '../subjects';
 import { drawStory, storyEnd, wordCount } from './storyText';
+import { sparkles } from './pixelFx';
 import type { Modals } from '../Modals';
 
 export function resolve(modals: Modals, promptId: number, choice: number) {
@@ -155,6 +156,27 @@ function storySounds(modals: Modals, shown: number) {
   if (Math.floor(shown / 3) !== Math.floor(prev / 3)) modals.s.sfx.play('tick', 0.2);
 }
 
+/** The ship's picture: the height of its window. */
+const SHIP_PIC = 40;
+/** The level-up, in seconds from its start: rings close on the ship until RINGS, the window flashes at FLASH, the abilities come in from ABILITIES, ABILITY_GAP apart, each over ABILITY_FADE. */
+export const LEVEL_UP = { RINGS: 0.6, FLASH: 0.6, ABILITIES: 0.8, ABILITY_GAP: 0.12, ABILITY_FADE: 0.25 };
+
+/** A click or a key while a level-up is coming in: all of it is there at once. */
+export function skipAbility(modals: Modals) {
+  modals.abAt = modals.ui.time - 60;
+}
+
+/** Seconds until all of a level-up with `n` abilities to choose from is there. */
+export function levelUpEnd(n: number): number {
+  return LEVEL_UP.ABILITIES + Math.max(0, n - 1) * LEVEL_UP.ABILITY_GAP + LEVEL_UP.ABILITY_FADE;
+}
+
+/**
+ * A ship has risen a level and chooses an ability. Above the choices, the ship itself powers up in a
+ * window of deep space: three rings close on it, the window flashes, and LEVEL n comes up beside it in
+ * large letters and stays. Then the abilities fade up one after another. A click or a key brings all
+ * of it at once; the abilities take a click once all are there.
+ */
 export function ability(modals: Modals, g: Ctx, unitId: number) {
   const u = modals.g.units.get(unitId);
   if (!u || u.dead || !u.pendingAbil.length) {
@@ -174,28 +196,79 @@ export function ability(modals: Modals, g: Ctx, unitId: number) {
   const subSize = subs.map((s) => subjectsSize(s, look));
   const subW = subSize.map((z) => z.w + 8);
   const hs = choices.map((id, i) => Math.max(14 + richLines(ABILITY_BY_ID[id].desc, inner - 8 - subW[i]) * 10, subSize[i].h + 6));
-  const h = 30 + hs.reduce((a, b) => a + b + 3, 0) + 4;
-  const { x, y } = modals.frame(g, w, h, `${UNITS[u.type].name.toUpperCase()} · LEVEL ${u.level}`);
+  const name = UNITS[u.type].name;
+  const h = 30 + SHIP_PIC + 4 + hs.reduce((a, b) => a + b + 3, 0) + 4;
+  // (A new choice, or the next of two: it comes in anew. The same one opened again is there at once.)
+  const key = `${u.id}:${u.level}:${u.pendingAbil.length}`;
+  if (modals.abKey !== key) {
+    modals.abKey = key;
+    modals.abAt = modals.ui.time;
+    modals.s.sfx.play('levelup', 0.5);
+  }
+  const t = modals.ui.time - modals.abAt;
+  const { x, y } = modals.frame(g, w, h, `${name.toUpperCase()} · LEVEL ${u.level}`);
   textCenter(g, 'Choose a new ability. It triggers by itself in battle.', x + w / 2, y + 16, PAL.dusk, 'tiny');
   let ly = y + 26;
+  // The ship in deep space, powering up (all of it kept inside the window).
+  const wx = x + 8;
+  starWindow(g, wx, ly, inner, SHIP_PIC, u.id * 17, modals.ui.time, true);
+  g.save();
+  g.beginPath();
+  g.rect(wx + 1, ly + 1, inner - 2, SHIP_PIC - 2);
+  g.clip();
+  const mid = { x: Math.round(wx + inner * 0.3), y: Math.round(ly + SHIP_PIC / 2) };
+  drawSubjects(g, [u.type], mid.x, ly, SHIP_PIC, { color, scale: 3, t: modals.ui.time, lively: true }, 'center');
+  const ringTime = LEVEL_UP.RINGS - 0.24;
+  for (let k = 0; k < 3; k++) {
+    const s = t - k * 0.12;
+    if (s >= 0 && s < ringTime) ring(g, mid.x, mid.y, Math.max(3, Math.round(48 * (1 - s / ringTime))), k % 2 ? PAL.gold : PAL.bone, 2);
+  }
+  const flash = t - LEVEL_UP.FLASH;
+  if (flash >= 0 && flash < 0.12) rect(g, wx + 1, ly + 1, inner - 2, SHIP_PIC - 2, Math.floor(flash / 0.06) % 2 ? PAL.gold : PAL.bone);
+  if (flash >= 0.06) {
+    const a0 = g.globalAlpha;
+    g.globalAlpha = a0 * Math.min(1, (flash - 0.06) / 0.3);
+    bigText(g, `LEVEL ${u.level}`, Math.round(wx + inner * 0.67), mid.y - 7, PAL.gold, PAL.void, 2);
+    g.globalAlpha = a0;
+    sparkles(g, wx, ly, inner, SHIP_PIC, flash - 0.06, 3, PAL.gold);
+  }
+  g.restore();
+  box(g, wx, ly, inner, SHIP_PIC, null, PAL.gold);
+  ly += SHIP_PIC + 4;
+  // The abilities, fading up one after another.
   choices.forEach((id, i) => {
-    const a = ABILITY_BY_ID[id];
-    const hid = 'ab-' + i;
-    const hot = modals.ui.isHot(hid);
-    box(g, x + 8, ly, inner, hs[i], hot ? PAL.indigo : PAL.night, hot ? PAL.bone : PAL.slate);
-    text(g, a.name, x + 12, ly + 3, a.color);
-    drawRich(g, a.desc, x + 12, ly + 13, inner - 8 - subW[i]);
-    drawSubjects(g, subs[i], x + 8 + inner - 6, ly + 3, hs[i] - 6, { ...look, t: modals.ui.time, lively: hot }, 'right');
-    modals.ui.add({
-      id: hid, x: x + 8, y: ly, w: inner, h: hs[i], terms: termsIn(a.desc, { exclude: a.name }),
-      onClick: () => {
-        if (modals.g.cmdChooseAbility(modals.g.playerId, u.id, id)) {
-          modals.s.sfx.play('ability', 0.6);
-          if (!u.pendingAbil.length) modals.s.modal = null;
-          else modals.afterChoice();
-        }
-      },
-    });
+    const age = t - LEVEL_UP.ABILITIES - i * LEVEL_UP.ABILITY_GAP;
+    if (age >= 0) {
+      const a0 = g.globalAlpha;
+      g.globalAlpha = a0 * Math.min(1, age / LEVEL_UP.ABILITY_FADE);
+      abilityRow(modals, g, u.id, id, i, x + 8, ly, inner, hs[i], subs[i], subW[i], look, modals.abDone);
+      g.globalAlpha = a0;
+    }
     ly += hs[i] + 3;
+  });
+  modals.abDone = t >= levelUpEnd(choices.length);
+  if (!modals.abDone) modals.ui.add({ id: 'ab-skip', x, y, w, h, onClick: () => skipAbility(modals) });
+}
+
+/** One ability to choose: its name in its colour, what it does, who it acts on; clickable once all are there (`live`). */
+function abilityRow(modals: Modals, g: Ctx, unitId: number, id: string, i: number, x: number, y: number, w: number, h: number, subs: string[], subW: number, look: Look, live: boolean) {
+  const a = ABILITY_BY_ID[id];
+  const hid = 'ab-' + i;
+  const hot = live && modals.ui.isHot(hid);
+  box(g, x, y, w, h, hot ? PAL.indigo : PAL.night, hot ? PAL.bone : PAL.slate);
+  text(g, a.name, x + 4, y + 3, a.color);
+  drawRich(g, a.desc, x + 4, y + 13, w - 8 - subW);
+  drawSubjects(g, subs, x + w - 6, y + 3, h - 6, { ...look, t: modals.ui.time, lively: hot }, 'right');
+  if (!live) return;
+  const u = modals.g.units.get(unitId)!;
+  modals.ui.add({
+    id: hid, x, y, w, h, terms: termsIn(a.desc, { exclude: a.name }),
+    onClick: () => {
+      if (modals.g.cmdChooseAbility(modals.g.playerId, u.id, id)) {
+        modals.s.sfx.play('ability', 0.6);
+        if (!u.pendingAbil.length) modals.s.modal = null;
+        else modals.afterChoice();
+      }
+    },
   });
 }

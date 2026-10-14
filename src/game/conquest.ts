@@ -45,7 +45,7 @@ export function damagePlanet(g: Game, n: GNode, amount: number, type: DmgType, b
       for (let i = 0; i < 3; i++) g.spawnUnit('striker', owner.id, n.id);
       for (let i = 0; i < 2; i++) g.spawnUnit('guardian', owner.id, n.id);
     }
-    g.notify(owner.id, `LAST STAND! The defenders of ${n.name} rise to arms.`, 'alert', n.id);
+    g.notify(owner.id, `LAST STAND! The defenders of ${n.name} rise to arms.`, 'alert', n.id, false, { title: 'LAST STAND', sub: `The defenders of ${n.name} rise to arms.`, tone: 'red' });
   }
   if (n.hp <= 0) {
     n.hp = 0;
@@ -220,7 +220,9 @@ export function eliminate(g: Game, fid: number, byFaction: number) {
   if (f.isPlayer) {
     g.declareWinner(-1, 'defeat', by ? `Your Hearth went dark, taken by ${by.name}.` : 'Your Hearth went dark.');
   } else {
-    g.notify(-1, `The Hearth of ${f.name} has gone dark${by ? `, taken by ${by.name}` : ''}!`, by?.isPlayer ? 'good' : 'event');
+    g.notify(-1, `The Hearth of ${f.name} has gone dark${by ? `, taken by ${by.name}` : ''}!`, by?.isPlayer ? 'good' : 'event', undefined, false, {
+      title: `${g.shortName(f).toUpperCase()} FALLS`, sub: `Its Hearth has gone dark${by ? `, taken by ${by.isPlayer ? 'you' : g.shortName(by)}` : ''}.`, tone: 'house', fid: f.id,
+    });
   }
 }
 

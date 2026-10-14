@@ -18,7 +18,7 @@ import { rect, type Ctx } from '../render/pixel';
 import type { Hud } from './Hud';
 import { choose, draft, skipDeal } from './modals/draft';
 import type { Deal } from './modals/reveal';
-import { ability, event, resolve, skipEvent } from './modals/event';
+import { ability, event, resolve, skipAbility, skipEvent } from './modals/event';
 import { status } from './modals/status';
 import { confirm, help, logView, menu, settings } from './modals/book';
 import { ascendCard, cradleCard, destinies, nightDone, omens } from './modals/cards';
@@ -53,6 +53,10 @@ export class Modals {
   evAt = 0;
   evPrev = -1;
   evDone = true;
+  /** A ship's level-up coming in: which, since when, whether all of it is there (modals/event.ts). */
+  abKey = '';
+  abAt = 0;
+  abDone = true;
   statusTab: StatusTab = 'destinies';
   helpTab: HelpTab = 'basics';
   /** Scroll offset of the Boons list (pixels). */
@@ -140,6 +144,7 @@ export class Modals {
   revealing(): boolean {
     const m = this.s.modal;
     if (m?.kind === 'event') return m !== this.shown || !this.evDone;
+    if (m?.kind === 'ability') return m !== this.shown || !this.abDone;
     return m?.kind === 'draft' && (m !== this.shown || !this.dealDone || this.dealt !== this.g.player.draftOffer);
   }
 
@@ -174,6 +179,10 @@ export class Modals {
     // (While a decision is coming in, a number, Space or Enter brings all of it; it answers nothing unseen.)
     if (m.kind === 'event' && this.revealing() && (/^Digit\d$/.test(code) || code === 'Space' || code === 'Enter')) {
       skipEvent(this);
+      return true;
+    }
+    if (m.kind === 'ability' && this.revealing() && (/^Digit\d$/.test(code) || code === 'Space' || code === 'Enter')) {
+      skipAbility(this);
       return true;
     }
     if (m.kind === 'event' && !this.result) {

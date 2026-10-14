@@ -740,7 +740,9 @@ try {
   });
   await wait(600);
   check('the choice of an ability opens by itself', await ev(() => window.__app.session.modal?.kind === 'ability'));
+  check('the ship powers up first: its abilities take no click until they are all there', await ev(() => window.__app.hud.modals.revealing() && !window.__app.hud.ui.rectOf('ab-0')));
   await unheld();
+  check('then they do', !!(await uiRect('ab-0')));
   await page.keyboard.press('Escape');
   await wait(600);
   check('closed without a choice, it does not open again, and waits behind its button', await ev(() => window.__app.session.modal === null && window.__app.session.game.units.get(window.__app.session.game.player.ark).pendingAbil.length === 1) && !!(await ev(() => window.__app.hud.ui.rectOf('abil-' + window.__app.session.game.player.ark))));
@@ -752,6 +754,64 @@ try {
     s.profile.settings.autoPause = false;
     s.modal = null;
     s.paused = false;
+  });
+
+  // ---- A big moment is heralded across the screen: it stops nothing and takes no click ----
+  const tell = (title) =>
+    ev((t) => window.__app.session.game.notify(-1, `${t}!`, 'alert', undefined, false, { title: t, sub: 'A line under it.', tone: 'red' }), title);
+  /** The middle of the herald showing, on the page (null when none). */
+  const heraldAt = () =>
+    ev(() => {
+      const a = window.__app;
+      const r = a.hud.heraldRect;
+      if (!r.w) return null;
+      const c = a.canvas.getBoundingClientRect();
+      const k = c.width / a.session.screen.W;
+      return { x: c.left + (r.x + r.w / 2) * k, y: c.top + (r.y + r.h / 2) * k };
+    });
+  await page.mouse.move(5, 400);
+  await ev(() => {
+    const s = window.__app.session;
+    s.modal = null;
+    s.paused = false;
+    s.speed = 1;
+    window.__app.hud.modals.open({ kind: 'help' });
+  });
+  await tell('A TEST OF HERALDS');
+  await wait(400);
+  check('a herald waits while a dialog is open', await ev(() => window.__app.hud.heralds[0]?.h.title === 'A TEST OF HERALDS' && window.__app.hud.heralds[0].at < 0 && !window.__app.hud.heraldRect.w));
+  await ev(() => window.__app.hud.modals.close());
+  await wait(600);
+  const shown = await ev(() => ({ at: window.__app.hud.heralds[0]?.at ?? -1, t: window.__app.session.game.time, halted: window.__app.session.halted }));
+  check('and shows once it is closed', shown.at >= 0 && !!(await heraldAt()));
+  await wait(500);
+  check('the game runs on under it', !shown.halted && (await ev(() => window.__app.session.game.time)) > shown.t + 0.3);
+  const hp = await heraldAt();
+  await page.mouse.move(hp.x, hp.y, { steps: 4 });
+  await wait(450);
+  const under = await ev(() => ({ veil: window.__app.hud.heralds[0]?.veil ?? 1, hot: window.__app.hud.ui.hot }));
+  check('under the pointer it turns see-through', under.veil < 0.3, String(under.veil));
+  await page.mouse.move(5, 400, { steps: 4 });
+  await wait(450);
+  check('and solid again when the pointer leaves', (await ev(() => window.__app.hud.heralds[0]?.veil ?? 0)) > 0.95);
+  await page.waitForFunction(() => window.__app.hud.heralds.length === 0, null, { timeout: 4000 }).catch(() => {});
+  check('it is gone after a few seconds', await ev(() => window.__app.hud.heralds.length === 0 && !window.__app.hud.heraldRect.w));
+  await page.mouse.move(hp.x, hp.y, { steps: 4 });
+  await wait(300);
+  check('it took no click: what is under it is just what was there without it', (await ev(() => window.__app.hud.ui.hot)) === under.hot, `${under.hot} / ${await ev(() => window.__app.hud.ui.hot)}`);
+  await page.mouse.move(5, 400);
+  await ev(() => (window.__app.session.paused = true));
+  await tell('A PAUSED HERALD');
+  await tell('A PAUSED HERALD');
+  await tell('ANOTHER HERALD');
+  await wait(400);
+  check('it plays while the game is paused; the same news is heralded once, and the next waits its turn', await ev(() => {
+    const h = window.__app.hud.heralds;
+    return h.length === 2 && h[0].h.title === 'A PAUSED HERALD' && h[0].at >= 0 && h[1].h.title === 'ANOTHER HERALD' && h[1].at < 0;
+  }));
+  await ev(() => {
+    window.__app.hud.heralds.length = 0;
+    window.__app.session.paused = false;
   });
 
   // ---- A Destiny that runs on a clock shows the clock, a rival's too ----

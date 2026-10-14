@@ -828,6 +828,43 @@ Measured with `npm run simulate` and `npm run balance:passive`. Speeds are ½×,
   letter by letter, line by line as ink spreads), after the first cut was found jittery and too fast
   and its effects on the wrong text (on the choices, not the story). `npm run record:event` films
   it.
+- **A ship rising a level powers up** (1.21, `ui/modals/event.ts`). Above the abilities to choose
+  from, the ship itself is in a window of deep space: three rings close on it, the window flashes,
+  and LEVEL n comes up beside it in large gold letters and stays; then the abilities fade up one after
+  another (`LEVEL_UP`). A whine rising with the rings, a chord at the flash. All of it is there in
+  about a second and a third; a click, a number, Space or Enter brings it at once, and the abilities
+  take no click until they are there. Opened again later (its button), it is there at once. Before
+  it the choice was a plain list. Three ways were filmed in the game: this one, the abilities beamed
+  in as the Boon cards are, and a line of story word by word; the beam made a level-up look like a
+  Boon draft, and the story was slow for something that comes several times a run.
+- **The big moments of a run are heralded** (1.21, `ui/hud/herald.ts`). A rival house falls, your
+  Last Stand, a rival begins or nears a Destiny (its Starfire Gate rising, charging, half charged;
+  dominion, relics or a full hoard on the clock), a rival arms a Starfall, the Maw opens, you enter a
+  new age, a rival's Ark rises or leaves. The game marks these (`Note.herald`: a title, a line, a
+  colour: the house's own, gold for your triumphs, red for alarms, pink for the Hollow) and the HUD
+  announces them across the upper part of the screen, in a band that drifts in from the left as it
+  fades up, holds, and drifts on to the right as it fades away. The log keeps the full sentence; a
+  herald replaces the toast for that news. What the player's own house does (its Gate, its Starfall,
+  its hoard) is only told: it is news to nobody. A herald must never be in the way, so:
+  - *The game does not stop for it.* A herald is news, not a question; the battle the player is
+    fighting goes on under it, and orders, selection and the map under it work as ever (it takes no
+    click). Under the pointer it turns see-through, smoothly, so what is under it can be seen. News that needs the player's hand already pauses the game when auto-pause is on (a
+    Starfall armed where they have ships or worlds, a new age, an Ark leaving); the herald then plays
+    over the paused map, which is when it is read.
+  - *It waits while a dialog is open* (the game is stopped then too) and plays when the dialog closes.
+  - *Several come one after another*, each held for a second less while another waits (`heraldTime`):
+    a herald is on the screen for 3.2 seconds alone, 2.2 with another behind it, and one already far
+    into its hold when another comes starts leaving from where it is. No more than three wait, the
+    same news is never queued twice, and news that waited more than ten seconds of game time is
+    left to the log.
+  - *It is gentle.* It drifts 40 pixels, never more than about three a frame, and fades rather than
+    slides across the screen; it is never wider than the screen, and sits under the objective banner.
+    It makes no sound of its own when it shows at once (the news has sounded its alarm already); one
+    that had to wait comes with a soft whoosh. Never over the end of the run.
+  Three ways were filmed in the game: this one, black bars of a film closing in with the title fading
+  up between them, and a title that slams down with a rumble. The other two put their words straight
+  onto the map, where a ship under them showed through; the bars also covered the HUD for three
+  seconds. `npm run record:herald` and `npm run record:ability` film the two.
 - **A dialog that opens by itself waits a second before it takes a click** (`DIALOG_GUARD`,
   `Modals.guarded`, `Ui.holdClicks`). An event comes up in the middle of play, on top of whatever
   the player was about to click: twice in one evening a playtester's click, already on its way to
@@ -853,7 +890,7 @@ Measured with `npm run simulate` and `npm run balance:passive`. Speeds are ½×,
   the count changed colour on two frames in three, and above that it was white for good. The
   leading house earns 21 a second at minute 20 and the strongest 38 to 52. A playtester found it
   unpleasant.) Boon cards are beamed in one by one (see Boons, The deal); a chosen Boon flies to the tray;
-  a rival Hearth falling gets a banner, a rumble and a chime; red arrows at the screen edge point at
+  a rival Hearth falling is heralded (see above), with a rumble and a chime; red arrows at the screen edge point at
   your worlds under attack off screen (click to look); after 40 s without input and with Embers
   piling up, a hint says what to spend them on (at most every 3 minutes, off with tips).
 - **A run that is won ends in a crowning** (`ui/Ending.ts`), on the map itself, in four beats of

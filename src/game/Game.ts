@@ -55,7 +55,7 @@ import { statusTick } from './systems/status';
 import { victoryTick } from './systems/victory';
 import { visibilityTick } from './systems/visibility';
 import type {
-  AIState, CrisisState, DmgType, Faction, Fx, GameConfig, GNode, Lane, Mods, Note, Outcome, PirateState, Projectile, Prompt, QueueCheck,
+  AIState, CrisisState, DmgType, Faction, Fx, GameConfig, GNode, Herald, Lane, Mods, Note, Outcome, PirateState, Projectile, Prompt, QueueCheck,
   Rarity, Unit, UnitMod, UnitType, VictoryId, WeaponDef, WorldRole,
 } from './types';
 import * as unitLife from './unitLife';
@@ -523,11 +523,16 @@ export class Game {
   // Notifications
   // =====================================================================
 
-  /** fid = -1 broadcasts to the player. `pause` asks the client to pause (if auto-pause is on). */
-  notify(fid: number, text: string, kind: Note['kind'], node?: number, pause = false) {
+  /**
+   * fid = -1 broadcasts to the player. `pause` asks the client to pause (if auto-pause is on). `herald`:
+   * a big moment, announced across the screen as well.
+   */
+  notify(fid: number, text: string, kind: Note['kind'], node?: number, pause = false, herald?: Herald) {
     if (fid !== -1 && fid !== this.playerId) return;
     if (this.config.autoplay) return;
-    this.notes.push({ id: this.noteId++, t: this.time, text, kind, node, pause: pause || undefined });
+    const note: Note = { id: this.noteId++, t: this.time, text, kind, node, pause: pause || undefined };
+    if (herald) note.herald = herald;
+    this.notes.push(note);
     if (this.notes.length > 60) this.notes.splice(0, this.notes.length - 60);
   }
 

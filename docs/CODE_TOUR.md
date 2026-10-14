@@ -25,7 +25,7 @@ src/game/        the simulation: no DOM, no clock, no Math.random
 src/render/      drawing the map on a low-resolution canvas: Renderer, Camera, sprites, fonts
 src/ui/          everything drawn over the map during a run
   Ui.ts            the immediate-mode toolkit: what is drawn this frame is what can be clicked
-  Hud.ts + hud/    the HUD: top bar, Destiny chips, Boon tray, fleet badges, log, minimap, cards
+  Hud.ts + hud/    the HUD: top bar, Destiny chips, Boon tray, fleet badges, log, minimap, cards, heralds
   Modals.ts + modals/   the dialogs: Boon draft, events, Status, How to Play, settings
   Input.ts         mouse and keys            Actions.ts   orders with feedback (sound, reason)
 src/app/         the page around the game
@@ -97,6 +97,10 @@ one-line methods to `Game.ts`, a method with feedback to `ui/Actions.ts`, and th
 `ui/modals/`, and a case in `Modals.drawKind`. Open it with `hud.modals.open({ kind })`. If it opens
 by itself, pass `unbidden: true` so that it ignores clicks for its first second.
 
+**A big moment.** Pass a `Herald` (a title, a line, a colour) as the last argument of `g.notify`:
+the HUD announces it across the screen (`ui/hud/herald.ts`) as well as in the log. Keep it for news
+that changes the run; a herald that comes often stops being one.
+
 **A menu button.** A button in a page's HTML carries `data-sa="name:argument"`. Add `name` to that
 page's actions table in `app/screens/`.
 
@@ -112,7 +116,7 @@ For a change that must not alter the game at all (a refactoring):
 
 ```bash
 npm run golden -- record       # before: fingerprint 24 fixed runs
-npm run test:uisnap -- record  # before: snapshot 81 staged scenes (needs the dev server)
+npm run test:uisnap -- record  # before: snapshot 83 staged scenes (needs the dev server)
 # ...make the change...
 npm run verify                 # compares both, and runs everything else
 ```

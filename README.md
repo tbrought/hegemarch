@@ -91,7 +91,7 @@ terms do the same.
   with its ring on the map, and the one that loses does your next KINDLE for free. Only warships and
   guards stop a kindling; another house's seed ship or Scout does not.
 - **Ships**: Strikers beat Breakers, Breakers beat Guardians and worlds, Guardians beat Strikers.
-  Your **Ark** levels up and learns abilities.
+  Your **Ark** levels up and learns abilities: it powers up on screen, then offers three to choose from.
 - **Scouts** wait for your order. Select one and press EXPLORE (or **E**), and it charts the dark
   world after world by itself. An **anomaly** (a violet swirl) waits until you send a ship to stop
   there; then you choose what to do, on a page that opens with a picture of it and its story coming
@@ -218,6 +218,8 @@ npm run test:starfall      # the Starfall: built, armed, a star that erupts and 
 npm run record:starfall    # films a Starfall from arming to the burning star (.shots/starfall.mp4) and takes its pictures
 npm run record:draft       # films Boon drafts being dealt, an Epic and a Legendary among them (.shots/draft.mp4)
 npm run record:event       # films decisions coming in, an anomaly and a visitor (.shots/event.mp4)
+npm run record:ability     # films the Ark rising two levels and choosing its abilities (.shots/ability.mp4)
+npm run record:herald      # films the big moments of a run heralded across the screen (.shots/herald.mp4)
 npm run test:menus         # screenshots of every menu screen over the live sector
 npm run test:ages          # an Ages run end to end: cradle, ages, Ark, the crossing, arrival, saves
 npm run test:layouts       # every dialog at the smallest and largest screens, biggest offers and texts

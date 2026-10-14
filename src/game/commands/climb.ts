@@ -33,7 +33,8 @@ export function cmdAdvance(g: Game, fid: number): boolean {
   f.embers -= era.cost;
   f.advance = { t: 0, total: era.time, lore: era.lore, cost: era.cost };
   if (f.era === LAST_CRADLE_ERA) {
-    g.notify(-1, f.isPlayer ? 'Your Ark is rising at your Hearth. Guard it: the work stops while the Hearth is under attack.' : `${f.name} has begun building its Ark!`, f.isPlayer ? 'good' : 'alert', f.capital);
+    g.notify(-1, f.isPlayer ? 'Your Ark is rising at your Hearth. Guard it: the work stops while the Hearth is under attack.' : `${f.name} has begun building its Ark!`, f.isPlayer ? 'good' : 'alert', f.capital, false,
+      f.isPlayer ? undefined : { title: 'AN ARK IS RISING', sub: `${g.shortName(f)} is building one at its Hearth.`, tone: 'house', fid: f.id });
   }
   return true;
 }
@@ -72,7 +73,10 @@ export function completeAdvance(g: Game, f: Faction) {
   if (g.fxEnabled && home && reach > 0) g.fx.push({ k: 'wave', x: home.x, y: home.y, r: reach, dur: reach / UPGRADE_SPREAD, color: f.color, node: home.id });
   f.pendingDrafts++;
   if (g.fxEnabled && f.capital >= 0) g.fx.push({ k: 'capture', node: f.capital, color: f.color });
-  if (f.isPlayer) g.notify(f.id, `The ${era.name} begins! All your units are upgraded. ${era.brings} A Boon of the new age awaits. (B)`, 'good', f.capital, true);
+  if (f.isPlayer) {
+    g.notify(f.id, `The ${era.name} begins! All your units are upgraded. ${era.brings} A Boon of the new age awaits. (B)`, 'good', f.capital, true,
+      { title: `THE ${era.name.toUpperCase()}`, sub: 'All your units are upgraded. A Boon of the new age awaits.', tone: 'gold' });
+  }
   else g.notify(-1, `${f.name} has entered the ${era.name}.`, 'info', g.player.explored[f.capital] ? f.capital : undefined);
 }
 
@@ -93,5 +97,6 @@ function launchArk(g: Game, f: Faction) {
   }
   for (const u of g.unitList) if (u.owner === f.id && !u.dead) g.deferred.push(() => g.removeUnit(u));
   f.capital = -1;
-  g.notify(-1, `The Ark of ${f.name} has left for the stars. Its ${lands} lands lie dark: kindle them, and hurry after it.`, 'alert', undefined, true);
+  g.notify(-1, `The Ark of ${f.name} has left for the stars. Its ${lands} lands lie dark: kindle them, and hurry after it.`, 'alert', undefined, true,
+    { title: 'AN ARK HAS LEFT', sub: `${g.shortName(f)} is gone to the stars. Its lands lie dark.`, tone: 'house', fid: f.id });
 }

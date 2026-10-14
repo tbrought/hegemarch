@@ -358,6 +358,11 @@ async function stageAll() {
       app.renderer.cam.focus(far.x, far.y, 0.2);
     });
     await snap('attack-arrow');
+    // A big moment heralded across the screen, well into its hold.
+    await ev(() => window.__app.session.game.notify(-1, 'LAST STAND! The defenders of the Hearth rise to arms.', 'alert', undefined, false, { title: 'LAST STAND', sub: 'The defenders of the Hearth rise to arms.', tone: 'red' }));
+    await frames(1200);
+    await snap('herald');
+    await ev(() => (window.__app.hud.heralds.length = 0));
     await ev(() => {
       const s = window.__app.session;
       s.game.nodes[s.game.player.capital].lastHit = 999;
@@ -368,13 +373,18 @@ async function stageAll() {
       await ev(stage);
       await snap(name);
     };
-    await dialog('ability', () => {
+    // (A ship rising a level powers up first: rings close on it, then a flash; its abilities come in after, under a second and a half in all.)
+    await ev(() => {
       const app = window.__app;
       const g = app.session.game;
       const ark = g.units.get(g.player.ark);
       g.grantLevels(ark, 3 - ark.level);
       app.hud.modals.open({ kind: 'ability', unitId: ark.id });
     });
+    await frames(200);
+    await snap('ability-powering');
+    await frames(2000);
+    await snap('ability');
     await dialog('menu-dialog', () => (window.__app.session.modal = { kind: 'menu' }));
     await dialog('settings-dialog', () => (window.__app.session.modal = { kind: 'settings' }));
     for (const tab of ['basics', 'controls', 'tips']) await dialog('help-' + tab, new Function(`window.__app.session.modal = null; window.__app.hud.modals.open({ kind: 'help', tab: '${tab}' });`));

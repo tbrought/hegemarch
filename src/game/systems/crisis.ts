@@ -44,7 +44,8 @@ function awaken(g: Game) {
   for (let i = 0; i < 6; i++) g.spawnUnit('drone', g.crisisId, n.id).parent = -1;
   for (let i = 0; i < 2; i++) g.spawnUnit('reaper', g.crisisId, n.id).parent = -1;
   C.nextWave = g.time + 30;
-  g.notify(-1, 'THE MAW HAS OPENED! The Hollow pour into the sector. A void barrier shields the Rift Heart for 4 minutes.', 'alert', n.id);
+  g.notify(-1, 'THE MAW HAS OPENED! The Hollow pour into the sector. A void barrier shields the Rift Heart for 4 minutes.', 'alert', n.id, false,
+    { title: 'THE MAW HAS OPENED', sub: 'The Hollow pour into the sector.', tone: 'pink' });
 }
 
 function spawnWave(g: Game) {
