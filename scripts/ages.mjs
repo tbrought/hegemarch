@@ -20,6 +20,10 @@ const check = (name, ok, detail = '') => {
   if (!ok) failures++;
 };
 const ev = (fn, arg) => page.evaluate(fn, arg);
+/** The cards of a Boon draft take a moment to come in: a key before then brings them all and takes none. */
+const dealt = async () => {
+  for (let i = 0; i < 40 && (await ev(() => window.__app.hud?.modals.revealing())); i++) await wait(100);
+};
 const shot = (name) => page.screenshot({ path: `.shots/agesrun-${name}.png` });
 const toPage = (ix, iy) =>
   ev(([x, y]) => {
@@ -37,7 +41,7 @@ const clickUi = async (id) => {
   if (!r) throw new Error('no UI region ' + id);
   // (A dialog that has just opened by itself takes no click for a moment (`Modals.guarded`): wait it out, as a player would.
   // This suite clicked the Ark's card 0.9 s after it opened, and one run in five the click was lost.)
-  for (let i = 0; i < 60 && (await ev(() => window.__app.hud?.modals.guarded() || window.__app.hud?.ui.holding())); i++) await wait(100);
+  for (let i = 0; i < 60 && (await ev(() => window.__app.hud?.modals.guarded() || window.__app.hud?.ui.holding() || window.__app.hud?.modals.revealing())); i++) await wait(100);
   const [x, y] = await toPage(r.x + r.w / 2, r.y + r.h / 2);
   await page.mouse.click(x, y);
   await wait(140);
@@ -104,6 +108,7 @@ try {
   await page.keyboard.press('KeyB');
   await wait(900);
   check('B opens the Boon of the age', (await state()).modal === 'draft');
+  await dealt();
   await page.keyboard.press('Digit1');
   await wait(900);
   st = await state();
@@ -149,6 +154,7 @@ try {
   check('the Bronze Age begins, with a Boon', st.era === 1 && st.drafts === 1, JSON.stringify({ era: st.era, drafts: st.drafts }));
   await page.keyboard.press('KeyB');
   await wait(900);
+  await dealt();
   await page.keyboard.press('Digit2');
   await wait(900);
   await ev(() => {

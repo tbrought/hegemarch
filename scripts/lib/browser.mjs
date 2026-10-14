@@ -56,9 +56,11 @@ export function gameUi(page) {
   /**
    * A dialog that has just opened by itself takes no click and no key for a moment (`Modals.guarded`): wait it out, as a
    * player would. (The dialog is asked, not only the last frame: one that has opened and is not drawn yet is guarded already.)
+   * And a Boon draft's cards take a moment to come in (`Modals.revealing`): a key or a click before then brings them all and
+   * takes none.
    */
   const unheld = async () => {
-    for (let i = 0; i < 60 && (await ev(() => window.__app.hud?.modals.guarded() || window.__app.hud?.ui.holding())); i++) await wait(100);
+    for (let i = 0; i < 60 && (await ev(() => window.__app.hud?.modals.guarded() || window.__app.hud?.ui.holding() || window.__app.hud?.modals.revealing())); i++) await wait(100);
   };
   /** Click a HUD region by its id. Waits a second for it to be there; throws if it is not (`required: false`: returns false). */
   const clickUi = async (id, { button = 'left', after = 120, required = true } = {}) => {

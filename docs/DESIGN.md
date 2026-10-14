@@ -347,9 +347,31 @@ How Boons read:
   automatically (`src/render/rich.ts`). The same markup colors relics, omens, house bonuses, Ark
   abilities, event choices, role tooltips and the Hall of Heirs perks.
 - **Cards** carry a category icon, a rarity frame (double for Epic, Legendary and Pacts; a spark runs
-  round Legendary cards), up to three "before → after" lines computed by applying the Boon to the
-  house's real modifiers (`Game.computeMods`, `src/game/modstats.ts`), and a NEW or STACK ×n→×n+1
-  tag.
+  round Legendary cards; an Epic's and a Legendary's header is filled with its colour), up to three
+  "before → after" lines computed by applying the Boon to the house's real modifiers
+  (`Game.computeMods`, `src/game/modstats.ts`), and a NEW or STACK ×n→×n+1 tag.
+- **The deal** (1.19, `ui/modals/reveal.ts`). The places of the cards appear one after another,
+  dashed, empty. Then each card is beamed in on its place, like a ship on a transporter pad: lights
+  run down the sides of the pad, motes of white and the card's colour rise and twinkle, and the
+  face is drawn in line by line from the top behind a white scan line. The cards come the commonest
+  first and the rarest last, each after a beat that is longer for a rarer card (a Legendary's is
+  half a second), and while a rarer card waits its empty place already shows a few motes of its
+  colour: an Epic or a Legendary is seen coming. Once a card is all there its face flashes white and
+  its colour (once for a Rare, twice for an Epic, three times for a Legendary), an Epic or a
+  Legendary throws pixel sparkles round its frame, each rarity has its own chiptune sting (a
+  Legendary's an "item found" fanfare), and a Legendary sets the dialog's frame flashing gold for a
+  second. Three Commons take about a second and a half, a hand with a Legendary a little over two;
+  a click or a number key while they come brings them all at once, and takes none unseen
+  (`skipDeal`, `Modals.revealing`). A player whose computer asks for less motion gets no flashes.
+  Under the pointer, once all are there, a card grows three pixels on each side, rises, and stands
+  off the table on a hard two-pixel shadow. Before it the cards slid up 40 pixels in a third of a
+  second, rarity was a colour of frame, and hover lifted a card two pixels: an Epic looked like a
+  Rare in purple, and nothing was heard. The user wanted it to "feel really cool" when an Epic or a
+  Legendary shows up. A mockup page in smooth web animation (glows, light rays, scaling) was turned
+  down as not of the game; seven styles were then made in the game itself and filmed with the same
+  hands (`npm run record:draft` films the deal as it is): turned face down, reels of a fruit
+  machine, beamed down in a column, stars of rarity counting up, a strike from above, a pillar of
+  light left standing, and this one, which was chosen.
 - **Picking** flies the Boon's tile from the card to its slot in the **tray**, a column of tiles down
   the left edge (stacks fold into one tile with a count; relics follow in blue). Hovering a tile
   shows its name and text; clicking it, or pressing B with no draft waiting, opens the **Boons
@@ -813,7 +835,7 @@ Measured with `npm run simulate` and `npm run balance:passive`. Speeds are ½×,
   second and the screen draws sixty: between 39 and 53 Embers a second, 21 to 25 at double speed,
   the count changed colour on two frames in three, and above that it was white for good. The
   leading house earns 21 a second at minute 20 and the strongest 38 to 52. A playtester found it
-  unpleasant.) Boon cards are dealt (they slide in one after another); a chosen Boon flies to the tray;
+  unpleasant.) Boon cards are beamed in one by one (see Boons, The deal); a chosen Boon flies to the tray;
   a rival Hearth falling gets a banner, a rumble and a chime; red arrows at the screen edge point at
   your worlds under attack off screen (click to look); after 40 s without input and with Embers
   piling up, a hint says what to spend them on (at most every 3 minutes, off with tips).
@@ -1088,9 +1110,10 @@ UI snapshot of section 8: nothing in the game changed.)
   the whole saved state is fingerprinted every 30 seconds of game time, with the effects asked for.
   `record` before a refactoring, `check` after: identical to the byte, or it says where they part.
 - **The UI snapshot** (`npm run test:uisnap -- record|check`, `scripts/uisnap.mjs`): the same for what
-  is on the screen. In a browser whose clock the script holds (and whose `Math.random` is seeded) 79
-  scenes are staged: the menus, every card and dialog, a Starfall from its button to the star that
-  burns, two seed ships at one world, the end of a run, an Ages cradle. Of each it
+  is on the screen. In a browser whose clock the script holds (and whose `Math.random` is seeded) 80
+  scenes are staged: the menus, every card and dialog, a Boon draft with a Legendary coming in, a
+  Starfall from its button to the star that burns, two seed ships at one world, the end of a run, an
+  Ages cradle. Of each it
   writes down the pixels of the game's canvas, every HUD button with its place and tooltip, and the
   HTML of a menu page (but for the version number on the title page). Both recordings live in
   `.golden/`, outside git: they are true of one version of the rules, and a change that is meant to

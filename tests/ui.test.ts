@@ -1,6 +1,7 @@
 /** The UI toolkit: what a click reaches. */
 import { describe, expect, it } from 'vitest';
 import { LUMP, LUMP_FLASH, rollEmbers, type EmberCount } from '../src/ui/hud/emberCount';
+import { BEAM, BEAT, LAND_GAP, planDeal, tierOf } from '../src/ui/modals/reveal';
 import { Ui } from '../src/ui/Ui';
 
 describe('a dialog that has just opened by itself takes no click', () => {
@@ -121,5 +122,37 @@ describe('the Ember count in the top bar (a playtest of 1.17)', () => {
     expect(rollEmbers(st, 750, 0.016)).toBe(250);
     expect(rollEmbers(st, 630, 0.016)).toBe(-120);
     expect(rollEmbers(st, 640, 0.016)).toBe(0);
+  });
+});
+
+describe('a Boon draft is dealt, and its cards beamed in one by one', () => {
+  it("a card's tier is its rarity, a Pact counting as a Rare", () => {
+    expect(tierOf({ rarity: 'common' })).toBe(0);
+    expect(tierOf({ rarity: 'rare' })).toBe(1);
+    expect(tierOf({ rarity: 'common', pact: true })).toBe(1);
+    expect(tierOf({ rarity: 'epic' })).toBe(2);
+    expect(tierOf({ rarity: 'legendary' })).toBe(3);
+  });
+
+  it('the places appear in order; the cards come the commonest first and the rarest last, a Legendary after the longest beat', () => {
+    const d = planDeal([3, 0, 2]);
+    expect(d.cards.map((c) => c.landAt)).toEqual([0, LAND_GAP, 2 * LAND_GAP]);
+    expect(d.cards[1].beamAt).toBeLessThan(d.cards[2].beamAt);
+    expect(d.cards[2].beamAt).toBeLessThan(d.cards[0].beamAt);
+    for (const c of d.cards) expect(c.shownAt - c.beamAt).toBeCloseTo(BEAM, 9);
+    expect(d.cards[0].beamAt - d.cards[2].shownAt).toBeCloseTo(BEAT[3], 9);
+    expect(d.doneAt).toBeCloseTo(d.cards[0].shownAt, 9);
+    // (Places first, then the motes of the rarer ones while they wait.)
+    expect(d.tellFrom).toBeGreaterThan(d.cards[2].landAt);
+    expect(d.tellFrom).toBeLessThan(d.cards[1].beamAt);
+  });
+
+  it('is quick: about a second and a half for three Commons, under two and a half seconds with a Legendary', () => {
+    expect(planDeal([0, 0, 0]).doneAt).toBeLessThan(1.7);
+    expect(planDeal([1, 3, 0]).doneAt).toBeLessThan(2.5);
+    // (Ties go left to right.)
+    const d = planDeal([1, 1, 1]);
+    expect(d.cards[0].beamAt).toBeLessThan(d.cards[1].beamAt);
+    expect(d.cards[1].beamAt).toBeLessThan(d.cards[2].beamAt);
   });
 });

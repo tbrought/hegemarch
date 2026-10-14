@@ -395,19 +395,24 @@ async function stageAll() {
       p.pendingDrafts = 1; p.draftOffer = ${JSON.stringify(offer)};
       app.hud.modals.open({ kind: 'draft' });
     })()`;
+    // (The cards come in one by one, a Legendary last: under three seconds in all.)
     await ev(draft(['bpCarrier', 'hotBarrels', 'goldenAge', 'bloodPact']));
-    await frames(1200);
+    await frames(4000);
     await snap('draft-blueprint');
     await ev(draft(['kindlingRites', 'fighterBays', 'bpCarrier', 'gildedCage']));
-    await frames(1200);
+    await frames(4000);
     await hoverUi(t, 'card-0', 0.5, 0.3);
     await snap('hover-card-first');
     await hoverUi(t, 'card-3', 0.5, 0.3);
     await snap('hover-card-last');
     await away(t);
     await ev(draft(['strikerWings', 'emberTithe', 'singularity', 'gildedCage'], ['strikerWings', 'emberTithe', 'emberTithe']));
-    await frames(1200);
+    await frames(4000);
     await snap('draft-stacks');
+    // A Legendary coming in: the motes rise on its pad, and its face is half drawn.
+    await ev(draft(['strikerWings', 'singularity', 'emberTithe']));
+    await frames(1700);
+    await snap('draft-coming');
     await ev(() => {
       const app = window.__app;
       app.session.modal = null;

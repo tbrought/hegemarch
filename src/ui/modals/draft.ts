@@ -20,6 +20,8 @@ import { boonSubjects, drawSubjects, starWindow, subjectNames, subjectsSize, typ
 import { MARK, marksOf } from '../Ui';
 import type { Modals } from '../Modals';
 import type { CardDef } from '../../game/data/cards';
+import type { SoundId } from '../../audio/Sfx';
+import { FLASH, MOTES, planDeal, SPARKLE, tierOf, type Deal } from './reveal';
 
 export const BLUEPRINT_SHIP: Record<string, UnitType> = { bpCarrier: 'carrier', bpLancer: 'lancer', bpDread: 'dreadnought', bpStarbase: 'starbase', bpStarfall: 'starfall' };
 
@@ -157,11 +159,34 @@ export function draft(modals: Modals, g: Ctx) {
   textCenter(g, modals.g.cradle ? 'Every age brings one of its own. Pick one: your house keeps it, here and among the stars.' : 'Your Lore has gathered. Pick one to keep for this run.', x + w / 2, y + 16, PAL.dusk, 'tiny');
   const cx0 = x + 8;
   const cy = y + 25;
+  // A new offer is dealt: its places appear, and its cards are beamed in one by one (reveal.ts).
+  const tiers = cards.map((k) => tierOf(k.c));
   if (modals.dealt !== offer) {
     modals.dealt = offer;
     modals.dealtAt = modals.ui.time;
+    modals.dealPrev = -1;
+    modals.dealPlan = planDeal(tiers);
+    modals.dealTiers = tiers;
   }
-  cards.forEach((card, i) => draftCard(modals, g, card, i, { cw, ch, cx0, cy, inner, strip }));
+  const plan = modals.dealPlan ?? planDeal(tiers);
+  const e = modals.ui.time - modals.dealtAt;
+  modals.dealDone = e >= plan.doneAt;
+  dealSounds(modals, plan, tiers, e);
+  // Under the pointer, once all are there, a card rises and grows (drawn last, over its neighbours).
+  const hotI = modals.dealDone ? cards.findIndex((_, i) => modals.ui.isHot('card-' + i)) : -1;
+  if (hotI >= 0 && modals.hoverCard !== offer[hotI] + hotI) {
+    modals.hoverCard = offer[hotI] + hotI;
+    modals.hoverAt = modals.ui.time;
+    modals.s.sfx.play('tick', 0.3);
+  } else if (hotI < 0) modals.hoverCard = '';
+  const lay = { cw, ch, cx0, cy, inner, strip };
+  cards.forEach((card, i) => i !== hotI && draftCard(modals, g, card, i, lay, e, plan, 0));
+  if (hotI >= 0) draftCard(modals, g, cards[hotI], hotI, lay, e, plan, Math.min(3, 1 + Math.floor((modals.ui.time - modals.hoverAt) / 0.035)));
+  // A Legendary that has just come sets the dialog's frame flashing in gold for a moment.
+  for (let i = 0; i < n; i++) {
+    const since = e - plan.cards[i].shownAt;
+    if (!CALM && tiers[i] === 3 && since >= 0 && since < 1) box(g, x, y, w, h, null, [PAL.gold, PAL.bone, PAL.ember][Math.floor(since * 15) % 3]);
+  }
   const by = y + h - 16;
   const rr = `REROLL (${p.rerolls})`;
   modals.ui.button(g, 'reroll', x + 8, by, textWidth(rr, 'tiny') + 12, 12, rr, () => {
@@ -178,34 +203,187 @@ export function draft(modals: Modals, g: Ctx) {
   modals.ui.button(g, 'later', x + w / 2 - 20, by, 40, 12, lw, () => modals.close(), { font: 'tiny', tip: 'Decide later. The Boon will wait. (Esc)' });
 }
 
+/** No flashing for a player whose computer asks for less motion (the motes and the lines still come). */
+const CALM = typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+/** The sound of the deal: a place appearing, a card starting to come, and each card once it is all there (by its rarity). */
+const STING: SoundId[] = ['tick', 'rare', 'epic', 'legendary'];
+function dealSounds(modals: Modals, plan: Deal, tiers: number[], e: number) {
+  const prev = modals.dealPrev;
+  modals.dealPrev = e;
+  if (prev >= plan.doneAt) return;
+  const crossed = (t: number) => prev < t && e >= t;
+  plan.cards.forEach((c, i) => {
+    if (crossed(c.landAt)) modals.s.sfx.play('deal', 0.45);
+    if (crossed(c.beamAt)) modals.s.sfx.play('kindle', 0.4);
+    if (crossed(c.shownAt)) modals.s.sfx.play(CARD_BY_ID[modals.dealt![i]]?.pact ? 'pact' : STING[tiers[i]], tiers[i] ? 0.6 : 0.35);
+  });
+}
+
+/** A click or a key while the cards are coming: all are there at once (and the rarest is heard). */
+export function skipDeal(modals: Modals) {
+  const plan = modals.dealPlan;
+  if (!plan || modals.dealDone) return;
+  modals.dealtAt = modals.ui.time - plan.doneAt;
+  modals.dealPrev = plan.doneAt;
+  modals.dealDone = true;
+  const best = Math.max(...modals.dealTiers);
+  if (best > 0) modals.s.sfx.play(STING[best], 0.6);
+}
+
+/** A frame whose two colours alternate round it, four pixels at a time: a card's empty place. */
+function dashed(g: Ctx, x: number, y: number, w: number, h: number, a: string, b: string) {
+  const per = 2 * (w + h) - 4;
+  for (let d = 0; d < per; d++) {
+    let px: number;
+    let py: number;
+    if (d < w) {
+      px = x + d;
+      py = y;
+    } else if (d < w + h - 1) {
+      px = x + w - 1;
+      py = y + d - w + 1;
+    } else if (d < 2 * w + h - 2) {
+      px = x + w - 2 - (d - w - h + 1);
+      py = y + h - 1;
+    } else {
+      px = x;
+      py = y + h - 2 - (d - 2 * w - h + 2);
+    }
+    // (The corners stay open, as every frame of the game's.)
+    if ((px === x || px === x + w - 1) && (py === y || py === y + h - 1)) continue;
+    g.fillStyle = (d >> 2) % 2 ? a : b;
+    g.fillRect(px, py, 1, 1);
+  }
+}
+
+/** A sparkle: a white point with four arms that grow and shrink, the tips in a colour. */
+function sparkle(g: Ctx, x: number, y: number, arm: number, tip: string) {
+  x = Math.round(x);
+  y = Math.round(y);
+  for (let k = 1; k <= arm; k++) {
+    const c = k === arm ? tip : PAL.bone;
+    rect(g, x + k, y, 1, 1, c);
+    rect(g, x - k, y, 1, 1, c);
+    rect(g, x, y + k, 1, 1, c);
+    rect(g, x, y - k, 1, 1, c);
+  }
+  rect(g, x, y, 1, 1, PAL.bone);
+}
+
+/** Sparkles round a card, one after another from the moment it is all there: the corners, then (a Legendary) the sides and the top. */
+function sparkles(g: Ctx, x: number, y: number, w: number, h: number, since: number, tier: number, col: string) {
+  const spots: [number, number][] = [[x - 3, y - 3], [x + w + 2, y + h + 2], [x + w + 2, y - 3], [x - 3, y + h + 2],
+    [x + w / 2, y - 5], [x - 5, y + h / 2], [x + w + 4, y + h / 2], [x + w / 2, y + h + 4], [x + w * 0.25, y - 4], [x + w * 0.75, y - 4]];
+  const count = tier >= 3 ? spots.length : 4;
+  const rounds = tier >= 3 ? 2 : 1;
+  for (let r = 0; r < rounds; r++) {
+    for (let i = 0; i < count; i++) {
+      const t = since - (r * count + i) * 0.045;
+      if (t < 0 || t >= 0.25) continue;
+      const arm = [1, 2, 3, 2, 1][Math.floor((t / 0.25) * 5)];
+      sparkle(g, spots[(i * 3 + r) % count][0], spots[(i * 3 + r) % count][1], arm, col);
+    }
+  }
+}
+
+/** A number in [0, 1) from a number: for things that should look scattered and be the same every frame. */
+const scatter = (a: number) => {
+  const s = Math.sin(a * 12.9898) * 43758.5453;
+  return s - Math.floor(s);
+};
+
+/** Motes of light rising through a place and twinkling, white and a card's colour. */
+function motes(g: Ctx, x: number, y: number, w: number, h: number, t: number, n: number, col: string, seed: number) {
+  if (h < 4) return;
+  for (let j = 0; j < n; j++) {
+    const px = x + 3 + Math.floor(scatter(seed * 31 + j) * (w - 6));
+    const life = 0.45 + scatter(seed * 17 + j * 5) * 0.4;
+    const ph = ((t + scatter(j * 11 + seed) * life) % life) / life;
+    const py = y + h - 3 - Math.floor(ph * (h - 6));
+    if ((Math.floor(t * 20) + j) % 4 === 0) sparkle(g, px, py, 1, col);
+    else rect(g, px, py, 1, 1, j % 2 ? col : PAL.bone);
+  }
+}
+
+/** The lights of the pad a card is beamed in on: down both its sides, running. */
+function padLines(g: Ctx, x: number, y: number, w: number, h: number, col: string, t: number) {
+  const off = Math.floor(t * 40) % 4;
+  for (let yy = off; yy < h; yy += 4) {
+    rect(g, x + 1, y + yy, 1, 2, col);
+    rect(g, x + w - 2, y + yy, 1, 2, col);
+  }
+}
+
 /**
- * One card of the draft: its rarity and kind, what it affects (in a window of its own, or small in the
+ * One card of the draft, at the moment `e` of its deal: not there yet, an empty place (a rarer card's
+ * with a few motes of its colour), its pad lit and motes rising, its face drawn in line by line, or
+ * all there. All there: its rarity and kind, what it affects (in a window of its own, or small in the
  * header), its name and text, what it would change in figures, and whether the house has it already.
+ * `grow`: under the pointer, the pixels it has grown by on each side.
  */
-function draftCard(modals: Modals, g: Ctx, card: DraftCard, i: number, lay: DraftLayout) {
+function draftCard(modals: Modals, g: Ctx, card: DraftCard, i: number, lay: DraftLayout, e: number, plan: Deal, grow: number) {
   const { id, c, deltas, names, subs } = card;
-  const { cw, ch, cx0, cy, inner, strip } = lay;
+  const { cw: cw0, ch: ch0, cx0, cy, inner, strip } = lay;
   const p = modals.g.player;
-  const cx = cx0 + i * (cw + 4);
+  const t = modals.ui.time;
+  const deal = plan.cards[i];
+  const tier = tierOf(c);
   const hid = 'card-' + i;
-  const hot = modals.ui.isHot(hid);
   const col = boonColor(c);
-  // Dealt one after another: each card slides up into place.
-  const k = Math.max(0, Math.min(1, (modals.ui.time - modals.dealtAt - i * 0.06) / 0.22));
-  const slide = Math.round((1 - k) * (1 - k) * 40);
-  const ty = cy - (hot ? 2 : 0) + slide;
+  const baseX = cx0 + i * (cw0 + 4);
+  // (Clicked while the cards are coming, a card brings them all; once all are there, it is taken.)
+  modals.ui.add({
+    id: hid, x: baseX, y: cy - 2, w: cw0, h: ch0 + 2, onClick: () => (modals.dealDone ? choose(modals, id, i) : skipDeal(modals)),
+    terms: e >= deal.shownAt ? termsIn(`${c.name}. ${c.desc}${c.pact ? ' Pact' : ''}`, { max: 4 }) : undefined, termsBeside: true,
+  });
+  if (e < deal.landAt) return;
+  const faceFrom = deal.beamAt + MOTES;
+  if (e < faceFrom) {
+    // Its empty place; a rarer card's shows a few motes of its colour while it waits. Then its pad lights and the motes rise.
+    dashed(g, baseX, cy, cw0, ch0, PAL.indigo, PAL.night);
+    if (tier > 0 && e >= plan.tellFrom && e < deal.beamAt) motes(g, baseX, cy, cw0, ch0, e, 2 + tier * 2, col, i);
+    if (e >= deal.beamAt) {
+      motes(g, baseX, cy, cw0, ch0, e, 8 + tier * 6, col, i);
+      padLines(g, baseX, cy, cw0, ch0, col, t);
+    }
+    return;
+  }
+  const since = e - deal.shownAt;
+  const cx = baseX - grow;
+  const ty = cy - grow * 2;
+  const cw = cw0 + grow * 2;
+  const ch = ch0 + grow * 2;
+  const hot = grow > 0;
+  // Coming in: the face drawn line by line from the top, over its empty place.
+  const coming = e < deal.shownAt;
+  const scan = coming ? ty + Math.floor((Math.max(0, e - faceFrom) / (deal.shownAt - faceFrom)) * (ch / 3)) * 3 : ty + ch;
+  if (coming) {
+    dashed(g, cx, ty, cw, ch, PAL.indigo, PAL.night);
+    g.save();
+    g.beginPath();
+    g.rect(cx, ty, cw, scan - ty);
+    g.clip();
+  }
+  if (hot) {
+    // A hard shadow, two pixels down and right: the card stands off the table.
+    rect(g, cx + 2, ty + ch, cw, 2, PAL.void);
+    rect(g, cx + cw, ty + 2, 2, ch, PAL.void);
+  }
   box(g, cx, ty, cw, ch, hot ? PAL.indigo : PAL.night, hot ? PAL.bone : col);
   if (c.rarity === 'epic' || c.rarity === 'legendary' || c.pact) box(g, cx + 1, ty + 1, cw - 2, ch - 2, null, shade(col));
   if (c.rarity === 'legendary') glint(modals, g, cx, ty, cw, ch);
-  rect(g, cx + 2, ty + 2, cw - 4, 9, c.cat === 'blueprint' ? PAL.wine : PAL.void);
-  icon(g, catIcon(c.cat), cx + 4, ty + 4, col);
+  // The header: an Epic's and a Legendary's are filled with their colour, a Blueprint's is wine.
+  const banner = tier >= 2;
+  rect(g, cx + 2, ty + 2, cw - 4, 9, banner ? col : c.cat === 'blueprint' ? PAL.wine : PAL.void);
+  icon(g, catIcon(c.cat), cx + 4, ty + 4, banner ? PAL.void : col);
   const ship = BLUEPRINT_SHIP[id];
   // Small pictures at the right of the header when there is no window for them.
   const small = strip || ship ? [] : subs;
-  const smallW = small.length ? drawSubjects(g, small, cx + cw - 4, ty + 2, 9, { color: p.color, scale: 1, t: modals.ui.time, lively: hot }, 'right') : 0;
+  const smallW = small.length ? drawSubjects(g, small, cx + cw - 4, ty + 2, 9, { color: p.color, scale: 1, t, lively: hot }, 'right') : 0;
   const headW = cw - 15 - (smallW ? smallW + 3 : 0);
   const head = `${c.rarity.toUpperCase()} · ${CAT_LABEL[c.cat].toUpperCase()}`;
-  text(g, fit(textWidth(head, 'tiny') <= headW ? head : c.rarity.toUpperCase(), headW, 'tiny'), cx + 11, ty + 4, col, 'tiny');
+  text(g, fit(textWidth(head, 'tiny') <= headW ? head : c.rarity.toUpperCase(), headW, 'tiny'), cx + 11, ty + 4, banner ? (tier === 3 ? PAL.void : PAL.bone) : col, 'tiny');
   let ly = ty + 14;
   const tip = `This Boon affects: ${subjectNames(subs)}.`;
   if (strip) {
@@ -213,9 +391,9 @@ function draftCard(modals: Modals, g: Ctx, card: DraftCard, i: number, lay: Draf
     const wx = cx + 3;
     const wy = ty + 12;
     const ww = cw - 6;
-    starWindow(g, wx, wy, ww, WIN, [...id].reduce((a, ch) => a + ch.charCodeAt(0), i * 31), modals.ui.time, hot);
+    starWindow(g, wx, wy, ww, WIN, [...id].reduce((a, ch) => a + ch.charCodeAt(0), i * 31), t, hot);
     // Ships at twice their size and icons at three times; smaller when three of them crowd the window.
-    let look: Look = { color: p.color, scale: 2, iconScale: 3, t: modals.ui.time, lively: hot, turn: true };
+    let look: Look = { color: p.color, scale: 2, iconScale: 3, t, lively: hot, turn: true };
     if (subjectsSize(subs, look).w > ww - 4) look = { ...look, iconScale: 2 };
     // (And no taller than the window: a Starfall at twice its size is.)
     if (subjectsSize(subs, look).w > ww - 4 || subjectsSize(subs, look).h > WIN - 2) look = { ...look, scale: 1 };
@@ -257,10 +435,18 @@ function draftCard(modals: Modals, g: Ctx, card: DraftCard, i: number, lay: Draf
   const tag = owned ? `STACK ×${owned}→×${owned + 1}` : 'NEW';
   const tagW = textWidth(tag, 'tiny');
   text(g, tag, cx + cw - 4 - tagW, ty + ch - 9, owned ? PAL.gold : PAL.teal, 'tiny');
-  modals.ui.add({
-    id: hid, x: cx, y: cy - 2 + slide, w: cw, h: ch + 2, onClick: () => choose(modals, id, i),
-    terms: cardTerms, termsBeside: true,
-  });
+  if (coming) {
+    g.restore();
+    // The line that draws it, white over its colour, and motes still rising in what is not drawn yet.
+    rect(g, cx + 1, scan, cw - 2, 2, PAL.bone);
+    rect(g, cx + 1, scan + 2, cw - 2, 1, col);
+    motes(g, cx, scan + 3, cw, Math.max(0, ty + ch - scan - 3), e, 8 + tier * 6, col, i);
+    padLines(g, cx, ty, cw, ch, col, t);
+    return;
+  }
+  // All there: the face flashes (white, then its colour), and an Epic or a Legendary throws sparkles.
+  if (!CALM && since < FLASH[tier]) rect(g, cx + 1, ty + 1, cw - 2, ch - 2, Math.floor(since / 0.05) % 2 ? col : PAL.bone);
+  if (since < SPARKLE[tier]) sparkles(g, cx, ty, cw, ch, since, tier, col);
   modals.ui.hint('card-tag-' + i, cx + cw - 6 - tagW, ty + ch - 11, tagW + 4, 9, {
     tip: owned
       ? `You already have ${c.name} ×${owned}. Taking it again stacks its effect (up to ×${c.max}).`

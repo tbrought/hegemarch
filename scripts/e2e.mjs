@@ -29,7 +29,7 @@ const uiRect = (id) => ev((rid) => window.__app.hud?.ui.rectOf(rid) ?? null, id)
 // A dialog that has just opened by itself takes no click and no key for a moment (Modals.guarded): wait
 // it out, as a player would.
 const unheld = async () => {
-  for (let i = 0; i < 60 && (await ev(() => window.__app.hud?.ui.holding())); i++) await wait(100);
+  for (let i = 0; i < 60 && (await ev(() => window.__app.hud?.modals.guarded() || window.__app.hud?.ui.holding() || window.__app.hud?.modals.revealing())); i++) await wait(100);
 };
 const clickUi = async (id, button = 'left') => {
   let r = await uiRect(id);
@@ -271,6 +271,12 @@ try {
   await wait(300);
   check('B opens the Boon draft', await ev(() => window.__app.session.modal?.kind === 'draft'));
   check('game is halted during the draft', await ev(() => window.__app.session.halted));
+  // The cards come in one by one (modals/reveal.ts). A key before they are all there brings them all, and takes none.
+  check('the cards of a draft come in one by one', await ev(() => window.__app.hud.modals.revealing()));
+  const had = await ev(() => window.__app.session.game.player.cards.length);
+  await page.keyboard.press('1');
+  await wait(150);
+  check('a key while they come brings them all and takes none', await ev((n) => !window.__app.hud.modals.revealing() && window.__app.session.game.player.cards.length === n && window.__app.session.modal?.kind === 'draft', had));
   check('every Boon card shows pictures of what it affects', await ev(() => {
     const app = window.__app;
     const n = app.session.game.player.draftOffer.length;
@@ -293,6 +299,7 @@ try {
     app.hud.modals.open({ kind: 'draft' });
   });
   await wait(300);
+  await unheld();
   const card = await uiRect('card-0');
   const [hx, hy] = await toPage(card.x + card.w / 2, card.y + 20);
   await page.mouse.move(hx, hy);

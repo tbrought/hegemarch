@@ -34,7 +34,7 @@ const uiRect = (id) => ev((rid) => window.__app.hud.ui.rectOf(rid), id);
 // (The dialog is asked, not only the last frame: one that has opened and is not drawn yet is guarded already, and a key
 // pressed then is ignored, as it should be. Asking the frame alone, this suite pressed Esc into the guard now and then.)
 const unheld = async () => {
-  for (let i = 0; i < 60 && (await ev(() => window.__app.hud?.modals.guarded() || window.__app.hud?.ui.holding())); i++) await wait(100);
+  for (let i = 0; i < 60 && (await ev(() => window.__app.hud?.modals.guarded() || window.__app.hud?.ui.holding() || window.__app.hud?.modals.revealing())); i++) await wait(100);
 };
 const clickUi = async (id) => {
   let r = await uiRect(id);

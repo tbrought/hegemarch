@@ -20,6 +20,12 @@ for (const [label, vw, vh, pixels] of [
   page.on('pageerror', (e) => errors.push(`[${label}] ${e.message}`));
   page.on('console', (m) => m.type() === 'error' && !/fonts\.g/.test(m.text()) && errors.push(`[${label}] ${m.text()}`));
   const wait = (ms) => page.waitForTimeout(ms);
+  /** A Boon draft's cards take a moment to come in: wait until all are there (and a frame more). */
+  const dealt = async () => {
+    await wait(100);
+    for (let i = 0; i < 50 && (await page.evaluate(() => window.__app.hud?.modals.revealing())); i++) await wait(100);
+    await wait(150);
+  };
   const ev = (fn, arg) => page.evaluate(fn, arg);
   const shot = (name) => page.screenshot({ path: `.shots/layout-${label}-${name}.png` });
   /** Every UI region must lie on screen. */
@@ -64,7 +70,7 @@ for (const [label, vw, vh, pixels] of [
     g.ensureOffer(p);
     app.hud.modals.open({ kind: 'draft' });
   });
-  await wait(500);
+  await dealt();
   console.log(label, 'offer size', await ev(() => window.__app.session.game.player.draftOffer.length));
   await shot('draft-6');
   await onScreen('draft with 6 choices');
@@ -73,7 +79,8 @@ for (const [label, vw, vh, pixels] of [
     const p = app.session.game.player;
     p.draftOffer = ['bpDread', 'scorchedEarth', 'stormcaller', 'bpStarfall', 'dreadDoctrine'];
   });
-  await wait(300);
+  await wait(100);
+  await dealt();
   await shot('draft-long');
   await onScreen('draft with long cards');
   // The longest event.
@@ -176,7 +183,7 @@ for (const [label, vw, vh, pixels] of [
     s.modal = null;
     window.__app.hud.modals.open({ kind: 'draft' });
   });
-  await wait(900);
+  await dealt();
   await shot('ages-draft');
   await onScreen('ages: draft');
   for (const kind of ['status', 'help', 'ascend']) {

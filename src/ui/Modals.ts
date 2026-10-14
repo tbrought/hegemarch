@@ -16,7 +16,8 @@ import { textCenter } from '../render/font';
 import { PAL } from '../render/palette';
 import { rect, type Ctx } from '../render/pixel';
 import type { Hud } from './Hud';
-import { choose, draft } from './modals/draft';
+import { choose, draft, skipDeal } from './modals/draft';
+import type { Deal } from './modals/reveal';
 import { ability, event, resolve } from './modals/event';
 import { status } from './modals/status';
 import { confirm, help, logView, menu, settings } from './modals/book';
@@ -54,9 +55,17 @@ export class Modals {
   boonScrollMax = 0;
   /** The odds of the next Boon choice, as last worked out (modals/status.ts): they are worked out again when the run has moved on. */
   oddsMemo: { key: string; odds: OfferOdds } | null = null;
-  /** The offer being shown and when it was dealt (cards slide in when a new offer appears). */
+  /** The offer being shown and when it was dealt: its places appear, then its cards are beamed in one by one (modals/reveal.ts). */
   dealt: string[] | null = null;
   dealtAt = 0;
+  /** The deal of that offer, the tiers of its cards, how far into it the last frame was, and whether all are shown. */
+  dealPlan: Deal | null = null;
+  dealTiers: number[] = [];
+  dealPrev = -1;
+  dealDone = true;
+  /** The card under the pointer (its id and place) and since when: it grows in steps. */
+  hoverCard = '';
+  hoverAt = 0;
   helpScroll = 0;
   helpScrollMax = 0;
   logScroll = 0;
@@ -122,6 +131,12 @@ export class Modals {
     return this.ui.time < this.guardUntil;
   }
 
+  /** Are the cards of a Boon draft still coming in? (Not drawn yet: they are about to.) */
+  revealing(): boolean {
+    const m = this.s.modal;
+    return m?.kind === 'draft' && (m !== this.shown || !this.dealDone || this.dealt !== this.g.player.draftOffer);
+  }
+
   /** A choice was made and the dialog stays: what it shows next waits a moment before it takes one. */
   afterChoice() {
     if (!this.s.modal) return;
@@ -144,7 +159,9 @@ export class Modals {
       const n = parseInt(code.replace('Digit', ''), 10);
       const offer = this.g.ensureOffer(this.g.player);
       if (offer && n >= 1 && n <= offer.length) {
-        choose(this, offer[n - 1], n - 1);
+        // (While the cards are coming, a key brings them all; it takes none unseen.)
+        if (this.revealing()) skipDeal(this);
+        else choose(this, offer[n - 1], n - 1);
         return true;
       }
     }

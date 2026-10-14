@@ -78,7 +78,8 @@ terms do the same.
   ship's drive spools at half speed. Raiders that keep running can be caught at a Bastion, or made
   to come home by going for their Hearth.
 - **Lore** fills over time. Each time it fills, choose a **Boon**: upgrades, economy tricks, Pacts,
-  and **Blueprints** that add Carriers, Lancers, Dreadnoughts, Starbases and the Starfall to your fleet. Boon text
+  and **Blueprints** that add Carriers, Lancers, Dreadnoughts, Starbases and the Starfall to your fleet. The cards
+  are beamed in one by one, the rarest last, and an Epic or a Legendary arrives with sparkles and a sting. Boon text
   shows gains in teal, drawbacks in red and game terms (ships, roles, Embers) in gold, and every card
   shows what it changes for you (for example `DAMAGE 0→+25%`, or `STACK ×1→×2`) and pictures of
   what it affects: the ship type, the resource, your worlds. Event and ability choices show them too. Your Boons and
@@ -214,6 +215,7 @@ npm run test:music         # every part of all eleven tracks, played through the
 npm run test:qol           # the small things: remembered setup, Escape, keyboard, fullscreen, a silent hidden tab
 npm run test:starfall      # the Starfall: built, armed, a star that erupts and burns, an order through the fire
 npm run record:starfall    # films a Starfall from arming to the burning star (.shots/starfall.mp4) and takes its pictures
+npm run record:draft       # films Boon drafts being dealt, an Epic and a Legendary among them (.shots/draft.mp4)
 npm run test:menus         # screenshots of every menu screen over the live sector
 npm run test:ages          # an Ages run end to end: cradle, ages, Ark, the crossing, arrival, saves
 npm run test:layouts       # every dialog at the smallest and largest screens, biggest offers and texts
@@ -237,7 +239,7 @@ A change that must not alter the game at all (a refactoring) has two checks of i
 
 ```bash
 npm run golden -- record       # before: the whole saved state of 24 fixed runs, fingerprinted every 30 s
-npm run test:uisnap -- record  # before: 79 staged scenes (pixels, every button and tooltip, menu HTML)
+npm run test:uisnap -- record  # before: 80 staged scenes (pixels, every button and tooltip, menu HTML)
 npm run verify                 # after: compares both, to the byte, and runs everything else
 ```
 

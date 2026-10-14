@@ -6,7 +6,8 @@ import type { Settings } from '../meta/profile';
 
 export type SoundId =
   | 'ui' | 'select' | 'order' | 'error' | 'laser' | 'bolt' | 'flak' | 'shell' | 'lance' | 'missile' | 'boom' | 'bigboom'
-  | 'jump' | 'kindle' | 'capture' | 'alert' | 'good' | 'boon' | 'victory' | 'defeat' | 'ability' | 'build' | 'tick' | 'armed' | 'nova';
+  | 'jump' | 'kindle' | 'capture' | 'alert' | 'good' | 'boon' | 'victory' | 'defeat' | 'ability' | 'build' | 'tick' | 'armed' | 'nova'
+  | 'deal' | 'rare' | 'epic' | 'legendary' | 'pact';
 
 type Wave = 'p12' | 'p25' | 'p50' | 'tri';
 
@@ -309,6 +310,32 @@ export class Sfx {
       case 'build':
         this.tone(dest, 'tri', midi(67), midi(67), t, 0.06, v * 0.5);
         this.tone(dest, 'tri', midi(74), midi(74), t + 0.06, 0.08, v * 0.5);
+        break;
+      // A Boon offer is dealt: a card's place appears, and each card once it is there, by its rarity.
+      case 'deal':
+        this.tone(dest, 'tri', midi(55), midi(55), t, 0.035, v * 0.7);
+        this.noiseBurst(dest, t, 0.02, v * 0.15, 1, { type: 'highpass', f: 4000 });
+        break;
+      case 'rare':
+        [79, 86].forEach((n, i) => this.tone(dest, 'p25', midi(n), midi(n), t + i * 0.06, 0.08, v * 0.4));
+        break;
+      case 'epic':
+        [71, 74, 79, 83, 86].forEach((n, i) => this.tone(dest, 'p25', midi(n), midi(n), t + i * 0.045, 0.08, v * 0.4));
+        this.tone(dest, 'p12', midi(98), midi(98), t + 0.24, 0.14, v * 0.18);
+        this.tone(dest, 'tri', midi(47), midi(47), t, 0.3, v * 0.6);
+        break;
+      case 'legendary': {
+        // An item found, as an old cartridge would have it: a run up, a held top note, a sparkle.
+        [67, 71, 74, 79].forEach((n, i) => this.tone(dest, 'p50', midi(n), midi(n), t + i * 0.07, 0.09, v * 0.35));
+        [83, 86].forEach((n, i) => this.tone(dest, 'p50', midi(n), midi(n), t + 0.3 + i * 0.09, 0.1, v * 0.35));
+        this.tone(dest, 'p50', midi(91), midi(91), t + 0.5, 0.45, v * 0.3);
+        [43, 50, 55].forEach((n, i) => this.tone(dest, 'tri', midi(n), midi(n), t + i * 0.18, 0.2, v * 0.6));
+        [98, 103, 98, 103].forEach((n, i) => this.tone(dest, 'p12', midi(n), midi(n), t + 0.55 + i * 0.07, 0.05, v * 0.12));
+        break;
+      }
+      case 'pact':
+        [55, 51, 46].forEach((n, i) => this.tone(dest, 'p50', midi(n), midi(n), t + i * 0.1, 0.12, v * 0.35));
+        this.noiseBurst(dest, t, 0.35, v * 0.2, 0.5, { type: 'lowpass', f: 900 });
         break;
       case 'victory': {
         const mel: [number, number, number][] = [[72, 0, 0.15], [72, 0.16, 0.08], [72, 0.25, 0.08], [76, 0.34, 0.3], [79, 0.66, 0.15], [76, 0.82, 0.12], [84, 0.95, 0.6]];
