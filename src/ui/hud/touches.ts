@@ -2,7 +2,8 @@
  * A Boon becoming ready, marked on its button in the top bar: a flash of white over it, fading, a frame
  * that runs out from it, and sparkles at its corners. Each time one more Boon waits than at the last
  * frame (so a run continued with a Boon waiting shows it too); a Boon the player has chosen sets off
- * nothing.
+ * nothing. Not while a dialog is open: it would be over before the dialog is (a run opens with a Boon
+ * waiting, under its omens). It comes when the dialog closes, if a Boon still waits.
  */
 import { PAL } from '../../render/palette';
 import { rect, type Ctx } from '../../render/pixel';
@@ -23,8 +24,12 @@ export function outline(g: Ctx, x: number, y: number, w: number, h: number, c: s
 /** Notice one more Boon waiting than at the last frame (every frame, whether or not the button is shown). */
 export function watchBoons(hud: Hud) {
   const n = hud.g.player.pendingDrafts;
-  if (n > hud.lastPending) hud.boonReadyAt = hud.clock;
+  if (n > hud.lastPending) hud.boonFlashDue = true;
   hud.lastPending = n;
+  if (hud.boonFlashDue && !hud.s.modal) {
+    hud.boonFlashDue = false;
+    if (n > 0) hud.boonReadyAt = hud.clock;
+  }
 }
 
 /** The BOON button of the top bar (at x, y, w, h) in the moments after a Boon has become ready. */

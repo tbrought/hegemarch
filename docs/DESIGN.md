@@ -820,7 +820,8 @@ Measured with `npm run simulate` and `npm run balance:passive`. Speeds are ½×,
   then the choices slide in from the left one after another, and the outcome comes in the same way,
   in gold. A soft tick every third word. About two and a half seconds in all for a story of twenty
   words; a click, a number, Space or Enter while it comes brings all of it and answers nothing
-  unseen (`skipEvent`, `Modals.revealing`), and the choices take no click until they are there.
+  unseen (`skipEvent`, `Modals.revealing`), and the choices take no click until they are there. Once
+  the outcome is all there, Enter or Space goes on, as CONTINUE does (as on the omens card).
   Before it the dialog was all there at once, the same frame as a tooltip's, and a player said so:
   "it just feels like a tooltip". Four ways in were made in the game and filmed (this one, a
   transmission decoded out of static, an old role-playing game's window typed letter by letter, a
@@ -835,7 +836,8 @@ Measured with `npm run simulate` and `npm run balance:passive`. Speeds are ½×,
   about a second and a third; a click, a number, Space or Enter brings it at once, and the abilities
   take no click until they are there. The abilities are numbered, and a number takes one, as it
   answers a decision (since 1.22.1: before, a number only brought the level-up in). Opened again
-  later (its button), it is there at once. Before
+  later (its button), it is there at once. It opens without the click other dialogs open with: its
+  own sound is the one. Before
   it the choice was a plain list. Three ways were filmed in the game: this one, the abilities beamed
   in as the Boon cards are, and a line of story word by word; the beam made a level-up look like a
   Boon draft, and the story was slow for something that comes several times a run.
@@ -870,6 +872,10 @@ Measured with `npm run simulate` and `npm run balance:passive`. Speeds are ½×,
     a minute, over eight medium games of 45 minutes.
   - *It is gentle.* It drifts 40 pixels, never more than about three a frame, and fades rather than
     slides across the screen; it is never wider than the screen, and sits under the objective banner.
+    On a narrow screen, where it would reach the right-hand column (the Destiny clocks, the goal, a
+    decision waiting), it goes below the column, if that leaves it in the upper half. It finds its
+    place while it fades up and then keeps it: a button or a card that comes up while it is read
+    does not make it jump.
     It makes no sound of its own when it shows at once (the news has sounded its alarm already); one
     that had to wait comes with a soft whoosh. Never over the end of the run.
   Three ways were filmed in the game: this one, black bars of a film closing in with the title fading
@@ -891,6 +897,9 @@ Measured with `npm run simulate` and `npm run balance:passive`. Speeds are ½×,
   were filmed (this one; each omen's words one by one; each beamed in as the Boon cards are): the
   words were slow for a card of facts, the beam was the Boons again, and the sky gives the omens a
   look of their own, the sector's.
+- **News that comes together plays each of its sounds once** (`Hud.update`): a rival Hearth taken
+  brings its fall, a Boon and often a goal in the same moment, and played six sounds at once (three of
+  them the same chime) until 1.22.2; now three.
 - **No flashing for a player who asks for less motion** (`CALM` in `ui/modals/pixelFx.ts`, from the
   browser's prefers-reduced-motion): a Boon card's face, a Legendary's frame, a level-up's window, the
   Ambition's sky and the BOON button do not flash white; the motes, lines, sparkles and words still
@@ -899,7 +908,9 @@ Measured with `npm run simulate` and `npm run balance:passive`. Speeds are ½×,
   before (the Lore is full, a new age, a Hearth taken), its button in the top bar flashes white and
   fades, a frame runs out from it and sparkles light at its corners: under a second, on the classic
   top bar and the cradle's alike. A Boon chosen sets off nothing; a run continued with a Boon waiting
-  shows it once.
+  shows it once. Not while a dialog is open: it would be over before the dialog is (a run opens with
+  a Boon waiting, under its omens: until 1.22.2 the flash was spent there unseen). It comes when the
+  dialog closes, if a Boon still waits.
 - **A goal reached sends its Embers home** (1.22, `ui/Goals.ts`). The box holds the goal two seconds
   more under GOAL REACHED: the goal is struck through in teal, left to right; its reward leaves the
   box as five Embers that fly, one after another, in a dip under the top bar to the Ember count, a
@@ -908,7 +919,8 @@ Measured with `npm run simulate` and `npm run balance:passive`. Speeds are ½×,
   next goal fades up. Edge cases: two goals reached together are marked one after the other; a goal
   reached while a dialog is open is marked once it closes, and its Embers are not held back from the
   count meanwhile (the dialog may stay open for long, and what it offers is weighed against the
-  count: until 1.22.1 the count showed 40 less all that time); if the run ends or tips are turned
+  count: until 1.22.1 the count showed 40 less all that time). Its Embers fly over a herald (they
+  are drawn after it). If the run ends or tips are turned
   off, Embers still in flight are taken in at once; the count never shows less than nothing. Two ways were filmed: this one, and DONE stamped across the box, which
   hid what had been done.
 - **A dialog that opens by itself waits a second before it takes a click** (`DIALOG_GUARD`,

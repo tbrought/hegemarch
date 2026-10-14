@@ -82,9 +82,12 @@ export class Hud {
   heraldLast = new Map<string, number>();
   /** Embers paid but still flying to the count (a goal's reward): the count takes them in as they land. */
   embersAway = 0;
-  /** When a Boon became ready (HUD clock), and how many waited at the last frame (hud/touches.ts). */
+  /** When a Boon became ready (HUD clock), how many waited at the last frame, and a flash owed once no dialog is open (hud/touches.ts). */
   boonReadyAt = -1;
   lastPending = 0;
+  boonFlashDue = false;
+  /** Where the right-hand column of indicators (Destiny clocks, the goal, decisions, tips) reached this frame: a herald keeps clear of it. */
+  columnRect = { x: 0, y: 0, w: 0, h: 0 };
   /** Where the herald showing is (zero when none): it takes no click, but a browser test points at it. */
   heraldRect = { x: 0, y: 0, w: 0, h: 0 };
   /** "+250" / "-120" popups under the Ember counter. */
@@ -141,7 +144,14 @@ export class Hud {
       s.toast.t -= dt;
       if (s.toast.t <= 0) s.toast = null;
     }
-    // Notes: sounds, the log, toasts and auto-pause.
+    // Notes: sounds, the log, toasts and auto-pause. (News that comes together, as a Hearth taken does
+    // with its Boon and its goal, plays each of its sounds once.)
+    const played = new Set<string>();
+    const play = (id: Parameters<typeof s.sfx.play>[0], v: number) => {
+      if (played.has(id)) return;
+      played.add(id);
+      s.sfx.play(id, v);
+    };
     for (const n of g.notes) {
       if (n.id <= this.lastNote) {
         // A line that tallies ships lost grows while more are lost there: keep the log's copy in step.
@@ -159,18 +169,18 @@ export class Hud {
       if (this.log.length > 40) this.log.shift();
       // Ships lost in a fight the player is watching go in the log without an alarm: it is on screen.
       if (n.loss && watching(this, n.loss.node)) continue;
-      if (n.kind === 'alert') s.sfx.play('alert', 0.55);
-      else if (n.kind === 'bad') s.sfx.play('alert', 0.35);
-      else if (n.kind === 'good' && /Boon/.test(n.text)) s.sfx.play('boon', 0.5);
-      else if (n.kind === 'good' && /kindled/.test(n.text)) s.sfx.play('kindle', 0.7);
-      else if (n.kind === 'good') s.sfx.play('good', 0.3);
+      if (n.kind === 'alert') play('alert', 0.55);
+      else if (n.kind === 'bad') play('alert', 0.35);
+      else if (n.kind === 'good' && /Boon/.test(n.text)) play('boon', 0.5);
+      else if (n.kind === 'good' && /kindled/.test(n.text)) play('kindle', 0.7);
+      else if (n.kind === 'good') play('good', 0.3);
       const revealedLog = s.reveal().map;
       const hearthFell = /^The Hearth of .* has gone dark/.test(n.text);
       if (hearthFell) {
         // A house falls: a herald everyone sees (below), a rumble, and a fanfare when it was our doing.
         const ours = n.kind === 'good';
-        s.sfx.play('capture', ours ? 0.85 : 0.55);
-        if (ours) s.sfx.play('boon', 0.5);
+        play('capture', ours ? 0.85 : 0.55);
+        if (ours) play('boon', 0.5);
         s.renderer.fx.shake = Math.max(s.renderer.fx.shake, ours ? 3 : 2);
       }
       // A big moment is announced across the screen (the log keeps its words); any other line, or a moment
@@ -290,6 +300,7 @@ export class Hud {
     if (R.map) drawAttackArrows(this);
     drawIndicators(this);
     drawHerald(this);
+    this.goals.drawFlight(g);
     this.tips.draw(g);
     this.tutorial.draw(g);
     if (this.s.modal) {

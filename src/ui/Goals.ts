@@ -38,6 +38,10 @@ export function sparkAt(from: { x: number; y: number }, to: { x: number; y: numb
 }
 
 export class Goals {
+  /** Where the box was drawn this frame (zero when none): the right-hand column reaches as far. */
+  rect = { x: 0, y: 0, w: 0, h: 0 };
+  /** The Embers of the goal being marked, to draw over what is drawn after the box (a herald): from where, how far in. */
+  private flight: { c: Cheer; from: { x: number; y: number }; t: number } | null = null;
   private t = 0;
   /** Goals reached and being marked, one after another. */
   private cheers: Cheer[] = [];
@@ -114,6 +118,8 @@ export class Goals {
 
   /** The box, with its right edge at `right`, below `clear` if it would lie on it; returns the y below it. */
   draw(g: Ctx, right: number, y: number, clear: { x: number; y: number; w: number; h: number }): number {
+    this.rect = { x: 0, y: 0, w: 0, h: 0 };
+    this.flight = null;
     const clock = this.hud.clock;
     let cheer: Cheer | undefined = this.cheers[0];
     if (cheer && cheer.at >= 0 && clock - cheer.at >= CHEER.STAY) {
@@ -138,6 +144,7 @@ export class Goals {
     const x = right - w;
     if (clear.w > 0 && x < clear.x + clear.w + 2 && y < clear.y + clear.h + 2) y = clear.y + clear.h + 2;
     const hot = this.hud.ui.isHinted('goal');
+    this.rect = { x, y, w, h };
     const ct = cheer && cheer.at >= 0 ? clock - cheer.at : 0;
     const a0 = g.globalAlpha;
     // (The next goal fades up after one is marked.)
@@ -161,7 +168,7 @@ export class Goals {
     return y + h + 2;
   }
 
-  /** A goal reached: struck through in teal, a tick where its reward was, and its Embers flying to the count. */
+  /** A goal reached: struck through in teal, a tick where its reward was; its Embers fly in `drawFlight`. */
   private mark(g: Ctx, c: Cheer, x: number, y: number, w: number, lines: string[], rw: number, t: number) {
     const k = Math.min(1, t / CHEER.STRIKE);
     lines.forEach((l, i) => rect(g, x + 4, y + 14 + i * 10, Math.round((textWidth(l) + 1) * k), 1, PAL.teal));
@@ -170,8 +177,13 @@ export class Goals {
       const ty = y + 11;
       [[0, 3], [1, 4], [2, 5], [3, 4], [4, 3], [5, 2], [6, 1], [7, 0]].forEach(([dx, dy]) => rect(g, tx + dx, ty + dy, 1, 2, PAL.teal));
     }
-    // The Embers, one after another, from the reward to the count; the count takes them in as the last lands.
-    const from = { x: x + w - rw, y: y + 13 };
+    this.flight = { c, from: { x: x + w - rw, y: y + 13 }, t };
+  }
+
+  /** The Embers of the goal being marked, one after another, from its reward to the count (over a herald); the count takes them in as the last lands. */
+  drawFlight(g: Ctx) {
+    if (!this.flight) return;
+    const { c, from, t } = this.flight;
     const to = { x: 5, y: 6 };
     let landed = 0;
     for (let n = 0; n < CHEER.SPARKS; n++) {

@@ -57,9 +57,13 @@ await wait(80);
 s = await st();
 check('omens: a click on BEGIN while they come brings them all, and does not begin', s.modal === 'omens' && !s.revealing, JSON.stringify(s));
 await wait(100);
+const begunAt = await ev(() => window.__app.hud.clock);
+const flashBefore = await ev(() => window.__app.hud.boonReadyAt);
 await clickAt('omens-begin');
 await wait(80);
 check('omens: BEGIN then begins', (await st()).modal === null);
+// The run opened with a Boon waiting: its button flashes once the omens are put away, not unseen under them.
+check('the BOON button flashes once the omens are put away, not under them', flashBefore < 0 && (await ev(() => window.__app.hud.boonReadyAt)) >= begunAt, `${flashBefore} ${begunAt} ${await ev(() => window.__app.hud.boonReadyAt)}`);
 
 // ---- A decision that opens by itself: held, then a key brings all and answers nothing; then it answers; the outcome.
 await ev(() => {
@@ -89,9 +93,8 @@ await wait(600);
 await key('Enter');
 s = await st();
 check('decision: Enter brings all of the outcome', s.modal === 'event' && !s.revealing && !!(await uiRect('ev-ok')), JSON.stringify(s));
-await clickAt('ev-ok');
-await wait(80);
-check('decision: CONTINUE closes it', (await st()).modal === null && (await ev(() => !window.__app.session.game.prompts.some((p) => p.id === 990001))));
+await key('Enter');
+check('decision: and Enter then goes on, as CONTINUE does', (await st()).modal === null && (await ev(() => !window.__app.session.game.prompts.some((p) => p.id === 990001))));
 
 // ---- Esc while a decision comes in puts it away; opened again, it is all there at once.
 await ev(() => {
@@ -219,6 +222,21 @@ await ev(() => {
   window.__app.hud.heralds.length = 0;
   window.__app.session.profile.settings.autoPause = false;
 });
+// Once it has come in, it keeps its place: a card that comes up meanwhile does not make it jump.
+await tell('KEEPS ITS PLACE');
+await wait(700);
+const placed = await ev(() => window.__app.hud.heraldRect.y);
+await ev(() => {
+  const a = window.__app;
+  a.session.profile.seenTips = a.session.profile.seenTips.filter((x) => x !== 'ageReady');
+  a.hud.tips.show('ageReady');
+});
+await wait(400);
+check('herald: once in, it keeps its place when a card comes up', (await ev(() => window.__app.hud.tips.rect.w)) > 0 && (await ev(() => window.__app.hud.heraldRect.y)) === placed, `${placed} ${await ev(() => window.__app.hud.heraldRect.y)}`);
+await ev(() => {
+  window.__app.hud.tips.dismiss();
+  window.__app.hud.heralds.length = 0;
+});
 // The same moment again within a minute: told at the top as any other news, not heralded.
 await tell('BEHIND A TIP');
 await wait(200);
@@ -254,7 +272,46 @@ await wait(5000);
 const end = await ev(() => ({ away: window.__app.hud.embersAway, shown: Math.round(window.__app.hud.embersShown), embers: Math.round(window.__app.session.game.player.embers), marking: window.__app.hud.goals.marking() }));
 check('goals: then the count holds them all', !end.marking && end.away === 0 && Math.abs(end.shown - end.embers) <= 3, JSON.stringify(end));
 
-// ---- A Boon more while the draft is open marks the button; the run's end leaves no herald on screen.
+// ---- News that comes together plays each of its sounds once (a Hearth taken: its fall, its Boon, its goal).
+const sounds = await ev(() => {
+  const a = window.__app;
+  const heard = [];
+  const play = a.sfx.play.bind(a.sfx);
+  a.sfx.play = (id, v) => {
+    heard.push(`${Math.round(a.hud.clock * 100)}:${id}`);
+    return play(id, v);
+  };
+  a.__heard = heard;
+  const g = a.session.game;
+  const r = g.empires().find((f) => f.id !== g.playerId && f.alive);
+  g.planetDefeated(g.nodes[r.capital], g.playerId);
+  g.flushDeferred();
+  return true;
+});
+await wait(400);
+const heard = await ev(() => window.__app.__heard);
+check('news that comes together plays each of its sounds once', sounds && heard.length > 0 && new Set(heard).size === heard.length, heard.join(', '));
+// A level-up that opens has its own sound, and not the dialog's click over it.
+await ev(() => {
+  const a = window.__app;
+  a.__heard.length = 0;
+  a.session.modal = null;
+  const g = a.session.game;
+  const ark = g.units.get(g.player.ark);
+  ark.pendingAbil = [];
+  g.grantLevels(ark, 7 - ark.level);
+  a.hud.modals.open({ kind: 'ability', unitId: ark.id, unbidden: true });
+});
+await wait(300);
+const opened = await ev(() => window.__app.__heard.map((x) => x.split(':')[1]));
+check('a level-up opens with its own sound, not the click of a dialog over it', opened.includes('levelup') && !opened.includes('ui'), opened.join(', '));
+await ev(() => {
+  const g = window.__app.session.game;
+  g.units.get(g.player.ark).pendingAbil = [];
+  window.__app.session.modal = null;
+});
+
+// ---- The run's end leaves no herald on screen.
 await tell('THE LAST HERALD');
 await ev(() => window.__app.session.game.declareWinner(window.__app.session.game.playerId, 'conquest', 'Test.'));
 await wait(500);

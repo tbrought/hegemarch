@@ -65,9 +65,13 @@ export function drawAttackArrows(hud: Hud) {
 export function drawIndicators(hud: Hud) {
   const g = hud.s.screen.g;
   let y = 31;
+  // (Where the column reaches: its left edge and its foot. A herald keeps clear of it.)
+  let left = hud.W;
+  const reach = (w: number) => (left = Math.min(left, hud.W - 3 - w));
   for (const c of destinyClocks(hud).slice(0, 3)) {
     const w = textWidth(c.text, 'tiny') + 10;
     const x = hud.W - 3 - w;
+    reach(w);
     const b = hud.bannerRect;
     if (b.w > 0 && x < b.x + b.w + 2 && y < b.y + b.h + 2) y = b.y + b.h + 2;
     const seen = c.node >= 0 && hud.s.explored(c.node);
@@ -77,20 +81,25 @@ export function drawIndicators(hud: Hud) {
     y += 13;
   }
   y = hud.goals.draw(g, hud.W - 3, y, hud.bannerRect);
+  if (hud.goals.rect.w) reach(hud.goals.rect.w);
   const pending = hud.g.prompts.filter((x) => x.result === undefined);
   if (pending.length) {
     const label = pending.length > 1 ? `! ${pending.length} DECISIONS` : '! DECISION';
     const w = textWidth(label, 'tiny') + 10;
+    reach(w);
     hud.ui.button(g, 'prompt', hud.W - 3 - w, y, w, 11, label, () => hud.modals.open({ kind: 'event', promptId: pending[0].id }), {
       primary: true, pulse: true, font: 'tiny', color: PAL.violet, tip: 'An anomaly or a visitor is waiting for your decision.',
     });
     y += 13;
   }
+  const tipAt = y;
   y = hud.tips.drawIndicator(g, hud.W - 3, y);
+  if (y > tipAt) reach(textWidth('9 TIPS', 'tiny') + 20);
   for (const u of hud.g.unitList) {
     if (u.dead || u.owner !== hud.g.playerId || !u.pendingAbil.length) continue;
     const label = `${u.type === 'ark' ? 'ARK' : 'DREAD'} LEVEL ${u.level}!`;
     const w = textWidth(label, 'tiny') + 10;
+    reach(w);
     hud.ui.button(g, 'abil-' + u.id, hud.W - 3 - w, y, w, 11, label, () => hud.modals.open({ kind: 'ability', unitId: u.id }), {
       primary: true, pulse: true, font: 'tiny', tip: `Your ${u.type === 'ark' ? 'Ark' : 'Dreadnought'} reached level ${u.level} and can learn a ` +
           `new ability. Click to choose.`,
@@ -98,6 +107,7 @@ export function drawIndicators(hud: Hud) {
     y += 13;
     if (y > 70) break;
   }
+  hud.columnRect = left < hud.W ? { x: left, y: 31, w: hud.W - left, h: y - 31 } : { x: 0, y: 0, w: 0, h: 0 };
 }
 
 export function drawBadges(hud: Hud) {

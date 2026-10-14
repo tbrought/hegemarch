@@ -117,7 +117,8 @@ export class Modals {
       if (m.tab === 'boons') this.boonScroll = 0;
     }
     this.s.modal = m;
-    this.s.sfx.play(m.kind === 'draft' ? 'boon' : 'ui', 0.5);
+    // (A level-up has a sound of its own as it comes in: modals/event.ts.)
+    if (m.kind !== 'ability') this.s.sfx.play(m.kind === 'draft' ? 'boon' : 'ui', 0.5);
   }
 
   close() {
@@ -202,6 +203,10 @@ export class Modals {
     }
     if (m.kind === 'omens' && this.revealing() && (/^Digit\d$/.test(code) || code === 'Space' || code === 'Enter')) {
       skipOmens(this);
+      return true;
+    }
+    if (m.kind === 'event' && this.result?.promptId === m.promptId && (code === 'Space' || code === 'Enter')) {
+      this.close();
       return true;
     }
     if (m.kind === 'event' && !this.result) {

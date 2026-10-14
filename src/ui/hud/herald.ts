@@ -46,6 +46,9 @@ export interface HeraldShown {
   /** How solid it is (1, or less under the pointer), and the HUD clock it was last drawn at. */
   veil: number;
   drawn: number;
+  /** Where it stands once it has come in, and on a screen of what height. */
+  y?: number;
+  onH?: number;
 }
 
 /** Seconds a herald is on the screen: shorter when another is waiting. */
@@ -146,8 +149,19 @@ export function drawHerald(hud: Hud) {
   const banner = hud.bannerRect.w > 0 ? hud.bannerRect.y + hud.bannerRect.h + 10 : 0;
   // (Below a tip card that is up, as of the last frame: it is drawn after the herald.)
   const tip = hud.tips.rect.w > 0 ? hud.tips.rect.y + hud.tips.rect.h + 6 : 0;
-  const y = Math.max(Math.round(hud.H * 0.24), banner, tip);
+  let y = Math.max(Math.round(hud.H * 0.24), banner, tip);
   const bh = scale === 2 ? 34 : 26;
+  // (And below the right-hand column where it would reach it, on a narrow screen: the goal and the
+  // Destiny clocks stay in sight. Not so far down that it stands in the middle of the map.)
+  const column = hud.columnRect;
+  const below = column.y + column.h + 4;
+  if (column.w > 0 && Math.round(W / 2 + bw / 2) > column.x - 2 && y < below && below + bh <= hud.H * 0.55) y = below;
+  // It finds its place while it fades up (a tip card brought by the same news comes a frame later), then
+  // keeps it: a button that comes into the column, or a card, does not make it jump while it is read.
+  if (t < HERALD.IN || cur.y === undefined || cur.onH !== hud.H) {
+    cur.y = y;
+    cur.onH = hud.H;
+  } else y = cur.y;
   const pose = heraldPose(t, cur.end);
   const x = Math.round(W / 2 - bw / 2) + pose.dx;
   // Under the pointer it turns see-through, smoothly, so whatever is under it can be seen and clicked.

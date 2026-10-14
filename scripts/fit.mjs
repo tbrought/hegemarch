@@ -141,7 +141,18 @@ for (const [label, vw, vh, px] of [['400x225', 1200, 675, 'large'], ['480x270', 
   console.log(label, 'omens checked');
   await ev(() => (window.__app.session.modal = null));
 
-  // ---- Heralds with the longest names there are: on screen, under the objective banner.
+  // ---- Heralds with the longest names there are: on screen, under the objective banner, and clear of the
+  // right-hand column (here the goal box and a Destiny clock) where there is room below it.
+  await ev(() => {
+    const a = window.__app;
+    a.session.profile.settings.tips = true;
+    a.session.profile.goalsDone = [];
+    const g = a.session.game;
+    const r = g.empires().find((f) => f.id !== g.playerId);
+    if (g.victories.includes('domination')) r.holdTimer = 30;
+    else if (g.victories.includes('relics')) r.relicTimer = 30;
+    else if (g.victories.includes('treasury')) r.treasuryTimer = 30;
+  });
   const heralds = await ev(() => {
     const a = window.__app;
     const g = a.session.game;
@@ -163,11 +174,14 @@ for (const [label, vw, vh, px] of [['400x225', 1200, 675, 'large'], ['480x270', 
       a.session.game.notify(-1, x.title, 'alert', undefined, false, x);
     }, h);
     await wait(900);
-    const r = await ev(() => ({ r: window.__app.hud.heraldRect, b: window.__app.hud.bannerRect, W: window.__app.session.screen.W, H: window.__app.session.screen.H }));
+    const r = await ev(() => ({ r: window.__app.hud.heraldRect, b: window.__app.hud.bannerRect, c: window.__app.hud.columnRect, W: window.__app.session.screen.W, H: window.__app.session.screen.H }));
     if (!r.r.w) problems.push(`[${label}] herald "${h.title}" not shown`);
     else {
       if (r.r.x < 0 || r.r.x + r.r.w > r.W || r.r.y + r.r.h > r.H) problems.push(`[${label}] herald "${h.title}" off screen: ${JSON.stringify(r.r)} on ${r.W}x${r.H}`);
       if (r.b.w && r.r.y < r.b.y + r.b.h) problems.push(`[${label}] herald "${h.title}" over the objective banner`);
+      const c = r.c;
+      const room = c.y + c.h + 4 + r.r.h <= r.H * 0.55;
+      if (c.w && room && r.r.x + r.r.w > c.x && r.r.x < c.x + c.w && r.r.y < c.y + c.h) problems.push(`[${label}] herald "${h.title}" over the right-hand column ${JSON.stringify(c)}`);
     }
   }
   await page.screenshot({ path: `.shots/review-${label}-herald.png` });
