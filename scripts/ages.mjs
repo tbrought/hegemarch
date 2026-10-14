@@ -37,7 +37,7 @@ const clickUi = async (id) => {
   if (!r) throw new Error('no UI region ' + id);
   // (A dialog that has just opened by itself takes no click for a moment (`Modals.guarded`): wait it out, as a player would.
   // This suite clicked the Ark's card 0.9 s after it opened, and one run in five the click was lost.)
-  for (let i = 0; i < 60 && (await ev(() => window.__app.hud?.ui.holding())); i++) await wait(100);
+  for (let i = 0; i < 60 && (await ev(() => window.__app.hud?.modals.guarded() || window.__app.hud?.ui.holding())); i++) await wait(100);
   const [x, y] = await toPage(r.x + r.w / 2, r.y + r.h / 2);
   await page.mouse.click(x, y);
   await wait(140);

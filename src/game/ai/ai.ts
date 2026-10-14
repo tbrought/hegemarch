@@ -570,6 +570,16 @@ function military(g: Game, f: Faction, ctx: Ctx) {
   else if (ai.mode === 'attack') press(g, f, army, armyPower, minArmy);
 }
 
+/** A Hearth's shields count as gone at a tenth of what they can be (they trickle back even under fire). */
+const BREACH = 0.1;
+/** Seconds a house goes on standing by a breached Hearth after it last saw the shields gone. */
+const STAND = 30;
+
+/** Are this Hearth's shields gone? (One that has none to lose: is its hull going?) */
+function breached(n: GNode): boolean {
+  return n.maxSh > 0 ? n.sh <= n.maxSh * BREACH : n.hp < n.maxHp * 0.75;
+}
+
 /**
  * Ships for the worlds under threat, the Hearth first. Those it sends, or leaves on the job, are
  * `assigned`: the army does without them.
@@ -611,13 +621,25 @@ function defend(g: Game, f: Faction, ctx: Ctx, all: Unit[], assigned: Set<number
       sum += g.unitPower(c.u);
     }
     const isHearth = g.nodes[th.node].capitalOf === f.id;
-    if (send.length && sum + already >= th.power * 0.8) {
+    // The last stand. Too few to win, a house's ships waited a jump short of its Hearth until they
+    // were enough, and if they never were, they stood there while it fell: in forty AI-only games the
+    // house whose Hearth fell had, at the median, its whole fleet within two jumps and none of it at
+    // the Hearth, and a playtester took a capital with the rival's army watching from the next land.
+    // A house that loses its Hearth loses every ship with it, so they were kept for nothing. Once the
+    // Hearth's shields are gone (the attack is in earnest: a raid that cannot crack it does not get
+    // that far), every ship comes, whatever the odds. It rarely saves the Hearth; it makes it cost.
+    // The house stands by that for half a minute after it last saw the shields gone: they trickle
+    // back under fire, and ships that turned round with every flicker would never arrive.
+    if (isHearth && breached(g.nodes[th.node])) ai.breach = g.time;
+    const stand = isHearth && ai.breach !== undefined && g.time - ai.breach < STAND;
+    if (send.length && (stand || sum + already >= th.power * 0.8)) {
       sendIfNeeded(g, f, send, th.node);
       for (const u of send) assigned.add(u.id);
     } else if (send.length && isHearth) {
-      // Too few to win at the Hearth: they gather a jump or two short of the fight, and go in together
-      // once they are enough (counted again at every thought). They used to fly in as they came, and
-      // an enemy fleet sitting there picked them off one by one.
+      // Too few to win at the Hearth, and its shields still hold: they gather a jump or two short of
+      // the fight, and go in together once they are enough (counted again at every thought), or once
+      // the shields are gone. They used to fly in as they came, and an enemy fleet sitting there
+      // picked them off one by one.
       const at = gatherPoint(g, f, th.node);
       if (at >= 0) sendIfNeeded(g, f, send, at);
       for (const u of send) assigned.add(u.id);

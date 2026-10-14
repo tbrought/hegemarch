@@ -284,6 +284,8 @@ export interface AIState {
   grudgeAt: number;
   /** The siege under way: the world, when it was last looked at, and how much hull and shield it had then. */
   siege?: { node: number; at: number; left: number };
+  /** When the house last saw its Hearth's shields gone: for a while from then, its ships come to the Hearth whatever the odds. */
+  breach?: number;
   /** The star the house means to set alight with its Starfall, and when it set out to. */
   starfall?: { star: number; since: number };
   /** The star its Starfall was armed at, and until when the worlds of that system are worth more to its army. */

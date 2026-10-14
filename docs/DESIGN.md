@@ -299,6 +299,29 @@ There is no truce. What keeps an early rush risky:
   in one by one and be picked off). And a few ships on their own (new ships, stragglers, defenders)
   go round places held by more than they could take on, where there is another way; the army itself
   takes the straight way, or its attacks take so long that they are called off.
+- **The last stand** (1.17.3): once a Hearth's shields are gone, every ship of its house comes to it,
+  whatever the odds (`breached`, `AIState.breach` in `ai/ai.ts`). The gathering above had no end: too
+  few to win, the ships waited a jump short until they were enough, and if they never were, they
+  stood there while the Hearth fell. A playtester of Ages took a capital with the rival's army
+  watching from the next land, and it was how most houses died: in forty AI-only games 57 Hearths
+  fell to another house, 42 of those houses still had a fleet, and at the median all of it stood
+  within two jumps and none of it at the Hearth; in 14 the fleet standing by was worth a quarter or
+  more of the attackers (24 ships at the median). On the cradle it was 5 of 22. A house that loses
+  its Hearth loses every ship with it, so those ships were kept for nothing. The shields are the
+  sign that an attack is in earnest: a raid that cannot crack the Hearth does not get that far, and
+  until then the ships still gather, so that they come together. The house stands by its decision
+  for half a minute after it last saw the shields gone (`STAND`): they trickle back under fire, and
+  ships that turned round with every flicker would never arrive (the loop of the third playtest).
+  It rarely saves the Hearth, and is not meant to: outnumbered three to one, a house falls as fast
+  as before (about 37 seconds with its army a jump away). It makes the Hearth cost. With the
+  attackers at three times the army's strength they lost 29% of their ships where they had lost 6%
+  (39% against 12% among the stars), and at twice, 57% where they had lost 14%. No house's fleet
+  stands by any more (0 of 56 falls, 0 of 22 on the cradle), and only 7 of the 56 houses still had a
+  fleet when their Hearth fell. Pace: 31 of 40 games decided within the hour at a median of 40
+  minutes, against 34 and 43; the cradle is unchanged (a median of 37 minutes). An early rush lands
+  as rarely as it did (0 of 8 on Easy at 4:30, 0 of 8 on Normal at 7:00). Three other rules were
+  tried on the same games and did no better: the shields half gone, going in as soon as the ships
+  have gathered, and always going straight in.
 - **A siege that gets nowhere is called off**: every 50 seconds at its target an AI fleet must have
   taken 3% off the world's hull and shields, or be in a battle; otherwise it goes home and picks
   again. A fleet without the guns for a world no longer sits at it for minutes.

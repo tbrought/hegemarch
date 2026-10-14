@@ -53,9 +53,12 @@ export function gameUi(page) {
       return [r.left + ((x + 0.5) * r.width) / c.width, r.top + ((y + 0.5) * r.height) / c.height];
     }, [ix, iy]);
   const uiRect = (id) => ev((rid) => window.__app.hud?.ui.rectOf(rid) ?? null, id);
-  /** A dialog that has just opened by itself takes no click and no key for a moment (`Modals.guarded`): wait it out, as a player would. */
+  /**
+   * A dialog that has just opened by itself takes no click and no key for a moment (`Modals.guarded`): wait it out, as a
+   * player would. (The dialog is asked, not only the last frame: one that has opened and is not drawn yet is guarded already.)
+   */
   const unheld = async () => {
-    for (let i = 0; i < 60 && (await ev(() => window.__app.hud?.ui.holding())); i++) await wait(100);
+    for (let i = 0; i < 60 && (await ev(() => window.__app.hud?.modals.guarded() || window.__app.hud?.ui.holding())); i++) await wait(100);
   };
   /** Click a HUD region by its id. Waits a second for it to be there; throws if it is not (`required: false`: returns false). */
   const clickUi = async (id, { button = 'left', after = 120, required = true } = {}) => {

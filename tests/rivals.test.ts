@@ -97,10 +97,11 @@ describe('a rival house under siege at its Hearth (the third playtest)', () => {
     expect(Math.max(...fleet.map((u) => changes.get(u.id) ?? 0))).toBeLessThanOrEqual(4);
   });
 
-  it('too few to win, they gather a jump or two short of the Hearth instead of flying in one by one', () => {
+  it('too few to win, they gather a jump or two short of the Hearth while its shields hold, instead of flying in one by one', () => {
     const { g, rival, fleet, hearth } = siege();
     for (let t = 0; t < 20 / TICK; t++) {
       hearth.hp = hearth.maxHp;
+      hearth.sh = hearth.maxSh;
       g.step();
       g.fx.length = 0;
     }
@@ -112,5 +113,73 @@ describe('a rival house under siege at its Hearth (the third playtest)', () => {
       expect(hops).toBeGreaterThanOrEqual(1);
       expect(hops).toBeLessThanOrEqual(2);
     }
+  });
+});
+
+describe('the last stand: a house does not watch its Hearth fall (a playtest of Ages)', () => {
+  /** A rival whose eight Guardians stand one jump from its Hearth when thirty ships come for it (the Hearth is made to hold). */
+  function watched(opts: Parameters<typeof mk>[0] = {}) {
+    const g = mk({ size: 'medium', ...opts });
+    const p = g.player;
+    const rival = g.empires().find((f) => f.id !== p.id)!;
+    rival.ai!.firstAttackAt = 1e9;
+    const hearth = g.nodes[rival.capital];
+    const next = g.nodes.filter((n) => g.hops(n.id, hearth.id) === 1 && g.hostilePowerAt(n.id, rival.id) === 0)[0];
+    for (const u of g.unitsOf(rival.id)) if (u.type !== 'ark' && u.type !== 'scout') g.killUnit(u, -1);
+    const fleet = [0, 1, 2, 3, 4, 5, 6, 7].map(() => g.spawnUnit('guardian', rival.id, next.id));
+    for (let i = 0; i < 30; i++) g.spawnUnit(i % 2 ? 'breaker' : 'striker', p.id, hearth.id);
+    /** Let time pass with the Hearth's hull held, and its shields held at a share of what they can be. */
+    const pass = (seconds: number, shields: number) => {
+      for (let t = 0; t < seconds / TICK; t++) {
+        hearth.hp = hearth.maxHp;
+        hearth.sh = hearth.maxSh * shields;
+        g.step();
+        g.fx.length = 0;
+      }
+    };
+    const coming = () => fleet.filter((u) => !u.dead && (u.node === hearth.id || u.dest === hearth.id || u.lane?.to === hearth.id)).length;
+    return { g, rival, fleet, hearth, next, pass, coming };
+  }
+
+  it('outnumbered, its ships wait next door while the shields hold; once they are gone, every ship comes', () => {
+    const { fleet, hearth, pass, coming, rival } = watched();
+    pass(20, 1);
+    expect(fleet.filter((u) => !u.dead).length).toBe(8);
+    expect(coming()).toBe(0);
+    expect(rival.ai!.breach).toBeUndefined();
+    // The shields go: within a few seconds all of them are on their way, eight against thirty.
+    pass(6, 0);
+    expect(coming()).toBe(8);
+    pass(40, 0);
+    expect(fleet.some((u) => u.node === hearth.id || u.dead)).toBe(true);
+  });
+
+  it('they do not turn back when the shields flicker', () => {
+    const { fleet, pass, coming, rival } = watched();
+    pass(10, 1);
+    pass(5, 0);
+    expect(coming()).toBe(8);
+    const dests = fleet.map((u) => u.dest);
+    // A third of the shields back for ten seconds: the house stands by what it began.
+    pass(10, 0.35);
+    expect(fleet.filter((u) => !u.dead).map((u) => u.dest)).toEqual(dests.filter((_, i) => !fleet[i].dead));
+    expect(coming()).toBe(fleet.filter((u) => !u.dead).length);
+    expect(rival.ai!.breach).toBeDefined();
+  });
+
+  it('a threat that does not crack the Hearth does not call them in', () => {
+    const { pass, coming } = watched();
+    // Half the shields gone is not a breach.
+    pass(30, 0.5);
+    expect(coming()).toBe(0);
+  });
+
+  it('the same on the cradle of an Ages run: the army in the next land comes when the Hearth is breached', () => {
+    const { fleet, pass, coming } = watched({ mode: 'ages', stage: 'cradle' });
+    pass(15, 1);
+    expect(coming()).toBe(0);
+    pass(6, 0);
+    expect(coming()).toBe(fleet.filter((u) => !u.dead).length);
+    expect(coming()).toBeGreaterThan(0);
   });
 });

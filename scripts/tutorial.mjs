@@ -31,8 +31,10 @@ const toPage = (ix, iy) =>
 const uiRect = (id) => ev((rid) => window.__app.hud.ui.rectOf(rid), id);
 // A dialog that has just opened by itself takes no click and no key for a moment (Modals.guarded): wait
 // it out, as a player would.
+// (The dialog is asked, not only the last frame: one that has opened and is not drawn yet is guarded already, and a key
+// pressed then is ignored, as it should be. Asking the frame alone, this suite pressed Esc into the guard now and then.)
 const unheld = async () => {
-  for (let i = 0; i < 60 && (await ev(() => window.__app.hud?.ui.holding())); i++) await wait(100);
+  for (let i = 0; i < 60 && (await ev(() => window.__app.hud?.modals.guarded() || window.__app.hud?.ui.holding())); i++) await wait(100);
 };
 const clickUi = async (id) => {
   let r = await uiRect(id);
@@ -377,7 +379,6 @@ try {
   check('and its closing card waits until the other one is gone', await ev(() => window.__app.session.modal?.kind === 'nightDone'));
   await unheld();
   await page.keyboard.press('Escape');
-  // (The key is taken on the next frame: up to a second for it, not a fixed 150 ms.)
   for (let i = 0; i < 10 && (await ev(() => window.__app.session.modal !== null)); i++) await wait(100);
   check('Esc on the closing card keeps playing', await ev(() => window.__app.session.modal === null && window.__app.screen === 'game'));
 
