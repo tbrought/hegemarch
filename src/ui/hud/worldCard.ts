@@ -6,7 +6,7 @@
 import { FIELD_GUARD, HOLD_FIELD } from '../../game/constants';
 import { ERAS, LAST_CRADLE_ERA, LINE_SHORT, SPACE } from '../../game/data/eras';
 import { RELIC_BY_ID } from '../../game/data/relics';
-import { UNITS } from '../../game/data/units';
+import { fights, UNITS } from '../../game/data/units';
 import { ASCENSION_BOONS, GATE_CHARGE } from '../../game/data/victories';
 import { burning, STARFALL_BUILD, STARFALL_FUSE, STARFALL_STEP } from '../../game/starfall';
 import { ECON, PLANETS, ROLE_ORDER, ROLES } from '../../game/data/worlds';
@@ -133,7 +133,32 @@ export function nodeRows(hud: Hud, n: GNode): CardRow[] {
       }));
     }
   }
-  if (seed) rows.push(line(hud, seed.node === n.id && seed.kindle > 0 ? `KINDLING… ${pct(seed.kindle / ECON.kindleTime)}` : 'A SEED SHIP IS ON ITS WAY', PAL.gold, 'tiny', { terms: gloss('seed', 'kindle', 'glow') }));
+  // Warships of another house hold it too: no seed ship kindles while they are here.
+  const held = visible ? game.buckets[n.id].filter((u) => !u.dead && u.owner !== p.id && game.factions[u.owner].kind === 'empire' && game.hostile(u.owner, p.id) && fights(u.type)) : [];
+  if (held.length) {
+    const f = game.factions[held[0].owner];
+    rows.push(line(hud, `HELD BY ${held.length} ${held.length === 1 ? 'WARSHIP' : 'WARSHIPS'} OF ${game.shortName(f).toUpperCase()}`, PAL.red, 'tiny', {
+      tip: `Warships of ${f.name} are at ${n.name}. No seed ship can kindle it while they are here: drive them off, or wait until they leave.`,
+      terms: gloss('kindle'),
+    }));
+  }
+  if (seed) {
+    // (At the world and not at work: something that fights is in its way.)
+    const here = seed.node === n.id && !seed.lane && !seed.path.length;
+    rows.push(line(hud, here && seed.kindle > 0 ? `KINDLING… ${pct(seed.kindle / ECON.kindleTime)}` : here && seed.kindle < 0 ? 'YOUR SEED SHIP WAITS HERE' : 'A SEED SHIP IS ON ITS WAY', PAL.gold, 'tiny', { terms: gloss('seed', 'kindle', 'glow') }));
+  }
+  // Another house's seed ship at work here: the first to finish has the world.
+  if (visible) {
+    for (const u of game.buckets[n.id]) {
+      if (u.dead || u.type !== 'seed' || u.owner === p.id || u.order !== 'kindle' || u.orderTarget !== n.id) continue;
+      const f = game.factions[u.owner];
+      rows.push(line(hud, u.kindle > 0 ? `BEING KINDLED BY ${game.shortName(f).toUpperCase()}: ${pct(u.kindle / ECON.kindleTime)}` : `A SEED SHIP OF ${game.shortName(f).toUpperCase()} WAITS HERE`, f.color, 'tiny', {
+        tip: `A seed ship of ${f.name} is kindling ${n.name}. The first seed ship to finish has the world; the other is called off, and its next KINDLE is free. ` +
+            `Only warships stop a kindling: a seed ship or a Scout stops nothing.`,
+        terms: gloss('seed', 'kindle'),
+      }));
+    }
+  }
   if (!seed) {
     const why = game.checkKindle(p.id, n.id);
     const cost = game.kindleCost(p);

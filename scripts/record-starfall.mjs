@@ -122,9 +122,10 @@ const scene = await ev(() => {
   rival.ai = null;
   const star = g.starOf(g.nodes[rival.capital]);
   for (const u of [...g.buckets[star.id]]) if (u.owner !== p.id) g.killUnit(u, -1);
-  // (The whole sector is shown as it is: a film of what the player's house has not seen yet would show dark worlds.)
+  // (The sector is charted, so that the map is not black. It is not revealed: the film shows what the
+  // player's house sees and no more. The first film was shot with the fog lifted, and so it did not show
+  // that the house which armed a Starfall saw nothing of what it did: a playtester found that out.)
   for (let i = 0; i < g.nodes.length; i++) p.explored[i] = 1;
-  s.view.reveal = true;
   const place = (u, i, n) => {
     const ang = (i / n) * Math.PI * 2;
     if (u.node >= 0) g.buckets[u.node].splice(g.buckets[u.node].indexOf(u), 1);

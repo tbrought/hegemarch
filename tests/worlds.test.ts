@@ -76,6 +76,80 @@ describe('kindling', () => {
   });
 });
 
+describe('two houses want one dark world (a playtest of 1.17)', () => {
+  /** A dark world, the player's seed ship kindling it, and a rival house that gives no orders of its own. */
+  function contested() {
+    const g = mk();
+    const p = g.player;
+    const rival = g.empires().find((f) => f.id !== p.id)!;
+    rival.ai = null;
+    const world = darkWorld(g);
+    const mine = g.spawnUnit('seed', p.id, world.id);
+    expect(g.cmdSendSeed(p.id, mine.id, world.id)).toBe(true);
+    return { g, p, rival, world, mine };
+  }
+
+  it('their seed ships both kindle it, and the first to finish has it: neither waits for the other', () => {
+    const { g, p, rival, world, mine } = contested();
+    run(g, 6);
+    const head = mine.kindle;
+    expect(head).toBeGreaterThan(4);
+    // The rival's seed ship arrives six seconds behind.
+    const theirs = g.spawnUnit('seed', rival.id, world.id);
+    expect(g.cmdSendSeed(rival.id, theirs.id, world.id)).toBe(true);
+    run(g, 6);
+    // (Until 1.18 each took the other for a defender: both stood at -1 for good, and the player's six seconds were lost.)
+    expect(mine.kindle).toBeGreaterThan(head + 4);
+    expect(theirs.kindle).toBeGreaterThan(3);
+    run(g, ECON.kindleTime);
+    expect(world.owner).toBe(p.id);
+    expect(mine.dead).toBe(true);
+    // The one that lost is called off where it stands. It is not used up.
+    expect(theirs.dead).toBe(false);
+    expect(theirs.order).toBe('idle');
+    expect(g.idleSeed(rival.id)).toBe(theirs);
+  });
+
+  it('the player who loses the race is told who won, and the seed ship does the next kindling for free', () => {
+    const { g, p, rival, world, mine } = contested();
+    const theirs = g.spawnUnit('seed', rival.id, world.id);
+    g.cmdSendSeed(rival.id, theirs.id, world.id);
+    // The rival's is well ahead.
+    theirs.kindle = ECON.kindleTime - 3;
+    run(g, 6);
+    expect(world.owner).toBe(rival.id);
+    expect(mine.dead).toBe(false);
+    expect(g.idleSeed(p.id)).toBe(mine);
+    expect(g.notes.some((n) => n.text.includes(`${rival.name} kindled ${world.name} first`) && /next KINDLE is free/.test(n.text))).toBe(true);
+    const other = g.nodes.find((n) => n.kind === 'planet' && n.owner === -1 && n.id !== world.id)!;
+    p.explored[other.id] = 1;
+    p.embers = 0;
+    expect(g.checkKindle(p.id, other.id)).toBeNull();
+    expect(g.cmdKindle(p.id, other.id)).toBe(true);
+    expect(g.seedFor(p.id, other.id)).toBe(mine);
+  });
+
+  it('only what fights stops a kindling: a Scout or a Starfall of another house does not, a warship does', () => {
+    const { g, p, rival, world, mine } = contested();
+    g.spawnUnit('scout', rival.id, world.id);
+    g.spawnUnit('starfall', rival.id, world.id);
+    mine.hp = mine.maxHp = 1e9; // (the Scout has a gun: it is no reason to stop, but it would wear the seed ship down)
+    expect(g.kindleBarred(world.id, p.id)).toBe(false);
+    expect(g.hasHostiles(world.id, p.id)).toBe(true);
+    run(g, 8);
+    expect(mine.kindle).toBeGreaterThan(6);
+    const warship = g.spawnUnit('guardian', rival.id, world.id);
+    expect(g.kindleBarred(world.id, p.id)).toBe(true);
+    run(g, 8);
+    expect(world.owner).toBe(-1);
+    expect(mine.kindle).toBe(-1);
+    expect(g.notes.some((n) => n.text.includes(`the warships of ${rival.name} there must be driven off first`))).toBe(true);
+    g.killUnit(warship, p.id);
+    run(g, ECON.kindleTime + 2);
+    expect(world.owner).toBe(p.id);
+  });
+});
+
 describe('worlds', () => {
   it('mines make more Embers, roles retool, the Hearth does everything', () => {
     const g = mk();

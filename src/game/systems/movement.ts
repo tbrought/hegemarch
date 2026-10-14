@@ -1,7 +1,7 @@
 import type { Game } from '../Game';
 import { FIRE_SPOOL, UNDER_FIRE } from '../constants';
 import { ECON } from '../data/worlds';
-import { fixed, UNITS } from '../data/units';
+import { fights, fixed, UNITS } from '../data/units';
 import { mul } from '../mods';
 import { burning } from '../starfall';
 import type { Unit, UnitDef } from '../types';
@@ -338,16 +338,22 @@ function kindleStep(g: Game, u: Unit, dt: number) {
   if (n.owner !== -1 || n.kind !== 'planet') {
     u.order = 'idle';
     u.kindle = 0;
-    g.notify(u.owner, `Kindling ${n.name} stopped: the world is no longer dark.`, 'info', tid);
+    // (Two houses' seed ships at one dark world both kindle it, and the first to finish has it.)
+    const first = n.owner >= 0 && n.owner !== u.owner ? g.factions[n.owner] : null;
+    if (first) g.notify(u.owner, `${first.name} kindled ${n.name} first. Your seed ship waits there: its next KINDLE is free.`, 'bad', tid);
+    else g.notify(u.owner, `Kindling ${n.name} stopped: the world is no longer dark.`, 'info', tid);
     return;
   }
   const a = Math.atan2(u.y - n.y, u.x - n.x);
   u.ax = n.x + Math.cos(a) * (n.r + 70);
   u.ay = n.y + Math.sin(a) * (n.r + 70);
-  if (g.hasHostiles(tid, u.owner)) {
+  // Only what fights stops a kindling (`kindleBarred`): not another house's seed ship, nor its Scout.
+  if (g.kindleBarred(tid, u.owner)) {
     if (u.kindle >= 0 && u.wellTime > 2) {
       u.kindle = -1;
-      g.notify(u.owner, `Your seed ship waits at ${n.name}: its defenders must be cleared first.`, 'info', tid);
+      const by = g.buckets[tid].find((o) => !o.dead && g.hostile(o.owner, u.owner) && fights(o.type));
+      const house = by && g.factions[by.owner].kind === 'empire' ? g.factions[by.owner] : null;
+      g.notify(u.owner, `Your seed ship waits at ${n.name}: ${house ? `the warships of ${house.name} there must be driven off first` : 'its defenders must be cleared first'}.`, 'info', tid);
     }
     return;
   }

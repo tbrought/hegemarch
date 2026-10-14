@@ -65,6 +65,47 @@ describe('a rival house wants a derelict too', () => {
   });
 });
 
+describe('a rival house and its seed ships (a playtest of 1.17)', () => {
+  it('kindles a dark world although another house\'s Scout stands there, and leaves alone one that another seed ship has reached', () => {
+    const g = mk({ size: 'medium' });
+    const p = g.player;
+    const rival = g.empires().find((f) => f.id !== p.id)!;
+    const near = g.nodes
+      .filter((n) => n.kind === 'planet' && n.owner === -1 && g.hops(n.id, rival.capital) <= 2 && g.buckets[n.id].length === 0)
+      .sort((a, b) => g.pathLen(rival.capital, a.id) - g.pathLen(rival.capital, b.id));
+    expect(near.length).toBeGreaterThanOrEqual(2);
+    for (const n of near) rival.explored[n.id] = 1;
+    // A Scout of the player's at every one of them but the last, where a seed ship of the player's is at work.
+    for (const n of near.slice(0, -1)) g.spawnUnit('scout', p.id, n.id).hp = 1e9;
+    const lost = near[near.length - 1];
+    const mine = g.spawnUnit('seed', p.id, lost.id);
+    g.cmdSendSeed(p.id, mine.id, lost.id);
+    rival.embers = 5000;
+    run(g, 12);
+    const out = g.unitsOf(rival.id).filter((u) => u.type === 'seed' && u.order === 'kindle');
+    // (Until 1.18 a ship of any kind at a dark world kept a rival from it: a Scout parked there denied it for 40 Embers.)
+    expect(out.length).toBeGreaterThan(0);
+    expect(out.every((u) => u.orderTarget !== lost.id)).toBe(true);
+  });
+
+  it('a seed ship of its that lost the race, with nothing else to kindle, goes home to its nearest world', () => {
+    const g = mk({ size: 'medium' });
+    const p = g.player;
+    const rival = g.empires().find((f) => f.id !== p.id)!;
+    // No world is left to kindle: every dark one is held by guards.
+    for (const n of g.nodes) if (n.kind === 'planet' && n.owner === -1) g.spawnUnit('sentinel', g.guardianId, n.id).hp = 1e9;
+    const world = g.nodes.filter((n) => n.kind === 'planet' && n.owner === -1).sort((a, b) => g.pathLen(rival.capital, a.id) - g.pathLen(rival.capital, b.id))[0];
+    g.kindleWorld(world, p.id);
+    const seed = g.spawnUnit('seed', rival.id, world.id);
+    seed.hp = seed.maxHp = 1e9;
+    expect(seed.order).toBe('idle');
+    run(g, 5);
+    const home = seed.dest >= 0 ? seed.dest : seed.node;
+    expect(home).not.toBe(world.id);
+    expect(g.nodes[home].owner).toBe(rival.id);
+  });
+});
+
 describe('a rival house under siege at its Hearth (the third playtest)', () => {
   /** A rival whose eight Guardians are away from home when thirty ships come for its Hearth (which is made to hold). */
   function siege() {

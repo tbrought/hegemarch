@@ -226,3 +226,12 @@ export function isWarship(t: UnitType): boolean {
   const d = UNITS[t];
   return (d.role === 'combat' || d.role === 'siege' || d.role === 'carrier' || d.role === 'capital') && !d.isStatic;
 }
+
+/**
+ * Does it fight: is it armed (or does it carry Fighters), and not a Scout? A warship, a guard, a
+ * Starbase do; a seed ship, a Scout and a Starfall do not. (A Fighter is its Carrier's, and is not asked.)
+ */
+export function fights(t: UnitType): boolean {
+  const d = UNITS[t];
+  return d.role !== 'fighter' && d.role !== 'scout' && (d.weapons.length > 0 || !!d.fighters);
+}

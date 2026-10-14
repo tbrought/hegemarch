@@ -539,6 +539,31 @@ async function stageAll() {
     await ev(() => (window.__app.session.paused = true));
     await frames(200);
     await snap('starfall-burning');
+    // Two houses' seed ships at one dark world: a ring for each on the map, and the card says who is ahead.
+    await ev(() => {
+      const s = window.__app.session;
+      const g = s.game;
+      const p = g.player;
+      const rival = g.empires().find((f) => f.id !== p.id && f.alive);
+      const world = g.nodes.filter((n) => n.kind === 'planet' && n.owner === -1).sort((a, b) => g.pathLen(p.capital, a.id) - g.pathLen(p.capital, b.id))[0];
+      for (const u of [...g.buckets[world.id]]) g.removeUnit(u);
+      g.buckets[world.id].length = 0;
+      p.explored[world.id] = 1;
+      p.visible[world.id] = 1;
+      const seeds = [[p.id, 9, -1], [rival.id, 14, 1]].map(([fid, kindle, side]) => {
+        const u = g.spawnUnit('seed', fid, world.id, { x: world.x + side * (world.r + 70), y: world.y + 30 });
+        g.cmdSendSeed(fid, u.id, world.id);
+        u.kindle = kindle;
+        return u;
+      });
+      g.buckets[world.id].push(...seeds.filter((u) => !g.buckets[world.id].includes(u)));
+      s.clearSelection();
+      s.selectNode(world.id);
+      s.focusNode(world.id, 0.3);
+    });
+    await page.mouse.move(900, 250);
+    await frames(1200);
+    await snap('kindle-race');
     await t.close();
   }
 

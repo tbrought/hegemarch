@@ -6,7 +6,7 @@
 
 import { HOLD_FIELD, JUMP_CHARGE, LEVEL_STEP, PHASE_SPEED, POWER_BOON, POWER_WRECK } from './constants';
 import { ERAS } from './data/eras';
-import { UNITS } from './data/units';
+import { fights, UNITS } from './data/units';
 import { mul } from './mods';
 import type { DmgType, Unit, UnitMod, WeaponDef } from './types';
 import { clamp } from './util';
@@ -164,5 +164,16 @@ export function holdsFire(g: Game, attacker: number, worldOwner: number): boolea
 
 export function hasHostiles(g: Game, nodeId: number, fid: number): boolean {
   for (const u of g.buckets[nodeId]) if (g.hostile(u.owner, fid) && UNITS[u.type].role !== 'fighter') return true;
+  return false;
+}
+
+/**
+ * Is a dark world held against a house: does something that fights stand there (a warship, a guard, a
+ * Corsair)? That, and nothing else, keeps a seed ship from kindling it. Another house's seed ship does
+ * not, nor its Scout: until 1.18 any ship of another house did, so two seed ships at one world waited
+ * for each other for good, neither able to fire a shot (see DESIGN.md, Kindling).
+ */
+export function kindleBarred(g: Game, nodeId: number, fid: number): boolean {
+  for (const u of g.buckets[nodeId]) if (!u.dead && g.hostile(u.owner, fid) && fights(u.type)) return true;
   return false;
 }

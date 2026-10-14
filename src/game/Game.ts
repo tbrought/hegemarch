@@ -300,6 +300,7 @@ export class Game {
   hostilePowerAt(nodeId: number, fid: number): number { return shipStats.hostilePowerAt(this, nodeId, fid); }
   holdsFire(attacker: number, worldOwner: number): boolean { return shipStats.holdsFire(this, attacker, worldOwner); }
   hasHostiles(nodeId: number, fid: number): boolean { return shipStats.hasHostiles(this, nodeId, fid); }
+  kindleBarred(nodeId: number, fid: number): boolean { return shipStats.kindleBarred(this, nodeId, fid); }
 
   // ---- Anti-warp fields and what a Bastion protects (fields.ts) ----
   fieldAt(n: GNode): boolean { return fields.fieldAt(this, n); }
@@ -446,6 +447,7 @@ export class Game {
   }
   draftSize(f: Faction): number { return boons.draftSize(f); }
   generateOffer(f: Faction): string[] { return boons.generateOffer(this, f); }
+  offerOdds(f: Faction): boons.OfferOdds { return boons.offerOdds(this, f); }
   ensureOffer(f: Faction): string[] | null { return boons.ensureOffer(this, f); }
   cmdChooseCard(fid: number, cardId: string): boolean { return boons.cmdChooseCard(this, fid, cardId); }
   cmdReroll(fid: number): boolean { return boons.cmdReroll(this, fid); }

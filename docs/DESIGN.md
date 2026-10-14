@@ -128,7 +128,7 @@ the depth into the draft and the screen into a "one thing at a time" model.
   So a raid on a Bastion is a commitment, a Bastion is the buildable answer to raiders, and the
   place to catch a fleet that keeps running is its own Hearth.
 - **Kindle**: press KINDLE on a dark world; a seed ship launches from your nearest world and kindles
-  it in 20 seconds once no enemies are present. It costs 120 Embers plus 30 per world you hold.
+  it in 20 seconds once nothing that fights is there. It costs 120 Embers plus 30 per world you hold.
   Guarded dark worlds (militia, sentinels) must be cleared first. The Embers pay for the seed ship:
   it is never built at a Forge, takes no hangar room, and is **used up when the world lights**; if
   it is destroyed on the way, the Embers are lost and the player kindles again. The KINDLE button,
@@ -139,6 +139,35 @@ the depth into the draft and the screen into a "one thing at a time" model.
   fleet, so it used to be swept up and silently stranded). Only an order to seed ships alone calls a
   kindling off, and the game says so. A seed ship without a mission does the next KINDLE for free
   (the button says FREE and a banner points it out); one that is destroyed is reported.
+- **Two houses, one dark world** (1.18). Only what fights stops a kindling: a warship, a guard, a
+  Corsair (`kindleBarred`, `fights`). Another house's seed ship does not, nor its Scout, nor a
+  Starfall. Two seed ships at one world both kindle it, the first to finish has it, and the other is
+  called off where it stands and does the next KINDLE for free, as a seed ship always did when its
+  world stopped being dark. Until 1.18 any ship of another house stopped a kindling, a seed ship
+  too, which cannot fire a shot: two of them waited for each other for good. A playtester reported
+  three things that were this one: "they get blocked", "a race around seed ships late on", and "four
+  planets with stalled seed ships in front of them". (He also thought seed ships outlived their
+  house. They do not: in forty games no ship of a fallen house did, on a starlane or idle.) It was
+  not rare, it was the usual state of a seed ship: in forty AI-only games a seed ship spent 54% of
+  its life in such a stand-off, 22% kindling and 19% on its way. There were 230 stand-offs of twenty
+  seconds or more, in 34 of the 40 games, a minute and a half at the median; 54 lasted over five
+  minutes, one for fifty, and they ended when somebody's warships happened by. The note said "its
+  defenders must be cleared first", and the world's card showed no defenders. A house's army also
+  counted a dark world with a rival's seed ship on it as held, and marched there. With the rule
+  there is no stand-off left (0 in forty games), 16% of seed ships kindle nothing where 21% did, and
+  the sector fills as fast (30 worlds by minute 15, as before).
+  - *The race can be read.* Each seed ship at work has its ring round the world, the second outside
+    the first; the dark world's card says who else is kindling it and how far, and that warships of
+    another house hold it when they do; the note names who finished first, and what bars a waiting
+    seed ship ("the warships of Vael Imperium there must be driven off first").
+  - *Rival houses.* A rival sends no seed ship to a world another house's has already reached (that
+    one finishes first) and does send one where only a Scout stands. One of its seed ships that lost
+    and has nothing else to kindle goes home to its nearest world instead of standing at the
+    winner's. Its army goes for a dark world only when something that fights holds it.
+  - *What it closed.* A Scout parked on a dark world denied it to every rival for 40 Embers, and a
+    rival's Scout passing through stopped the player's kindling and threw away what was done.
+  - *Pace*, on the same forty seeds: 32 games decided within the hour at a median of 37 minutes,
+    against 31 and 40. On the cradle of Ages, 30 of 30 at a median of 34 minutes, against 30 and 37.
 - **Raise** a world to level II (160) and III (380), scaled by size: more output, hull and hangar.
 - **Hangar**: 16 + 3 per world + 1 per world level above I + 5 per Hangar Bay. Ships use 1 (Striker,
   Scout), 2 (Guardian, Breaker, Lancer), 4 (Carrier) or 6 (Dreadnought).
@@ -249,22 +278,55 @@ house is at 5).
 
 About 60 Boons in four rarities across War, Wealth, Growth, Lore, Ward, Blueprint and Pact
 (double-edged) categories. Lore costs 150 + 80n + 3n² for the n-th Boon, so one arrives about every
-three minutes. If four drafts pass without a Blueprint, the next one always shows one. Rerolls,
-skipping for Embers and "decide later" are available.
+three minutes. If three of the player's drafts pass without a Blueprint, the next always shows one,
+and one the run has not shown yet (see below). Rerolls, skipping for Embers and "decide later" are
+available.
 
 **Rarity.** A card is drawn by weight: Common 62, Rare 27, Epic 9, Legendary 2.2 (Blueprints ×1.6,
-Pacts ×0.55). An Epic is in about 23% of offers (20% before the Starfall's Blueprint joined the Epics). Two things in the Hall of Heirs change that, and
-both now say in numbers what they do, because a playtester had bought every rank of both and seen
+Pacts ×0.55). An Epic is in about 24% of offers. Two things in the Hall of Heirs change that, and
+both say in numbers what they do, because a playtester had bought every rank of both and seen
 nothing rarer than a Rare:
-- **Fortunate Stars** (five ranks since 1.11) adds half again to the weight of Epic and Legendary
-  Boons with each rank (and moves a little from Common to Rare): an Epic in about 30%, 37%, 43%, 49%
-  and 54% of offers (`EPIC_ODDS`, measured over 300 runs and kept true by a test that deals the
-  offers). It used to make that 22%, 27% and 29%. The Hall shows the odds at the rank held and at
-  the next one.
+- **Fortunate Stars** (five ranks since 1.11) adds half again to the weight of an Epic Boon with each
+  rank and, since 1.18, one and a half times the weight of a Legendary (and moves a little from
+  Common to Rare): an Epic in about 32%, 38%, 44%, 49% and 55% of offers, and a Legendary in 5%, 7%,
+  9%, 11% and 13% where no rank gives 2% (`EPIC_ODDS`, `LEGENDARY_ODDS`, measured over 600 runs and
+  kept true by tests that deal the offers). The Hall shows both at the rank held and at the next.
+  Until 1.18 a rank added half a Legendary's weight, like an Epic's, which sounds the same and is
+  not: there are five Legendary Boons among some sixty, so all five ranks took them from 2 offers in a
+  hundred to 6. With the promise below and three rerolls, a run of fourteen choices showed 1.2
+  Legendary Boons with no rank and 1.6 with all five, for 770 Legacy. The same playtester, a second
+  time, with every rank: "the return on those points didn't feel dramatic". It shows 2.3 now, and
+  two or more in 79 runs of a hundred where it was 48. A player with no rank sees what they saw.
 - **Legendary Lineage** lets Legendary Boons appear, and a run now shows at least one: if none has
   been offered by the fifth offer (`LEGENDARY_BY`), that offer holds one, in place of a Common Boon
   and never of a Blueprint. Left to their weight, four runs in five showed none at all. It is a
   promise to the player only; a rival house draws as before.
+- **The Blueprint that is owed** (1.18) comes to the player after three offers without one, where it
+  was four, and is one the run has not shown yet while there is one (`BLUEPRINT_BY`,
+  `Faction.bpSeen`). The same playtester spent a run and all his rerolls looking for the Starfall's
+  and did not see it. That was no accident: a run of fourteen choices showed it to 55 players in a
+  hundred with no rank of Fortunate Stars and 81 with all five, and by the sixth choice to 29 and 53
+  (a weapon of 2,500 Embers that turns up at the thirteenth choice is not built). Now 77 and 89, and
+  by the sixth choice 41 and 58. Its rarity is as it was. Two stronger rules were measured and left:
+  drawing the two Epic Blueprints twice as readily showed it to 94 in a hundred of those with every
+  rank, and made an Epic
+  Blueprint nearly as common as a Rare one. And it is the player's promise alone, like the one
+  above: given to rival houses too, 98 of 160 held the Starfall's Blueprint where 73 had, they armed
+  34 Starfalls in forty games where they had armed 20, and 28 of the games were decided within the
+  hour where 31 had been. With rivals dealt to as before, those are 69, 21 and 32.
+- **The odds are on the Boons page** (1.18). Under the totals: YOUR NEXT CHOICE, with the chance that
+  it holds a Blueprint, an Epic, a Legendary. The playtester asked for the drop numbers "so you can
+  see what your chances are", and a chance that is only felt cannot be told from bad luck. They are
+  not looked up: the next offer is dealt three thousand times as the run would deal it at that
+  moment, with dice of its own (`offerOdds`; dealing is one function, `deal`, that rolls the dice it
+  is given), so the figures follow the Boons still to be had, the rank, the number of choices, the
+  Blueprint that is owed and the Legendary that is promised. Each figure's tooltip says which of
+  those applies ("your next choice holds one", "2 more may pass before it", "Legendary Boons can be
+  offered once you own Legendary Lineage"). All three are always there, grey at 0%.
+- **Not built: a perk that makes every Boon stronger**, which the playtester floated and withdrew in
+  one breath. A Boon's text is its effect ("+30% Embers"), and would stop being true; a Blueprint or
+  a Boon that switches something on has nothing to scale; and a multiplier under everything is a
+  difficulty setting that cannot be seen, which is the complaint it was meant to answer.
 
 How Boons read:
 - **Effect text** is marked up in the data: `[gain]` draws teal, `[!drawback]` red, `{keyword}`
@@ -475,6 +537,23 @@ the HUD that draw a ship in a small slot (a chip of the fleet's card, a slot of 
 sign instead, and a Boon's card draws it as big as its window allows. `scripts/starfall-look.mjs`
 takes its picture in a fleet and alone, armed and not, from every height.
 
+**Seen by the house that armed it** (1.18). The playtester who had asked for it: "I wasn't sure
+exactly how much damage it did because I didn't have any way of seeing it, so it lost in drama a
+little bit." He had not: a Starfall at a star saw that star and none of the system's worlds, and
+when it erupted it was gone and its house saw nothing at all. Staged at a rival's home system of
+seven places, the player saw one of them through the fuse and none after; seventeen ships went up
+under fog, and a note said so. (The film of 1.17.1 had not shown this, because it was shot with the
+fog lifted. `record:starfall` now shows what the player's house sees and no more.)
+- An armed Starfall lights the whole system for its house, and the star it set alight goes on doing
+  so while it burns (`visibilityTick`): two minutes of watching who flees and who comes for it, the
+  eruption with every ship that goes up, and three minutes of looking at what is left behind a fire
+  nobody can cross. A Starfall that is destroyed in time shows nothing more. It is the same for a
+  rival house; no other house sees more for it.
+- What it took stands over the star in large letters for seven seconds once the flash has cleared
+  ("17 SHIPS · 1 WORLD"), for every house, as the eruption itself is; SCORCHED rises over each world.
+- The note says whose they were: "took 23 ships (Vael Imperium 14, The Choir 6, yours 3)".
+- Rival houses use it as they did: in forty games 21 armed and 12 erupted, against 20 and 12.
+
 On screen: STARFALL is on the Hearth's card from the moment the Blueprint is drafted, and ARM on the
 Starfall's card from the day it is built; both are greyed with the reason when they cannot be pressed
 ("One Starfall at a time", "Only at a star"). A star with an armed Starfall blinks as before a flare
@@ -488,7 +567,9 @@ shapes in memory, and every loop over them ran two to three times slower. And a 
 up is deleted, not set to undefined: a save drops the one that is undefined, and the game that loads
 it then puts the field back in another place than the game that went on, so the two no longer save
 alike (found by `scripts/fuzz.ts`, which now builds, flies and arms Starfalls and sends ships through
-fire).
+fire). The same thing had sat in the rival houses since 1.9 (`ai.siege = undefined` when a siege is
+called off) and did no harm until 1.17 gave them a second field that comes and goes (`stalled`); the
+Ages fuzzer found it at 1.18, on the first seed whose game the new rules sent that way.
 
 ### Threats and pace (Normal, medium sector, 1× speed)
 | Moment | Time |
@@ -713,7 +794,13 @@ Measured with `npm run simulate` and `npm run balance:passive`. Speeds are ½×,
 ## 6. Presentation
 
 - **Feedback**: the Ember counter rolls toward its value and pops "+N"/"−N" for lump gains and
-  spends; Boon cards are dealt (they slide in one after another); a chosen Boon flies to the tray;
+  spends, and a lump that comes in turns the count white for half a second (`hud/emberCount.ts`).
+  (Until 1.18 it was white whenever the figure shown was 5 or more behind the real one. A steady
+  income keeps it behind by a ninth of what a second brings, the game adds income twenty times a
+  second and the screen draws sixty: between 39 and 53 Embers a second, 21 to 25 at double speed,
+  the count changed colour on two frames in three, and above that it was white for good. The
+  leading house earns 21 a second at minute 20 and the strongest 38 to 52. A playtester found it
+  unpleasant.) Boon cards are dealt (they slide in one after another); a chosen Boon flies to the tray;
   a rival Hearth falling gets a banner, a rumble and a chime; red arrows at the screen edge point at
   your worlds under attack off screen (click to look); after 40 s without input and with Embers
   piling up, a hint says what to spend them on (at most every 3 minutes, off with tips).
@@ -988,9 +1075,9 @@ UI snapshot of section 8: nothing in the game changed.)
   the whole saved state is fingerprinted every 30 seconds of game time, with the effects asked for.
   `record` before a refactoring, `check` after: identical to the byte, or it says where they part.
 - **The UI snapshot** (`npm run test:uisnap -- record|check`, `scripts/uisnap.mjs`): the same for what
-  is on the screen. In a browser whose clock the script holds (and whose `Math.random` is seeded) 78
+  is on the screen. In a browser whose clock the script holds (and whose `Math.random` is seeded) 79
   scenes are staged: the menus, every card and dialog, a Starfall from its button to the star that
-  burns, the end of a run, an Ages cradle. Of each it
+  burns, two seed ships at one world, the end of a run, an Ages cradle. Of each it
   writes down the pixels of the game's canvas, every HUD button with its place and tooltip, and the
   HTML of a menu page (but for the version number on the title page). Both recordings live in
   `.golden/`, outside git: they are true of one version of the rules, and a change that is meant to

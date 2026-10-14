@@ -11,6 +11,7 @@
  *   modals/cards.ts    the cards a run shows once (omens, the Destinies, the end of the First Night, the cradle, the Ark's leaving)
  */
 import type { Modal } from '../app/Session';
+import type { OfferOdds } from '../game/boons';
 import { textCenter } from '../render/font';
 import { PAL } from '../render/palette';
 import { rect, type Ctx } from '../render/pixel';
@@ -51,6 +52,8 @@ export class Modals {
   /** Scroll offset of the Boons list (pixels). */
   boonScroll = 0;
   boonScrollMax = 0;
+  /** The odds of the next Boon choice, as last worked out (modals/status.ts): they are worked out again when the run has moved on. */
+  oddsMemo: { key: string; odds: OfferOdds } | null = null;
   /** The offer being shown and when it was dealt (cards slide in when a new offer appears). */
   dealt: string[] | null = null;
   dealtAt = 0;

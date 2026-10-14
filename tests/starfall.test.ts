@@ -263,6 +263,80 @@ describe('at the end of its fuse the star erupts', () => {
   });
 });
 
+describe('a Starfall is seen by the house that armed it (a playtest of 1.17)', () => {
+  it('it sees the whole system from the moment it is armed until the fire is out; no one else sees more for it', () => {
+    const g = quiet();
+    const p = g.player;
+    const r = rivalOf(g);
+    const star = homeStar(g, r.id);
+    const places = g.nodes.filter((n) => n.system === star.system);
+    const third = g.empires().find((f) => f.id !== p.id && f.id !== r.id)!;
+    const d = device(g, p.id, star.id);
+    const sees = (fid: number) => places.filter((n) => g.factions[fid].visible[n.id]).length;
+    run(g, 1);
+    // Waiting at the star, it sees the star and no more.
+    expect(sees(p.id)).toBe(1);
+    const before = sees(third.id);
+    g.cmdArm(p.id, d.id);
+    run(g, 1);
+    expect(sees(p.id)).toBe(places.length);
+    expect(p.visible[r.capital]).toBe(1);
+    expect(sees(third.id)).toBe(before);
+    // The eruption takes the device, and its house goes on seeing: every ship that went up, every world scorched.
+    d.fuse = 0.5;
+    run(g, 2);
+    expect(d.dead).toBe(true);
+    expect(burning(star)).toBe(true);
+    expect(sees(p.id)).toBe(places.length);
+    run(g, STARFALL_BURN / 2);
+    expect(sees(p.id)).toBe(places.length);
+    // The fire is out: what it sees is what its ships and worlds see again.
+    run(g, STARFALL_BURN / 2 + 2);
+    expect(burning(star)).toBe(false);
+    expect(sees(p.id)).toBe(0);
+  });
+
+  it('a Starfall that is destroyed in time shows its house nothing more', () => {
+    const g = quiet();
+    const p = g.player;
+    const star = homeStar(g, rivalOf(g).id);
+    const places = g.nodes.filter((n) => n.system === star.system);
+    const d = device(g, p.id, star.id);
+    g.cmdArm(p.id, d.id);
+    run(g, 1);
+    expect(places.every((n) => p.visible[n.id])).toBe(true);
+    g.killUnit(d, rivalOf(g).id);
+    run(g, 1);
+    expect(places.some((n) => p.visible[n.id])).toBe(false);
+  });
+
+  it('what it took is said by house, and stands over the star for every house to read', () => {
+    const g = quiet();
+    g.fxEnabled = true;
+    const p = g.player;
+    const r = rivalOf(g);
+    const star = homeStar(g, r.id);
+    const d = device(g, p.id, star.id);
+    for (const u of [...g.unitList]) if (!u.dead && u.node >= 0 && g.nodes[u.node].system === star.system && u !== d) g.removeUnit(u);
+    g.spawnUnit('guardian', p.id, star.id);
+    for (let i = 0; i < 3; i++) g.spawnUnit('striker', r.id, r.capital);
+    g.cmdArm(p.id, d.id);
+    d.fuse = 0.2;
+    const fx: Game['fx'] = [];
+    for (let i = 0; i < 20; i++) {
+      g.step();
+      fx.push(...g.fx);
+      g.fx.length = 0;
+    }
+    const worlds = g.nodes.filter((n) => n.system === star.system && n.kind === 'planet' && n.owner >= 0).length;
+    const note = g.notes.find((n) => n.text.includes('erupts!'))!;
+    expect(note.text).toContain(`took 4 ships (${g.shortName(r)} 3, yours 1) and scorched ${worlds} world`);
+    const nova = fx.find((f) => f.k === 'nova');
+    expect(nova && nova.k === 'nova' && nova.toll).toBe(`4 SHIPS · ${worlds} WORLD${worlds === 1 ? '' : 'S'}`);
+    expect(fx.filter((f) => f.k === 'text' && f.text === 'SCORCHED').length).toBe(worlds);
+  });
+});
+
 describe('the star burns', () => {
   /** A sector with a burning star that is not the only way between two places. */
   function withFire(): { g: Game; star: GNode; a: number; b: number } {
@@ -458,7 +532,7 @@ describe('rival houses and the Starfall', () => {
   });
 
   it('left to themselves, rival houses build one, bring it to an enemy\'s star with their fleet and arm it there', () => {
-    const g = mk({ seed: 1021, size: 'medium', autoplay: true });
+    const g = mk({ seed: 1015, size: 'medium', autoplay: true });
     for (const f of g.empires()) g.addCard(f, 'bpStarfall');
     let armedBy = -1;
     let at = -1;

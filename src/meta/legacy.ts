@@ -16,7 +16,15 @@ export interface PerkDef {
  * How many Boon offers in a hundred hold an Epic Boon, by rank of Fortunate Stars: what the Hall of
  * Heirs tells the player the perk does. Measured over 300 runs, and kept true by a test (tests/hall.test.ts).
  */
-export const EPIC_ODDS = [23, 30, 37, 43, 49, 54];
+export const EPIC_ODDS = [24, 32, 38, 44, 49, 55];
+/**
+ * And how many hold a Legendary Boon, for a player who owns Legendary Lineage: what is left to the odds,
+ * beyond the one that is promised. Measured and kept true the same way (5,400 offers a rank). Until 1.18
+ * a rank added a third of this to a Legendary's weight: 2% with no rank and 6% with all five, so that
+ * 770 Legacy of ranks brought a run 1.6 Legendary Boons where it had 1.2, and the Hall said nothing of
+ * it. A playtester who had bought them all found the return hard to see, and it was.
+ */
+export const LEGENDARY_ODDS = [2, 5, 7, 9, 11, 13];
 
 const pc = (x: number) => `${Math.round(x * 100)}%`;
 
@@ -42,12 +50,24 @@ export const UNLOCKS = [
  * the chance, now and at the next rank: "more often" alone cannot be checked by playing, and a player
  * who has paid for it should not have to wonder whether it did anything.
  */
-export function perkDesc(pk: PerkDef, rank: number): string {
+export function perkDesc(pk: PerkDef, rank: number, lineage = true): string {
   if (pk.id !== 'luck') return pk.desc;
   const max = pk.costs.length;
-  const now = `An Epic is in [${EPIC_ODDS[rank]}%] of your Boon choices`;
-  if (rank >= max) return `${pk.desc} ${now} (${EPIC_ODDS[0]}% without this).`;
-  return `${pk.desc} ${now} now, [${EPIC_ODDS[rank + 1]}%] at ${rank ? 'the next rank' : `rank 1, ${EPIC_ODDS[max]}% at rank ${max}`}.`;
+  const now = `An Epic is in [${EPIC_ODDS[rank]}%] of your Boon choices and a Legendary in [${LEGENDARY_ODDS[rank]}%]`;
+  // (A Legendary is offered to nobody who does not own Legendary Lineage: the figure is what the ranks are worth with it.)
+  const needs = lineage ? '' : ' The Legendary figures need Legendary Lineage, below.';
+  if (rank >= max) return `${pk.desc} ${now} (${EPIC_ODDS[0]}% and ${LEGENDARY_ODDS[0]}% without this).${needs}`;
+  const next = `[${EPIC_ODDS[rank + 1]}%] and [${LEGENDARY_ODDS[rank + 1]}%]`;
+  return `${pk.desc} ${now} now; ${next} at ${rank ? 'the next rank' : `rank 1, ${EPIC_ODDS[max]}% and ${LEGENDARY_ODDS[max]}% at rank ${max}`}.${needs}`;
+}
+
+/** What the Hall says of a thing it unlocks: Legendary Lineage also says the odds beyond its promise, at the rank of Fortunate Stars held. */
+export function unlockDesc(u: (typeof UNLOCKS)[number], perks: Record<string, number>): string {
+  if (u.id !== 'legendary') return u.desc;
+  const max = PERKS.find((pk) => pk.id === 'luck')!.costs.length;
+  const rank = Math.min(perks.luck ?? 0, max);
+  return `${u.desc} Beyond that one, a Legendary is in [${LEGENDARY_ODDS[rank]}%] of your choices` +
+      (rank < max ? `, and in [${LEGENDARY_ODDS[max]}%] with every rank of Fortunate Stars.` : ', with every rank of Fortunate Stars.');
 }
 
 /** The Legacy spent on perks, all of which the Hall can give back (and then the perks are gone). */

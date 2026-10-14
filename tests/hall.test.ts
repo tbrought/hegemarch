@@ -2,7 +2,7 @@
 import { describe, expect, it } from 'vitest';
 import { CARD_BY_ID, LEGENDARY_BY } from '../src/game/data/cards';
 import { Game } from '../src/game/Game';
-import { EPIC_ODDS, perkDesc, PERKS, perksSpent, UNLOCKS } from '../src/meta/legacy';
+import { EPIC_ODDS, LEGENDARY_ODDS, perkDesc, PERKS, perksSpent, unlockDesc, UNLOCKS } from '../src/meta/legacy';
 import { PERK_EMBERS, PERK_HEARTH, PERK_HULL, PERK_LORE, PERK_WALLS } from '../src/meta/perks';
 import { mk } from './helpers';
 
@@ -41,18 +41,49 @@ describe('what the Hall of Heirs sells for rarer Boons can be felt', () => {
     expect(seen[max]).toBeGreaterThan(seen[0] * 1.8);
   });
 
+  it('Fortunate Stars: a Legendary Boon is in as many offers as the Hall says too, beyond the one that is promised', () => {
+    const max = PERKS.find((p) => p.id === 'luck')!.costs.length;
+    expect(LEGENDARY_ODDS.length).toBe(max + 1);
+    const seen: number[] = [];
+    for (let rank = 0; rank <= max; rank += rank === 0 ? max - 1 : 1) {
+      let all = 0;
+      let legendary = 0;
+      for (let seed = 1; seed <= 160; seed++) {
+        const g = mk({ seed: 700 + seed * 13, perks: { luck: rank }, unlockPacts: seed % 3 === 0 });
+        g.ui.legendarySeen = 1; // (the promise set aside: what is left to the odds)
+        for (const offer of offers(g, 9)) {
+          all++;
+          if (has(offer, 'legendary')) legendary++;
+        }
+      }
+      seen[rank] = (100 * legendary) / all;
+      expect(Math.abs(seen[rank] - LEGENDARY_ODDS[rank])).toBeLessThan(2.5);
+    }
+    // The ranks can be felt here as well: until 1.18 all five took it from 2 offers in a hundred to 6.
+    expect(seen[max]).toBeGreaterThan(seen[0] * 4);
+    for (let rank = 1; rank <= max; rank++) expect(LEGENDARY_ODDS[rank]).toBeGreaterThan(LEGENDARY_ODDS[rank - 1]);
+  });
+
   it('the Hall says the odds at the rank the player holds, and what the next rank brings', () => {
     const pk = PERKS.find((p) => p.id === 'luck')!;
     expect(perkDesc(pk, 0)).toContain(`[${EPIC_ODDS[0]}%]`);
     expect(perkDesc(pk, 0)).toContain(`[${EPIC_ODDS[1]}%]`);
     expect(perkDesc(pk, 2)).toContain(`[${EPIC_ODDS[2]}%]`);
-    expect(perkDesc(pk, 2)).toContain(`[${EPIC_ODDS[3]}%] at the next rank`);
+    expect(perkDesc(pk, 2)).toContain(`[${EPIC_ODDS[3]}%] and [${LEGENDARY_ODDS[3]}%] at the next rank`);
+    expect(perkDesc(pk, 2)).toContain(`a Legendary in [${LEGENDARY_ODDS[2]}%]`);
+    // (A player who does not own Legendary Lineage is told that those figures need it.)
+    expect(perkDesc(pk, 2)).not.toContain('need Legendary Lineage');
+    expect(perkDesc(pk, 2, false)).toContain('need Legendary Lineage');
     const max = pk.costs.length;
     expect(perkDesc(pk, max)).toContain(`[${EPIC_ODDS[max]}%]`);
     expect(perkDesc(pk, max)).not.toContain('next rank');
     // (Every other perk says what it always said.)
     for (const other of PERKS) if (other.id !== 'luck') expect(perkDesc(other, 1)).toBe(other.desc);
-    expect(UNLOCKS.find((u) => u.id === 'legendary')!.desc).toMatch(/at least one in every run/);
+    const lineage = UNLOCKS.find((u) => u.id === 'legendary')!;
+    expect(lineage.desc).toMatch(/at least one in every run/);
+    expect(unlockDesc(lineage, {})).toContain(`[${LEGENDARY_ODDS[0]}%] of your choices, and in [${LEGENDARY_ODDS[max]}%] with every rank`);
+    expect(unlockDesc(lineage, { luck: max })).toContain(`[${LEGENDARY_ODDS[max]}%] of your choices, with every rank`);
+    expect(unlockDesc(UNLOCKS[0], {})).toBe(UNLOCKS[0].desc);
   });
 
   it('Legendary Lineage: every run shows a Legendary Boon by the fifth offer, in place of a Common one', () => {

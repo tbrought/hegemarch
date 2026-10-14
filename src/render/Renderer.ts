@@ -1,5 +1,6 @@
 import type { Game } from '../game/Game';
 import { UNITS } from '../game/data/units';
+import { ECON } from '../game/data/worlds';
 import { burning, STARFALL_FUSE } from '../game/starfall';
 import type { GNode, Unit } from '../game/types';
 import { Camera } from './Camera';
@@ -494,13 +495,15 @@ export class Renderer {
       if (visible && r >= 3 && g.guardsOf(n).length) ring(ctx, x, y, rr + 4, n.lastHit < 0.25 ? PAL.bone : PAL.violet, 1);
       else if (ghost && r >= 3) ring(ctx, x, y, rr + 4, PAL.violet, 1);
     }
-    // A seed ship at work: progress ring.
+    // A seed ship at work: progress ring. Two houses' seed ships at one world race for it, and each has
+    // its ring, the second outside the first: who is ahead can be read from the map.
     if (visible && owner < 0) {
+      let k = 0;
       for (const u of g.buckets[n.id]) {
-        if (u.type !== 'seed' || u.order !== 'kindle' || u.orderTarget !== n.id || u.kindle <= 0) continue;
+        if (u.dead || u.type !== 'seed' || u.order !== 'kindle' || u.orderTarget !== n.id || u.kindle <= 0) continue;
         const c = g.factions[u.owner].color;
-        this.arcRing(ctx, x, y, r + 3, u.kindle / 20, c, PAL.night);
-        break;
+        this.arcRing(ctx, x, y, r + 3 + k * 3, u.kindle / ECON.kindleTime, c, PAL.night);
+        if (++k >= 3) break;
       }
     }
   }

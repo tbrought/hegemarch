@@ -83,7 +83,12 @@ terms do the same.
   shows what it changes for you (for example `DAMAGE 0→+25%`, or `STACK ×1→×2`) and pictures of
   what it affects: the ship type, the resource, your worlds. Event and ability choices show them too. Your Boons and
   relics line the left edge of the screen; **B** (or a click on that tray) opens the Boons screen,
-  with the totals of every bonus from your house, the omens, your Boons and your relics.
+  with the totals of every bonus from your house, the omens, your Boons and your relics, and the
+  chances that your next choice holds a Blueprint, an Epic or a Legendary Boon. A Blueprint is owed
+  to you after three choices without one, and it is one the run has not shown you yet.
+- **A dark world that two houses want** goes to the seed ship that finishes first: both kindle, each
+  with its ring on the map, and the one that loses does your next KINDLE for free. Only warships and
+  guards stop a kindling; another house's seed ship or Scout does not.
 - **Ships**: Strikers beat Breakers, Breakers beat Guardians and worlds, Guardians beat Strikers.
   Your **Ark** levels up and learns abilities.
 - **Scouts** wait for your order. Select one and press EXPLORE (or **E**), and it charts the dark
@@ -100,7 +105,9 @@ terms do the same.
   lost, the Glow of a new world). No world changes hands, so no Hearth falls to it. Every house is
   told, with a clock at the top right, and every other house holds it against the one that armed it.
   The star then burns for three minutes: fleets wait in front of the fire, and the same order given
-  twice sends them through it. Rival houses build and arm them too, and come to destroy yours.
+  twice sends them through it. The house that armed it sees the whole system from that moment until
+  the fire is out, and what it took stands over the star. Rival houses build and arm them too, and
+  come to destroy yours.
 - **A run that is won ends in a crowning** on the map (a click skips it), and its figures are
   counted up against your records for that kind of run. **After it** the results draw the run minute
   by minute: every house's Embers per second, worlds, fleet strength and Boons, your house beside a
@@ -230,7 +237,7 @@ A change that must not alter the game at all (a refactoring) has two checks of i
 
 ```bash
 npm run golden -- record       # before: the whole saved state of 24 fixed runs, fingerprinted every 30 s
-npm run test:uisnap -- record  # before: 78 staged scenes (pixels, every button and tooltip, menu HTML)
+npm run test:uisnap -- record  # before: 79 staged scenes (pixels, every button and tooltip, menu HTML)
 npm run verify                 # after: compares both, to the byte, and runs everything else
 ```
 

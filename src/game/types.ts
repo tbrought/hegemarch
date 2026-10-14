@@ -388,6 +388,8 @@ export interface Faction {
   stormT: number;
   /** Boons drafted since the last Blueprint was offered. */
   bpPity: number;
+  /** The Blueprints the run has offered the house so far (the one that is owed is one not among them). Not there until one has been. */
+  bpSeen?: string[];
   eliminatedAt: number;
   /** Warning keys already announced (rival victory progress etc.). */
   warned: Record<string, number>;
@@ -443,7 +445,7 @@ export type Fx =
   | { k: 'ring'; x: number; y: number; r: number; color: string; node: number }
   /** A Starfall is armed at a star; a star erupts. */
   | { k: 'armed'; x: number; y: number; node: number; color: string }
-  | { k: 'nova'; x: number; y: number; node: number; color: string }
+  | { k: 'nova'; x: number; y: number; node: number; color: string; toll?: string }
   /** Ages: a unit is upgraded to its house's new age. */
   | { k: 'upgrade'; x: number; y: number; r: number; color: string; node: number }
   /** Ages: the change of a new age spreads from a Hearth: a ring that grows to `r` in `dur` seconds. */

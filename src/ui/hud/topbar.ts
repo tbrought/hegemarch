@@ -17,6 +17,7 @@ import { fmt, fmtRate } from '../format';
 import { termsIn } from '../glossary';
 import { MARK, marksOf } from '../Ui';
 import { drawAge } from './destinies';
+import { rollEmbers } from './emberCount';
 import { fleetLabel } from './overlays';
 import type { Hud } from '../Hud';
 
@@ -69,15 +70,11 @@ export function drawTopBar(hud: Hud, R: ReturnType<Session['reveal']>) {
 function barEmbers(hud: Hud): number {
   const g = hud.s.screen.g;
   const p = hud.g.player;
-  // Embers: the count rolls toward the real value, and lump gains or spends pop below it.
-  if (hud.embersShown < 0 || hud.lastEmbers < 0) hud.embersShown = hud.lastEmbers = p.embers;
-  const delta = p.embers - hud.lastEmbers;
-  if (Math.abs(delta) >= 25) hud.emberPops.push({ text: (delta > 0 ? '+' : '-') + fmt(Math.abs(delta)), color: delta > 0 ? PAL.gold : PAL.ember, t: 0 });
+  // Embers: the count rolls toward the real value, and lump gains or spends pop below it. A lump that
+  // comes in also turns the count white for a moment (`rollEmbers`: never an income, which made it flicker).
+  const delta = rollEmbers(hud, p.embers, hud.ui.dt);
+  if (delta) hud.emberPops.push({ text: (delta > 0 ? '+' : '-') + fmt(Math.abs(delta)), color: delta > 0 ? PAL.gold : PAL.ember, t: 0 });
   if (hud.emberPops.length > 4) hud.emberPops.shift();
-  hud.lastEmbers = p.embers;
-  const gap = p.embers - hud.embersShown;
-  hud.embersShown = Math.abs(gap) < 1 ? p.embers : hud.embersShown + gap * Math.min(1, hud.ui.dt * 9);
-  const rolling = Math.abs(gap) >= 5;
   icon(g, 'ember', 3, 3);
   // The count and its rate in tabular figures (every digit as wide as the widest): while the count has
   // as many digits, neither it nor the rate after it moves as it rolls. What stands after them has a
@@ -86,7 +83,7 @@ function barEmbers(hud: Hud): number {
   // pixel or two and back every few seconds.)
   const count = fmt(hud.embersShown);
   const rate = fmtRate(p.income);
-  textTabular(g, rate, textTabular(g, count, 10, 3, rolling && gap > 0 ? PAL.bone : PAL.gold) + 3, 3, PAL.ember);
+  textTabular(g, rate, textTabular(g, count, 10, 3, hud.emberFlash > 0 ? PAL.bone : PAL.gold) + 3, 3, PAL.ember);
   let x = 10 + numberRoom(count, '8,888') + 3 + numberRoom(rate, '+88.8');
   let py = 15;
   for (const pop of hud.emberPops) {

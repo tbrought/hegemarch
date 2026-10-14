@@ -73,6 +73,8 @@ export class Hud {
   /** The Ember count as drawn: it rolls toward the real value. */
   embersShown = -1;
   lastEmbers = -1;
+  /** Seconds the count is still white: a lump of Embers has just come in (hud/emberCount.ts). */
+  emberFlash = 0;
   /** "+250" / "-120" popups under the Ember counter. */
   emberPops: { text: string; color: string; t: number }[] = [];
   /** The end of the run, when it comes (ui/Ending.ts). */

@@ -112,7 +112,7 @@ For a change that must not alter the game at all (a refactoring):
 
 ```bash
 npm run golden -- record       # before: fingerprint 24 fixed runs
-npm run test:uisnap -- record  # before: snapshot 78 staged scenes (needs the dev server)
+npm run test:uisnap -- record  # before: snapshot 79 staged scenes (needs the dev server)
 # ...make the change...
 npm run verify                 # compares both, and runs everything else
 ```

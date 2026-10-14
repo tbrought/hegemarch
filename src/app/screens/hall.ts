@@ -7,7 +7,7 @@ import { DIFFICULTY_NAMES } from '../../game/constants';
 import { PACT_COLOR } from '../../game/data/cards';
 import { HEIR_BY_ID, HEIRS } from '../../game/data/heirs';
 import { VICTORIES } from '../../game/data/victories';
-import { perkDesc, PERKS, perksSpent, UNLOCKS } from '../../meta/legacy';
+import { perkDesc, PERKS, perksSpent, unlockDesc, UNLOCKS } from '../../meta/legacy';
 import { fmtTime } from '../../render/Renderer';
 import { esc } from '../../ui/format';
 import { glossHtml } from '../../ui/glossary';
@@ -76,7 +76,7 @@ export function showHall(app: App) {
     const rank = p.perks[pk.id] ?? 0;
     const max = pk.costs.length;
     const cost = pk.costs[rank];
-    return `<div class="perk px-box"><span class="perk-pic${rank ? ' has' : ''}">${perkPic(pk.id)}</span><div><div class="pn">${esc(pk.name.toUpperCase())} <span class="dim">${rank}/${max}</span></div><div class="pd">${glossHtml(perkDesc(pk, rank))}</div></div>
+    return `<div class="perk px-box"><span class="perk-pic${rank ? ' has' : ''}">${perkPic(pk.id)}</span><div><div class="pn">${esc(pk.name.toUpperCase())} <span class="dim">${rank}/${max}</span></div><div class="pd">${glossHtml(perkDesc(pk, rank, p.unlockLegendary))}</div></div>
         ${rank >= max ? '<span class="good">MASTERED</span>' : `<button class="small ${p.legacy >= cost ? 'primary' : 'disabled'}" data-sa="perk:${pk.id}">◆${cost}</button>`}</div>`;
   }).join('');
   const spent = perksSpent(p.perks);
@@ -87,7 +87,7 @@ export function showHall(app: App) {
     : '';
   const unlocks = UNLOCKS.map((u) => {
     const owned = u.id === 'pacts' ? p.unlockPacts : p.unlockLegendary;
-    return `<div class="perk px-box"><span class="perk-pic${owned ? ' has' : ''}">${perkPic(u.id)}</span><div><div class="pn">${esc(u.name.toUpperCase())}</div><div class="pd">${glossHtml(u.desc)}</div></div>
+    return `<div class="perk px-box"><span class="perk-pic${owned ? ' has' : ''}">${perkPic(u.id)}</span><div><div class="pn">${esc(u.name.toUpperCase())}</div><div class="pd">${glossHtml(unlockDesc(u, p.perks))}</div></div>
         ${owned ? '<span class="good">OWNED</span>' : `<button class="small ${p.legacy >= u.cost ? 'primary' : 'disabled'}" data-sa="unlock:${u.id}">◆${u.cost}</button>`}</div>`;
   }).join('');
   const hist = p.history.length

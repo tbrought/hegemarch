@@ -3,7 +3,8 @@
  * after a while), and what choosing, rerolling or passing does.
  */
 
-import { BLUEPRINT_IDS, CARD_BY_ID, CARDS, LEGENDARY_BY, RARITY_LUCK, RARITY_WEIGHT, type CardDef } from './data/cards';
+import { BLUEPRINT_BY, BLUEPRINT_BY_RIVAL, BLUEPRINT_IDS, CARD_BY_ID, CARDS, LEGENDARY_BY, RARITY_LUCK, RARITY_WEIGHT, type CardDef } from './data/cards';
+import { RNG } from './rng';
 import type { Faction, Rarity } from './types';
 import { clamp } from './util';
 import type { Game } from './Game';
@@ -68,6 +69,79 @@ export function draftSize(f: Faction): number {
   return clamp(3 + f.mods.draft, 2, MAX_DRAFT);
 }
 
+/** What dealing an offer knows of the house's run so far, and moves on. */
+interface DealState {
+  /** Offers since the last one that held a Blueprint. */
+  bpPity: number;
+  /** The Blueprints the run has offered the house so far. */
+  bpSeen: string[];
+  /** Legendary Lineage (the player's alone): offers dealt, and whether one has held a Legendary. Null: nothing is promised. */
+  lineage: { dealt: number; seen: boolean } | null;
+}
+
+function dealState(g: Game, f: Faction): DealState {
+  const promised = f.isPlayer && g.config.unlockLegendary && !g.cradle;
+  return { bpPity: f.bpPity, bpSeen: [...(f.bpSeen ?? [])], lineage: promised ? { dealt: g.ui.offersDealt ?? 0, seen: !!g.ui.legendarySeen } : null };
+}
+
+const isBlueprint = (id: string) => CARD_BY_ID[id].cat === 'blueprint';
+const isLegendary = (id: string) => CARD_BY_ID[id].rarity === 'legendary';
+
+/**
+ * Deal one offer from a pool: by weight, then the Blueprint that is owed, then the Legendary that is
+ * promised. It rolls the dice it is given and moves the state it is given, and touches nothing else:
+ * the run deals with its own dice and keeps the state (`generateOffer`), and the odds of the next offer
+ * are found by dealing it many times with other dice (`offerOdds`).
+ */
+function deal(f: Faction, pool: CardDef[], n: number, rng: RNG, st: DealState): string[] {
+  const luck = f.mods.luck;
+  const out: string[] = [];
+  let pactTaken = false;
+  const avail = [...pool];
+  while (out.length < n && avail.length) {
+    const c = rng.weighted(avail, (cd) => {
+      if (cd.pact && pactTaken) return 0;
+      const w = RARITY_WEIGHT[cd.rarity] + RARITY_LUCK[cd.rarity] * luck;
+      return Math.max(0.2, w) * (cd.pact ? 0.55 : 1) * (cd.cat === 'blueprint' ? 1.6 : 1);
+    });
+    if (!c) break;
+    out.push(c.id);
+    if (c.pact) pactTaken = true;
+    avail.splice(avail.indexOf(c), 1);
+  }
+  // The Blueprint that is owed. The player: after `BLUEPRINT_BY` offers without one the next always
+  // shows one, and one the run has not shown yet while there is one. A rival house: after
+  // `BLUEPRINT_BY_RIVAL`, any of them, and what it has been shown is not kept.
+  const hasBp = out.some(isBlueprint);
+  if (!hasBp && st.bpPity >= (f.isPlayer ? BLUEPRINT_BY : BLUEPRINT_BY_RIVAL)) {
+    const bps = BLUEPRINT_IDS.filter((id) => !f.cards.includes(id) && pool.some((c) => c.id === id));
+    const fresh = bps.filter((id) => !st.bpSeen.includes(id));
+    if (bps.length && out.length) {
+      out[out.length - 1] = rng.pick(fresh.length ? fresh : bps);
+      st.bpPity = 0;
+    }
+  } else if (hasBp) st.bpPity = 0;
+  else st.bpPity++;
+  if (f.isPlayer) for (const id of out) if (isBlueprint(id) && !st.bpSeen.includes(id)) st.bpSeen.push(id);
+  // Legendary Lineage: a run shows at least one Legendary (see `LEGENDARY_BY`). It takes the place of
+  // a Common Boon if there is one, and never of a Blueprint.
+  if (st.lineage && out.length) {
+    st.lineage.dealt++;
+    if (out.some(isLegendary)) st.lineage.seen = true;
+    else if (!st.lineage.seen && st.lineage.dealt >= LEGENDARY_BY) {
+      const legends = pool.filter((c) => c.rarity === 'legendary');
+      const spare = (id: string) => !isBlueprint(id);
+      let at = out.findIndex((id) => spare(id) && CARD_BY_ID[id].rarity === 'common');
+      if (at < 0) at = out.findIndex(spare);
+      if (legends.length && at >= 0) {
+        out[at] = rng.pick(legends).id;
+        st.lineage.seen = true;
+      }
+    }
+  }
+  return out;
+}
+
 export function generateOffer(g: Game, f: Faction): string[] {
   const pool = g.cardPool(f);
   const n = g.draftSize(f);
@@ -79,48 +153,63 @@ export function generateOffer(g: Game, f: Faction): string[] {
     const first = FIRST_OFFER.filter((id) => pool.some((c) => c.id === id)).slice(0, n);
     if (first.length >= Math.min(3, n)) return first;
   }
-  const luck = f.mods.luck;
-  const out: string[] = [];
-  let pactTaken = false;
-  const avail = [...pool];
-  while (out.length < n && avail.length) {
-    const c = g.rng.weighted(avail, (cd) => {
-      if (cd.pact && pactTaken) return 0;
-      const w = RARITY_WEIGHT[cd.rarity] + RARITY_LUCK[cd.rarity] * luck;
-      return Math.max(0.2, w) * (cd.pact ? 0.55 : 1) * (cd.cat === 'blueprint' ? 1.6 : 1);
-    });
-    if (!c) break;
-    out.push(c.id);
-    if (c.pact) pactTaken = true;
-    avail.splice(avail.indexOf(c), 1);
-  }
-  // Blueprint pity: after four drafts without one, the next draft always shows a Blueprint.
-  const hasBp = out.some((id) => CARD_BY_ID[id].cat === 'blueprint');
-  if (!hasBp && f.bpPity >= 4) {
-    const bps = BLUEPRINT_IDS.filter((id) => !f.cards.includes(id) && pool.some((c) => c.id === id));
-    if (bps.length && out.length) {
-      out[out.length - 1] = g.rng.pick(bps);
-      f.bpPity = 0;
-    }
-  } else if (hasBp) f.bpPity = 0;
-  else f.bpPity++;
-  // Legendary Lineage: a run shows at least one Legendary (see `LEGENDARY_BY`). It takes the place of
-  // a Common Boon if there is one, and never of a Blueprint.
-  if (f.isPlayer && g.config.unlockLegendary && !g.cradle && out.length) {
-    g.ui.offersDealt = (g.ui.offersDealt ?? 0) + 1;
-    if (out.some((id) => CARD_BY_ID[id].rarity === 'legendary')) g.ui.legendarySeen = 1;
-    else if (!g.ui.legendarySeen && g.ui.offersDealt >= LEGENDARY_BY) {
-      const legends = pool.filter((c) => c.rarity === 'legendary');
-      const spare = (id: string) => CARD_BY_ID[id].cat !== 'blueprint';
-      let at = out.findIndex((id) => spare(id) && CARD_BY_ID[id].rarity === 'common');
-      if (at < 0) at = out.findIndex(spare);
-      if (legends.length && at >= 0) {
-        out[at] = g.rng.pick(legends).id;
-        g.ui.legendarySeen = 1;
-      }
-    }
+  const st = dealState(g, f);
+  const out = deal(f, pool, n, g.rng, st);
+  f.bpPity = st.bpPity;
+  // (Written only once there is one to remember: see DESIGN.md on fields that are not always there.)
+  if (st.bpSeen.length > (f.bpSeen?.length ?? 0)) f.bpSeen = st.bpSeen;
+  if (st.lineage) {
+    g.ui.offersDealt = st.lineage.dealt;
+    if (st.lineage.seen) g.ui.legendarySeen = 1;
   }
   return out;
+}
+
+/** What the next offer is likely to hold, see `offerOdds`. */
+export interface OfferOdds {
+  /** The chance (0 to 1) that at least one of the choices is a Blueprint, an Epic Boon, a Legendary Boon. */
+  blueprint: number;
+  epic: number;
+  legendary: number;
+  /** Offers without a Blueprint that may still pass before one is owed (0: the next offer holds one). Null: there is none left to be had. */
+  blueprintIn: number | null;
+  /** Offers that may still pass before the Legendary that is promised (0: the next holds it). Null: none is promised, or it has been kept. */
+  legendaryIn: number | null;
+  /** How many choices the offer has. */
+  choices: number;
+}
+
+/**
+ * The odds of the house's next offer: it is dealt many times over as the run would deal it now, with
+ * dice of its own (the run's are not rolled, and nothing of the run is changed). So the figures are true
+ * of this house at this moment: the Boons it can still be offered, its rank of Fortunate Stars, the
+ * number of its choices, the Blueprint it is owed and the Legendary it is promised. A playtester who
+ * had bought every rank asked to be shown his chances; a figure that is measured once and written down
+ * (as the Hall's are) cannot follow a run.
+ */
+export function offerOdds(g: Game, f: Faction, trials = 3000): OfferOdds {
+  const pool = g.cardPool(f);
+  const n = g.draftSize(f);
+  const base = dealState(g, f);
+  // (The same dice every time it is asked: the figures do not waver while nothing has changed.)
+  const rng = new RNG(0x0dd5);
+  let blueprint = 0;
+  let epic = 0;
+  let legendary = 0;
+  for (let i = 0; i < trials; i++) {
+    const out = deal(f, pool, n, rng, { bpPity: base.bpPity, bpSeen: [...base.bpSeen], lineage: base.lineage ? { ...base.lineage } : null });
+    if (out.some(isBlueprint)) blueprint++;
+    if (out.some((id) => CARD_BY_ID[id].rarity === 'epic')) epic++;
+    if (out.some(isLegendary)) legendary++;
+  }
+  const bpLeft = pool.some((c) => c.cat === 'blueprint');
+  const legends = pool.some((c) => c.rarity === 'legendary');
+  return {
+    blueprint: blueprint / trials, epic: epic / trials, legendary: legendary / trials,
+    blueprintIn: bpLeft ? Math.max(0, (f.isPlayer ? BLUEPRINT_BY : BLUEPRINT_BY_RIVAL) - base.bpPity) : null,
+    legendaryIn: base.lineage && !base.lineage.seen && legends ? Math.max(0, LEGENDARY_BY - 1 - base.lineage.dealt) : null,
+    choices: n,
+  };
 }
 
 export function ensureOffer(g: Game, f: Faction): string[] | null {

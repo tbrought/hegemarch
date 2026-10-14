@@ -33,7 +33,7 @@ export const GLOSSARY: GlossEntry[] = [
   term('blueprint', 'Blueprint', 'blueprints?', 'A Boon that lets your Forges build a new kind of ship.'),
   term('pact', 'Pact', 'pacts?', 'A double-edged Boon: a big gain that comes with a real cost.'),
   // Worlds
-  term('kindle', 'Kindle', 'kindl(?:e|es|ed|ing)', 'Light a dark world and make it yours. KINDLE pays for a seed ship that goes there and kindles it in 20 s, once no enemies are present. The seed ship is used up. Each world you hold makes the next one cost more.'),
+  term('kindle', 'Kindle', 'kindl(?:e|es|ed|ing)', 'Light a dark world and make it yours. KINDLE pays for a seed ship that goes there and kindles it in 20 s. Warships and guards there stop it; a seed ship or a Scout of another house does not, and if two seed ships kindle one world the first to finish has it. The seed ship is used up. Each world you hold makes the next one cost more.'),
   term('seed', 'Seed Ship', 'seed ships?', 'Carries the spark that kindles a dark world. Every KINDLE pays for one: it sets out from your nearest world and is used up when the world lights. If it is destroyed on the way, its Embers are lost and you kindle again. It takes no hangar room.'),
   term('dark', 'Dark world', 'dark worlds?', 'A world that no house holds. Kindle it to make it yours. Some are guarded.'),
   term('glow', 'Glow', 'glow(?:s|ing)?', 'A new or captured world starts at 25% output and reaches full strength over 90 s.'),
@@ -64,7 +64,7 @@ export const GLOSSARY: GlossEntry[] = [
   term('dreadnought', 'Dreadnought', 'dreadnoughts?', 'A capital ship that levels up in battle and learns abilities. Up to 2. Needs its Blueprint.'),
   term('starbase', 'Starbase', 'starbases?', 'An orbital fortress, one per world. It guards the world, repairs your ships there and keeps an anti-warp field up. Needs its Blueprint.'),
   term('ark', 'Ark', 'ark', 'Your house’s great ship. It levels up in battle and learns a new ability at levels 3, 5 and 7.'),
-  term('starfall', 'Starfall', 'starfalls?', 'A device built at a Hearth (it needs its Blueprint) and armed at a star. 2 minutes later the star erupts, unless the Starfall is destroyed first: every ship in that system is destroyed and every world there scorched (no shields, a level lost, the Glow of a new world). Breakers and Lancers destroy a Starfall fastest. The star then burns for 3 minutes, and fleets wait in front of it.'),
+  term('starfall', 'Starfall', 'starfalls?', 'A device built at a Hearth (it needs its Blueprint) and armed at a star. 2 minutes later the star erupts, unless the Starfall is destroyed first: every ship in that system is destroyed and every world there scorched (no shields, a level lost, the Glow of a new world). Breakers and Lancers destroy a Starfall fastest. The star then burns for 3 minutes, and fleets wait in front of it. The house that armed it sees the whole system from that moment until the fire is out.'),
   term('ability', 'Ability', 'abilit(?:y|ies)', 'A power your Ark or a Dreadnought uses by itself in battle.'),
   term('experience', 'Experience', 'experience', 'Your Ark and Dreadnoughts earn it by fighting. Enough of it raises their level.'),
   term('hull', 'Hull', 'hulls?', 'Health. A ship at zero hull is destroyed; a world at zero is captured.', true),

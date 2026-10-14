@@ -30,10 +30,15 @@ export function erupt(g: Game, star: GNode, by: number) {
   const armer = g.factions[by];
   const places = g.nodes.filter((n) => n.system === star.system);
   let ships = 0;
+  /** The ships it took, by the house they were of. */
+  const taken = new Map<number, number>();
   for (const n of places) {
     for (const u of [...g.buckets[n.id]]) {
       if (u.dead || u.type === 'heart' || g.asleep(u.owner)) continue;
-      if (u.type !== 'fighter' && u.type !== 'starfall' && !u.temp) ships++;
+      if (u.type !== 'fighter' && u.type !== 'starfall' && !u.temp) {
+        ships++;
+        taken.set(u.owner, (taken.get(u.owner) ?? 0) + 1);
+      }
       g.killUnit(u, by);
     }
   }
@@ -48,12 +53,20 @@ export function erupt(g: Game, star: GNode, by: number) {
     n.sh = 0;
     n.lastHit = 0;
     n.lastHitBy = by;
-    if (g.fxEnabled) g.fx.push({ k: 'ring', x: n.x, y: n.y, r: n.r + 60, color: '#ff8a1f', node: n.id });
+    if (g.fxEnabled) {
+      g.fx.push({ k: 'ring', x: n.x, y: n.y, r: n.r + 60, color: '#ff8a1f', node: n.id });
+      g.fx.push({ k: 'text', x: n.x, y: n.y - n.r - 26, text: 'SCORCHED', color: '#ff8a1f', node: n.id });
+    }
   }
   star.hazard = { warn: 0, t: STARFALL_BURN, dps: STARFALL_FIRE, by };
   g.fireCache = null;
-  if (g.fxEnabled) g.fx.push({ k: 'nova', x: star.x, y: star.y, node: star.id, color: armer.color });
-  g.notify(-1, `${star.name} erupts! ${armer.isPlayer ? 'Your Starfall' : `The Starfall of ${g.shortName(armer)}`} took ${ships} ship${ships === 1 ? '' : 's'} and scorched ` +
-      `${worlds} world${worlds === 1 ? '' : 's'}. The star burns for ${STARFALL_BURN / 60} minutes.`, armer.isPlayer ? 'good' : 'alert', star.id);
+  // What it took stands over the star for a few seconds, for every house to read (as the eruption is seen by all).
+  const toll = `${ships} SHIP${ships === 1 ? '' : 'S'} · ${worlds} WORLD${worlds === 1 ? '' : 'S'}`;
+  if (g.fxEnabled) g.fx.push({ k: 'nova', x: star.x, y: star.y, node: star.id, color: armer.color, toll });
+  // (Whose they were: the most first; the player's own are "yours".)
+  const whose = [...taken].sort((a, b) => b[1] - a[1] || a[0] - b[0]).map(([fid, k]) => `${g.factions[fid].isPlayer ? 'yours' : g.shortName(g.factions[fid])} ${k}`);
+  g.notify(-1, `${star.name} erupts! ${armer.isPlayer ? 'Your Starfall' : `The Starfall of ${g.shortName(armer)}`} took ${ships} ship${ships === 1 ? '' : 's'}` +
+      `${whose.length ? ` (${whose.join(', ')})` : ''} and scorched ${worlds} world${worlds === 1 ? '' : 's'}. The star burns for ${STARFALL_BURN / 60} minutes.`,
+      armer.isPlayer ? 'good' : 'alert', star.id);
   if (mine) g.notify(g.playerId, `${mine} of your worlds at ${star.name} ${mine === 1 ? 'is' : 'are'} scorched: no shields, a level lost, the Glow of a new world.`, 'bad', star.id);
 }

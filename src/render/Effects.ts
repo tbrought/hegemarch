@@ -4,7 +4,7 @@
  */
 import type { Fx } from '../game/types';
 import type { Camera } from './Camera';
-import { textCenter } from './font';
+import { textCenter, textOutline, textWidth } from './font';
 import { PAL, light, shade } from './palette';
 import { line, ring, type Ctx } from './pixel';
 
@@ -47,10 +47,13 @@ interface Beam {
 interface Floater {
   x: number;
   y: number;
+  /** (Below zero: it has not appeared yet.) */
   t: number;
   dur: number;
   text: string;
   c: string;
+  /** In the large font with an outline, and it stays where it is: what a Starfall took, over its star. */
+  big?: boolean;
 }
 
 interface Flash {
@@ -185,6 +188,8 @@ export class Effects {
           this.flashes.push({ x: f.x, y: f.y, t: 0, dur: 0.7, r: Math.max(10, 500 * zoom), c: PAL.bone, round: true });
           this.burst(f.x, f.y, 60, 700, 1.8, [PAL.bone, PAL.gold, PAL.ember, PAL.red], true);
           this.shake = 3;
+          // What it took, once the flash has cleared: it stands over the star for seven seconds.
+          if (f.toll) this.floaters.push({ x: f.x, y: f.y, t: -0.8, dur: 7, text: f.toll, c: PAL.bone, big: true });
           break;
         }
         case 'ability':
@@ -283,8 +288,13 @@ export class Effects {
       else g.fillRect(x, y, 1, 1);
     }
     for (const f of this.floaters) {
+      if (f.t < 0) continue;
       const k = f.t / f.dur;
-      textCenter(g, f.text, sx(f.x), sy(f.y) - Math.round(k * 10), k < 0.7 ? f.c : PAL.dusk, 'tiny');
+      if (f.big) {
+        const x = sx(f.x) - Math.round(textWidth(f.text) / 2);
+        const y = sy(f.y) - Math.max(16, Math.round(70 * z)) - Math.round(Math.min(1, f.t * 2) * 6);
+        if (k < 0.85 || Math.floor(f.t * 8) % 2 === 0) textOutline(g, f.text, x, y, f.t < 0.5 ? PAL.gold : f.c, PAL.void);
+      } else textCenter(g, f.text, sx(f.x), sy(f.y) - Math.round(k * 10), k < 0.7 ? f.c : PAL.dusk, 'tiny');
     }
   }
 }

@@ -5,7 +5,8 @@
 
 import { DIFFICULTY_NAMES } from '../../game/constants';
 import { AMBITION_BY_ID } from '../../game/data/ambitions';
-import { CARD_BY_ID, CAT_LABEL, type CardCat } from '../../game/data/cards';
+import type { OfferOdds } from '../../game/boons';
+import { BLUEPRINT_BY, CARD_BY_ID, CAT_LABEL, LEGENDARY_BY, RARITY_COLOR, type CardCat } from '../../game/data/cards';
 import { ERAS, LAST_CRADLE_ERA } from '../../game/data/eras';
 import { HEIR_BY_ID } from '../../game/data/heirs';
 import { RELIC_BY_ID } from '../../game/data/relics';
@@ -294,7 +295,7 @@ function boonTotals(modals: Modals, g: Ctx, x: number, y: number, lw: number, tw
   text(g, 'HOUSE, OMENS, BOONS, RELICS', rx, y + 9, PAL.slate, 'tiny');
   let ty = y + 19;
   const lines = modLines(p.mods);
-  const rows = Math.max(1, Math.floor((h - 30) / 7));
+  const rows = Math.max(1, Math.floor((h - 30 - ODDS_H) / 7));
   const shown = lines.length > rows ? lines.slice(0, rows - 1) : lines;
   const sources = modals.g.modSources(p);
   modals.ui.hint('bt-head', rx, y + 1, tw - 4, 15, { tip: 'Every bonus your house has right now, added up from all its sources. Point at a line to ' +
@@ -313,8 +314,66 @@ function boonTotals(modals: Modals, g: Ctx, x: number, y: number, lw: number, tw
   }
   if (lines.length > shown.length) text(g, `+${lines.length - shown.length} MORE`, rx, ty, PAL.slate, 'tiny');
   if (!lines.length) text(g, 'NONE YET', rx, ty, PAL.slate, 'tiny');
+  nextChoice(modals, g, rx, y + h - 8 - ODDS_H, tw);
   const foot = `REROLLS ${p.rerolls} · BOONS ${p.cards.length}`;
   text(g, foot, rx, y + h - 6, PAL.dusk, 'tiny');
+}
+
+/** The height of "your next choice" at the foot of the totals. */
+const ODDS_H = 32;
+
+/** The odds of the player's next Boon choice (`offerOdds`), worked out once for the run as it stands and kept until it has moved on. */
+function oddsNow(modals: Modals): OfferOdds {
+  const game = modals.g;
+  const p = game.player;
+  const key = [game.config.seed, game.cradle, p.era, p.cards.length, p.bpPity, p.bpSeen?.length ?? 0, game.ui.offersDealt ?? 0, game.ui.legendarySeen ?? 0, p.mods.luck, game.draftSize(p)].join(':');
+  if (modals.oddsMemo?.key !== key) modals.oddsMemo = { key, odds: game.offerOdds(p) };
+  return modals.oddsMemo.odds;
+}
+
+/**
+ * Under the totals: what the next Boon choice is likely to hold. Always the same three figures, each
+ * with its reason in its tooltip (a Blueprint that is owed, a Legendary that is promised, a Hall of
+ * Heirs that has not unlocked them): a playtester who had bought everything the Hall sells for rarer
+ * Boons asked to see his chances, and a chance that is only felt cannot be told from bad luck.
+ */
+function nextChoice(modals: Modals, g: Ctx, x: number, y: number, tw: number) {
+  const game = modals.g;
+  const o = oddsNow(modals);
+  const rank = game.config.perks?.luck ?? 0;
+  rect(g, x - 2, y, tw + 1, 1, PAL.indigo);
+  text(g, 'YOUR NEXT CHOICE', x, y + 3, PAL.gold, 'tiny');
+  modals.ui.hint('odds-head', x, y + 2, tw - 4, 8, { tip: `What a Boon choice dealt to you now would hold: the chance that at least one of its ${o.choices} Boons ` +
+      `is of that kind. It is worked out from the Boons you can still be offered, so it moves as your run does.` });
+  const rows: { id: string; label: string; color: string; p: number; tip: string }[] = [
+    {
+      id: 'blueprint', label: 'BLUEPRINT', color: PAL.mist, p: o.blueprint,
+      tip: o.blueprintIn === null
+        ? 'There is no Blueprint left that you could be offered.'
+        : `If ${BLUEPRINT_BY} choices pass without a Blueprint, the next always shows one, and one this run has not shown you yet. ` +
+            (o.blueprintIn === 0 ? 'Your next choice holds one.' : `${o.blueprintIn} more may pass before that.`),
+    },
+    {
+      id: 'epic', label: 'EPIC', color: RARITY_COLOR.epic, p: o.epic,
+      tip: `Fortunate Stars (Hall of Heirs) makes Epic and Legendary Boons come more often with each rank. You hold ${rank} of its ranks.`,
+    },
+    {
+      id: 'legendary', label: 'LEGENDARY', color: RARITY_COLOR.legendary, p: o.legendary,
+      tip: game.cradle
+        ? 'Legendary Boons are found among the stars, not on the cradle.'
+        : !game.config.unlockLegendary
+          ? 'Legendary Boons can be offered once you own Legendary Lineage (Hall of Heirs).'
+          : `Legendary Lineage promises one in every run, by choice ${LEGENDARY_BY} at the latest. ` +
+              (o.legendaryIn === null ? 'That has been kept: from here on it is the odds, which Fortunate Stars raises.' : o.legendaryIn === 0 ? 'Your next choice holds it.' : `${o.legendaryIn} more may pass before it.`),
+    },
+  ];
+  rows.forEach((r, i) => {
+    const ry = y + 11 + i * 7;
+    const v = `${Math.round(r.p * 100)}%`;
+    text(g, r.label, x, ry, r.p > 0 ? r.color : PAL.slate, 'tiny');
+    text(g, v, x + tw - 5 - textWidth(v, 'tiny'), ry, r.p > 0 ? PAL.bone : PAL.slate, 'tiny');
+    modals.ui.hint('odds-' + r.id, x - 2, ry - 1, tw - 2, 7, { tipTitle: `${r.label[0]}${r.label.slice(1).toLowerCase()} ${v}`, tipColor: r.color, tip: r.tip });
+  });
 }
 
 /** The status screen's first tab on the cradle: where every house stands on the climb. */

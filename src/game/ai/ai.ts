@@ -256,7 +256,10 @@ function kindle(g: Game, f: Faction, ctx: Ctx) {
   const targets: { n: GNode; s: number }[] = [];
   for (const n of g.nodes) {
     if (n.kind !== 'planet' || n.owner !== -1 || !f.explored[n.id]) continue;
-    if (g.hasHostiles(n.id, f.id)) continue;
+    // (A world that is held against it is the army's business. One that another house's seed ship has
+    // already reached is lost: that one finishes first.)
+    if (g.kindleBarred(n.id, f.id)) continue;
+    if (g.buckets[n.id].some((u) => !u.dead && u.type === 'seed' && u.owner !== f.id && u.order === 'kindle' && u.orderTarget === n.id)) continue;
     let minHops = Infinity;
     let minLen = Infinity;
     for (const o of ctx.worlds) {
@@ -267,6 +270,15 @@ function kindle(g: Game, f: Faction, ctx: Ctx) {
     targets.push({ n, s: kindleValue(g, n) / (1 + minLen / 4000) });
   }
   targets.sort((a, b) => b.s - a.s);
+  // A seed ship with nothing left to kindle (another house finished first, and there is no other world
+  // for it) goes home to its nearest world and waits there, not at the world it lost.
+  if (!targets.length) {
+    for (const u of ctx.seeds) {
+      if (u.order === 'kindle' || u.lane || u.path.length || u.node < 0 || g.nodes[u.node].owner === f.id) continue;
+      const home = g.kindleSource(f.id, u.node);
+      if (home >= 0) g.cmdMove(f.id, [u.id], home);
+    }
+  }
   const claimed = new Set<number>();
   for (const u of ctx.seeds) if (u.order === 'kindle') claimed.add(u.orderTarget);
   let want = (ai.personality === 'expansionist' ? 3 : 2) + (ctx.worlds.length < 4 ? 1 : 0);
@@ -453,7 +465,7 @@ function targetValid(g: Game, f: Faction, nodeId: number): boolean {
   if (n.kind === 'planet') {
     if (n.owner === f.id) return false;
     if (n.owner >= 0) return g.factions[n.owner].kind === 'empire' && g.hostile(n.owner, f.id);
-    return g.hasHostiles(n.id, f.id);
+    return g.kindleBarred(n.id, f.id);
   }
   if (n.kind === 'relic') return !!n.relic;
   if (n.kind === 'pirate') return g.pirates.alive;
@@ -503,7 +515,7 @@ function chooseTarget(g: Game, f: Faction, armyPower: number, from: number): { n
       const wards = g.guardedBy(n);
       if (wards.some((id) => isHearth(g.nodes[id]))) value += 14;
       else if (wards.length) value += 4;
-    } else if (n.kind === 'planet' && n.owner === -1 && g.hasHostiles(n.id, f.id)) {
+    } else if (n.kind === 'planet' && n.owner === -1 && g.kindleBarred(n.id, f.id)) {
       value = 6 + SIZE_VALUE[n.size] * 3;
     } else if (n.kind === 'relic' && n.relic) {
       value = g.victories.includes('relics') ? 30 : 13;
@@ -764,7 +776,8 @@ function press(g: Game, f: Faction, army: Unit[], armyPower: number, minArmy: nu
         g.cmdRetreat(f.id, army.map((u) => u.id));
         ai.mode = 'build';
         ai.lastAttack = g.time;
-        ai.siege = undefined;
+        // (Deleted, not set to undefined: see DESIGN.md on fields that are given up.)
+        delete ai.siege;
         gaveUp(g, f, tn);
         return;
       }

@@ -446,13 +446,26 @@ export const RARITY_WEIGHT: Record<Rarity, number> = { common: 62, rare: 27, epi
  * in 20% of offers without the perk and in 22% with a rank of it, bought and never noticed. What it does
  * now is `EPIC_ODDS` (meta/legacy.ts), which the Hall of Heirs shows.
  */
-export const RARITY_LUCK: Record<Rarity, number> = { common: -4, rare: 3, epic: 4.5, legendary: 1.1 };
+export const RARITY_LUCK: Record<Rarity, number> = { common: -4, rare: 3, epic: 4.5, legendary: 3.3 };
 /**
  * Legendary Lineage (Hall of Heirs): a run shows at least one Legendary Boon. If no offer has held one
  * by this many offers, this one does. (At their natural odds four runs in five showed none, and the
  * player who had paid to see them saw nothing.)
  */
 export const LEGENDARY_BY = 5;
+/**
+ * A Blueprint is owed after so many offers without one, and it is one the run has not shown the house
+ * yet while there is one. (Four until 1.18, and any Blueprint: a run of fourteen choices then showed
+ * the Starfall's to 55 players in a hundred, and a playtester with every rank of Fortunate Stars went
+ * looking for it through a whole run without seeing it.)
+ *
+ * It is a promise to the player, as Legendary Lineage's is. A rival house is owed a Blueprint after
+ * four offers and any of them, as before (`BLUEPRINT_BY_RIVAL`): given the player's rule, 98 rival
+ * houses in 160 held the Starfall's Blueprint where 73 had, they armed 34 Starfalls in forty games
+ * where they had armed 20, and 28 of those games were decided within the hour where 31 had been.
+ */
+export const BLUEPRINT_BY = 3;
+export const BLUEPRINT_BY_RIVAL = 4;
 /** Ember-16 colors for each rarity. */
 export const RARITY_COLOR: Record<Rarity, string> = { common: '#c8cbe6', rare: '#3fa7ff', epic: '#b05cff', legendary: '#ffd23f' };
 export const PACT_COLOR = '#e0402f';
