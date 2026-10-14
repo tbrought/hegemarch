@@ -969,6 +969,61 @@ select optgroup {
   line-height: 1.3;
 }
 
+/* Under Fortunate Stars: the chance that a Boon choice offers an Epic, and a Legendary, at every rank,
+   the rank held lit. It runs the width of the card, under its picture, text and price. */
+.perk .odds {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: auto repeat(6, minmax(0, 1fr));
+  align-items: center;
+  margin-top: 2px;
+  font-size: 13px;
+  line-height: 1;
+  color: var(--dusk);
+}
+
+.perk .odds > span {
+  padding: 3px 4px;
+  text-align: right;
+}
+
+.perk .odds > .k {
+  padding-left: 0;
+  text-align: left;
+  font-family: var(--display);
+  font-size: 8px;
+  color: var(--slate);
+}
+
+.perk .odds > .epic {
+  color: var(--violet);
+}
+
+.perk .odds > .legendary {
+  color: var(--gold);
+}
+
+.perk .odds > .now {
+  background: var(--indigo);
+  color: var(--bone);
+}
+
+.perk .odds > .r.now {
+  color: var(--gold);
+}
+
+.perk .odds > .off {
+  color: var(--slate);
+}
+
+.perk .odds > .note {
+  grid-column: 1 / -1;
+  padding: 5px 0 0;
+  text-align: left;
+  font-size: 12px;
+  color: var(--slate);
+}
+
 /* A house in the Hall of Heirs is the card it is on the setup (its banner, its name, what it is, what
    it has), with its price along the foot. Every card is the same shape: the banners line up, the
    names line up, the prices line up, whatever the length of a name. */

@@ -14,7 +14,8 @@ export interface PerkDef {
 
 /**
  * How many Boon offers in a hundred hold an Epic Boon, by rank of Fortunate Stars: what the Hall of
- * Heirs tells the player the perk does. Measured over 300 runs, and kept true by a test (tests/hall.test.ts).
+ * Heirs tells the player the perk does, in a table under it (app/screens/hall.ts). Measured over 600
+ * runs, and kept true by a test (tests/hall.test.ts).
  */
 export const EPIC_ODDS = [24, 32, 38, 44, 49, 55];
 /**
@@ -33,7 +34,7 @@ export const PERKS: PerkDef[] = [
   { id: 'loreSeed', name: 'Lorekeepers', desc: `[+${pc(PERK_LORE)} Lore] all run long per rank, so every Boon comes sooner.`, costs: [50, 100] },
   { id: 'escort', name: 'Veteran Escort', desc: `Begin each run with [+1 Guardian], and every ship of yours has [+${pc(PERK_HULL)} hull], per rank.`, costs: [60, 120] },
   { id: 'archivist', name: 'Archivist', desc: '[+1 Boon reroll] per rank.', costs: [50, 100] },
-  { id: 'luck', name: 'Fortunate Stars', desc: 'Rarer Boons [appear more often] with each rank.', costs: [60, 100, 150, 200, 260] },
+  { id: 'luck', name: 'Fortunate Stars', desc: 'Rarer Boons [appear more often] with each rank. The chance that a Boon choice offers one:', costs: [60, 100, 150, 200, 260] },
   { id: 'bastion', name: 'Ancestral Walls', desc: `Every world of yours gains [+${pc(PERK_WALLS)} hull] and your Hearth [+${pc(PERK_HEARTH)}] in ` +
       `all, per rank.`, costs: [40, 80] },
   { id: 'secondBreath', name: 'Second Breath', desc: 'Your Hearth’s Last Stand calls [twice the defenders].', costs: [70] },
@@ -41,33 +42,24 @@ export const PERKS: PerkDef[] = [
 
 export const UNLOCKS = [
   { id: 'pacts', name: 'Forbidden Archives', desc: '[Every double-edged Pact] can appear among your Boons.', cost: 80 },
-  { id: 'legendary', name: 'Legendary Lineage', desc: '[Legendary Boons] can appear among your choices: [at least one in every run], by your fifth ' +
-      'choice at the latest.', cost: 120 },
+  { id: 'legendary', name: 'Legendary Lineage', desc: '[Legendary Boons] appear among your choices: [at least one in every run], by your fifth ' +
+      'choice. Fortunate Stars makes them more common.', cost: 120 },
 ] as const;
 
 /**
- * A perk's text in the Hall of Heirs at the rank the player holds. A perk whose effect is a chance says
- * the chance, now and at the next rank: "more often" alone cannot be checked by playing, and a player
- * who has paid for it should not have to wonder whether it did anything.
+ * The odds a perk whose effect is a chance shows under its text in the Hall of Heirs: one row for each
+ * thing it makes likelier, a figure for every rank. "More often" alone cannot be checked by playing, and
+ * a player who has paid for it should not have to wonder whether it did anything. (In 1.18.0 these were
+ * sentences, "an Epic is in 24% of your Boon choices and a Legendary in 2% now; 32% and 5% at rank 1,
+ * 55% and 13% at rank 5": true, and a paragraph of figures beside cards that say what they do in a line.
+ * A table at every rank says it at a glance, and what each rank buys.)
  */
-export function perkDesc(pk: PerkDef, rank: number, lineage = true): string {
-  if (pk.id !== 'luck') return pk.desc;
-  const max = pk.costs.length;
-  const now = `An Epic is in [${EPIC_ODDS[rank]}%] of your Boon choices and a Legendary in [${LEGENDARY_ODDS[rank]}%]`;
-  // (A Legendary is offered to nobody who does not own Legendary Lineage: the figure is what the ranks are worth with it.)
-  const needs = lineage ? '' : ' The Legendary figures need Legendary Lineage, below.';
-  if (rank >= max) return `${pk.desc} ${now} (${EPIC_ODDS[0]}% and ${LEGENDARY_ODDS[0]}% without this).${needs}`;
-  const next = `[${EPIC_ODDS[rank + 1]}%] and [${LEGENDARY_ODDS[rank + 1]}%]`;
-  return `${pk.desc} ${now} now; ${next} at ${rank ? 'the next rank' : `rank 1, ${EPIC_ODDS[max]}% and ${LEGENDARY_ODDS[max]}% at rank ${max}`}.${needs}`;
-}
-
-/** What the Hall says of a thing it unlocks: Legendary Lineage also says the odds beyond its promise, at the rank of Fortunate Stars held. */
-export function unlockDesc(u: (typeof UNLOCKS)[number], perks: Record<string, number>): string {
-  if (u.id !== 'legendary') return u.desc;
-  const max = PERKS.find((pk) => pk.id === 'luck')!.costs.length;
-  const rank = Math.min(perks.luck ?? 0, max);
-  return `${u.desc} Beyond that one, a Legendary is in [${LEGENDARY_ODDS[rank]}%] of your choices` +
-      (rank < max ? `, and in [${LEGENDARY_ODDS[max]}%] with every rank of Fortunate Stars.` : ', with every rank of Fortunate Stars.');
+export function perkOdds(pk: PerkDef): { id: 'epic' | 'legendary'; label: string; odds: number[] }[] {
+  if (pk.id !== 'luck') return [];
+  return [
+    { id: 'epic', label: 'Epic', odds: EPIC_ODDS },
+    { id: 'legendary', label: 'Legendary', odds: LEGENDARY_ODDS },
+  ];
 }
 
 /** The Legacy spent on perks, all of which the Hall can give back (and then the perks are gone). */

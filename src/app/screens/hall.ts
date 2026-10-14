@@ -7,7 +7,7 @@ import { DIFFICULTY_NAMES } from '../../game/constants';
 import { PACT_COLOR } from '../../game/data/cards';
 import { HEIR_BY_ID, HEIRS } from '../../game/data/heirs';
 import { VICTORIES } from '../../game/data/victories';
-import { perkDesc, PERKS, perksSpent, unlockDesc, UNLOCKS } from '../../meta/legacy';
+import { perkOdds, PERKS, perksSpent, UNLOCKS, type PerkDef } from '../../meta/legacy';
 import { fmtTime } from '../../render/Renderer';
 import { esc } from '../../ui/format';
 import { glossHtml } from '../../ui/glossary';
@@ -34,6 +34,27 @@ export function perkPic(id: string): string {
     case 'legendary': return iconPic('conquest');
     default: return iconPic('star');
   }
+}
+
+/**
+ * Under a perk whose effect is a chance (Fortunate Stars): the chance at every rank, the rank the player
+ * holds lit. A Legendary is offered to nobody without Legendary Lineage: its row is then grey, and says so.
+ */
+function oddsTable(pk: PerkDef, rank: number, lineage: boolean): string {
+  const rows = perkOdds(pk);
+  if (!rows.length) return '';
+  const lit = (r: number) => (r === rank ? ' now' : '');
+  const ranks = rows[0].odds.map((_, r) => `<span class="r${lit(r)}">${r}</span>`).join('');
+  const body = rows
+    .map((row) => {
+      const off = row.id === 'legendary' && !lineage ? ' off' : '';
+      return `<span class="k ${row.id}${off}">${row.label.toUpperCase()}</span>${row.odds.map((x, r) => `<span class="${(lit(r) + off).trim()}">${x}%</span>`).join('')}`;
+    })
+    .join('');
+  const note = lineage ? '' : '<span class="note">Legendary Boons need Legendary Lineage, below.</span>';
+  const tip = 'The chance that a Boon choice offers at least one Epic, or one Legendary Boon, at each rank of Fortunate Stars. Your rank is lit. In a ' +
+      'run, the Boons page (B) shows the odds of your next choice.';
+  return `<div class="odds" data-tip="${esc(tip)}"><span class="k">RANK</span>${ranks}${body}${note}</div>`;
 }
 
 /** Everything in the Hall of Heirs the player does not have yet, cheapest first: its name and its price. */
@@ -76,7 +97,7 @@ export function showHall(app: App) {
     const rank = p.perks[pk.id] ?? 0;
     const max = pk.costs.length;
     const cost = pk.costs[rank];
-    return `<div class="perk px-box"><span class="perk-pic${rank ? ' has' : ''}">${perkPic(pk.id)}</span><div><div class="pn">${esc(pk.name.toUpperCase())} <span class="dim">${rank}/${max}</span></div><div class="pd">${glossHtml(perkDesc(pk, rank, p.unlockLegendary))}</div></div>
+    return `<div class="perk px-box"><span class="perk-pic${rank ? ' has' : ''}">${perkPic(pk.id)}</span><div><div class="pn">${esc(pk.name.toUpperCase())} <span class="dim">${rank}/${max}</span></div><div class="pd">${glossHtml(pk.desc)}</div>${oddsTable(pk, rank, p.unlockLegendary)}</div>
         ${rank >= max ? '<span class="good">MASTERED</span>' : `<button class="small ${p.legacy >= cost ? 'primary' : 'disabled'}" data-sa="perk:${pk.id}">◆${cost}</button>`}</div>`;
   }).join('');
   const spent = perksSpent(p.perks);
@@ -87,7 +108,7 @@ export function showHall(app: App) {
     : '';
   const unlocks = UNLOCKS.map((u) => {
     const owned = u.id === 'pacts' ? p.unlockPacts : p.unlockLegendary;
-    return `<div class="perk px-box"><span class="perk-pic${owned ? ' has' : ''}">${perkPic(u.id)}</span><div><div class="pn">${esc(u.name.toUpperCase())}</div><div class="pd">${glossHtml(unlockDesc(u, p.perks))}</div></div>
+    return `<div class="perk px-box"><span class="perk-pic${owned ? ' has' : ''}">${perkPic(u.id)}</span><div><div class="pn">${esc(u.name.toUpperCase())}</div><div class="pd">${glossHtml(u.desc)}</div></div>
         ${owned ? '<span class="good">OWNED</span>' : `<button class="small ${p.legacy >= u.cost ? 'primary' : 'disabled'}" data-sa="unlock:${u.id}">◆${u.cost}</button>`}</div>`;
   }).join('');
   const hist = p.history.length

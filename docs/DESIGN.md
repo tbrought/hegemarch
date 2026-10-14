@@ -290,7 +290,11 @@ nothing rarer than a Rare:
   rank and, since 1.18, one and a half times the weight of a Legendary (and moves a little from
   Common to Rare): an Epic in about 32%, 38%, 44%, 49% and 55% of offers, and a Legendary in 5%, 7%,
   9%, 11% and 13% where no rank gives 2% (`EPIC_ODDS`, `LEGENDARY_ODDS`, measured over 600 runs and
-  kept true by tests that deal the offers). The Hall shows both at the rank held and at the next.
+  kept true by tests that deal the offers). The Hall shows both in a table under the perk, a figure
+  for every rank and the rank held lit (`perkOdds`). In 1.18.0 they were sentences ("an Epic is in
+  24% of your Boon choices and a Legendary in 2% now; 32% and 5% at rank 1, 55% and 13% at rank 5"):
+  true, and a paragraph of figures beside cards that say what they do in a line. The table says it at
+  a glance, and what each rank buys; Legendary Lineage says its promise and no figures.
   Until 1.18 a rank added half a Legendary's weight, like an Epic's, which sounds the same and is
   not: there are five Legendary Boons among some sixty, so all five ranks took them from 2 offers in a
   hundred to 6. With the promise below and three rerolls, a run of fourteen choices showed 1.2
