@@ -94,7 +94,8 @@ terms do the same.
   Your **Ark** levels up and learns abilities.
 - **Scouts** wait for your order. Select one and press EXPLORE (or **E**), and it charts the dark
   world after world by itself. An **anomaly** (a violet swirl) waits until you send a ship to stop
-  there; then you choose what to do. Ships only passing through, and Scouts out exploring, fly on.
+  there; then you choose what to do, on a page that opens with a picture of it and its story coming
+  in word by word. Ships only passing through, and Scouts out exploring, fly on.
   A Scout sees the places next door, so while exploring it charts a guarded place from outside and
   keeps out of it; when the rest lies behind guards it says so and comes home. Every ship you lose
   is reported in the log, with the place and who destroyed it.
@@ -216,6 +217,7 @@ npm run test:qol           # the small things: remembered setup, Escape, keyboar
 npm run test:starfall      # the Starfall: built, armed, a star that erupts and burns, an order through the fire
 npm run record:starfall    # films a Starfall from arming to the burning star (.shots/starfall.mp4) and takes its pictures
 npm run record:draft       # films Boon drafts being dealt, an Epic and a Legendary among them (.shots/draft.mp4)
+npm run record:event       # films decisions coming in, an anomaly and a visitor (.shots/event.mp4)
 npm run test:menus         # screenshots of every menu screen over the live sector
 npm run test:ages          # an Ages run end to end: cradle, ages, Ark, the crossing, arrival, saves
 npm run test:layouts       # every dialog at the smallest and largest screens, biggest offers and texts
@@ -239,7 +241,7 @@ A change that must not alter the game at all (a refactoring) has two checks of i
 
 ```bash
 npm run golden -- record       # before: the whole saved state of 24 fixed runs, fingerprinted every 30 s
-npm run test:uisnap -- record  # before: 80 staged scenes (pixels, every button and tooltip, menu HTML)
+npm run test:uisnap -- record  # before: 81 staged scenes (pixels, every button and tooltip, menu HTML)
 npm run verify                 # after: compares both, to the byte, and runs everything else
 ```
 

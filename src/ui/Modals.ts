@@ -18,7 +18,7 @@ import { rect, type Ctx } from '../render/pixel';
 import type { Hud } from './Hud';
 import { choose, draft, skipDeal } from './modals/draft';
 import type { Deal } from './modals/reveal';
-import { ability, event, resolve } from './modals/event';
+import { ability, event, resolve, skipEvent } from './modals/event';
 import { status } from './modals/status';
 import { confirm, help, logView, menu, settings } from './modals/book';
 import { ascendCard, cradleCard, destinies, nightDone, omens } from './modals/cards';
@@ -48,6 +48,11 @@ export class Modals {
   /** Where the dialog's frame is this frame (the guard draws its bar there). */
   private box: { x: number; y: number; w: number; color: string } | null = null;
   result: { promptId: number; text: string } | null = null;
+  /** The decision (or its outcome) coming in: which, since when, how many of its words the last frame showed, whether all of it is there (modals/event.ts). */
+  evKey = '';
+  evAt = 0;
+  evPrev = -1;
+  evDone = true;
   statusTab: StatusTab = 'destinies';
   helpTab: HelpTab = 'basics';
   /** Scroll offset of the Boons list (pixels). */
@@ -131,9 +136,10 @@ export class Modals {
     return this.ui.time < this.guardUntil;
   }
 
-  /** Are the cards of a Boon draft still coming in? (Not drawn yet: they are about to.) */
+  /** Are the cards of a Boon draft, or a decision, still coming in? (Not drawn yet: they are about to.) */
   revealing(): boolean {
     const m = this.s.modal;
+    if (m?.kind === 'event') return m !== this.shown || !this.evDone;
     return m?.kind === 'draft' && (m !== this.shown || !this.dealDone || this.dealt !== this.g.player.draftOffer);
   }
 
@@ -164,6 +170,11 @@ export class Modals {
         else choose(this, offer[n - 1], n - 1);
         return true;
       }
+    }
+    // (While a decision is coming in, a number, Space or Enter brings all of it; it answers nothing unseen.)
+    if (m.kind === 'event' && this.revealing() && (/^Digit\d$/.test(code) || code === 'Space' || code === 'Enter')) {
+      skipEvent(this);
+      return true;
     }
     if (m.kind === 'event' && !this.result) {
       const n = parseInt(code.replace('Digit', ''), 10);

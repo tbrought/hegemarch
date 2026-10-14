@@ -811,6 +811,23 @@ Measured with `npm run simulate` and `npm run balance:passive`. Speeds are ½×,
   every single order instead, and said it plainly: do not make the controls serve the feel, and do
   not punish the player who likes to think. `npm run test:stopped` checks both states.)
   Closing a decision without choosing parks it behind a "! DECISION" button.
+- **A decision is a page of a storybook** (1.20, `ui/modals/event.ts`, `ui/modals/storyText.ts`).
+  It opens from its middle; under the title a picture of what it is about (what its choices touch,
+  a Dreadnought turning beside an Ember) is alive in a window of deep space; the story comes in word
+  by word, nine words a second, each word fading up out of the dark over a third of a second and
+  settling a pixel as it does; a phrase of every story, marked in braces in the data (`EventDef.text`,
+  one or two a story, a test holds it), is picked out in gold and rides a slow ripple a pixel high;
+  then the choices slide in from the left one after another, and the outcome comes in the same way,
+  in gold. A soft tick every third word. About two and a half seconds in all for a story of twenty
+  words; a click, a number, Space or Enter while it comes brings all of it and answers nothing
+  unseen (`skipEvent`, `Modals.revealing`), and the choices take no click until they are there.
+  Before it the dialog was all there at once, the same frame as a tooltip's, and a player said so:
+  "it just feels like a tooltip". Four ways in were made in the game and filmed (this one, a
+  transmission decoded out of static, an old role-playing game's window typed letter by letter, a
+  dialog that grows out of its place on the map); then three ways for its story (word by word,
+  letter by letter, line by line as ink spreads), after the first cut was found jittery and too fast
+  and its effects on the wrong text (on the choices, not the story). `npm run record:event` films
+  it.
 - **A dialog that opens by itself waits a second before it takes a click** (`DIALOG_GUARD`,
   `Modals.guarded`, `Ui.holdClicks`). An event comes up in the middle of play, on top of whatever
   the player was about to click: twice in one evening a playtester's click, already on its way to
@@ -1110,8 +1127,9 @@ UI snapshot of section 8: nothing in the game changed.)
   the whole saved state is fingerprinted every 30 seconds of game time, with the effects asked for.
   `record` before a refactoring, `check` after: identical to the byte, or it says where they part.
 - **The UI snapshot** (`npm run test:uisnap -- record|check`, `scripts/uisnap.mjs`): the same for what
-  is on the screen. In a browser whose clock the script holds (and whose `Math.random` is seeded) 80
+  is on the screen. In a browser whose clock the script holds (and whose `Math.random` is seeded) 81
   scenes are staged: the menus, every card and dialog, a Boon draft with a Legendary coming in, a
+  decision whose story is half there, a
   Starfall from its button to the star that burns, two seed ships at one world, the end of a run, an
   Ages cradle. Of each it
   writes down the pixels of the game's canvas, every HUD button with its place and tooltip, and the

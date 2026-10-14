@@ -2,6 +2,8 @@
 import { describe, expect, it } from 'vitest';
 import { LUMP, LUMP_FLASH, rollEmbers, type EmberCount } from '../src/ui/hud/emberCount';
 import { BEAM, BEAT, LAND_GAP, planDeal, tierOf } from '../src/ui/modals/reveal';
+import { storyEnd, WORD_FADE, wordIn, WORDS_PER_SECOND } from '../src/ui/modals/storyText';
+import { EVENTS } from '../src/game/data/events';
 import { Ui } from '../src/ui/Ui';
 
 describe('a dialog that has just opened by itself takes no click', () => {
@@ -154,5 +156,40 @@ describe('a Boon draft is dealt, and its cards beamed in one by one', () => {
     const d = planDeal([1, 1, 1]);
     expect(d.cards[0].beamAt).toBeLessThan(d.cards[1].beamAt);
     expect(d.cards[1].beamAt).toBeLessThan(d.cards[2].beamAt);
+  });
+});
+
+describe('the story of a decision comes in word by word (a page of a storybook)', () => {
+  it('each word fades up out of the dark, settling a pixel as it does, and is whole after a third of a second', () => {
+    expect(wordIn(-0.01).alpha).toBe(0);
+    expect(wordIn(0).alpha).toBe(0);
+    const half = wordIn(WORD_FADE / 2);
+    expect(half.alpha).toBeGreaterThan(0.5);
+    expect(half.alpha).toBeLessThan(1);
+    expect(wordIn(0.05).dy).toBe(1);
+    expect(wordIn(WORD_FADE).alpha).toBe(1);
+    expect(wordIn(WORD_FADE).dy).toBe(0);
+    // (Smooth: it only ever comes up.)
+    let last = -1;
+    for (let k = 0; k <= 40; k++) {
+      const a = wordIn((k / 40) * WORD_FADE).alpha;
+      expect(a).toBeGreaterThanOrEqual(last);
+      last = a;
+    }
+  });
+
+  it('nine words a second: a story of twenty words is all there in a little over two seconds', () => {
+    expect(WORDS_PER_SECOND).toBe(9);
+    expect(storyEnd(20, 0)).toBeCloseTo(19 / 9 + WORD_FADE, 9);
+    expect(storyEnd(20, 0)).toBeLessThan(2.6);
+    expect(storyEnd(0, 0.16)).toBe(0.16);
+  });
+
+  it('every story picks out a phrase in gold (in braces), and no more than two', () => {
+    for (const e of EVENTS) {
+      const marked = e.text.match(/\{[^}]+\}/g) ?? [];
+      expect(marked.length, e.id).toBeGreaterThanOrEqual(1);
+      expect(marked.length, e.id).toBeLessThanOrEqual(2);
+    }
   });
 });

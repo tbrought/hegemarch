@@ -654,6 +654,8 @@ try {
   await wait(300);
   check('closing a decision does not reopen it', await ev(() => window.__app.session.modal === null));
   await clickUi('prompt');
+  // (Its story comes in word by word; a key before it is all there brings all of it and answers nothing.)
+  await unheld();
   await page.keyboard.press('1');
   await wait(200);
   check('choosing resolves the decision', await ev(() => window.__app.session.game.prompts.find((p) => p.id === 777)?.result !== undefined));

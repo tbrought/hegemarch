@@ -91,7 +91,7 @@ for (const [label, vw, vh, pixels] of [
     g.prompts.push({ id: 777, event: 'derelict', node: g.player.capital, unit: -1 });
     app.hud.modals.open({ kind: 'event', promptId: 777 });
   });
-  await wait(300);
+  await dealt();
   await shot('event');
   await onScreen('event');
   // Lots of Boons on the Boons screen and in the tray.

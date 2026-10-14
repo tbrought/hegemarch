@@ -421,13 +421,16 @@ async function stageAll() {
     });
     await snap('boon-tray');
     await dialog('boons-screen', () => window.__app.hud.modals.open({ kind: 'status', tab: 'boons' }));
-    await dialog('event', () => {
+    // (A decision's story comes in word by word, and its choices after it: four seconds for all of it.)
+    await ev(() => {
       const app = window.__app;
       const g = app.session.game;
       app.session.modal = null;
       g.prompts.push({ id: 900001, event: 'derelict', node: g.worldsOf(g.playerId)[0].id, unit: -1 });
       app.hud.modals.open({ kind: 'event', promptId: 900001 });
     });
+    await frames(4000);
+    await snap('event');
     await hoverUi(t, 'choice-0', 0.3, 0.5);
     await snap('hover-event-choice');
     await away(t);
@@ -438,10 +441,20 @@ async function stageAll() {
       g.prompts.push({ id: 900002, event: 'comet', node: g.player.capital, unit: -1 });
       app.hud.modals.open({ kind: 'event', promptId: 900002, unbidden: true });
     });
-    await frames(1300);
+    await frames(4000);
     await ev(() => window.__app.hud.ui.rectOf('choice-0')?.onClick());
-    await frames(800);
+    await frames(3000);
     await snap('event-outcome');
+    // A decision coming in: the story half there, a word fading up out of the dark.
+    await ev(() => {
+      const app = window.__app;
+      const g = app.session.game;
+      app.session.modal = null;
+      g.prompts.push({ id: 900003, event: 'sentinels', node: g.player.capital, unit: -1 });
+      app.hud.modals.open({ kind: 'event', promptId: 900003 });
+    });
+    await frames(1100);
+    await snap('event-coming');
     await ev(() => {
       const app = window.__app;
       app.session.modal = null;

@@ -25,6 +25,7 @@ export interface EventChoice {
 export interface EventDef {
   id: string;
   title: string;
+  /** Its story. A phrase of it in {braces} is picked out in gold, on a slow ripple, as the story comes in. */
   text: string;
   kind: 'anomaly' | 'offer';
   choices: EventChoice[];
@@ -60,7 +61,7 @@ export function offering(g: Game, f: Faction, ctx: EventCtx): Unit | null {
 export const EVENTS: EventDef[] = [
   {
     id: 'derelict', kind: 'anomaly', title: 'Derelict Dreadnought',
-    text: 'A gutted capital ship from before the dark drifts here in silence. Its reactor is still faintly warm.',
+    text: 'A gutted {capital ship} from before the dark drifts here in silence. Its reactor is {still faintly warm}.',
     choices: [
       { label: 'Strip it for parts', hint: '[+220 Embers].', run: (g, f) => (g.addEmbers(f, 220), 'Your crews haul away tons of armor plate.') },
       {
@@ -84,7 +85,7 @@ export const EVENTS: EventDef[] = [
   },
   {
     id: 'archive', kind: 'anomaly', title: 'Ancient Archive',
-    text: 'Crystal vaults hum beneath a frozen moon, still keeping the knowledge of the old age.',
+    text: 'Crystal vaults hum beneath a frozen moon, still keeping {the knowledge of the old age}.',
     choices: [
       { label: 'Read the archive', hint: 'Gain [a free Boon].', run: (g, f) => (g.grantDraft(f, 1), 'Forgotten designs flood your records. A Boon awaits.') },
       { label: 'Sell the archive', hint: '[+300 Embers].', run: (g, f) => (g.addEmbers(f, 300), 'Data brokers pay well for the archive’s secrets.') },
@@ -92,7 +93,7 @@ export const EVENTS: EventDef[] = [
   },
   {
     id: 'beacon', kind: 'anomaly', title: 'Distress Beacon',
-    text: 'A looping distress call echoes from a battered transport. It could be survivors… or bait.',
+    text: 'A looping distress call echoes from a battered transport. It could be survivors… {or bait}.',
     choices: [
       {
         label: 'Answer the call', hint: '60%: survivors join you ([+180 Embers, +40 Lore]). 40%: [!a Corsair ambush].',
@@ -111,7 +112,7 @@ export const EVENTS: EventDef[] = [
   },
   {
     id: 'rift', kind: 'anomaly', title: 'Whispering Rift',
-    text: 'A wound in space murmurs promises in your crew’s dreams. It asks for an offering.',
+    text: 'A wound in space {murmurs promises} in your crew’s dreams. It asks for an offering.',
     choices: [
       {
         label: 'Offer the ship', hint: '[!Lose the ship that found it]. Gain [a random Epic Boon].',
@@ -139,7 +140,7 @@ export const EVENTS: EventDef[] = [
   },
   {
     id: 'comet', kind: 'anomaly', title: 'Ember Comet',
-    text: 'A rogue comet streaks past, its core glowing with ember-ore and its tail full of strange ice.',
+    text: 'A rogue comet streaks past, its core {glowing with ember-ore} and its tail full of strange ice.',
     choices: [
       { label: 'Mine the core', hint: '[+250 Embers].', run: (g, f) => (g.addEmbers(f, 250), 'Mining drones crack the core open.') },
       { label: 'Study the tail', hint: '[+110 Lore].', run: (g, f) => (g.addLore(f, 110), 'The ice holds traces of the first stars.') },
@@ -147,7 +148,7 @@ export const EVENTS: EventDef[] = [
   },
   {
     id: 'cache', kind: 'anomaly', title: 'Smuggler’s Cache',
-    text: 'A hidden hoard of Corsair loot, sealed with the Blackstar sigil.',
+    text: 'A hidden hoard of Corsair loot, sealed with {the Blackstar sigil}.',
     choices: [
       {
         label: 'Take everything', hint: '[+360 Embers]. 35%: [!the Corsairs come for you next].',
@@ -172,7 +173,7 @@ export const EVENTS: EventDef[] = [
   },
   {
     id: 'sentinels', kind: 'anomaly', title: 'Dormant Sentinels',
-    text: 'Ancient war machines orbit in silence, waiting for a command code that may still live in your bloodline.',
+    text: 'Ancient war machines orbit in silence, waiting for a command code that may still live {in your bloodline}.',
     choices: [
       {
         label: 'Try to wake them', hint: '50%: [3 Guardians join you]. 50%: [!2 hostile Sentinels wake up].',
@@ -190,7 +191,7 @@ export const EVENTS: EventDef[] = [
   },
   {
     id: 'bloom', kind: 'anomaly', title: 'Psionic Bloom',
-    text: 'A vast glowing creature drifts here. Its light seems to hum with thought.',
+    text: 'A vast glowing creature drifts here. Its light seems to {hum with thought}.',
     choices: [
       { label: 'Study the bloom', hint: '[+150 Lore].', run: (g, f) => (g.addLore(f, 150), 'Your scholars return with pages of revelations.') },
       {
@@ -204,7 +205,7 @@ export const EVENTS: EventDef[] = [
   },
   {
     id: 'lostSeed', kind: 'anomaly', title: 'Lost Seed Ship',
-    text: 'A seed ship from the age before the dark, its spark still sleeping in the hold.',
+    text: 'A seed ship from the age before the dark, its spark {still sleeping} in the hold.',
     choices: [
       { label: 'Claim the seed ship', hint: 'Gain [a free Seed Ship] here. Use it to kindle a dark world.', icons: ['seed'], run: (g, f, ctx) => (g.spawnUnit('seed', f.id, ctx.node), 'The old spark wakes to a new banner.') },
       { label: 'Scrap it', hint: '[+200 Embers].', run: (g, f) => (g.addEmbers(f, 200), 'You salvage the hull and its fuel.') },
@@ -212,7 +213,7 @@ export const EVENTS: EventDef[] = [
   },
   {
     id: 'forge', kind: 'anomaly', title: 'Stellar Forge',
-    text: 'An ancient shipyard built into the corona of a dying star. Its fires could be lit again.',
+    text: 'An ancient shipyard built into the corona of a dying star. {Its fires could be lit again}.',
     choices: [
       {
         label: 'Light the forge', hint: '[!Costs 200 Embers]. All ships permanently gain [8% hull].',
@@ -228,7 +229,7 @@ export const EVENTS: EventDef[] = [
   },
   {
     id: 'lens', kind: 'anomaly', title: 'Gravitational Lens',
-    text: 'Space itself bends here, focusing the light of every star in the sector.',
+    text: 'Space itself bends here, focusing {the light of every star} in the sector.',
     choices: [
       { label: 'Map the sector', hint: 'Chart [the whole sector].', run: (g, f) => (g.exploreAll(f), 'Every star in the sector is laid bare to your cartographers.') },
       { label: 'Tune your drives', hint: 'Ride starlanes [15% faster] for the rest of the run.', run: (g, f) => (g.addCard(f, 'lensCalibration'), 'Your navigators tune the drives to the lens. (+15% starlane speed)') },
@@ -236,7 +237,7 @@ export const EVENTS: EventDef[] = [
   },
   {
     id: 'mercs', kind: 'anomaly', title: 'Mercenary Outpost',
-    text: 'A free company of void mercenaries sells its guns to any house with Embers.',
+    text: 'A free company of void mercenaries {sells its guns} to any house with Embers.',
     choices: [
       {
         label: 'Hire the company', hint: '[!Costs 250 Embers]. Gain [3 Guardians and 2 Strikers].',
@@ -264,7 +265,7 @@ export const EVENTS: EventDef[] = [
   },
   {
     id: 'choir', kind: 'anomaly', title: 'The Whispering Choir',
-    text: 'Thousands of voices sing from nowhere. Those who listen learn things no one should know.',
+    text: 'Thousands of voices sing from nowhere. Those who listen learn {things no one should know}.',
     choices: [
       {
         label: 'Listen', hint: 'Gain [a random Rare Boon], and [!a random Pact].',
@@ -279,7 +280,7 @@ export const EVENTS: EventDef[] = [
   },
   {
     id: 'graveyard', kind: 'anomaly', title: 'Graveyard of Fleets',
-    text: 'Thousands of wrecks from the war that brought the dark hang here, cold and still.',
+    text: 'Thousands of wrecks from {the war that brought the dark} hang here, cold and still.',
     choices: [
       { label: 'Scavenge', hint: '[+260 Embers].', run: (g, f) => (g.addEmbers(f, 260), 'Your salvage teams fill their holds.') },
       { label: 'Recover the black boxes', hint: '[+160 Lore].', run: (g, f) => (g.addLore(f, 160), 'The last logs of a hundred captains reveal forgotten tactics.') },
@@ -288,7 +289,7 @@ export const EVENTS: EventDef[] = [
   // --------------- Galactic offers (prompted at random intervals) ---------------
   {
     id: 'pilgrims', kind: 'offer', title: 'Pilgrim Convoy',
-    text: 'A convoy of pilgrims follows the light of your house and asks for a place to rest.',
+    text: 'A convoy of pilgrims {follows the light of your house} and asks for a place to rest.',
     choices: [
       {
         label: 'Welcome them', hint: '[!Costs 80 Embers]. All your worlds [glow at full strength] right away.',
@@ -304,7 +305,7 @@ export const EVENTS: EventDef[] = [
   },
   {
     id: 'merchant', kind: 'offer', title: 'Merchant Guild',
-    text: 'A guild barge hails you, offering rare goods to a promising house.',
+    text: 'A guild barge hails you, offering {rare goods} to a promising house.',
     choices: [
       {
         label: 'Buy a Rare Boon', hint: '[!Costs 240 Embers]. Gain [a random Rare Boon].',
@@ -325,7 +326,7 @@ export const EVENTS: EventDef[] = [
   },
   {
     id: 'mercenary', kind: 'offer', title: 'Mercenary Offer',
-    text: 'A wing of Strikers between contracts offers its services.',
+    text: 'A wing of Strikers {between contracts} offers its services.',
     choices: [
       {
         label: 'Hire them', hint: '[!Costs 160 Embers]. [4 Strikers] arrive at your Hearth.',
@@ -341,7 +342,7 @@ export const EVENTS: EventDef[] = [
   },
   {
     id: 'scholars', kind: 'offer', title: 'Wandering Scholars',
-    text: 'A college of exiled scholars seeks a patron for its studies.',
+    text: 'A college of {exiled scholars} seeks a patron for its studies.',
     choices: [
       {
         label: 'Become their patron', hint: '[!Costs 100 Embers]. [+200 Lore].',
