@@ -7,10 +7,14 @@
  * right as it fades away. It is never in the way:
  *  - The game does not stop for it and it takes no click: orders, selection and the map under it work
  *    as ever, and under the pointer it turns see-through.
- *  - It waits while a dialog is open (the game is stopped then too) and plays when the dialog closes.
- *    It plays while the game is paused: a pause for the same news is the time to read it.
+ *  - It waits while a dialog is open (the game is stopped then too) and plays when the dialog closes;
+ *    so too while a tip card holds the game (the same news often brings one: a new age, the Maw). A tip
+ *    card that does not hold the game it keeps clear of, below it. It plays while the game is paused:
+ *    a pause for the same news is the time to read it.
  *  - Several come one after another, each shorter while another waits. No more than three wait, the
  *    same one never twice, and one that waited more than `STALE` seconds of game time is left to the log.
+ *    The same moment of the same house is not heralded again within `REPEAT` seconds (a rival that keeps
+ *    crossing the mark of a Destiny's countdown). News that is not heralded is shown as any other news.
  *  - It makes no sound of its own when it shows at once (the news has sounded already); one that had to
  *    wait comes with a soft whoosh.
  *  - Never over the end of the run (the HUD draws only the ending then).
@@ -24,9 +28,10 @@ import type { Hud } from '../Hud';
 /**
  * Seconds to drift in and out (IN, OUT) and to hold, alone or with another waiting (HOLD, HOLD_QUEUED);
  * how far it drifts (DRIFT, pixels); how old news may be and still show (STALE, game seconds); how many
- * wait at most (MAX); how solid it is under the pointer (SEE_THROUGH).
+ * wait at most (MAX); how solid it is under the pointer (SEE_THROUGH); how long before the same moment
+ * of the same house is heralded again (REPEAT, seconds).
  */
-export const HERALD = { IN: 0.4, OUT: 0.4, HOLD: 2.4, HOLD_QUEUED: 1.4, DRIFT: 40, STALE: 10, MAX: 3, SEE_THROUGH: 0.25 };
+export const HERALD = { IN: 0.4, OUT: 0.4, HOLD: 2.4, HOLD_QUEUED: 1.4, DRIFT: 40, STALE: 10, MAX: 3, SEE_THROUGH: 0.25, REPEAT: 60 };
 
 /** A herald waiting or showing. */
 export interface HeraldShown {
@@ -75,9 +80,24 @@ export function queueHerald(list: HeraldShown[], h: Herald, t: number, now: numb
   return true;
 }
 
-/** A big moment to announce (from the news, `Note.herald`). */
-export function herald(hud: Hud, h: Herald, t: number) {
-  queueHerald(hud.heralds, h, t, hud.clock);
+/** What the HUD keeps of the heralds: the queue, and when each moment of each house was last heralded. */
+export interface Heralds {
+  heralds: HeraldShown[];
+  heraldLast: Map<string, number>;
+  clock: number;
+}
+
+/**
+ * A big moment to announce (from the news, `Note.herald`). Returns false when it is not heralded: the
+ * same moment of the same house was heralded less than `REPEAT` seconds ago, or it cannot be queued.
+ */
+export function herald(hud: Heralds, h: Herald, t: number): boolean {
+  const key = `${h.title}|${h.fid ?? ''}`;
+  const last = hud.heraldLast.get(key);
+  if (last !== undefined && hud.clock - last < HERALD.REPEAT) return false;
+  if (!queueHerald(hud.heralds, h, t, hud.clock)) return false;
+  hud.heraldLast.set(key, hud.clock);
+  return true;
 }
 
 /** The colour of a herald: a house's own, gold for the player's triumphs, red for alarms, pink for the Hollow. */
@@ -86,11 +106,18 @@ function toneColor(hud: Hud, h: Herald): string {
   return h.tone === 'gold' ? PAL.gold : h.tone === 'red' ? PAL.red : h.tone === 'pink' ? PAL.pink : PAL.violet;
 }
 
-/** Draw the herald that is showing, if any (none while a dialog is open: it waits). */
+/** Draw the herald that is showing, if any (none while a dialog is open, or a tip card holds the game: it waits). */
 export function drawHerald(hud: Hud) {
   hud.heraldRect = { x: 0, y: 0, w: 0, h: 0 };
   let cur = hud.heralds[0];
-  if (!cur || hud.s.modal) return;
+  if (!cur) return;
+  if (hud.s.modal || hud.s.tipHold) {
+    // Hidden: one that has begun stands still meanwhile, and goes on where it was. (A tip card brought
+    // by the same news comes up a frame after the herald has begun.)
+    if (cur.at >= 0) cur.at += hud.clock - cur.drawn;
+    cur.drawn = hud.clock;
+    return;
+  }
   // (News that waited too long is only in the log by now.)
   while (cur && cur.at < 0 && hud.g.time - cur.t > HERALD.STALE) {
     hud.heralds.shift();
@@ -117,7 +144,9 @@ export function drawHerald(hud: Hud) {
   const bw = Math.min(W - 8, Math.max(tw + 60, textWidth(cur.h.sub) + 24, 240));
   const sub = fit(cur.h.sub, bw - 12);
   const banner = hud.bannerRect.w > 0 ? hud.bannerRect.y + hud.bannerRect.h + 10 : 0;
-  const y = Math.max(Math.round(hud.H * 0.24), banner);
+  // (Below a tip card that is up, as of the last frame: it is drawn after the herald.)
+  const tip = hud.tips.rect.w > 0 ? hud.tips.rect.y + hud.tips.rect.h + 6 : 0;
+  const y = Math.max(Math.round(hud.H * 0.24), banner, tip);
   const bh = scale === 2 ? 34 : 26;
   const pose = heraldPose(t, cur.end);
   const x = Math.round(W / 2 - bw / 2) + pose.dx;

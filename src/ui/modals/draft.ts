@@ -22,7 +22,7 @@ import type { Modals } from '../Modals';
 import type { CardDef } from '../../game/data/cards';
 import type { SoundId } from '../../audio/Sfx';
 import { FLASH, MOTES, planDeal, SPARKLE, tierOf, type Deal } from './reveal';
-import { dashed, motes, padLines, sparkles } from './pixelFx';
+import { CALM, dashed, motes, padLines, sparkles } from './pixelFx';
 
 export const BLUEPRINT_SHIP: Record<string, UnitType> = { bpCarrier: 'carrier', bpLancer: 'lancer', bpDread: 'dreadnought', bpStarbase: 'starbase', bpStarfall: 'starfall' };
 
@@ -203,9 +203,6 @@ export function draft(modals: Modals, g: Ctx) {
   const lw = 'LATER';
   modals.ui.button(g, 'later', x + w / 2 - 20, by, 40, 12, lw, () => modals.close(), { font: 'tiny', tip: 'Decide later. The Boon will wait. (Esc)' });
 }
-
-/** No flashing for a player whose computer asks for less motion (the motes and the lines still come). */
-const CALM = typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches;
 
 /** The sound of the deal: a place appearing, a card starting to come, and each card once it is all there (by its rarity). */
 const STING: SoundId[] = ['tick', 'rare', 'epic', 'legendary'];

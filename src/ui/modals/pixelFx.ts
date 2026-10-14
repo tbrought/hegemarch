@@ -6,6 +6,12 @@
 import { PAL } from '../../render/palette';
 import { rect, type Ctx } from '../../render/pixel';
 
+/**
+ * No flashing for a player whose computer asks for less motion: a card's face, a window, a button that
+ * flashes white stays as it is (the motes, the lines, the sparkles and the words still come).
+ */
+export const CALM = typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches;
+
 /** A frame whose two colours alternate round it, four pixels at a time: a card's empty place. */
 export function dashed(g: Ctx, x: number, y: number, w: number, h: number, a: string, b: string) {
   const per = 2 * (w + h) - 4;

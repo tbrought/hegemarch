@@ -5,7 +5,7 @@ import { TICK } from '../src/game/constants';
 import { ERAS, LAST_CRADLE_ERA } from '../src/game/data/eras';
 import { treasuryTarget } from '../src/game/data/victories';
 import type { GameConfig, Herald } from '../src/game/types';
-import { HERALD, heraldPose, heraldTime, queueHerald, type HeraldShown } from '../src/ui/hud/herald';
+import { herald, HERALD, heraldPose, heraldTime, queueHerald, type HeraldShown } from '../src/ui/hud/herald';
 import { mk, run } from './helpers';
 
 /** The heralds among the news so far. */
@@ -136,5 +136,22 @@ describe('a herald comes and goes without being in the way', () => {
     queueHerald(late, h('B'), 0, 2.5);
     expect(late[0].end).toBeCloseTo(2.5 + HERALD.OUT);
     expect(heraldPose(2.5, late[0].end)).toEqual({ dx: 0, alpha: 1 });
+  });
+
+  it("the same moment of the same house is not heralded again within a minute (a rival that keeps crossing a mark); another house’s is", () => {
+    const hud = { heralds: [] as HeraldShown[], heraldLast: new Map<string, number>(), clock: 0 };
+    const dom = (fid: number): Herald => ({ title: 'DOMINATION LOOMS', sub: 'They will be crowned unless you stop them.', tone: 'house', fid });
+    expect(herald(hud, dom(1), 0)).toBe(true);
+    hud.heralds.length = 0;
+    hud.clock = 40;
+    expect(herald(hud, dom(1), 40)).toBe(false);
+    expect(herald(hud, dom(2), 40)).toBe(true);
+    hud.heralds.length = 0;
+    hud.clock = 61;
+    expect(herald(hud, dom(1), 61)).toBe(true);
+    // (Not queued, it is not heralded either: the news is shown as any other.)
+    hud.heralds.length = 0;
+    for (const t of ['A', 'B', 'C']) herald(hud, { title: t, sub: '', tone: 'red' }, 61);
+    expect(herald(hud, { title: 'D', sub: '', tone: 'red' }, 61)).toBe(false);
   });
 });

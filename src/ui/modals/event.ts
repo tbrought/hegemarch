@@ -13,7 +13,7 @@ import { drawRich, richLines } from '../../render/rich';
 import { termsIn } from '../glossary';
 import { drawSubjects, starWindow, subjectsIn, subjectsSize, type Look } from '../subjects';
 import { drawStory, storyEnd, wordCount } from './storyText';
-import { sparkles } from './pixelFx';
+import { CALM, sparkles } from './pixelFx';
 import type { Modals } from '../Modals';
 
 export function resolve(modals: Modals, promptId: number, choice: number) {
@@ -224,7 +224,7 @@ export function ability(modals: Modals, g: Ctx, unitId: number) {
     if (s >= 0 && s < ringTime) ring(g, mid.x, mid.y, Math.max(3, Math.round(48 * (1 - s / ringTime))), k % 2 ? PAL.gold : PAL.bone, 2);
   }
   const flash = t - LEVEL_UP.FLASH;
-  if (flash >= 0 && flash < 0.12) rect(g, wx + 1, ly + 1, inner - 2, SHIP_PIC - 2, Math.floor(flash / 0.06) % 2 ? PAL.gold : PAL.bone);
+  if (!CALM && flash >= 0 && flash < 0.12) rect(g, wx + 1, ly + 1, inner - 2, SHIP_PIC - 2, Math.floor(flash / 0.06) % 2 ? PAL.gold : PAL.bone);
   if (flash >= 0.06) {
     const a0 = g.globalAlpha;
     g.globalAlpha = a0 * Math.min(1, (flash - 0.06) / 0.3);
@@ -250,25 +250,24 @@ export function ability(modals: Modals, g: Ctx, unitId: number) {
   if (!modals.abDone) modals.ui.add({ id: 'ab-skip', x, y, w, h, onClick: () => skipAbility(modals) });
 }
 
-/** One ability to choose: its name in its colour, what it does, who it acts on; clickable once all are there (`live`). */
+/** A ship learns the ability it was offered (by a click or its number). */
+export function chooseAbility(modals: Modals, unitId: number, id: string) {
+  const u = modals.g.units.get(unitId);
+  if (!u || !modals.g.cmdChooseAbility(modals.g.playerId, u.id, id)) return;
+  modals.s.sfx.play('ability', 0.6);
+  if (!u.pendingAbil.length) modals.s.modal = null;
+  else modals.afterChoice();
+}
+
+/** One ability to choose: its number and name in its colour, what it does, who it acts on; clickable once all are there (`live`). */
 function abilityRow(modals: Modals, g: Ctx, unitId: number, id: string, i: number, x: number, y: number, w: number, h: number, subs: string[], subW: number, look: Look, live: boolean) {
   const a = ABILITY_BY_ID[id];
   const hid = 'ab-' + i;
   const hot = live && modals.ui.isHot(hid);
   box(g, x, y, w, h, hot ? PAL.indigo : PAL.night, hot ? PAL.bone : PAL.slate);
-  text(g, a.name, x + 4, y + 3, a.color);
+  text(g, a.name, text(g, `${i + 1}. `, x + 4, y + 3, PAL.slate), y + 3, a.color);
   drawRich(g, a.desc, x + 4, y + 13, w - 8 - subW);
   drawSubjects(g, subs, x + w - 6, y + 3, h - 6, { ...look, t: modals.ui.time, lively: hot }, 'right');
   if (!live) return;
-  const u = modals.g.units.get(unitId)!;
-  modals.ui.add({
-    id: hid, x, y, w, h, terms: termsIn(a.desc, { exclude: a.name }),
-    onClick: () => {
-      if (modals.g.cmdChooseAbility(modals.g.playerId, u.id, id)) {
-        modals.s.sfx.play('ability', 0.6);
-        if (!u.pendingAbil.length) modals.s.modal = null;
-        else modals.afterChoice();
-      }
-    },
-  });
+  modals.ui.add({ id: hid, x, y, w, h, terms: termsIn(a.desc, { exclude: a.name }), onClick: () => chooseAbility(modals, unitId, id) });
 }

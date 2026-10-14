@@ -78,6 +78,8 @@ export class Hud {
   emberFlash = 0;
   /** The big moments waiting to be announced across the screen, the first showing (hud/herald.ts). */
   heralds: HeraldShown[] = [];
+  /** When each moment of each house was last heralded (hud/herald.ts): not again within a minute. */
+  heraldLast = new Map<string, number>();
   /** Embers paid but still flying to the count (a goal's reward): the count takes them in as they land. */
   embersAway = 0;
   /** When a Boon became ready (HUD clock), and how many waited at the last frame (hud/touches.ts). */
@@ -171,9 +173,12 @@ export class Hud {
         if (ours) s.sfx.play('boon', 0.5);
         s.renderer.fx.shake = Math.max(s.renderer.fx.shake, ours ? 3 : 2);
       }
-      // A big moment is announced across the screen (the log keeps its words); any other line may show at the top.
-      if (n.herald) herald(this, n.herald, n.t);
-      else if (!hearthFell && (!revealedLog || n.kind === 'alert' || n.kind === 'bad')) s.showToast(n.text, KIND_COLOR[n.kind], n.kind === 'alert' ? 5 : 4);
+      // A big moment is announced across the screen (the log keeps its words); any other line, or a moment
+      // not heralded (heralded a minute ago, or too many waiting), may show at the top.
+      if (!n.herald || !herald(this, n.herald, n.t)) {
+        if (hearthFell) s.showToast(n.text, n.kind === 'good' ? PAL.gold : PAL.violet, 6);
+        else if (!revealedLog || n.kind === 'alert' || n.kind === 'bad') s.showToast(n.text, KIND_COLOR[n.kind], n.kind === 'alert' ? 5 : 4);
+      }
       if (n.pause && s.profile.settings.autoPause && !s.paused && !g.outcome && !this.tutorial.busy()) {
         s.paused = true;
         s.showToast('PAUSED · ' + n.text, PAL.ember, 6);

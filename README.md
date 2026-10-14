@@ -225,6 +225,8 @@ npm run record:touches     # films a Boon becoming ready and a goal reached, clo
 npm run test:menus         # screenshots of every menu screen over the live sector
 npm run test:ages          # an Ages run end to end: cradle, ages, Ark, the crossing, arrival, saves
 npm run test:layouts       # every dialog at the smallest and largest screens, biggest offers and texts
+npm run test:fit           # every decision and outcome, level-up, omens pair and herald fits the smallest screens
+npm run test:reveals       # keys and clicks while things come in; heralds and goals meeting dialogs and tip cards
 npm run test:uifuzz        # minutes of random clicks, drags, keys and resizes through menus and runs
 npm run test:perf          # big battle frame-rate check
 npm run test:dist          # smoke-tests dist/hegemarch.html from disk (after npm run build)

@@ -78,6 +78,10 @@ export class Goals {
       for (const c of this.cheers) this.pay(c);
       this.cheers = [];
     }
+    // A goal waiting to be marked behind a dialog does not hold its Embers back from the count meanwhile:
+    // the dialog may stay open for long, and what it offers is weighed against the count. (Its Embers
+    // still fly when it is marked; the count has them already.)
+    if (this.hud.s.modal) for (const c of this.cheers) if (c.at < 0) this.pay(c);
     this.t += dt;
     if (this.t < 0.5) return;
     this.t = 0;

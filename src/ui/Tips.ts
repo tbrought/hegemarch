@@ -164,7 +164,11 @@ export class Tips {
     return y + 13;
   }
 
+  /** Where the card was drawn (zero when none): a herald keeps clear of it. */
+  rect = { x: 0, y: 0, w: 0, h: 0 };
+
   draw(g: Ctx) {
+    this.rect = { x: 0, y: 0, w: 0, h: 0 };
     if (!this.current || this.s.modal) return;
     const msg = TIPS[this.current.id];
     if (!msg) {
@@ -179,6 +183,7 @@ export class Tips {
     const y = 46;
     const color = PAL.teal;
     this.hud.ui.panel(g, 'tip', x, y, w, h, { border: color, fill: PAL.night });
+    this.rect = { x, y, w, h };
     icon(g, 'star', x + 5, y + 3);
     text(g, 'TIP', x + 13, y + 4, color, 'tiny');
     // (The words the card explains when pointed at are marked.)

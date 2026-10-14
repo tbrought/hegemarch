@@ -833,7 +833,9 @@ Measured with `npm run simulate` and `npm run balance:passive`. Speeds are ½×,
   and LEVEL n comes up beside it in large gold letters and stays; then the abilities fade up one after
   another (`LEVEL_UP`). A whine rising with the rings, a chord at the flash. All of it is there in
   about a second and a third; a click, a number, Space or Enter brings it at once, and the abilities
-  take no click until they are there. Opened again later (its button), it is there at once. Before
+  take no click until they are there. The abilities are numbered, and a number takes one, as it
+  answers a decision (since 1.22.1: before, a number only brought the level-up in). Opened again
+  later (its button), it is there at once. Before
   it the choice was a plain list. Three ways were filmed in the game: this one, the abilities beamed
   in as the Boon cards are, and a line of story word by word; the beam made a level-up look like a
   Boon draft, and the story was slow for something that comes several times a run.
@@ -848,15 +850,24 @@ Measured with `npm run simulate` and `npm run balance:passive`. Speeds are ½×,
   its hoard) is only told: it is news to nobody. A herald must never be in the way, so:
   - *The game does not stop for it.* A herald is news, not a question; the battle the player is
     fighting goes on under it, and orders, selection and the map under it work as ever (it takes no
-    click). Under the pointer it turns see-through, smoothly, so what is under it can be seen. News that needs the player's hand already pauses the game when auto-pause is on (a
-    Starfall armed where they have ships or worlds, a new age, an Ark leaving); the herald then plays
-    over the paused map, which is when it is read.
-  - *It waits while a dialog is open* (the game is stopped then too) and plays when the dialog closes.
+    click). Under the pointer it turns see-through, smoothly, so what is under it can be seen. News
+    that needs the player's hand already pauses the game when auto-pause is on (a Starfall armed
+    where they have ships or worlds, a new age, an Ark leaving); the herald then plays over the
+    paused map, which is when it is read.
+  - *It waits while a dialog is open* (the game is stopped then too) and plays when the dialog closes,
+    and so while a tip card holds the game: the same news often brings a tip card the first time (a
+    new age, the Maw), and a herald under it played out unread (found in the 1.22 review). One that
+    has begun when a dialog or such a card comes up stands still behind it and goes on where it was.
+    A tip card that does not hold the game (auto-pause off) it keeps clear of, below it.
   - *Several come one after another*, each held for a second less while another waits (`heraldTime`):
     a herald is on the screen for 3.2 seconds alone, 2.2 with another behind it, and one already far
     into its hold when another comes starts leaving from where it is. No more than three wait, the
     same news is never queued twice, and news that waited more than ten seconds of game time is
-    left to the log.
+    left to the log. The same moment of the same house is not heralded again within a minute
+    (`HERALD.REPEAT`): a rival can cross the mark of a Destiny's countdown, fall back and cross it
+    again. News that is not heralded (a repeat, or too many waiting) shows at the top as any other
+    news does. How often heralds come (`npx tsx scripts/herald-count.ts`): 0 to 3 a game, never two in
+    a minute, over eight medium games of 45 minutes.
   - *It is gentle.* It drifts 40 pixels, never more than about three a frame, and fades rather than
     slides across the screen; it is never wider than the screen, and sits under the objective banner.
     It makes no sound of its own when it shows at once (the news has sounded its alarm already); one
@@ -880,6 +891,10 @@ Measured with `npm run simulate` and `npm run balance:passive`. Speeds are ½×,
   were filmed (this one; each omen's words one by one; each beamed in as the Boon cards are): the
   words were slow for a card of facts, the beam was the Boons again, and the sky gives the omens a
   look of their own, the sector's.
+- **No flashing for a player who asks for less motion** (`CALM` in `ui/modals/pixelFx.ts`, from the
+  browser's prefers-reduced-motion): a Boon card's face, a Legendary's frame, a level-up's window, the
+  Ambition's sky and the BOON button do not flash white; the motes, lines, sparkles and words still
+  come. (Until 1.22.1 only the Boon cards held back.)
 - **A Boon ready is marked** (1.22, `ui/hud/touches.ts`). The moment one more Boon waits than a frame
   before (the Lore is full, a new age, a Hearth taken), its button in the top bar flashes white and
   fades, a frame runs out from it and sparkles light at its corners: under a second, on the classic
@@ -891,9 +906,10 @@ Measured with `npm run simulate` and `npm run balance:passive`. Speeds are ½×,
   tick taking the reward's place; the count takes the 40 in as the last lands (`hud.embersAway`: the
   game pays at once, the count shows it when it arrives, with its white flash and "+40"); then the
   next goal fades up. Edge cases: two goals reached together are marked one after the other; a goal
-  reached while a dialog is open is marked once it closes; if
-  the run ends or tips are turned off, Embers still in flight are taken in at once; the count never
-  shows less than nothing. Two ways were filmed: this one, and DONE stamped across the box, which
+  reached while a dialog is open is marked once it closes, and its Embers are not held back from the
+  count meanwhile (the dialog may stay open for long, and what it offers is weighed against the
+  count: until 1.22.1 the count showed 40 less all that time); if the run ends or tips are turned
+  off, Embers still in flight are taken in at once; the count never shows less than nothing. Two ways were filmed: this one, and DONE stamped across the box, which
   hid what had been done.
 - **A dialog that opens by itself waits a second before it takes a click** (`DIALOG_GUARD`,
   `Modals.guarded`, `Ui.holdClicks`). An event comes up in the middle of play, on top of whatever

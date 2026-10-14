@@ -18,7 +18,7 @@ import { rect, type Ctx } from '../render/pixel';
 import type { Hud } from './Hud';
 import { choose, draft, skipDeal } from './modals/draft';
 import type { Deal } from './modals/reveal';
-import { ability, event, resolve, skipAbility, skipEvent } from './modals/event';
+import { ability, chooseAbility, event, resolve, skipAbility, skipEvent } from './modals/event';
 import { status } from './modals/status';
 import { confirm, help, logView, menu, settings } from './modals/book';
 import { ascendCard, cradleCard, destinies, nightDone, omens, skipOmens } from './modals/cards';
@@ -190,6 +190,15 @@ export class Modals {
     if (m.kind === 'ability' && this.revealing() && (/^Digit\d$/.test(code) || code === 'Space' || code === 'Enter')) {
       skipAbility(this);
       return true;
+    }
+    if (m.kind === 'ability') {
+      // (A number takes that ability, as it answers a decision.)
+      const n = parseInt(code.replace('Digit', ''), 10);
+      const choices = this.g.units.get(m.unitId)?.pendingAbil[0];
+      if (choices && n >= 1 && n <= choices.length) {
+        chooseAbility(this, m.unitId, choices[n - 1]);
+        return true;
+      }
     }
     if (m.kind === 'omens' && this.revealing() && (/^Digit\d$/.test(code) || code === 'Space' || code === 'Enter')) {
       skipOmens(this);

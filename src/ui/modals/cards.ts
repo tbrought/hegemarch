@@ -19,7 +19,7 @@ import { gloss, termsIn } from '../glossary';
 import { starWindow } from '../subjects';
 import type { Modals } from '../Modals';
 import { OMENS, omensPlan } from './omensPlan';
-import { sparkle, sparkles } from './pixelFx';
+import { CALM, sparkle, sparkles } from './pixelFx';
 
 /**
  * The Destinies of the run. They are a list, each on its own line with OR between them, and the
@@ -250,7 +250,7 @@ export function omens(modals: Modals, g: Ctx) {
       }
       if (age < 0) return;
       if (age < OMENS.LIGHT) ring(g, p.x, p.y, Math.max(2, Math.round(12 * (1 - age / OMENS.LIGHT))), col, 1);
-      else if (gold && age < OMENS.LIGHT + 0.06) rect(g, wx + 1, ly + 1, inner - 2, SKY - 2, PAL.gold);
+      else if (gold && !CALM && age < OMENS.LIGHT + 0.06) rect(g, wx + 1, ly + 1, inner - 2, SKY - 2, PAL.gold);
       else sparkle(g, p.x, p.y, age < OMENS.LIGHT + 0.2 ? 3 : 1 + (Math.floor(modals.ui.time * 2 + i) % 2), col);
     });
     g.restore();

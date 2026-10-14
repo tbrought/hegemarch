@@ -6,7 +6,7 @@
  */
 import { PAL } from '../../render/palette';
 import { rect, type Ctx } from '../../render/pixel';
-import { sparkles } from '../modals/pixelFx';
+import { CALM, sparkles } from '../modals/pixelFx';
 import type { Hud } from '../Hud';
 
 /** Seconds the mark lasts: the flash, the frame running out, the sparkles. */
@@ -32,7 +32,7 @@ export function boonReady(hud: Hud, x: number, y: number, w: number, h: number) 
   const t = hud.clock - hud.boonReadyAt;
   if (hud.boonReadyAt < 0 || t > BOON_FLASH.ALL) return;
   const g = hud.s.screen.g;
-  if (t < BOON_FLASH.WHITE) {
+  if (!CALM && t < BOON_FLASH.WHITE) {
     const a0 = g.globalAlpha;
     g.globalAlpha = a0 * (1 - t / BOON_FLASH.WHITE);
     rect(g, x, y, w, h, PAL.bone);
