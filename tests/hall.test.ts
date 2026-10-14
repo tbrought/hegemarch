@@ -76,7 +76,7 @@ describe('what the Hall of Heirs sells for rarer Boons can be felt', () => {
     expect(pk.desc).not.toMatch(/\d%/);
     for (const other of PERKS) if (other.id !== 'luck') expect(perkOdds(other)).toEqual([]);
     const lineage = UNLOCKS.find((u) => u.id === 'legendary')!;
-    expect(lineage.desc).toMatch(/at least one in every run/);
+    expect(lineage.desc).toMatch(/^Guarantees a \[Legendary Boon\] in every run/);
     expect(lineage.desc).not.toMatch(/\d%/);
   });
 
@@ -100,12 +100,19 @@ describe('what the Hall of Heirs sells for rarer Boons can be felt', () => {
     expect(forced).toBeGreaterThan(20);
   });
 
-  it('without it no Legendary is dealt, and a rival house is promised nothing', () => {
-    for (let seed = 1; seed <= 12; seed++) {
-      const g = mk({ seed: 900 + seed * 7, unlockLegendary: false });
-      expect(offers(g, 8).some((o) => has(o, 'legendary'))).toBe(false);
+  it('without it a Legendary is dealt at its odds, as to anyone, and none is promised; a rival house is promised nothing', () => {
+    // (Until 1.18.3 none was dealt without it: the ranks of Fortunate Stars did nothing for Legendaries until it was bought.)
+    let seen = 0;
+    for (let seed = 1; seed <= 40; seed++) {
+      const g = mk({ seed: 900 + seed * 7, perks: { luck: 5 }, unlockLegendary: false });
+      if (offers(g, 8).some((o) => has(o, 'legendary'))) seen++;
       expect(g.ui.offersDealt).toBeUndefined();
     }
+    expect(seen).toBeGreaterThan(10);
+    expect(seen).toBeLessThan(40);
+    // The First Night keeps to plain Boons.
+    const night = mk({ seed: 901, tutorial: true, perks: { luck: 5 } });
+    expect(night.cardPool(night.player).some((c) => c.rarity === 'legendary')).toBe(false);
     const g = mk();
     const rival = g.empires().find((f) => f.id !== g.playerId)!;
     for (let i = 0; i < 8; i++) g.generateOffer(rival);

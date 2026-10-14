@@ -448,9 +448,8 @@ export const RARITY_WEIGHT: Record<Rarity, number> = { common: 62, rare: 27, epi
  */
 export const RARITY_LUCK: Record<Rarity, number> = { common: -4, rare: 3, epic: 4.5, legendary: 3.3 };
 /**
- * Legendary Lineage (Hall of Heirs): a run shows at least one Legendary Boon. If no offer has held one
- * by this many offers, this one does. (At their natural odds four runs in five showed none, and the
- * player who had paid to see them saw nothing.)
+ * Legendary Lineage (Hall of Heirs) guarantees a Legendary Boon in every run: if no offer has held one
+ * by this many offers, this one does. (At their natural odds three runs in four show none.)
  */
 export const LEGENDARY_BY = 5;
 /**

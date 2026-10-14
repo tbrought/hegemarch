@@ -185,9 +185,10 @@ describe('the odds of the next Boon choice (a playtest of 1.17)', () => {
     expect(g.offerOdds(p).legendary).toBeLessThan(0.2);
     for (const id of BLUEPRINT_IDS) if (!p.cards.includes(id)) p.cards.push(id);
     expect(g.offerOdds(p)).toMatchObject({ blueprint: 0, blueprintIn: null });
-    // Without Legendary Lineage none is offered, and none is promised.
+    // Without Legendary Lineage one may be offered at its odds, and none is promised.
     const plain = mk({ seed: 57, unlockLegendary: false });
-    expect(plain.offerOdds(plain.player)).toMatchObject({ legendary: 0, legendaryIn: null });
+    expect(plain.offerOdds(plain.player).legendaryIn).toBeNull();
+    expect(plain.offerOdds(plain.player).legendary).toBeGreaterThan(0);
   });
 });
 

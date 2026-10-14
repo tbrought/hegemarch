@@ -106,13 +106,13 @@ try {
   await page.click('[data-sa="menu"]');
   await page.click('[data-sa="hall"]');
   check('Hall of Heirs lists perks', (await page.$$('[data-sa^="perk:"]')).length >= 5);
-  // Fortunate Stars shows its odds as a table at every rank, the rank held lit (rank 0 here). Without Legendary Lineage (as here) it has no Legendary row: none can be offered.
+  // Fortunate Stars shows its odds as a table at every rank, the rank held lit (rank 0 here): Epic and Legendary, with or without Legendary Lineage (without, here).
   const odds = await ev(() => {
     const t = [...document.querySelectorAll('.perk')].find((e) => /FORTUNATE STARS/.test(e.textContent))?.querySelector('.odds');
     return t && { cells: t.children.length, lit: [...t.querySelectorAll('.now')].map((e) => e.textContent), legendary: !!t.querySelector('.legendary'), inside: t.getBoundingClientRect().right <= t.closest('.perk').getBoundingClientRect().right + 1 };
   });
-  check('Fortunate Stars shows its odds at every rank, the rank held lit', !!odds && odds.cells === 14 && odds.lit.length === 2 && odds.lit[0] === '0' && /%$/.test(odds.lit[1]) && odds.inside, JSON.stringify(odds));
-  check('without Legendary Lineage, the table has no Legendary row', !!odds && !odds.legendary, JSON.stringify(odds));
+  check('Fortunate Stars shows its odds at every rank, the rank held lit', !!odds && odds.cells === 21 && odds.lit.length === 3 && odds.lit[0] === '0' && /%$/.test(odds.lit[1]) && odds.inside, JSON.stringify(odds));
+  check('its Legendary row is there without Legendary Lineage: Legendary Boons are dealt to every player at their odds', !!odds && odds.legendary, JSON.stringify(odds));
   await page.click('[data-sa="menu"]');
 
   // ---- The title screen: a new player is offered the guided First Night first, and the ways to play under it ----

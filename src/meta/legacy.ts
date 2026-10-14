@@ -19,8 +19,8 @@ export interface PerkDef {
  */
 export const EPIC_ODDS = [24, 32, 38, 44, 49, 55];
 /**
- * And how many hold a Legendary Boon, for a player who owns Legendary Lineage: what is left to the odds,
- * beyond the one that is promised. Measured and kept true the same way (5,400 offers a rank). Until 1.18
+ * And how many hold a Legendary Boon: the odds, for every player (Legendary Lineage guarantees one a run
+ * besides). Measured and kept true the same way (5,400 offers a rank). Until 1.18
  * a rank added a third of this to a Legendary's weight: 2% with no rank and 6% with all five, so that
  * 770 Legacy of ranks brought a run 1.6 Legendary Boons where it had 1.2, and the Hall said nothing of
  * it. A playtester who had bought them all found the return hard to see, and it was.
@@ -42,8 +42,7 @@ export const PERKS: PerkDef[] = [
 
 export const UNLOCKS = [
   { id: 'pacts', name: 'Forbidden Archives', desc: '[Every double-edged Pact] can appear among your Boons.', cost: 80 },
-  { id: 'legendary', name: 'Legendary Lineage', desc: '[Legendary Boons] appear among your choices: [at least one in every run], by your fifth ' +
-      'choice.', cost: 120 },
+  { id: 'legendary', name: 'Legendary Lineage', desc: 'Guarantees a [Legendary Boon] in every run, by your fifth choice.', cost: 120 },
 ] as const;
 
 /**

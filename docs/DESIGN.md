@@ -294,19 +294,26 @@ nothing rarer than a Rare:
   for every rank and the rank held lit (`perkOdds`). In 1.18.0 they were sentences ("an Epic is in
   24% of your Boon choices and a Legendary in 2% now; 32% and 5% at rank 1, 55% and 13% at rank 5"):
   true, and a paragraph of figures beside cards that say what they do in a line. The table says it at
-  a glance, and what each rank buys; Legendary Lineage says its promise and no figures. The
-  Legendary row is there once Legendary Lineage is owned (1.18.2): before that no Legendary can be
-  offered, and 1.18.1's grey row with a note pointing at the other card confused the row beside it.
+  a glance, and what each rank buys; Legendary Lineage says its guarantee and no figures.
   Until 1.18 a rank added half a Legendary's weight, like an Epic's, which sounds the same and is
   not: there are five Legendary Boons among some sixty, so all five ranks took them from 2 offers in a
   hundred to 6. With the promise below and three rerolls, a run of fourteen choices showed 1.2
   Legendary Boons with no rank and 1.6 with all five, for 770 Legacy. The same playtester, a second
   time, with every rank: "the return on those points didn't feel dramatic". It shows 2.3 now, and
   two or more in 79 runs of a hundred where it was 48. A player with no rank sees what they saw.
-- **Legendary Lineage** lets Legendary Boons appear, and a run now shows at least one: if none has
-  been offered by the fifth offer (`LEGENDARY_BY`), that offer holds one, in place of a Common Boon
-  and never of a Blueprint. Left to their weight, four runs in five showed none at all. It is a
-  promise to the player only; a rival house draws as before.
+- **Legendary Lineage** guarantees a Legendary Boon in every run: if none has been offered by the
+  fifth offer (`LEGENDARY_BY`), that offer holds one, in place of a Common Boon and never of a
+  Blueprint. Left to their odds, three runs in four show none. It is a promise to the player only; a
+  rival house draws as before (Legendary Boons from Hard).
+- **Legendary Boons are open to every player** (1.18.3), at their odds, as the table says; only the
+  First Night keeps to plain ones. Until then Legendary Lineage was also the gate: without it none was
+  ever offered. So the Legendary figures of Fortunate Stars counted for nothing until another thing
+  was bought, and three ways of saying so in the Hall all read badly (sentences of figures; a grey
+  row with a note pointing at the other card; a row that was simply not there, which hid that the
+  ranks would ever do anything for Legendaries). The rule was the trouble, not the words: without
+  the gate each card says what it does, and every figure on Fortunate Stars counts from its first
+  rank. A player with no rank and no Lineage now sees a Legendary in a run of fourteen choices about
+  one time in four (2% of choices).
 - **The Blueprint that is owed** (1.18) comes to the player after three offers without one, where it
   was four, and is one the run has not shown yet while there is one (`BLUEPRINT_BY`,
   `Faction.bpSeen`). The same playtester spent a run and all his rerolls looking for the Starfall's

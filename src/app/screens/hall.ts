@@ -36,20 +36,15 @@ export function perkPic(id: string): string {
   }
 }
 
-/**
- * Under a perk whose effect is a chance (Fortunate Stars): the chance at every rank, the rank the player
- * holds lit. The Legendary row is there once the player owns Legendary Lineage, which the Hall sells on
- * the same page: until then no Legendary Boon can be offered, and a row of figures that do not apply
- * (1.18.1 showed it grey, with a note pointing at the other card) only confused the one beside it.
- */
-function oddsTable(pk: PerkDef, rank: number, lineage: boolean): string {
-  const rows = perkOdds(pk).filter((row) => row.id !== 'legendary' || lineage);
+/** Under a perk whose effect is a chance (Fortunate Stars): the chance at every rank, the rank the player holds lit. */
+function oddsTable(pk: PerkDef, rank: number): string {
+  const rows = perkOdds(pk);
   if (!rows.length) return '';
   const lit = (r: number) => (r === rank ? 'now' : '');
   const ranks = rows[0].odds.map((_, r) => `<span class="r ${lit(r)}">${r}</span>`).join('');
   const body = rows.map((row) => `<span class="k ${row.id}">${row.label.toUpperCase()}</span>${row.odds.map((x, r) => `<span class="${lit(r)}">${x}%</span>`).join('')}`).join('');
-  const tip = `The chance that a Boon choice offers at least one ${lineage ? 'Epic, or one Legendary,' : 'Epic'} Boon, at each rank of Fortunate Stars. ` +
-      'Your rank is lit. In a run, the Boons page (B) shows the odds of your next choice.';
+  const tip = 'The chance that a Boon choice offers at least one Epic, or one Legendary, Boon, at each rank of Fortunate Stars. Your rank is lit. In a ' +
+      'run, the Boons page (B) shows the odds of your next choice.';
   return `<div class="odds" data-tip="${esc(tip)}"><span class="k">RANK</span>${ranks}${body}</div>`;
 }
 
@@ -93,7 +88,7 @@ export function showHall(app: App) {
     const rank = p.perks[pk.id] ?? 0;
     const max = pk.costs.length;
     const cost = pk.costs[rank];
-    return `<div class="perk px-box"><span class="perk-pic${rank ? ' has' : ''}">${perkPic(pk.id)}</span><div><div class="pn">${esc(pk.name.toUpperCase())} <span class="dim">${rank}/${max}</span></div><div class="pd">${glossHtml(pk.desc)}</div>${oddsTable(pk, rank, p.unlockLegendary)}</div>
+    return `<div class="perk px-box"><span class="perk-pic${rank ? ' has' : ''}">${perkPic(pk.id)}</span><div><div class="pn">${esc(pk.name.toUpperCase())} <span class="dim">${rank}/${max}</span></div><div class="pd">${glossHtml(pk.desc)}</div>${oddsTable(pk, rank)}</div>
         ${rank >= max ? '<span class="good">MASTERED</span>' : `<button class="small ${p.legacy >= cost ? 'primary' : 'disabled'}" data-sa="perk:${pk.id}">◆${cost}</button>`}</div>`;
   }).join('');
   const spent = perksSpent(p.perks);

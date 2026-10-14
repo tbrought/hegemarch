@@ -35,7 +35,11 @@ export function addCard(g: Game, f: Faction, id: string) {
 
 export function cardPool(g: Game, f: Faction, rarities?: Rarity[], filter?: (c: CardDef) => boolean, allowPacts = false): CardDef[] {
   const isHumanPlayer = f.id === g.playerId && !g.config.autoplay;
-  const legendaryOk = isHumanPlayer ? g.config.unlockLegendary : g.config.difficulty >= 2;
+  // Legendary Boons can turn up for every player at their odds, which Fortunate Stars raises (not in the
+  // First Night, which keeps to plain ones); Legendary Lineage guarantees one a run. Until 1.18.3 none
+  // was offered without Lineage, so the ranks of Fortunate Stars did nothing for Legendaries until a
+  // second thing was bought, and no way of saying so in the Hall read clearly. A rival house: from Hard.
+  const legendaryOk = isHumanPlayer ? !g.config.tutorial : g.config.difficulty >= 2;
   const pactsOk = isHumanPlayer ? g.config.unlockPacts : true;
   return CARDS.filter(
     (c) =>

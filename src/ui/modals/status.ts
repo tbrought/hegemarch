@@ -362,8 +362,8 @@ function nextChoice(modals: Modals, g: Ctx, x: number, y: number, tw: number) {
       tip: game.cradle
         ? 'Legendary Boons are found among the stars, not on the cradle.'
         : !game.config.unlockLegendary
-          ? 'Legendary Boons can be offered once you own Legendary Lineage (Hall of Heirs).'
-          : `Legendary Lineage promises one in every run, by choice ${LEGENDARY_BY} at the latest. ` +
+          ? 'Legendary Boons are rare. Fortunate Stars (Hall of Heirs) makes them come more often, and Legendary Lineage guarantees one in every run.'
+          : `Legendary Lineage guarantees one in every run, by choice ${LEGENDARY_BY} at the latest. ` +
               (o.legendaryIn === null ? 'That has been kept: from here on it is the odds, which Fortunate Stars raises.' : o.legendaryIn === 0 ? 'Your next choice holds it.' : `${o.legendaryIn} more may pass before it.`),
     },
   ];
