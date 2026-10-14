@@ -20,6 +20,7 @@ import { drawAge } from './destinies';
 import { rollEmbers } from './emberCount';
 import { fleetLabel } from './overlays';
 import type { Hud } from '../Hud';
+import { boonReady, watchBoons } from './touches';
 
 /** The widest of the ten digits (the game's font is not monospaced: a 1 is narrower than an 8). */
 export let widest = '';
@@ -72,7 +73,8 @@ function barEmbers(hud: Hud): number {
   const p = hud.g.player;
   // Embers: the count rolls toward the real value, and lump gains or spends pop below it. A lump that
   // comes in also turns the count white for a moment (`rollEmbers`: never an income, which made it flicker).
-  const delta = rollEmbers(hud, p.embers, hud.ui.dt);
+  // (Embers still flying to the count, a goal's reward, are taken in when they land: hud.embersAway.)
+  const delta = rollEmbers(hud, Math.max(0, p.embers - hud.embersAway), hud.ui.dt);
   if (delta) hud.emberPops.push({ text: (delta > 0 ? '+' : '-') + fmt(Math.abs(delta)), color: delta > 0 ? PAL.gold : PAL.ember, t: 0 });
   if (hud.emberPops.length > 4) hud.emberPops.shift();
   icon(g, 'ember', 3, 3);
@@ -107,6 +109,7 @@ function barEmbers(hud: Hud): number {
 function barLore(hud: Hud, R: ReturnType<Session['reveal']>, x: number): number {
   const g = hud.s.screen.g;
   const p = hud.g.player;
+  watchBoons(hud);
   // Lore
   if (R.lore && hud.g.cradle) x = drawAge(hud, x);
   else if (R.lore) {
@@ -120,6 +123,7 @@ function barLore(hud: Hud, R: ReturnType<Session['reveal']>, x: number): number 
       });
       hud.barTips.push({ id: 'boon', x, y: 1, w: textWidth(label, 'tiny') + 12, h: 11, tip: () => `${p.pendingDrafts > 1 ? `${p.pendingDrafts} Boons are` : 'A Boon is'}` +
           ` waiting. ${nextBoonText(hud)}` });
+      boonReady(hud, x, 1, textWidth(label, 'tiny') + 12, 11);
       x += textWidth(label, 'tiny') + 15;
     } else {
       bar(g, x + 1, 5, 36, 3, p.lore / cost, PAL.violet, PAL.indigo, PAL.indigo);

@@ -171,6 +171,13 @@ try {
   await wait(1000);
   check('unguided run opens with the omen card', await ev(() => window.__app.session.modal?.kind === 'omens'));
   check('the game waits while the omen card is open', await ev(() => window.__app.session.halted));
+  check('its omens come in one by one under their stars, explained once they are there', await ev(() => window.__app.hud.modals.revealing() && !window.__app.hud.ui.lastHints.some((h) => h.key === 'om-amb')));
+  for (let i = 0; i < 30 && (await ev(() => window.__app.hud.modals.guarded())); i++) await wait(100);
+  if (await ev(() => window.__app.hud.modals.revealing())) {
+    await page.keyboard.press('Enter');
+    await wait(200);
+    check('Enter while they come brings them all, and leaves the card open to be read', await ev(() => window.__app.session.modal?.kind === 'omens' && !window.__app.hud.modals.revealing()));
+  }
   // The ambition explains the words it uses (the Iron Will ambition mentions the Ark).
   await ev(() => (window.__app.session.game.ambition = 'ironWill'));
   await wait(300);
@@ -805,6 +812,15 @@ try {
   await tell('A PAUSED HERALD');
   await tell('ANOTHER HERALD');
   await wait(400);
+  // A Boon more waiting marks its button; one chosen does not.
+  const flashAt = () => ev(() => window.__app.hud.boonReadyAt);
+  const f0 = await flashAt();
+  await ev(() => window.__app.session.game.player.pendingDrafts++);
+  await wait(150);
+  const f1 = await flashAt();
+  await ev(() => window.__app.session.game.player.pendingDrafts--);
+  await wait(150);
+  check('one more Boon waiting marks its button with a flash; one fewer does not', f1 > f0 && (await flashAt()) === f1, `${f0} ${f1}`);
   check('it plays while the game is paused; the same news is heralded once, and the next waits its turn', await ev(() => {
     const h = window.__app.hud.heralds;
     return h.length === 2 && h[0].h.title === 'A PAUSED HERALD' && h[0].at >= 0 && h[1].h.title === 'ANOTHER HERALD' && h[1].at < 0;

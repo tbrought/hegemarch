@@ -10,13 +10,16 @@ import { TRAIT_BY_ID } from '../../game/data/traits';
 import { VICTORIES } from '../../game/data/victories';
 import { fit, setVocabulary, text, textCenter, textWidth, wrap } from '../../render/font';
 import { PAL } from '../../render/palette';
-import { rect, type Ctx } from '../../render/pixel';
+import { box, line, rect, ring, type Ctx } from '../../render/pixel';
 import { fmtTime } from '../../render/Renderer';
 import { drawRich, richLines } from '../../render/rich';
 import { icon } from '../../render/sprites';
 import { fmt } from '../format';
 import { gloss, termsIn } from '../glossary';
+import { starWindow } from '../subjects';
 import type { Modals } from '../Modals';
+import { OMENS, omensPlan } from './omensPlan';
+import { sparkle, sparkles } from './pixelFx';
 
 /**
  * The Destinies of the run. They are a list, each on its own line with OR between them, and the
@@ -174,6 +177,21 @@ export function ascendCard(modals: Modals, g: Ctx) {
   modals.ui.button(g, 'ascend-go', x + w / 2 - 46, y + h - 18, 92, 14, 'TO THE STARS', () => modals.s.hooks.ascend?.(), { primary: true, pulse: true });
 }
 
+/** The window of the sector's sky above the omens: its height. */
+const SKY = 34;
+
+/** A click or a key while the omens come in: all of them are there at once. */
+export function skipOmens(modals: Modals) {
+  modals.omAt = modals.ui.time - 60;
+}
+
+/**
+ * The omens over the sector at the start of a run, and the player's Ambition, last. Above them a window
+ * of the sector's sky: a star lights for each omen in turn, joined to the last by a line, as its omen
+ * fades up below; the Ambition's star lights last, in gold, with a flash. A click or a key brings all
+ * of it at once; what it says is explained (pointed at) once it is there. On a screen too small for
+ * the sky, the omens come in the same way without it.
+ */
 export function omens(modals: Modals, g: Ctx) {
   const W = modals.hud.W;
   const w = Math.min(W - 16, 300);
@@ -182,27 +200,92 @@ export function omens(modals: Modals, g: Ctx) {
   const amb = AMBITION_BY_ID[modals.g.ambition];
   const blocks = traits.map((t) => richLines(t.desc, inner - 8));
   const ambLines = amb ? wrap(`${amb.desc} (+${amb.reward} Legacy)`, inner - 8, 'main') : [];
-  const h = 30 + blocks.reduce((a, b) => a + 16 + b * 10, 0) + (amb ? 22 + ambLines.length * 10 : 0) + 22;
+  const body = 30 + blocks.reduce((a, b) => a + 16 + b * 10, 0) + (amb ? 22 + ambLines.length * 10 : 0) + 22;
+  const sky = body + SKY + 4 <= modals.hud.H - 8 ? SKY + 4 : 0;
+  const h = body + sky;
+  const m = modals.s.modal;
+  if (modals.omFor !== m) {
+    modals.omFor = m;
+    modals.omAt = modals.ui.time;
+    modals.omPrev = -1;
+  }
+  const t = modals.ui.time - modals.omAt;
+  const plan = omensPlan(traits.length, !!amb);
+  const done = t >= plan.end;
+  modals.omDone = done;
+  // A note as each star lights; a sting for the Ambition. (None once skipped.)
+  const cue = (k: number, id: 'deal' | 'rare', vol: number) => {
+    if (modals.omPrev < k && !done) {
+      modals.omPrev = k;
+      modals.s.sfx.play(id, vol);
+    }
+  };
   const { x, y } = modals.frame(g, w, h, 'OMENS OVER THE SECTOR', PAL.violet);
   textCenter(g, 'Every run, the sector is a little different.', x + w / 2, y + 16, PAL.dusk, 'tiny');
   let ly = y + 26;
-  traits.forEach((t) => {
+  const when = [...plan.at, ...(amb ? [plan.ambAt] : [])];
+  when.forEach((at, i) => {
+    if (t >= at) cue(i, amb && i === when.length - 1 ? 'rare' : 'deal', amb && i === when.length - 1 ? 0.5 : 0.4);
+  });
+  if (sky) {
+    // The sky: stars light one by one, joined into a figure; the Ambition's last, in gold.
+    const wx = x + 8;
+    starWindow(g, wx, ly, inner, SKY, 7, modals.ui.time, true);
+    g.save();
+    g.beginPath();
+    g.rect(wx + 1, ly + 1, inner - 2, SKY - 2);
+    g.clip();
+    const n = traits.length;
+    const span = amb ? 0.58 : 0.72;
+    const stars = traits.map((_, i) => ({ x: Math.round(wx + inner * (n > 1 ? 0.14 + (span * i) / (n - 1) : 0.3)), y: ly + (i % 2 ? 24 : 11) }));
+    if (amb) stars.push({ x: Math.round(wx + inner * 0.86), y: ly + 16 });
+    stars.forEach((p, i) => {
+      const age = t - when[i];
+      const gold = !!amb && i === stars.length - 1;
+      const col = gold ? PAL.gold : PAL.violet;
+      if (i > 0 && age >= 0) {
+        const q = stars[i - 1];
+        const k = Math.min(1, age / OMENS.LINE);
+        line(g, q.x, q.y, Math.round(q.x + (p.x - q.x) * k), Math.round(q.y + (p.y - q.y) * k), gold ? PAL.gold : PAL.indigo, 2);
+      }
+      if (age < 0) return;
+      if (age < OMENS.LIGHT) ring(g, p.x, p.y, Math.max(2, Math.round(12 * (1 - age / OMENS.LIGHT))), col, 1);
+      else if (gold && age < OMENS.LIGHT + 0.06) rect(g, wx + 1, ly + 1, inner - 2, SKY - 2, PAL.gold);
+      else sparkle(g, p.x, p.y, age < OMENS.LIGHT + 0.2 ? 3 : 1 + (Math.floor(modals.ui.time * 2 + i) % 2), col);
+    });
+    g.restore();
+    box(g, wx, ly, inner, SKY, null, PAL.violet);
+    ly += sky;
+  }
+  const a0 = g.globalAlpha;
+  traits.forEach((tr, i) => {
     const top = ly;
-    icon(g, 'star', x + 8, ly);
-    text(g, t.name.toUpperCase(), x + 16, ly, PAL.violet);
-    ly = drawRich(g, t.desc, x + 16, ly + 11, inner - 8) + 5;
-    modals.ui.hint('om-' + t.id, x + 8, top, inner, ly - top - 3, { terms: [...gloss('omen'), ...termsIn(t.desc, { max: 2 })] });
+    const age = t - plan.at[i];
+    if (age >= 0) {
+      g.globalAlpha = a0 * Math.min(1, age / OMENS.FADE);
+      icon(g, 'star', x + 8, top);
+      text(g, tr.name.toUpperCase(), x + 16, top, PAL.violet);
+      drawRich(g, tr.desc, x + 16, top + 11, inner - 8);
+      g.globalAlpha = a0;
+    }
+    ly += 16 + blocks[i] * 10;
+    if (done) modals.ui.hint('om-' + tr.id, x + 8, top, inner, ly - top - 8, { terms: [...gloss('omen'), ...termsIn(tr.desc, { max: 2 })] });
   });
   if (amb) {
-    rect(g, x + 8, ly, inner, 1, PAL.indigo);
+    const age = t - plan.ambAt;
+    const head = `YOUR AMBITION: ${amb.name.toUpperCase()}`;
+    rect(g, x + 8, ly, inner, 1, age >= 0 ? PAL.gold : PAL.indigo);
     ly += 5;
-    text(g, `YOUR AMBITION: ${amb.name.toUpperCase()}`, x + 8, ly, PAL.gold);
-    modals.ui.hint('om-amb', x + 8, ly - 1, inner, 11 + ambLines.length * 10, { terms: [...termsIn(amb.desc, { max: 2 }), ...gloss('ambition', 'legacy')] });
-    ly += 11;
-    for (const l of ambLines) {
-      text(g, l, x + 16, ly, PAL.mist);
-      ly += 10;
+    if (age >= 0) {
+      g.globalAlpha = a0 * Math.min(1, age / OMENS.FADE);
+      text(g, head, x + 8, ly, PAL.gold);
+      ambLines.forEach((l, k) => text(g, l, x + 16, ly + 11 + k * 10, PAL.mist));
+      g.globalAlpha = a0;
+      if (age < 0.8) sparkles(g, x + 6, ly - 2, textWidth(head) + 4, 10, age - 0.1, 2, PAL.gold);
     }
+    if (done) modals.ui.hint('om-amb', x + 8, ly - 1, inner, 11 + ambLines.length * 10, { terms: [...termsIn(amb.desc, { max: 2 }), ...gloss('ambition', 'legacy')] });
   }
   modals.ui.button(g, 'omens-begin', x + w / 2 - 34, y + h - 17, 68, 13, 'BEGIN', () => modals.close(), { primary: true });
+  // (While they come in, a click anywhere on the card brings all of it; BEGIN takes the next.)
+  if (!done) modals.ui.add({ id: 'om-skip', x, y, w, h, onClick: () => skipOmens(modals) });
 }

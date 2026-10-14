@@ -53,6 +53,9 @@ for (const [label, vw, vh, pixels] of [
   await wait(800);
   const dims = await ev(() => [window.__app.session.screen.W, window.__app.session.screen.H]);
   console.log(label, 'game pixels', dims.join('x'));
+  // (All of the omens, as they stand once they have come in.)
+  await ev(() => (window.__app.hud.modals.omAt -= 60));
+  await wait(150);
   await shot('omens');
   await onScreen('omens');
   await ev(() => {
@@ -123,6 +126,10 @@ for (const [label, vw, vh, pixels] of [
   for (const kind of ['help', 'settings', 'menu', 'log', 'nightDone', 'destinies', 'omens']) {
     await ev((k) => (window.__app.session.modal = { kind: k }), kind);
     await wait(250);
+    if (kind === 'omens') {
+      await ev(() => (window.__app.hud.modals.omAt -= 60));
+      await wait(150);
+    }
     await shot(kind);
     await onScreen(kind);
   }

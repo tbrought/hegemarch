@@ -51,7 +51,7 @@ The screen starts almost empty and reveals more as you go (the Lore meter, fleet
 Destinies, the minimap). When the guide is done, a card says so and offers MAIN MENU (start a run
 of your own; this one stays saved) or KEEP PLAYING. From then on a small box at the right names a
 **first goal** to try (a role for a world, a level, a fleet, your first capture), each worth 40
-Embers the first time you reach it. A short tip card appears the first time something new happens,
+Embers the first time you reach it: the goal is struck through and its Embers fly to your count. A short tip card appears the first time something new happens,
 and the game waits while you read it: OK (or Space) goes on, LATER puts it away (a flashing ★ TIP
 button brings it back). Every tip is under How to Play (H) → TIPS. From your second
 run on, the full screen is there from the start, and the guide can be switched on again in the run
@@ -220,6 +220,8 @@ npm run record:draft       # films Boon drafts being dealt, an Epic and a Legend
 npm run record:event       # films decisions coming in, an anomaly and a visitor (.shots/event.mp4)
 npm run record:ability     # films the Ark rising two levels and choosing its abilities (.shots/ability.mp4)
 npm run record:herald      # films the big moments of a run heralded across the screen (.shots/herald.mp4)
+npm run record:omens       # films the omens coming in under their stars at the start of a run (.shots/omens.mp4)
+npm run record:touches     # films a Boon becoming ready and a goal reached, close up (.shots/touches.mp4)
 npm run test:menus         # screenshots of every menu screen over the live sector
 npm run test:ages          # an Ages run end to end: cradle, ages, Ark, the crossing, arrival, saves
 npm run test:layouts       # every dialog at the smallest and largest screens, biggest offers and texts

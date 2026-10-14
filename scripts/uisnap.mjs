@@ -182,6 +182,10 @@ async function stageAll() {
     await frames(120);
     await page.click('[data-sa="size:medium"]');
     await launch(t, 424242);
+    // (The omens come in under their stars, the Ambition last: under two and a half seconds.)
+    await frames(900);
+    await snap('omens-coming');
+    await frames(3000);
     await snap('omens');
     await ev(() => {
       const s = window.__app.session;

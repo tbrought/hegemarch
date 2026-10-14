@@ -78,6 +78,11 @@ export class Hud {
   emberFlash = 0;
   /** The big moments waiting to be announced across the screen, the first showing (hud/herald.ts). */
   heralds: HeraldShown[] = [];
+  /** Embers paid but still flying to the count (a goal's reward): the count takes them in as they land. */
+  embersAway = 0;
+  /** When a Boon became ready (HUD clock), and how many waited at the last frame (hud/touches.ts). */
+  boonReadyAt = -1;
+  lastPending = 0;
   /** Where the herald showing is (zero when none): it takes no click, but a browser test points at it. */
   heraldRect = { x: 0, y: 0, w: 0, h: 0 };
   /** "+250" / "-120" popups under the Ember counter. */

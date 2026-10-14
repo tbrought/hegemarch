@@ -321,6 +321,12 @@ try {
   await wait(200);
   const g1 = await goal();
   check('giving a world a role reaches the first goal: Embers paid, remembered, and the box moves on', g1.done.includes('role') && g1.first !== 'role' && g1.embers >= g0.embers + 39 && (await ev(() => JSON.parse(localStorage.getItem('hegemarch.profile.v1')).goalsDone.includes('role'))), JSON.stringify(g1));
+  const mark = () => ev(() => ({ marking: window.__app.hud.goals.marking(), away: window.__app.hud.embersAway, shown: Math.round(window.__app.hud.embersShown), embers: Math.round(window.__app.session.game.player.embers) }));
+  const m1 = await mark();
+  check('the box marks the goal while its Embers fly to the count, which takes them in as they land', m1.marking && m1.away === 40 && m1.shown <= m1.embers - 39, JSON.stringify(m1));
+  await wait(2600);
+  const m2 = await mark();
+  check('then the count holds them all, and the box names the next goal', !m2.marking && m2.away === 0 && Math.abs(m2.shown - m2.embers) <= 1 && (await goal()).shown, JSON.stringify(m2));
 
   // ---- The seed ship never arrives: the raid comes to the Hearth instead ----
   await freshGuidedRun();

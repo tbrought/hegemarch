@@ -646,7 +646,7 @@ Measured with `npm run simulate` and `npm run balance:passive`. Speeds are ½×,
   build 6 ships, earn 3 Boons, destroy 10 enemy ships, capture a rival world). Pointing at it says
   how and why. Reaching a goal for the first time ever pays 40 Embers (`Game.cmdGoal`, once a run)
   and moves the box on; the profile remembers, and when all seven are reached the box is gone for
-  good. They are an offer, not a script: nothing waits for them, and they can be reached in any
+  good. Since 1.22 the box marks a goal reached (see below) before it moves on. They are an offer, not a script: nothing waits for them, and they can be reached in any
   order. This is how the guide goes further without more forced steps.
 - **Unguided runs** say the same thing in the banner: once the first Boon is chosen, "Your Scout
   waits for orders…" until a Scout explores (for the first five minutes), and the EXPLORE button
@@ -655,7 +655,7 @@ Measured with `npm run simulate` and `npm run balance:passive`. Speeds are ½×,
   after the first kindle; fleet badges after the first ship; Destinies and the Status screen after
   the first Boon; the minimap and comms log once an enemy is sighted.
 - **Omens**: an unguided run opens with one card naming the sector's two omens and your ambition;
-  after that they live in the Status screen.
+  after that they live in the Status screen. Since 1.22 they come in under their stars (see below).
 - **The end of the guide** is a card of its own, "The First Night is complete", with MAIN MENU (back
   to the title; the run is saved, so CONTINUE picks it up) or KEEP PLAYING. Decisions that came up
   during the guide wait behind the "! DECISION" button instead of popping up, and tips keep quiet
@@ -865,6 +865,36 @@ Measured with `npm run simulate` and `npm run balance:passive`. Speeds are ½×,
   up between them, and a title that slams down with a rumble. The other two put their words straight
   onto the map, where a ship under them showed through; the bars also covered the HUD for three
   seconds. `npm run record:herald` and `npm run record:ability` film the two.
+- **The omens come in under their stars** (1.22, `ui/modals/cards.ts`, `ui/modals/omensPlan.ts`).
+  Above the omens a window of the sector's sky: a star lights for each omen in turn (a ring closing on
+  it, then a sparkle that twinkles on), joined to the last by a dotted line, as its omen fades up
+  below; the Ambition's star lights last, in gold, with a flash, its rule turns gold and sparkles run
+  round its heading. A note as each star lights, a sting for the Ambition. About 2.3 seconds for two
+  omens and an Ambition (`omensPlan`); a click on the card, a number, Space or Enter brings all of it
+  (a key it takes for that does not also close it: until 1.22 Space or Enter on this card closed it,
+  and would now have closed it unread), and BEGIN takes the click after. What the omens and the
+  Ambition say is explained when pointed at once they are there. Edge cases: with no Ambition the
+  stars spread across the whole sky; with no omens and no Ambition it is all there at once; on a
+  screen too short for the sky the card leaves it out and the omens come in the same way without
+  it; an Ages run shows the card on its arrival among the stars, under the stars' sky. Three ways
+  were filmed (this one; each omen's words one by one; each beamed in as the Boon cards are): the
+  words were slow for a card of facts, the beam was the Boons again, and the sky gives the omens a
+  look of their own, the sector's.
+- **A Boon ready is marked** (1.22, `ui/hud/touches.ts`). The moment one more Boon waits than a frame
+  before (the Lore is full, a new age, a Hearth taken), its button in the top bar flashes white and
+  fades, a frame runs out from it and sparkles light at its corners: under a second, on the classic
+  top bar and the cradle's alike. A Boon chosen sets off nothing; a run continued with a Boon waiting
+  shows it once.
+- **A goal reached sends its Embers home** (1.22, `ui/Goals.ts`). The box holds the goal two seconds
+  more under GOAL REACHED: the goal is struck through in teal, left to right; its reward leaves the
+  box as five Embers that fly, one after another, in a dip under the top bar to the Ember count, a
+  tick taking the reward's place; the count takes the 40 in as the last lands (`hud.embersAway`: the
+  game pays at once, the count shows it when it arrives, with its white flash and "+40"); then the
+  next goal fades up. Edge cases: two goals reached together are marked one after the other; a goal
+  reached while a dialog is open is marked once it closes; if
+  the run ends or tips are turned off, Embers still in flight are taken in at once; the count never
+  shows less than nothing. Two ways were filmed: this one, and DONE stamped across the box, which
+  hid what had been done.
 - **A dialog that opens by itself waits a second before it takes a click** (`DIALOG_GUARD`,
   `Modals.guarded`, `Ui.holdClicks`). An event comes up in the middle of play, on top of whatever
   the player was about to click: twice in one evening a playtester's click, already on its way to

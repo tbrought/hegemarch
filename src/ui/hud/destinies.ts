@@ -14,6 +14,7 @@ import { icon } from '../../render/sprites';
 import { fmt, pct } from '../format';
 import { termsIn } from '../glossary';
 import type { Hud } from '../Hud';
+import { boonReady } from './touches';
 
 export function destinyProgress(hud: Hud, f: Faction, v: VictoryId): { frac: number; label: string } {
   const g = hud.g;
@@ -142,6 +143,7 @@ export function drawAge(hud: Hud, x: number): number {
     hud.ui.button(g, 'boon', x, 1, textWidth(label, 'tiny') + 12, 11, label, () => hud.modals.open({ kind: 'draft' }), {
       primary: true, pulse: true, font: 'tiny', tip: 'A Boon is ready: every new age brings one. Choose one of a few upgrades for your house. (B)',
     });
+    boonReady(hud, x, 1, textWidth(label, 'tiny') + 12, 11);
     x += textWidth(label, 'tiny') + 15;
   }
   if (p.era >= SPACE) return x;

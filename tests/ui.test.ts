@@ -4,6 +4,8 @@ import { LUMP, LUMP_FLASH, rollEmbers, type EmberCount } from '../src/ui/hud/emb
 import { BEAM, BEAT, LAND_GAP, planDeal, tierOf } from '../src/ui/modals/reveal';
 import { storyEnd, WORD_FADE, wordIn, WORDS_PER_SECOND } from '../src/ui/modals/storyText';
 import { LEVEL_UP, levelUpEnd } from '../src/ui/modals/event';
+import { OMENS, omensPlan } from '../src/ui/modals/omensPlan';
+import { CHEER, sparkAt } from '../src/ui/Goals';
 import { EVENTS } from '../src/game/data/events';
 import { Ui } from '../src/ui/Ui';
 
@@ -202,5 +204,44 @@ describe('a ship rising a level powers up before its abilities come in', () => {
     expect(levelUpEnd(3)).toBeCloseTo(LEVEL_UP.ABILITIES + 2 * LEVEL_UP.ABILITY_GAP + LEVEL_UP.ABILITY_FADE, 9);
     expect(levelUpEnd(3)).toBeLessThan(1.4);
     expect(levelUpEnd(1)).toBeLessThan(levelUpEnd(3));
+  });
+});
+
+describe('the omens come in under their stars, the Ambition last', () => {
+  it('a star for each omen in turn, the Ambition after them: all there in under two and a half seconds', () => {
+    const p = omensPlan(2, true);
+    expect(p.at).toEqual([OMENS.FIRST, OMENS.FIRST + OMENS.GAP]);
+    expect(p.ambAt).toBeGreaterThan(p.at[1]);
+    expect(p.end).toBeGreaterThan(p.ambAt);
+    expect(p.end).toBeLessThan(2.5);
+  });
+
+  it('with no Ambition, or no omens at all (an Ages run arrives with them; a cradle has none), it ends when they do', () => {
+    expect(omensPlan(2, false).end).toBeLessThan(omensPlan(2, true).end);
+    expect(omensPlan(1, true).ambAt).toBeGreaterThan(omensPlan(1, true).at[0]);
+    expect(omensPlan(0, false).end).toBe(0);
+    expect(omensPlan(0, true).end).toBeGreaterThan(0);
+  });
+});
+
+describe('a goal reached sends its Embers to the count', () => {
+  it('they leave the goal, dip under the top bar, and land on the count', () => {
+    const from = { x: 600, y: 45 };
+    const to = { x: 5, y: 6 };
+    expect(sparkAt(from, to, 0)).toEqual(from);
+    expect(sparkAt(from, to, 1)).toEqual(to);
+    expect(sparkAt(from, to, 0.5).y).toBeGreaterThan(from.y);
+    // (Always on its way: never turning back.)
+    let last = from;
+    for (let k = 1; k <= 60; k++) {
+      const p = sparkAt(from, to, k / 60);
+      expect(p.x).toBeLessThanOrEqual(last.x);
+      last = p;
+    }
+  });
+
+  it('every spark has landed before the goal makes way for the next one', () => {
+    expect(CHEER.FLY + (CHEER.SPARKS - 1) * CHEER.APART + CHEER.FLIGHT).toBeLessThan(CHEER.STAY);
+    expect(CHEER.STRIKE).toBeLessThan(CHEER.FLY);
   });
 });

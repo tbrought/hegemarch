@@ -21,7 +21,7 @@ import type { Deal } from './modals/reveal';
 import { ability, event, resolve, skipAbility, skipEvent } from './modals/event';
 import { status } from './modals/status';
 import { confirm, help, logView, menu, settings } from './modals/book';
-import { ascendCard, cradleCard, destinies, nightDone, omens } from './modals/cards';
+import { ascendCard, cradleCard, destinies, nightDone, omens, skipOmens } from './modals/cards';
 
 export type StatusTab = 'destinies' | 'boons' | 'rivals' | 'run';
 export type HelpTab = 'basics' | 'controls' | 'tips';
@@ -57,6 +57,11 @@ export class Modals {
   abKey = '';
   abAt = 0;
   abDone = true;
+  /** The omens coming in: for which card, since when, the last sound, whether all is there (modals/cards.ts). */
+  omFor: Modal | null = null;
+  omAt = 0;
+  omPrev = -1;
+  omDone = true;
   statusTab: StatusTab = 'destinies';
   helpTab: HelpTab = 'basics';
   /** Scroll offset of the Boons list (pixels). */
@@ -145,6 +150,7 @@ export class Modals {
     const m = this.s.modal;
     if (m?.kind === 'event') return m !== this.shown || !this.evDone;
     if (m?.kind === 'ability') return m !== this.shown || !this.abDone;
+    if (m?.kind === 'omens') return m !== this.shown || !this.omDone;
     return m?.kind === 'draft' && (m !== this.shown || !this.dealDone || this.dealt !== this.g.player.draftOffer);
   }
 
@@ -176,13 +182,17 @@ export class Modals {
         return true;
       }
     }
-    // (While a decision is coming in, a number, Space or Enter brings all of it; it answers nothing unseen.)
+    // (While a decision, a level-up or the omens are coming in, a number, Space or Enter brings all of it; it answers nothing unseen.)
     if (m.kind === 'event' && this.revealing() && (/^Digit\d$/.test(code) || code === 'Space' || code === 'Enter')) {
       skipEvent(this);
       return true;
     }
     if (m.kind === 'ability' && this.revealing() && (/^Digit\d$/.test(code) || code === 'Space' || code === 'Enter')) {
       skipAbility(this);
+      return true;
+    }
+    if (m.kind === 'omens' && this.revealing() && (/^Digit\d$/.test(code) || code === 'Space' || code === 'Enter')) {
+      skipOmens(this);
       return true;
     }
     if (m.kind === 'event' && !this.result) {

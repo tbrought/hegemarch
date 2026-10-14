@@ -48,7 +48,7 @@ try {
   await page.click('[data-sa="size:medium"]');
   await page.click('[data-sa="launch"]');
   await page.waitForFunction(() => window.__app?.screen === 'game', null, { timeout: 60000 });
-  await wait(1200);
+  await wait(3000);
   await shot('omens');
   await page.evaluate(() => (window.__app.session.modal = null));
   await wait(500);

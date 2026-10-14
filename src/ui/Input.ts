@@ -287,12 +287,16 @@ export class Input {
 
   /**
    * A key while a dialog is open: the dialog's own keys first (a digit chooses), then the letter that
-   * opened it, or Space and Enter, to close it.
+   * opened it, or Space and Enter, to close it. A key the dialog took is not also a key to close it:
+   * Enter while the omens come in brings them all and leaves them open to be read.
    */
   private dialogKey(e: KeyboardEvent, code: string) {
     const s = this.s;
     if (!s.modal) return;
-    if (this.hud.modals.key(code)) e.preventDefault();
+    if (this.hud.modals.key(code)) {
+      e.preventDefault();
+      return;
+    }
     if (code === 'KeyB' && (s.modal.kind === 'draft' || s.modal.kind === 'status')) this.hud.modals.close();
     if (code === 'KeyU' && s.modal.kind === 'status') this.hud.modals.close();
     if ((code === 'KeyH' || code === 'F1') && s.modal.kind === 'help') this.hud.modals.close();
