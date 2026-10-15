@@ -188,7 +188,7 @@ export function skipOmens(modals: Modals) {
 /**
  * The omens over the sector at the start of a run, and the player's Ambition, last. Above them a window
  * of the sector's sky: a star lights for each omen in turn, joined to the last by a line, as its omen
- * fades up below; the Ambition's star lights last, in gold, with a flash. A click or a key brings all
+ * fades up below; the Ambition's star lights last, in gold, and kindles. A click or a key brings all
  * of it at once; what it says is explained (pointed at) once it is there. On a screen too small for
  * the sky, the omens come in the same way without it.
  */

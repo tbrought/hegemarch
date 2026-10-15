@@ -2,15 +2,15 @@
  * Pixel effects of the dialogs: a dashed frame for an empty place, a sparkle and sparkles round a
  * card, motes of light rising, and the running lights of a pad something is beamed in on (the Boon
  * deal's first, in modals/draft.ts; a ship's level-up uses them too). And the kindling ring: a ring of
- * ember light filling round a thing, as round a world a seed ship kindles, and the sparks it throws off
- * as it closes (a rarer Boon, a level-up, the Ambition, a Boon ready). Nothing here flashes.
+ * light filling round a thing, as round a world a seed ship kindles, and the sparks it throws off as it
+ * closes (a rarer Boon, a level-up, the Ambition, a Boon ready). Nothing here flashes.
  */
 import { light, PAL } from '../../render/palette';
 import { rect, type Ctx } from '../../render/pixel';
 
 /**
- * No flashing for a player whose computer asks for less motion: a card's face, a window, a button that
- * flashes white stays as it is (the motes, the lines, the sparkles and the words still come).
+ * Less motion for a player whose computer asks for it: no kindling ring and no sparks flying off round a
+ * card, a window, a star or a button (the motes, the lines, the sparkles and the words still come).
  */
 export const CALM = typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches;
 

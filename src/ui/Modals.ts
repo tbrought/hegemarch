@@ -209,7 +209,8 @@ export class Modals {
       this.close();
       return true;
     }
-    if (m.kind === 'event' && !this.result) {
+    // (Only this decision's own outcome stops a number: one of another, never put away, must not.)
+    if (m.kind === 'event' && this.result?.promptId !== m.promptId) {
       const n = parseInt(code.replace('Digit', ''), 10);
       if (n >= 1) {
         resolve(this, m.promptId, n - 1);

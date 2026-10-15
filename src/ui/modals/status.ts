@@ -92,14 +92,14 @@ function rivalsTab(modals: Modals, g: Ctx, cx: number, cy: number, cw: number) {
     if (f.treasuryTimer > 0) notes.push('HOARDING EMBERS!');
     if (f.relicTimer > 0) notes.push('HOLDS THE RELICS!');
     // (The one Boon that changes how to fight a house: its ships explode when they are destroyed.)
-    if (f.cards.includes('martyr')) notes.push('SHIPS EXPLODE (MARTYR CORES)');
+    if (!f.isPlayer && f.cards.includes('martyr')) notes.push('SHIPS EXPLODE (MARTYR CORES)');
     text(g, fit(notes.join(' · '), cw - 10, 'tiny'), cx + 10, ly, notes.length > 1 ? PAL.red : PAL.dusk, 'tiny');
     const warn: string[] = [];
     if (f.gate) warn.push('[!Raising a Starfire Gate]: destroy it before it charges, or they win by Ascension.');
     if (f.holdTimer > 0) warn.push('[!Holds 60% of all worlds]: take worlds back before the hold completes, or they win by Dominion.');
     if (f.treasuryTimer > 0) warn.push('[!Hoarding Embers]: take their worlds to seize part of the hoard, or they win by Ember Hoard.');
     if (f.relicTimer > 0) warn.push('[!Holds most of the relics]: take their Hearth before time runs out, or they win by Relic Hunt.');
-    if (f.cards.includes('martyr')) warn.push('[!Martyr Cores]: its ships explode when they are destroyed, hurting ships and worlds nearby. Meet its swarms away from your worlds.');
+    if (!f.isPlayer && f.cards.includes('martyr')) warn.push('[!Martyr Cores]: its ships explode when they are destroyed, hurting ships and worlds nearby. Meet its swarms away from your worlds.');
     const boons = groupBoons(f.cards).map((gr) => `${CARD_BY_ID[gr.id].name}${gr.count > 1 ? ` ×${gr.count}` : ''}`);
     if (heir) {
       modals.ui.hint('st-rival-' + f.id, cx, ly - 10, cw, 19, {

@@ -329,8 +329,9 @@ strength stays (he found the swing interesting, "very Ender's Game"); what chang
 MARTYR in the house's colour over the blasts, the first blast of a rival that reaches the player's
 ships or worlds is told ("Wayfarer Clans' ships explode when they are destroyed (Martyr Cores)…") with
 a tip card the first time ever (meet its swarms away from your worlds, keep your capital ships back),
-a loss to one says so ("Lost at Lycea to Wayfarer Clans (Martyr Cores): …"), and the Rivals tab marks a
-house that has it and lists every rival's Boons under the pointer. The world it dies at is his own
+a loss to one says so ("Lost at Lycea to Wayfarer Clans: 6 Strikers (2 to Martyr Cores)."; "all to" when the
+blasts took every one; until 1.23.3 one among many marked them all), and the Rivals tab marks a rival
+house that has it (not the player's own) and lists every rival's Boons under the pointer. The world it dies at is his own
 idea: where to fight a swarm with it is now a decision. Blasts that hurt their own house too were his
 other idea, and lose: a swarm with it would blow itself up in a chain (a Striker's blast is 270, its
 hull about 900), ships at a world bunch together so there is no keeping them apart, and the AI could not
@@ -1348,6 +1349,9 @@ UI snapshot of section 8: nothing in the game changed.)
 - `test:uifuzz`, `test:layouts`, `test:menus`: random play through the real UI (fails on any error or
   a dialog that cannot be left), every dialog at the extremes of screen size and content, and every
   menu over the live sector.
+- `test:calm`: a player whose computer asks for less motion (1.23.3; no suite looked at it before):
+  the omens, a Boon deal with an Epic and a Legendary, a level-up, a decision and its outcome, a Boon
+  ready and a herald all come and go with no error, and no kindling ring.
 - `test:site`: the packaged website served from `release/site`: the live sector (dawn, real time,
   news, the flight to a Hearth, sound, the crowning and the sector after it), the lighting of
   sections, the houses and their tour, the triangle, a whole Boon draft, then the page at laptop,

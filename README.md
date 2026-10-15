@@ -233,6 +233,7 @@ npm run test:layouts       # every dialog at the smallest and largest screens, b
 npm run test:fit           # every decision and outcome, level-up, omens pair and herald fits the smallest screens
 npm run test:reveals       # keys and clicks while things come in; heralds and goals meeting dialogs and tip cards
 npm run test:discovery     # a new player discovering Boons: the starting deck, a key turning, the next choice, a new run
+npm run test:calm          # a player who asks for less motion: every new moment comes and goes, no kindling ring
 npm run test:uifuzz        # minutes of random clicks, drags, keys and resizes through menus and runs
 npm run test:perf          # big battle frame-rate check
 npm run test:dist          # smoke-tests dist/hegemarch.html from disk (after npm run build)

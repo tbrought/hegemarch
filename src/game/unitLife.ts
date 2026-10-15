@@ -128,12 +128,17 @@ function noteLoss(g: Game, u: Unit, byFaction: number) {
   L.counts[u.type] = (L.counts[u.type] ?? 0) + 1;
   L.at = g.time;
   if (byFaction >= 0 && byFaction !== u.owner) L.by = byFaction;
-  if (blasting) L.martyr = true;
+  // (An older save may hold `true` here: one or more.)
+  if (blasting) L.martyr = (Number(L.martyr) || 0) + 1;
   const list = Object.entries(L.counts)
     .map(([t, c]) => `${c} ${UNITS[t as UnitType].name}${c > 1 ? 's' : ''}`)
     .join(', ');
   const where = node < 0 ? 'in flight' : u.node >= 0 ? `at ${g.nodes[node].name}` : `on the way to ${g.nodes[node].name}`;
-  note.text = `Lost ${where}${L.by >= 0 ? ` to ${g.factions[L.by].name}${L.martyr ? ' (Martyr Cores)' : ''}` : ''}: ${list}.`;
+  // (Ships a Martyr blast took are said: all of them, or how many. Until 1.23.3 one among many marked them all.)
+  const total = Object.values(L.counts).reduce((a, b) => a + b, 0);
+  const martyred = Math.min(total, Number(L.martyr) || 0);
+  const blasts = martyred ? (martyred >= total ? ' (all to Martyr Cores)' : ` (${martyred} to Martyr Cores)`) : '';
+  note.text = `Lost ${where}${L.by >= 0 ? ` to ${g.factions[L.by].name}` : ''}: ${list}${blasts}.`;
 }
 
 /**
@@ -315,17 +320,21 @@ function martyrBlast(g: Game, u: Unit, isShip: boolean) {
       }
       let reached = false;
       blasting = true;
-      for (const o of [...g.buckets[nodeId]]) {
-        if (o.dead || !g.hostile(o.owner, oid) || dist(o.x, o.y, x, y) >= rad) continue;
-        if (o.owner === g.playerId) reached = true;
-        g.damageUnit(o, amt, 'energy', oid, null);
+      try {
+        for (const o of [...g.buckets[nodeId]]) {
+          if (o.dead || !g.hostile(o.owner, oid) || dist(o.x, o.y, x, y) >= rad) continue;
+          if (o.owner === g.playerId) reached = true;
+          g.damageUnit(o, amt, 'energy', oid, null);
+        }
+        const n = g.nodes[nodeId];
+        if (n.kind === 'planet' && n.owner >= 0 && g.hostile(n.owner, oid) && dist(n.x, n.y, x, y) < rad + n.r) {
+          if (n.owner === g.playerId) reached = true;
+          g.damagePlanet(n, amt, 'energy', oid, true);
+        }
+      } finally {
+        // (Never left on: every loss after would be put down to a blast.)
+        blasting = false;
       }
-      const n = g.nodes[nodeId];
-      if (n.kind === 'planet' && n.owner >= 0 && g.hostile(n.owner, oid) && dist(n.x, n.y, x, y) < rad + n.r) {
-        if (n.owner === g.playerId) reached = true;
-        g.damagePlanet(n, amt, 'energy', oid, true);
-      }
-      blasting = false;
       if (reached && oid !== g.playerId && !g.ui['martyr:' + oid]) {
         g.ui['martyr:' + oid] = 1;
         g.notify(g.playerId, `${possessive(g.shortName(owner))} ships explode when they are destroyed (Martyr Cores), hurting your ships and worlds nearby.`, 'alert', nodeId);

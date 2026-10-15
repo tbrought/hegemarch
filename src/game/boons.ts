@@ -176,8 +176,16 @@ function deal(f: Faction, pool: CardDef[], n: number, rng: RNG, st: DealState): 
       let at = out.findIndex((id) => spare(id) && CARD_BY_ID[id].rarity === 'common');
       if (at < 0) at = out.findIndex(spare);
       if (can.length && at >= 0) {
-        out[at] = rng.pick(can);
+        const id = rng.pick(can);
+        out[at] = id;
         st.freshServed = true;
+        // (Dealt so, it counts as any card dealt: a Blueprint shown, a Legendary seen. Until 1.23.3 the
+        // Blueprint owed could come the next offer after one, and a Legendary was still promised.)
+        if (isBlueprint(id)) {
+          st.bpPity = 0;
+          if (f.isPlayer && !st.bpSeen.includes(id)) st.bpSeen.push(id);
+        }
+        if (isLegendary(id) && st.lineage) st.lineage.seen = true;
       }
     }
   }

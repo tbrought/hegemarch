@@ -443,9 +443,9 @@ export interface Note {
   /**
    * This line tallies the player's ships lost at one place (`node`, -1 in flight): how many of each
    * type, who destroyed the last of them (a faction id, -1 unknown), and when the last one fell. Ships
-   * lost there soon after are added to the same line.
+   * lost there soon after are added to the same line. `martyr`: how many of them a Martyr blast took.
    */
-  loss?: { node: number; counts: Record<string, number>; by: number; at: number; martyr?: boolean };
+  loss?: { node: number; counts: Record<string, number>; by: number; at: number; martyr?: number };
 }
 
 export type Fx =

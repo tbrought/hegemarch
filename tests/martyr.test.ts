@@ -81,7 +81,30 @@ describe('Martyr Cores', () => {
     }
     expect(told().length).toBe(1);
     expect(told()[0].text).toBe(`${possessive(g.shortName(r))} ships explode when they are destroyed (Martyr Cores), hurting your ships and worlds nearby.`);
-    expect(g.notes.some((n) => n.loss && /to .* \(Martyr Cores\): 3 Strikers\./.test(n.text))).toBe(true);
+    expect(g.notes.some((n) => n.loss && /to .*: 3 Strikers \(all to Martyr Cores\)\./.test(n.text))).toBe(true);
+  });
+
+  it('a loss line says how many of its ships the blasts took, not all of them for one (1.23.3)', () => {
+    const g = quiet();
+    const p = g.player;
+    const r = g.factions[1];
+    addCard(g, r, 'martyr');
+    const at = g.nodes.find((n) => n.kind === 'planet' && n.owner < 0)!.id;
+    // Two Strikers shot down, then one taken by a blast, at the same place.
+    for (let i = 0; i < 2; i++) destroy(g, g.spawnUnit('striker', p.id, at), r.id);
+    const victim = g.spawnUnit('striker', p.id, at);
+    const dying = g.spawnUnit('dreadnought', r.id, at);
+    victim.x = dying.x + 5;
+    victim.y = dying.y;
+    victim.hp = 1;
+    victim.sh = 0;
+    destroy(g, dying, p.id);
+    const line = g.notes.find((n) => n.loss && n.loss.node === at)!;
+    expect(line.text).toMatch(/: 3 Strikers \(1 to Martyr Cores\)\.$/);
+    // (A line from an older save, marked `true`, counts as one.)
+    line.loss!.martyr = true as unknown as number;
+    destroy(g, g.spawnUnit('striker', p.id, at), r.id);
+    expect(line.text).toMatch(/: 4 Strikers \(1 to Martyr Cores\)\.$/);
   });
 
   it('the card says whom it hurts', () => {

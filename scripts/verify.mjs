@@ -37,6 +37,7 @@ const steps = [
   ['reveals', 'node scripts/reveals.mjs', true],
   ['discovery', 'node scripts/discovery.mjs', true],
   ['menus', 'node scripts/menus.mjs', true],
+  ['calm', 'node scripts/calm.mjs', true],
   ['sound', 'node scripts/sound.mjs', true],
   ['uifuzz', 'node scripts/uifuzz.mjs 120 1', true],
   ['uifuzz --ages', 'node scripts/uifuzz.mjs 100 2 --ages', true],

@@ -150,6 +150,34 @@ describe('the next Boon choice holds one of the Boons just discovered', () => {
     }
   });
 
+  it('dealt as a Blueprint it counts as a Blueprint shown; as a Legendary, as the Legendary seen (1.23.3)', () => {
+    const battle = BOON_KEYS.find((k) => k.id === 'battle')!.cards;
+    /** A first battle in which the one Boon still owed is `only` (the player has every other of its Boons already). */
+    const owing = (seed: number, only: string): Game => {
+      const g = mk({ seed, boonKeys: [] });
+      for (const f of g.factions) f.ai = null;
+      run(g, 2.5);
+      g.player.stats.damageDealt += 50;
+      run(g, 1.1);
+      expect(g.ui['fresh:battle']).toBe(1);
+      for (const id of battle) if (id !== only) for (let k = 0; k < CARD_BY_ID[id].max; k++) g.player.cards.push(id);
+      g.player.pendingDrafts = 2;
+      g.player.draftOffer = null;
+      return g;
+    };
+    for (let seed = 1; seed <= 8; seed++) {
+      const g = owing(seed, 'bpCarrier');
+      const offer = g.ensureOffer(g.player)!;
+      expect(offer, `seed ${seed}`).toContain('bpCarrier');
+      expect(g.player.bpPity, `seed ${seed}`).toBe(0);
+      expect(g.player.bpSeen, `seed ${seed}`).toContain('bpCarrier');
+      const h = owing(seed, 'singularity');
+      const offer2 = h.ensureOffer(h.player)!;
+      expect(offer2, `seed ${seed}`).toContain('singularity');
+      expect(h.ui.legendarySeen, `seed ${seed}`).toBe(1);
+    }
+  });
+
   it('the odds of the next choice count it in', () => {
     const g = fresh();
     run(g, 2.5);

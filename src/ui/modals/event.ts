@@ -222,20 +222,20 @@ export function ability(modals: Modals, g: Ctx, unitId: number) {
     const s = t - k * 0.12;
     if (s >= 0 && s < ringTime) ring(g, mid.x, mid.y, Math.max(3, Math.round(48 * (1 - s / ringTime))), k % 2 ? PAL.gold : PAL.bone, 2);
   }
-  const flash = t - LEVEL_UP.KINDLE;
-  if (flash >= 0.06) {
+  const lit = t - LEVEL_UP.KINDLE;
+  if (lit >= 0.06) {
     const a0 = g.globalAlpha;
-    g.globalAlpha = a0 * Math.min(1, (flash - 0.06) / 0.3);
+    g.globalAlpha = a0 * Math.min(1, (lit - 0.06) / 0.3);
     bigText(g, `LEVEL ${u.level}`, Math.round(wx + inner * 0.67), mid.y - 7, PAL.gold, PAL.void, 2);
     g.globalAlpha = a0;
-    sparkles(g, wx, ly, inner, SHIP_PIC, flash - 0.06, 3, PAL.gold);
+    sparkles(g, wx, ly, inner, SHIP_PIC, lit - 0.06, 3, PAL.gold);
   }
   g.restore();
   box(g, wx, ly, inner, SHIP_PIC, null, PAL.gold);
   // (The window kindles: a ring of gold light fills round it, and as it closes, sparks fly off.)
   if (!CALM) {
-    arcFrame(g, wx - 1, ly - 1, inner + 2, SHIP_PIC + 2, flash / LEVEL_UP.KINDLE_RING, PAL.gold);
-    sparkOut(g, wx - 1, ly - 1, inner + 2, SHIP_PIC + 2, flash - LEVEL_UP.KINDLE_RING, 30, PAL.gold, 7);
+    arcFrame(g, wx - 1, ly - 1, inner + 2, SHIP_PIC + 2, lit / LEVEL_UP.KINDLE_RING, PAL.gold);
+    sparkOut(g, wx - 1, ly - 1, inner + 2, SHIP_PIC + 2, lit - LEVEL_UP.KINDLE_RING, 30, PAL.gold, 7);
   }
   ly += SHIP_PIC + 4;
   // The abilities, fading up one after another.

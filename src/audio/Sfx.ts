@@ -334,7 +334,7 @@ export class Sfx {
         break;
       }
       case 'levelup':
-        // A ship powers up: a whine rising as the rings close on it, and a chord when it flashes (0.6 s in).
+        // A ship powers up: a whine rising as the rings close on it, and a chord as its window kindles (0.6 s in).
         this.tone(dest, 'p25', 220, 880, t, 0.55, v * 0.2);
         this.tone(dest, 'p12', 440, 1760, t + 0.1, 0.45, v * 0.1);
         [72, 76, 79, 84].forEach((n) => this.tone(dest, 'p25', midi(n), midi(n), t + 0.6, 0.3, v * 0.2));
