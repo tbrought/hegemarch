@@ -134,11 +134,12 @@ function noteLoss(g: Game, u: Unit, byFaction: number) {
     .map(([t, c]) => `${c} ${UNITS[t as UnitType].name}${c > 1 ? 's' : ''}`)
     .join(', ');
   const where = node < 0 ? 'in flight' : u.node >= 0 ? `at ${g.nodes[node].name}` : `on the way to ${g.nodes[node].name}`;
-  // (Ships a Martyr blast took are said: all of them, or how many. Until 1.23.3 one among many marked them all.)
+  // (Ships a Martyr blast took are said after the house, where the log still shows them when it cuts a
+  // long line: all of them, or how many. Until 1.23.3 one among many marked them all.)
   const total = Object.values(L.counts).reduce((a, b) => a + b, 0);
   const martyred = Math.min(total, Number(L.martyr) || 0);
-  const blasts = martyred ? (martyred >= total ? ' (all to Martyr Cores)' : ` (${martyred} to Martyr Cores)`) : '';
-  note.text = `Lost ${where}${L.by >= 0 ? ` to ${g.factions[L.by].name}` : ''}: ${list}${blasts}.`;
+  const blasts = martyred ? (martyred >= total ? ' (Martyr Cores)' : ` (${martyred} by Martyr Cores)`) : '';
+  note.text = `Lost ${where}${L.by >= 0 ? ` to ${g.factions[L.by].name}${blasts}` : ''}: ${list}.`;
 }
 
 /**

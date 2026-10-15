@@ -329,8 +329,9 @@ strength stays (he found the swing interesting, "very Ender's Game"); what chang
 MARTYR in the house's colour over the blasts, the first blast of a rival that reaches the player's
 ships or worlds is told ("Wayfarer Clans' ships explode when they are destroyed (Martyr Cores)…") with
 a tip card the first time ever (meet its swarms away from your worlds, keep your capital ships back),
-a loss to one says so ("Lost at Lycea to Wayfarer Clans: 6 Strikers (2 to Martyr Cores)."; "all to" when the
-blasts took every one; until 1.23.3 one among many marked them all), and the Rivals tab marks a rival
+a loss to one says so, after the house, where the log still shows it when it cuts a long line ("Lost at
+Lycea to Wayfarer Clans (2 by Martyr Cores): 6 Strikers."; "(Martyr Cores)" when the blasts took every
+one; until 1.23.3 one among many marked them all, and 1.23.3 said it at the end, where it was cut), and the Rivals tab marks a rival
 house that has it (not the player's own) and lists every rival's Boons under the pointer. The world it dies at is his own
 idea: where to fight a swarm with it is now a decision. Blasts that hurt their own house too were his
 other idea, and lose: a swarm with it would blow itself up in a chain (a Striker's blast is 270, its
@@ -419,7 +420,8 @@ How Boons read:
   and a half, a hand with a Legendary a little over two; a click or a number key while they come
   brings them all at once, and takes none unseen (`skipDeal`, `Modals.revealing`).
   Under the pointer, once all are there, a card grows three pixels on each side, rises, and stands
-  off the table on a hard two-pixel shadow. Before it the cards slid up 40 pixels in a third of a
+  off the table on a hard two-pixel shadow (clear of the line above the cards: until 1.23.5 it rose
+  over that line's foot, "PICK ONE TO KEEP FOR THIS RUN" losing its lowest pixels under a raised card). Before it the cards slid up 40 pixels in a third of a
   second, rarity was a colour of frame, and hover lifted a card two pixels: an Epic looked like a
   Rare in purple, and nothing was heard. The user wanted it to "feel really cool" when an Epic or a
   Legendary shows up. A mockup page in smooth web animation (glows, light rays, scaling) was turned

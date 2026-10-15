@@ -82,7 +82,7 @@ function rivalsTab(modals: Modals, g: Ctx, cx: number, cy: number, cw: number) {
     const worlds = modals.g.worldsOf(f.id).length;
     rect(g, cx, ly + 1, 6, 6, f.color);
     text(g, `${modals.g.shortName(f)}${f.isPlayer ? ' (YOU)' : ''}`, cx + 10, ly, f.alive ? PAL.bone : PAL.slate);
-    const status = !f.alive ? (f.launchedAt >= 0 && modals.g.cradle ? `LEFT FOR THE STARS AT ${fmtTime(f.launchedAt)}` : `OUT AT ${fmtTime(f.eliminatedAt)}`) : modals.g.asleep(f.id) ? `STILL ON ITS WAY · ARRIVES IN ${fmtTime(f.asleepUntil - modals.g.time)}` : `${worlds} WORLDS · ${f.boons} BOONS`;
+    const status = !f.alive ? (f.launchedAt >= 0 && modals.g.cradle ? `LEFT FOR THE STARS AT ${fmtTime(f.launchedAt)}` : `OUT AT ${fmtTime(f.eliminatedAt)}`) : modals.g.asleep(f.id) ? `STILL ON ITS WAY · ARRIVES IN ${fmtTime(f.asleepUntil - modals.g.time)}` : `${worlds} WORLD${worlds === 1 ? '' : 'S'} · ${f.boons} BOON${f.boons === 1 ? '' : 'S'}`;
     text(g, status, cx + cw - textWidth(status, 'tiny'), ly + 1, f.alive ? PAL.mist : PAL.slate, 'tiny');
     ly += 10;
     const notes: string[] = [];

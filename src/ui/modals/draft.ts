@@ -155,12 +155,14 @@ export function draft(modals: Modals, g: Ctx) {
   for (const k of cards) k.hgt += strip ? ART : BLUEPRINT_SHIP[k.id] ? 30 : 0;
   const ch = Math.min(Math.max(60, ...cards.map((k) => k.hgt)), maxH);
   const w = n * cw + (n - 1) * 4 + 16;
-  const h = ch + 52;
+  const h = ch + 56;
   const title = modals.g.cradle && p.era <= LAST_CRADLE_ERA ? `A BOON OF THE ${ERAS[p.era].name.toUpperCase()}` : 'CHOOSE A BOON';
   const { x, y } = modals.frame(g, w, h, p.pendingDrafts > 1 ? `${title} (${p.pendingDrafts} WAITING)` : title);
   textCenter(g, modals.g.cradle ? 'Every age brings one of its own. Pick one: your house keeps it, here and among the stars.' : 'Your Lore has gathered. Pick one to keep for this run.', x + w / 2, y + 16, PAL.dusk, 'tiny');
   const cx0 = x + 8;
-  const cy = y + 25;
+  // (Clear of the line above: a card under the pointer rises 6 pixels and its ring stands one out. Until
+  // 1.23.5 it lay over the line's foot.)
+  const cy = y + 29;
   // A new offer is dealt: its places appear, and its cards are beamed in one by one (reveal.ts).
   const tiers = cards.map((k) => tierOf(k.c));
   if (modals.dealt !== offer) {
