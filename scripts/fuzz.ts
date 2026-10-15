@@ -123,6 +123,8 @@ for (const seed of seeds) {
     seed, size, difficulty, heir, daily: seed % 5 === 0 && !agesMode, ...(agesMode ? { mode: 'ages' as const, stage: 'cradle' as const } : {}),
     perks: { oldCoin: seed % 2, escort: 1, archivist: 1, luck: seed % 3, bastion: 1, secondBreath: seed % 2 },
     unlockLegendary: true, unlockPacts: true, autoplay: aiMode,
+    // (A player still discovering Boons: a new one, and one who has met battles only. data/boonKeys.ts)
+    ...(!aiMode && seed % 2 ? { boonKeys: seed % 4 === 1 ? [] : ['battle'] } : {}),
   });
   g.fxEnabled = seed % 2 === 0;
   const log: string[] = [];

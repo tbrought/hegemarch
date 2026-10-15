@@ -4,6 +4,7 @@
  */
 
 import { BLUEPRINT_BY, BLUEPRINT_BY_RIVAL, BLUEPRINT_IDS, CARD_BY_ID, CARDS, LEGENDARY_BY, RARITY_LUCK, RARITY_WEIGHT, type CardDef } from './data/cards';
+import { foundKeys, KEY_IDS, KEY_OF } from './data/boonKeys';
 import { RNG } from './rng';
 import type { Faction, Rarity } from './types';
 import { clamp } from './util';
@@ -41,9 +42,12 @@ export function cardPool(g: Game, f: Faction, rarities?: Rarity[], filter?: (c: 
   // second thing was bought, and no way of saying so in the Hall read clearly. A rival house: from Hard.
   const legendaryOk = isHumanPlayer ? !g.config.tutorial : g.config.difficulty >= 2;
   const pactsOk = isHumanPlayer ? g.config.unlockPacts : true;
+  // A player who has not met what a Boon is for yet is not dealt it (data/boonKeys.ts).
+  const keys = foundKeys(g, f);
   return CARDS.filter(
     (c) =>
       !c.hidden &&
+      (!keys || !KEY_OF[c.id] || keys.has(KEY_OF[c.id])) &&
       (!c.when || c.when(g, f)) &&
       // (On the cradle a house is offered the Boons of its own age, and no others.)
       !!c.cradle === g.cradle &&
@@ -81,11 +85,29 @@ interface DealState {
   bpSeen: string[];
   /** Legendary Lineage (the player's alone): offers dealt, and whether one has held a Legendary. Null: nothing is promised. */
   lineage: { dealt: number; seen: boolean } | null;
+  /**
+   * The Boons just discovered (the player's alone): the next offer holds one of them, and says so by
+   * setting `freshServed`. Empty: none is owed.
+   */
+  fresh: string[];
+  freshServed: boolean;
 }
 
 function dealState(g: Game, f: Faction): DealState {
   const promised = f.isPlayer && g.config.unlockLegendary && !g.cradle;
-  return { bpPity: f.bpPity, bpSeen: [...(f.bpSeen ?? [])], lineage: promised ? { dealt: g.ui.offersDealt ?? 0, seen: !!g.ui.legendarySeen } : null };
+  return { bpPity: f.bpPity, bpSeen: [...(f.bpSeen ?? [])], lineage: promised ? { dealt: g.ui.offersDealt ?? 0, seen: !!g.ui.legendarySeen } : null, fresh: freshOwed(g, f), freshServed: false };
+}
+
+/** The keys turned in this run whose Boon is still owed to the next offer (`fresh:` in `Game.ui`, set by systems/discovery.ts). */
+function freshKeys(g: Game, f: Faction): string[] {
+  return f.id === g.playerId ? KEY_IDS.filter((k) => g.ui['fresh:' + k]) : [];
+}
+
+/** The Boons the next offer owes the player: those of the keys just turned that can be dealt now. */
+function freshOwed(g: Game, f: Faction): string[] {
+  const keys = freshKeys(g, f);
+  if (!keys.length) return [];
+  return g.cardPool(f).filter((c) => keys.includes(KEY_OF[c.id])).map((c) => c.id);
 }
 
 const isBlueprint = (id: string) => CARD_BY_ID[id].cat === 'blueprint';
@@ -143,6 +165,22 @@ function deal(f: Faction, pool: CardDef[], n: number, rng: RNG, st: DealState): 
       }
     }
   }
+  // A Boon just discovered: the offer after a key has turned holds one of its Boons, in the place of a
+  // Boon that is neither the Blueprint owed nor the Legendary promised (a Common first).
+  if (st.fresh.length && out.length) {
+    if (out.some((id) => st.fresh.includes(id))) st.freshServed = true;
+    else {
+      const pact = out.some((id) => CARD_BY_ID[id].pact);
+      const can = st.fresh.filter((id) => !out.includes(id) && !(pact && CARD_BY_ID[id].pact));
+      const spare = (id: string) => !isBlueprint(id) && !isLegendary(id);
+      let at = out.findIndex((id) => spare(id) && CARD_BY_ID[id].rarity === 'common');
+      if (at < 0) at = out.findIndex(spare);
+      if (can.length && at >= 0) {
+        out[at] = rng.pick(can);
+        st.freshServed = true;
+      }
+    }
+  }
   return out;
 }
 
@@ -166,6 +204,9 @@ export function generateOffer(g: Game, f: Faction): string[] {
     g.ui.offersDealt = st.lineage.dealt;
     if (st.lineage.seen) g.ui.legendarySeen = 1;
   }
+  // (The Boon owed for a key just turned has been dealt: owed no longer. One that could find no place
+  // stays owed to the next offer.)
+  if (st.freshServed) for (const k of freshKeys(g, f)) delete g.ui['fresh:' + k];
   return out;
 }
 
@@ -201,7 +242,7 @@ export function offerOdds(g: Game, f: Faction, trials = 3000): OfferOdds {
   let epic = 0;
   let legendary = 0;
   for (let i = 0; i < trials; i++) {
-    const out = deal(f, pool, n, rng, { bpPity: base.bpPity, bpSeen: [...base.bpSeen], lineage: base.lineage ? { ...base.lineage } : null });
+    const out = deal(f, pool, n, rng, { bpPity: base.bpPity, bpSeen: [...base.bpSeen], lineage: base.lineage ? { ...base.lineage } : null, fresh: base.fresh, freshServed: false });
     if (out.some(isBlueprint)) blueprint++;
     if (out.some((id) => CARD_BY_ID[id].rarity === 'epic')) epic++;
     if (out.some(isLegendary)) legendary++;

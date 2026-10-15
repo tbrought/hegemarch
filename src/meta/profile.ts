@@ -2,6 +2,7 @@ import type { Records } from './records';
 import type { SaveData } from '../game/Game';
 import type { Difficulty, MapSize } from '../game/types';
 import { heirIdNow } from '../game/data/heirs';
+import { KEY_IDS } from '../game/data/boonKeys';
 
 export interface RunRecord {
   date: string;
@@ -60,6 +61,12 @@ export interface Profile {
   agesSeen: boolean;
   /** First goals this player has reached, ever (game/data/goals.ts). */
   goalsDone: string[];
+  /**
+   * The Boon keys this player has found, ever (game/data/boonKeys.ts): the Boons of a key join their deck
+   * the first time they meet what it is for, and stay. A profile from before 1.23 that has played has
+   * them all: its player has met those things already.
+   */
+  boonKeys: string[];
   /** The house, sector and difficulty last chosen for a run: the setup opens on them. */
   lastSetup?: { heir: string; size: MapSize; difficulty: Difficulty };
   /** The player's records, by kind of run (meta/records.ts: "classic:medium:1"). */
@@ -95,7 +102,13 @@ export function defaultProfile(): Profile {
     winsByHeir: {},
     agesSeen: false,
     goalsDone: [],
+    boonKeys: [],
   };
+}
+
+/** What a run is told of the Boons the player has discovered: nothing once they have found every key (every Boon is dealt). */
+export function discoveryConfig(p: Profile): { boonKeys?: string[] } {
+  return KEY_IDS.every((k) => p.boonKeys.includes(k)) ? {} : { boonKeys: KEY_IDS.filter((k) => p.boonKeys.includes(k)) };
 }
 
 function storage(): Storage | null {
@@ -128,6 +141,7 @@ export function loadProfile(): Profile {
       perks: { ...(p.perks ?? {}) },
       seenTips: [...(p.seenTips ?? [])],
       goalsDone: [...(p.goalsDone ?? [])],
+      boonKeys: p.boonKeys ? [...p.boonKeys] : p.runs || p.tutorialDone ? [...KEY_IDS] : [],
     } as Profile;
   } catch {
     return defaultProfile();

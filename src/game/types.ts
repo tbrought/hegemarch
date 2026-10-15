@@ -491,6 +491,12 @@ export interface GameConfig {
   houses?: number;
   /** Ages, among the stars: what the cradle left behind (`arrival`: the game time at which the player arrives). */
   ages?: { cradleTime: number; lands: number; arrival: number };
+  /**
+   * The keys the player had found before this run (data/boonKeys.ts): the Boons of the keys missing from
+   * it are not dealt to the player until their moment comes. Absent: every Boon (a player who has found
+   * them all, a rival house, a simulation).
+   */
+  boonKeys?: string[];
   /** The run is a challenge taken up from a link (app/share.ts): what the one who sent it made of this sector. */
   challenge?: { heir: string; won: boolean; time: number; victory: string };
 }

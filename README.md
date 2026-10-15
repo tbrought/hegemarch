@@ -86,7 +86,10 @@ terms do the same.
   relics line the left edge of the screen; **B** (or a click on that tray) opens the Boons screen,
   with the totals of every bonus from your house, the omens, your Boons and your relics, and the
   chances that your next choice holds a Blueprint, an Epic or a Legendary Boon. A Blueprint is owed
-  to you after three choices without one, and it is one the run has not shown you yet.
+  to you after three choices without one, and it is one the run has not shown you yet. A new player
+  discovers Boons as they meet what they are for: their first battle, an enemy ship destroyed, a world
+  attacked, a full hangar and a few more open the Boons for them, for good, and the next choice holds
+  one (the Boons screen says what is still to be found).
 - **A dark world that two houses want** goes to the seed ship that finishes first: both kindle, each
   with its ring on the map, and the one that loses does your next KINDLE for free. Only warships and
   guards stop a kindling; another house's seed ship or Scout does not.
@@ -222,11 +225,13 @@ npm run record:ability     # films the Ark rising two levels and choosing its ab
 npm run record:herald      # films the big moments of a run heralded across the screen (.shots/herald.mp4)
 npm run record:omens       # films the omens coming in under their stars at the start of a run (.shots/omens.mp4)
 npm run record:touches     # films a Boon becoming ready and a goal reached, close up (.shots/touches.mp4)
+npm run record:discovery   # films a new player discovering Boons: a world attacked, the herald, the next choice (.shots/discovery.mp4)
 npm run test:menus         # screenshots of every menu screen over the live sector
 npm run test:ages          # an Ages run end to end: cradle, ages, Ark, the crossing, arrival, saves
 npm run test:layouts       # every dialog at the smallest and largest screens, biggest offers and texts
 npm run test:fit           # every decision and outcome, level-up, omens pair and herald fits the smallest screens
 npm run test:reveals       # keys and clicks while things come in; heralds and goals meeting dialogs and tip cards
+npm run test:discovery     # a new player discovering Boons: the starting deck, a key turning, the next choice, a new run
 npm run test:uifuzz        # minutes of random clicks, drags, keys and resizes through menus and runs
 npm run test:perf          # big battle frame-rate check
 npm run test:dist          # smoke-tests dist/hegemarch.html from disk (after npm run build)

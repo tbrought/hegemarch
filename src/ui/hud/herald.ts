@@ -95,7 +95,7 @@ export interface Heralds {
  * same moment of the same house was heralded less than `REPEAT` seconds ago, or it cannot be queued.
  */
 export function herald(hud: Heralds, h: Herald, t: number): boolean {
-  const key = `${h.title}|${h.fid ?? ''}`;
+  const key = `${h.title}|${h.fid ?? ''}|${h.sub}`;
   const last = hud.heraldLast.get(key);
   if (last !== undefined && hud.clock - last < HERALD.REPEAT) return false;
   if (!queueHerald(hud.heralds, h, t, hud.clock)) return false;

@@ -87,6 +87,9 @@ for (let i = 0; i < 2; i++) {
 }
 // The First Night.
 runs.push({ name: 'first-night', config: { ...base, seed: 4242, size: 'small', difficulty: 0, heir: 'concord', tutorial: true }, minutes: 12, commands: 8, reload: 0, fx: true });
+// A new player, who discovers Boons as they meet what they are for (data/boonKeys.ts): their First Night, and a run of their own.
+runs.push({ name: 'first-night-new', config: { ...base, seed: 4243, size: 'small', difficulty: 0, heir: 'concord', tutorial: true, boonKeys: [] }, minutes: 12, commands: 8, reload: 6, fx: true });
+runs.push({ name: 'discover-5091', config: { ...base, seed: 5091, size: 'medium', difficulty: 1, heir: 'concord', boonKeys: [] }, minutes: 20, commands: 8, reload: 9, fx: false });
 
 /** A stand-in for Math.random (which only what is drawn may use), so that the effects are the same every time. */
 function seeded(seed: number): () => number {

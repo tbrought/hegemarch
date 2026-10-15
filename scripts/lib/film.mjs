@@ -3,14 +3,18 @@
 import fs from 'node:fs';
 import { DEV_URL, openBrowser } from './browser.mjs';
 
-/** A browser at 1280×720 with a run under way on a fixed sector, paused, auto-pause and tips off. */
-export async function filmRun(seed = '20261013') {
+/**
+ * A browser at 1280×720 with a run under way on a fixed sector, paused, auto-pause and tips off. `profile`:
+ * what the player's profile has besides (a new player: `{ runs: 0, boonKeys: [] }`).
+ */
+export async function filmRun(seed = '20261013', profile = {}) {
   const { browser, page, errors } = await openBrowser({ viewport: { width: 1280, height: 720 }, launch: { args: ['--autoplay-policy=no-user-gesture-required'] } });
-  await page.addInitScript(() => localStorage.setItem('hegemarch.profile.v1', JSON.stringify({
+  await page.addInitScript((extra) => localStorage.setItem('hegemarch.profile.v1', JSON.stringify({
     tutorialDone: true, runs: 6, wins: 2, maxDifficulty: 2, unlockLegendary: true, unlockPacts: true, lastSetup: { heir: 'concord', size: 'small', difficulty: 1 },
     seenTips: ['role', 'raid', 'anomaly', 'fleet', 'hangar', 'boonReady', 'anomalySeen', 'blueprint', 'crisis', 'arkLevel', 'lostWorld', 'converted', 'starfall'],
     settings: { autoPause: false, tips: false, muted: false, master: 0.8, sfx: 0.8, music: 0.4 },
-  })));
+    ...extra,
+  })), profile);
   await page.goto(DEV_URL);
   await page.waitForTimeout(1500);
   await page.click('[data-sa="setup"]');

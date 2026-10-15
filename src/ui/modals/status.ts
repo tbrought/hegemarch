@@ -6,7 +6,8 @@
 import { DIFFICULTY_NAMES } from '../../game/constants';
 import { AMBITION_BY_ID } from '../../game/data/ambitions';
 import type { OfferOdds } from '../../game/boons';
-import { BLUEPRINT_BY, CARD_BY_ID, CAT_LABEL, LEGENDARY_BY, RARITY_COLOR, type CardCat } from '../../game/data/cards';
+import { BLUEPRINT_BY, CARD_BY_ID, CARDS, CAT_LABEL, LEGENDARY_BY, RARITY_COLOR, type CardCat } from '../../game/data/cards';
+import { BOON_KEYS, foundKeys } from '../../game/data/boonKeys';
 import { ERAS, LAST_CRADLE_ERA } from '../../game/data/eras';
 import { HEIR_BY_ID } from '../../game/data/heirs';
 import { RELIC_BY_ID } from '../../game/data/relics';
@@ -231,6 +232,15 @@ function boonsTab(modals: Modals, g: Ctx, x: number, y: number, w: number, h: nu
       const c = CARD_BY_ID[gr.id];
       entry(c.name, boonColor(c), gr.count, c.desc);
     }
+  }
+  // The Boons still to be discovered (game/data/boonKeys.ts): how many, and what finds them.
+  const keys = foundKeys(modals.g, p);
+  if (keys && !modals.g.cradle) {
+    const all = CARDS.filter((c) => !c.hidden && !c.cradle).length;
+    const missing = BOON_KEYS.filter((k) => !keys.has(k.id));
+    head(`DISCOVERED ${all - missing.reduce((a, k) => a + k.cards.length, 0)} OF ${all}`, 'boon', PAL.gold);
+    for (const k of missing) bullet(`${k.cards.length === 1 ? '1 more is' : `${k.cards.length} more are`} found when ${k.when}.`);
+    items.push({ h: 4, draw: () => {} });
   }
   if (p.relics.length) {
     head('RELICS', 'relic', PAL.sky, String(p.relics.length));

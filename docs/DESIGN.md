@@ -282,6 +282,41 @@ three minutes. If three of the player's drafts pass without a Blueprint, the nex
 and one the run has not shown yet (see below). Rerolls, skipping for Embers and "decide later" are
 available.
 
+**Boons a player discovers** (1.23, `data/boonKeys.ts`, `systems/discovery.ts`). A new player is not
+dealt every Boon from the first choice: a Boon that answers a problem joins their deck the first time
+they meet that problem, in any run, and stays for good (lock and key: the key is dealt after the lock is
+seen). A playtester (Cody) was offered "a wide variety of Boons early on before I've encountered the
+problems that the Boons are intended to solve". Measured over 40 houses in ten medium games, the
+choices come at about minutes 0, 1.8, 3.8, 6.2 and 8.9, while a house first destroys an enemy ship at
+about 4.7, nearly fills its hangar at 10, and first has a world attacked at 15.5: Bulwark, Militia and
+the rest were dealt three to five choices before their question.
+- The starting deck is the 21 Boons whose purpose is plain from the first minute: Embers, kindling,
+  world upgrades, building, Lore and rerolls, plain firepower, hull and speed, the Striker's Boon (the
+  first ship built), the Legendaries of Embers and of worlds, and the Pacts of Embers and of Lore.
+- Nine moments open the rest, each something the player has just seen happen: their first battle (21:
+  the combat Boons, the Carrier, Lancer and Starfall Blueprints with theirs, the combat Pacts), their
+  first enemy ship destroyed (4: the spoils of war and Veterans), their Ark rising a level (3: Ark
+  Ascendant, the Dreadnought Blueprint and its doctrine), their hangar nearly full (2), one of their
+  worlds attacked (7: the Ward Boons, the Starbase, Scorched Earth), their first Guardian and first
+  Breaker (one each), their first Observatory (Great Lenses) and the Corsairs met (Void Whispers). In
+  a new player's First Night the first battle, the first kill, the Guardian, the Breaker and the
+  Corsairs came (`first-night-new` in the golden traces).
+- A key that turns in a run opens its Boons at once: a gold herald (NEW BOONS DISCOVERED, "For when
+  your worlds are attacked: Bulwark, Orbital Batteries and 5 more."), a line in the log, and the next
+  Boon choice to be dealt holds one of them, in the place of a Common, never of the Blueprint owed or
+  the Legendary promised; on its card DISCOVERED stands where NEW does. The profile keeps the key at
+  once (`Profile.boonKeys`; a run is told the keys found before it as `GameConfig.boonKeys`, and keeps
+  those it turns in `Game.ui`). A key that holds from the very start (a house that begins with
+  Guardians) opens quietly. Keys do not turn on the cradle of an Ages run, whose Boons are the ages'.
+- The Boons screen says it plainly while there is something left: DISCOVERED 21 OF 62, and a line for
+  each key still to come ("7 more are found when one of your worlds is attacked").
+- It is the player who discovers, not the run: once a player knows that raids come, taking Militia
+  before the first one is foresight, and a veteran keeps it. A lock that closed again every run would
+  have punished that and made every run's first choices the same few. A profile from before 1.23 that
+  has played has every key; a player with every key is dealt every Boon, as before (the run is told
+  nothing). Rival houses always have every Boon: the simulations and the golden traces of earlier runs
+  came out byte for byte the same.
+
 **Rarity.** A card is drawn by weight: Common 62, Rare 27, Epic 9, Legendary 2.2 (Blueprints ×1.6,
 Pacts ×0.55). An Epic is in about 24% of offers. Two things in the Hall of Heirs change that, and
 both say in numbers what they do, because a playtester had bought every rank of both and seen

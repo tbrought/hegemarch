@@ -4,6 +4,7 @@
  */
 
 import { CARD_BY_ID, CAT_LABEL } from '../../game/data/cards';
+import { KEY_BY_ID, KEY_OF, keyTurnedThisRun } from '../../game/data/boonKeys';
 import { ERAS, LAST_CRADLE_ERA } from '../../game/data/eras';
 import { UNITS } from '../../game/data/units';
 import { modDelta, type StatDelta } from '../../game/modstats';
@@ -346,9 +347,11 @@ function draftCard(modals: Modals, g: Ctx, card: DraftCard, i: number, lay: Draf
   }
   const owned = modals.g.cardCount(p, id);
   text(g, `[${i + 1}]`, cx + 4, ty + ch - 9, PAL.slate, 'tiny');
-  const tag = owned ? `STACK ×${owned}→×${owned + 1}` : 'NEW';
+  // (A Boon discovered in this run says so: the player has just met what it is for.)
+  const found = !owned && KEY_OF[id] && keyTurnedThisRun(modals.g, KEY_OF[id]) ? KEY_BY_ID[KEY_OF[id]] : null;
+  const tag = owned ? `STACK ×${owned}→×${owned + 1}` : found ? 'DISCOVERED' : 'NEW';
   const tagW = textWidth(tag, 'tiny');
-  text(g, tag, cx + cw - 4 - tagW, ty + ch - 9, owned ? PAL.gold : PAL.teal, 'tiny');
+  text(g, tag, cx + cw - 4 - tagW, ty + ch - 9, owned ? PAL.gold : found ? PAL.bone : PAL.teal, 'tiny');
   if (coming) {
     g.restore();
     // The line that draws it, white over its colour, and motes still rising in what is not drawn yet.
@@ -364,7 +367,9 @@ function draftCard(modals: Modals, g: Ctx, card: DraftCard, i: number, lay: Draf
   modals.ui.hint('card-tag-' + i, cx + cw - 6 - tagW, ty + ch - 11, tagW + 4, 9, {
     tip: owned
       ? `You already have ${c.name} ×${owned}. Taking it again stacks its effect (up to ×${c.max}).`
-      : `You don't have ${c.name} yet.${c.max > 1 ? ` It can stack up to ×${c.max}.` : ''}`,
+      : found
+        ? `You discovered ${c.name} in this run: ${found.forWhat.charAt(0).toLowerCase() + found.forWhat.slice(1)}.${c.max > 1 ? ` It can stack up to ×${c.max}.` : ''}`
+        : `You don't have ${c.name} yet.${c.max > 1 ? ` It can stack up to ×${c.max}.` : ''}`,
   });
   if (deltas.length) {
     modals.ui.hint('card-delta-' + i, cx + 2, deltaTop, cw - 4, ly - deltaTop, {

@@ -53,6 +53,7 @@ import { productionTick } from './systems/production';
 import { starfallTick } from './systems/starfall';
 import { statusTick } from './systems/status';
 import { victoryTick } from './systems/victory';
+import { discoveryTick } from './systems/discovery';
 import { visibilityTick } from './systems/visibility';
 import type {
   AIState, CrisisState, DmgType, Faction, Fx, GameConfig, GNode, Herald, Lane, Mods, Note, Outcome, PirateState, Projectile, Prompt, QueueCheck,
@@ -578,6 +579,7 @@ export class Game {
     if (this.sleepers > 0 && this.tick % 20 === 0) for (const f of this.factions) if (f.asleepUntil > 0 && this.time >= f.asleepUntil) this.wake(f);
     for (const f of this.factions) if (f.ai && f.alive && !this.asleep(f.id)) aiTick(this, f, dt);
     if (this.tick % 20 === 0) victoryTick(this);
+    if (this.tick % 20 === 0) discoveryTick(this);
     // (The graphs start where the run does: at its first tick, once the houses' incomes are counted.)
     if (!this.history.length || this.tick % Math.round(HISTORY_EVERY / TICK) === 0) this.sampleHistory();
     this.flushDeferred();

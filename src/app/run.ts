@@ -15,7 +15,7 @@ import { Game } from '../game/Game';
 import { dailySeed, hashString, randomSeed } from '../game/rng';
 import type { GameConfig } from '../game/types';
 import { applyRunToProfile, computeLegacy, runFigures, runTime } from '../meta/legacy';
-import { clearRun, hasRun, loadRun, saveProfile, saveRun, todayKey } from '../meta/profile';
+import { clearRun, discoveryConfig, hasRun, loadRun, saveProfile, saveRun, todayKey } from '../meta/profile';
 import { applyRecords, bracketOf, recordsOf, type RecordKey } from '../meta/records';
 import { fmtTime } from '../render/Renderer';
 import { groupBoons } from '../ui/boons';
@@ -44,6 +44,7 @@ export function buildConfig(app: App): GameConfig {
     return {
       seed: c.seed, size: c.size, difficulty: c.difficulty, heir: st.heir,
       perks: { ...app.profile.perks }, unlockLegendary: app.profile.unlockLegendary, unlockPacts: app.profile.unlockPacts,
+      ...discoveryConfig(app.profile),
       ...(c.ages ? { mode: 'ages' as const, stage: 'cradle' as const } : {}),
       challenge: { heir: c.heir, won: c.won, time: c.time, victory: c.victory },
     };
@@ -60,6 +61,7 @@ export function buildConfig(app: App): GameConfig {
     perks: { ...app.profile.perks },
     unlockLegendary: app.profile.unlockLegendary,
     unlockPacts: app.profile.unlockPacts,
+    ...discoveryConfig(app.profile),
     daily: st.daily,
     tutorial: st.guided && !st.daily && !st.ages,
     // An Ages run begins on the cradle world.
@@ -77,6 +79,7 @@ export function firstNightConfig(app: App): GameConfig {
     perks: { ...app.profile.perks },
     unlockLegendary: app.profile.unlockLegendary,
     unlockPacts: app.profile.unlockPacts,
+    ...discoveryConfig(app.profile),
     tutorial: true,
     // The three Destinies that need the least explaining (and no Maw in a first game).
     forcedVictories: ['conquest', 'domination', 'ascension'],

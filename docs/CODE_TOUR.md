@@ -81,6 +81,8 @@ A right-click on a world goes `Input` → `Actions.orderAt` → `g.cmdMove` → 
 **A Boon.** Add an entry to `game/data/cards.ts`. Its `mods` function changes numbers on the house's
 modifiers (`game/mods.ts`), or sets a flag with `flag(m, 'name', value)` that the rule reads where
 it applies (`f.mods.flags.name`). `modstats.ts` turns modifiers into the lines the draft shows.
+If it answers a problem a new player may not have met yet, put it in the key that opens it in
+`game/data/boonKeys.ts` (a test checks that every Boon is in the starting deck or in one key).
 
 **An event.** Add an entry to `EVENTS` in `game/data/events.ts`: a title, a text, and choices. Each
 choice has a `run` that changes the game and returns the sentence the player reads. `cond` and `why`

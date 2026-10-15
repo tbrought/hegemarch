@@ -16,6 +16,7 @@ import { dimScreen, Ui } from './Ui';
 import { cradleVocabulary } from './vocab';
 import { drawBanner, drawPaused, drawTopBar, objective, watching } from './hud/topbar';
 import { drawHerald, herald, type HeraldShown } from './hud/herald';
+import { KEY_IDS } from '../game/data/boonKeys';
 import { chipText, destinyClocks, drawAges, drawDestinies } from './hud/destinies';
 import { jumpWait, jumpWaitText } from './hud/fleetCard';
 import { drawFlyers, drawTray } from './hud/tray';
@@ -233,6 +234,14 @@ export class Hud {
     this.tutorial.update(dt);
     this.tips.update(dt);
     this.goals.update(dt);
+    // A Boon key turned in this run is the player's for good (game/data/boonKeys.ts).
+    if (g.config.boonKeys) {
+      const found = KEY_IDS.filter((k) => g.ui['key:' + k] && !s.profile.boonKeys.includes(k));
+      if (found.length) {
+        s.profile.boonKeys = [...s.profile.boonKeys, ...found];
+        s.hooks.saveProfile();
+      }
+    }
     this.nudge();
   }
 
