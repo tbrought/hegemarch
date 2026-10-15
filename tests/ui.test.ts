@@ -176,17 +176,43 @@ function noting() {
 describe('a rarer thing kindles, as a world does when a seed ship reaches it (a playtest of 1.23: never a flash)', () => {
   it('the ring fills round a frame from the middle of its top, clockwise, and draws on the frame alone: nothing is ever filled', () => {
     const [x, y, w, h] = [10, 20, 40, 30];
-    for (const k of [0.1, 0.5, 0.9, 1, 3]) {
+    const onFrame = (px: number, py: number) => px === x || px === x + w - 1 || py === y || py === y + h - 1;
+    for (const k of [0.1, 0.5, 0.9, 0.999]) {
       const { g, drawn } = noting();
       arcFrame(g, x, y, w, h, k, PAL.violet);
-      expect(drawn.length).toBe(Math.floor(Math.min(1, k) * 2 * (w + h)));
+      expect(drawn.length).toBe(Math.floor(k * 2 * (w + h)));
       for (const d of drawn) {
         expect(d.w * d.h).toBe(1);
-        expect(d.x === x || d.x === x + w - 1 || d.y === y || d.y === y + h - 1).toBe(true);
+        expect(onFrame(d.x, d.y)).toBe(true);
       }
-      // (It starts at the middle of the top and goes right; once full, it is all in the frame's colour.)
+      // (It starts at the middle of the top and goes right.)
       expect(drawn[0]).toMatchObject({ x: x + w / 2, y });
-      if (k >= 1) expect(new Set(drawn.map((d) => d.c))).toEqual(new Set([PAL.violet]));
+    }
+    // Never a pixel outside its frame, filling or closed, whatever its size (1.23.4: on a frame of odd
+    // width, as the BOON button's is, a pixel stood out above and below its right-hand corners).
+    for (const [fx, fy, fw, fh] of [[99, 0, 37, 13], [5, 5, 36, 13], [0, 0, 41, 29], [3, 1, 2, 2]]) {
+      for (let k = 0.01; k <= 1.001; k += 0.01) {
+        const { g, drawn } = noting();
+        arcFrame(g, fx, fy, fw, fh, k, PAL.violet);
+        for (const d of drawn) for (let i = 0; i < d.w; i++) for (let j = 0; j < d.h; j++) {
+          const [px, py] = [d.x + i, d.y + j];
+          const inside = px >= fx && px < fx + fw && py >= fy && py < fy + fh;
+          const edge = px === fx || px === fx + fw - 1 || py === fy || py === fy + fh - 1;
+          expect(inside && edge, `${fw}x${fh} at ${k.toFixed(2)}: ${px},${py}`).toBe(true);
+        }
+      }
+    }
+    // Closed, it is the whole frame and nothing more, in the frame's colour, in four strokes (1.23.3: it was
+    // some 900 a frame round a rarer card).
+    for (const k of [1, 3]) {
+      const { g, drawn } = noting();
+      arcFrame(g, x, y, w, h, k, PAL.violet);
+      expect(drawn.length).toBe(4);
+      const px = new Set<string>();
+      for (const d of drawn) for (let i = 0; i < d.w; i++) for (let j = 0; j < d.h; j++) px.add(`${d.x + i},${d.y + j}`);
+      expect(px.size).toBe(2 * (w + h) - 4);
+      for (const p of px) expect(onFrame(...(p.split(',').map(Number) as [number, number]))).toBe(true);
+      expect(new Set(drawn.map((d) => d.c))).toEqual(new Set([PAL.violet]));
     }
     const none = noting();
     arcFrame(none.g, x, y, w, h, 0, PAL.violet);

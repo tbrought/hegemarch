@@ -1008,7 +1008,10 @@ Measured with `npm run simulate` and `npm run balance:passive`. Speeds are ½×,
   its top, clockwise, its head bright (the card's colour, gold for a Legendary and a level-up, violet
   for the BOON button), in under half a second (`CARD_KINDLE`, `LEVEL_UP.KINDLE_RING`, `OMENS.KINDLE`,
   `BOON_FLASH.RING`), and as it closes round a card or a ship's window, sparks fly off it and blink out
-  in under two thirds of a second. A card's ring stays, a mark of its rarity; the BOON button's dims
+  in under two thirds of a second. A card's ring stays, a mark of its rarity (closed, it is
+  drawn as its frame, in four strokes: a pixel at a time it was some 900 a frame, and the Boon screen with
+  an Epic and a Legendary drew 70% more than with three Commons; until 1.23.4 too, on a frame of odd width,
+  a pixel of the ring stood outside its right-hand corners); the BOON button's dims
   and goes. A story comes in under a scan line in ember (`ui/modals/storyText.ts`), a line every
   0.09 seconds (`LINE_GAP`), each line glowing ember, then gold, then its own colours as the line
   leaves it (`LINE_GLOW`): a story of two lines is all there in under a fifth of a second.
@@ -1137,6 +1140,14 @@ Measured with `npm run simulate` and `npm run balance:passive`. Speeds are ½×,
   number beside an anvil it read as one more rate, like the Embers'.) Tab, Q, Tab, W queues ships all over the
   house without the mouse. Control groups stay as they were (Ctrl+1 to 9 saves ships, 1 to 9 selects
   them, twice looks at them).
+- **The keyboard is the game's** (1.23.4, `takeKeys` in `ui/Input.ts`). A press on the game, on the map
+  or on a button of the HUD, takes the keyboard back wherever it had gone, and a run starts with it.
+  The game is often played in a frame (the artifact, itch.io), where a click outside the frame takes the
+  keyboard to the page around it; a press on the canvas is cancelled (a drag selects no text), and with
+  it the browser's own taking of the keyboard, so until 1.23.4 nothing in the game gave it back: the
+  mouse went on working and the arrow keys, the build keys and every other key went nowhere. The
+  designer lost them halfway through a run in the artifact (never on hegemarch.com, where the game is
+  the page). `npm run test:frame` plays it in a frame.
 - **The hangar is always in the top bar** once the fleet is ("14/20"). It used to appear only near
   its limit, and until then a player had to guess at the room that was left. It is quiet while there
   is room, bright from four fifths full (or three ships short), red when full, and drawn in figures
@@ -1349,6 +1360,11 @@ UI snapshot of section 8: nothing in the game changed.)
 - `test:uifuzz`, `test:layouts`, `test:menus`: random play through the real UI (fails on any error or
   a dialog that cannot be left), every dialog at the extremes of screen size and content, and every
   menu over the live sector.
+- `test:frame`: the game in a frame, as in the artifact and on itch.io (1.23.4): a click outside it takes
+  the keyboard away, and a click on a HUD button, on the map or a right click each take it back.
+- `npm test` plays on two runs saved by 1.18.3, the version the public site had (`tests/oldsaves.test.ts`,
+  1.23.4): a classic run and an Ages run whose Ark then leaves the cradle; a player who saved before an
+  update continues after it.
 - `test:calm`: a player whose computer asks for less motion (1.23.3; no suite looked at it before):
   the omens, a Boon deal with an Epic and a Legendary, a level-up, a decision and its outcome, a Boon
   ready and a herald all come and go with no error, and no kindling ring.

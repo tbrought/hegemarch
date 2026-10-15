@@ -7,6 +7,20 @@ import { BUILD_KEYS } from './keys';
 
 const DRAG_PX = 4;
 
+/**
+ * The keyboard is the game's: a press on the game takes it back, wherever it had gone. The game is often
+ * played inside a frame (the artifact, itch.io), and a click outside the frame takes the keyboard to the
+ * page around it; a press on the canvas is cancelled (no text selected by a drag), and with it the
+ * browser's own taking of the keyboard on a press, so until 1.23.4 nothing in the game gave it back: the
+ * mouse went on working and every key went nowhere (a player lost them halfway through a run).
+ */
+export function takeKeys() {
+  // (A text field that kept the keyboard would swallow every key: see `keydown`.)
+  const el = document.activeElement as HTMLElement | null;
+  if (el && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.tagName === 'SELECT')) el.blur();
+  if (!document.hasFocus()) window.focus();
+}
+
 /** Mouse and keyboard. UI regions get first pick; everything else goes to the map. */
 export class Input {
   private keys = new Set<string>();
@@ -55,6 +69,7 @@ export class Input {
   // ---------------------------------------------------------------------
 
   private down(e: PointerEvent) {
+    takeKeys();
     this.s.shiftHeld = e.shiftKey;
     const [x, y] = this.pos(e);
     this.pointer = { x, y, inside: true };

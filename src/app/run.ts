@@ -22,7 +22,7 @@ import { groupBoons } from '../ui/boons';
 import type { TallyLine } from '../ui/Ending';
 import { fmt } from '../ui/format';
 import { Hud } from '../ui/Hud';
-import { Input } from '../ui/Input';
+import { Input, takeKeys } from '../ui/Input';
 import { cradleVocabulary } from '../ui/vocab';
 import type { App } from './App';
 import { GAME_VERSION } from './env';
@@ -224,7 +224,8 @@ function beginSession(app: App, g: Game) {
     g.ui.arrived = 1;
   }
   app.music.play(g.cradle ? 'cradle' : 'night');
-  app.canvas.focus();
+  // (The keyboard to the game from the first moment. Until 1.23.4 the canvas was asked, and a canvas cannot take it.)
+  takeKeys();
 }
 
 /**

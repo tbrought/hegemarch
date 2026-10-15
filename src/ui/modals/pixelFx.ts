@@ -98,10 +98,13 @@ export function padLines(g: Ctx, x: number, y: number, w: number, h: number, col
   }
 }
 
-/** The point `d` pixels round a place's frame, clockwise from the middle of its top edge. */
+/**
+ * The point `d` pixels round a place's frame, clockwise from the middle of its top edge (a whole pixel:
+ * until 1.23.4 half a pixel on a frame of odd width, and a pixel of the ring stood outside its corners).
+ */
 function roundFrame(x: number, y: number, w: number, h: number, d: number): [number, number] {
   const per = 2 * (w + h);
-  d = (((d + w / 2) % per) + per) % per;
+  d = (((d + Math.floor(w / 2)) % per) + per) % per;
   if (d < w) return [x + d, y];
   if ((d -= w) < h) return [x + w - 1, y + d];
   if ((d -= h) < w) return [x + w - 1 - d, y + h - 1];
@@ -111,10 +114,20 @@ function roundFrame(x: number, y: number, w: number, h: number, d: number): [num
 /** The kindling ring round a place's frame, `k` of the way round (0 to 1, from the middle of its top, clockwise), its head bright while it fills. */
 export function arcFrame(g: Ctx, x: number, y: number, w: number, h: number, k: number, col: string) {
   if (k <= 0) return;
-  const len = Math.floor(Math.min(1, k) * 2 * (w + h));
+  if (k >= 1) {
+    // Closed, it is its frame, the same pixels in four strokes: it stays round a rarer card for as long as
+    // the card is shown, and a pixel at a time it was some 900 strokes a frame (the Boon screen's 1,300
+    // grew by 70% with an Epic and a Legendary). 1.23.4.
+    rect(g, x, y, w, 1, col);
+    rect(g, x, y + h - 1, w, 1, col);
+    rect(g, x, y + 1, 1, h - 2, col);
+    rect(g, x + w - 1, y + 1, 1, h - 2, col);
+    return;
+  }
+  const len = Math.floor(k * 2 * (w + h));
   for (let d = 0; d < len; d++) {
     const [px, py] = roundFrame(x, y, w, h, d);
-    rect(g, px, py, 1, 1, len - d <= 3 && k < 1 ? light(col) : col);
+    rect(g, px, py, 1, 1, len - d <= 3 ? light(col) : col);
   }
 }
 
