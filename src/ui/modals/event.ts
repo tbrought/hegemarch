@@ -41,9 +41,9 @@ export function skipEvent(modals: Modals) {
 
 /**
  * A decision, as a page of a storybook: the dialog opens from its middle; under the title a picture
- * of what it is about, alive in a window of deep space; the story comes in word by word, each word
- * fading up out of the dark (`storyText.ts`), a phrase of it in gold on a slow ripple; then the
- * choices slide in from the left one after another. The outcome comes in the same way. A click, a
+ * of what it is about, alive in a window of deep space; the story comes in under a scan line, a line at
+ * a time, each line glowing as it comes (`storyText.ts`), a phrase of it in gold on a slow ripple; then
+ * the choices slide in from the left one after another. The outcome comes in the same way. A click, a
  * number, Space or Enter while it comes brings all of it, and answers nothing unseen.
  */
 export function event(modals: Modals, g: Ctx, promptId: number) {
@@ -172,8 +172,9 @@ export function levelUpEnd(n: number): number {
 /**
  * A ship has risen a level and chooses an ability. Above the choices, the ship itself powers up in a
  * window of deep space: three rings close on it, a ring of gold light fills round the window and throws
- * off sparks as it closes (as a world kindles), and LEVEL n comes up beside it in large letters and stays. Then the abilities fade up one after another. A click or a key brings all
- * of it at once; the abilities take a click once all are there.
+ * off sparks as it closes (as a world kindles), and LEVEL n comes up beside it in large letters and
+ * stays. Then the abilities fade up one after another. A click or a key brings all of it at once; the
+ * abilities take a click once all are there.
  */
 export function ability(modals: Modals, g: Ctx, unitId: number) {
   const u = modals.g.units.get(unitId);

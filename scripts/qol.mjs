@@ -461,7 +461,7 @@ const screen = (page) => ev(page, () => window.__app.screen);
     const pr = g.prompts.find((x) => x.id === id);
     return { open: app.session.modal?.kind === 'event', chosen: !!pr && pr.result !== undefined, there: !!pr, holding: app.hud.ui.holding(), guarded: app.hud.modals.guarded(), hot: app.hud.ui.hot };
   }, id);
-  // (A decision's story comes in word by word, and its choices after it: `released` waits for both the guard and that.)
+  // (A decision's story comes in under a scan line, and its choices after it: `released` waits for both the guard and that.)
   const released = async () => {
     for (let i = 0; i < 60 && (await ev(page, () => window.__app.hud.ui.holding() || window.__app.hud.modals.revealing())); i++) await page.waitForTimeout(100);
   };

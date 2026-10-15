@@ -1016,7 +1016,7 @@ Measured with `npm run simulate` and `npm run balance:passive`. Speeds are ½×,
   the Ambition's sky flashed gold and the BOON button flashed white, and a story came in word by word,
   nine words a second. A playtester held up a hand to shield his eyes from the Boon dealt ("just the
   flash was too much"; the rest of the juice he liked), and found the text slow; the designer, that it
-  was out of keeping with the pace of the game. Twelve ways were made in the game and filmed, three at
+  was out of keeping with the pace of the game. Fifteen ways were made in the game and filmed, three at
   a time: soft glows, a quick blink and a single sparkle (glows and washes are not 8-bit); a ribbon,
   stars and a colour cycle; fireworks, a shower of stars and a shock ring (not in the game's world);
   a fleet's hyperspace arrival, a sensor's lock-on and kindling, of which kindling was chosen; then

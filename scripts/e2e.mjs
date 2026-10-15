@@ -661,7 +661,7 @@ try {
   await wait(300);
   check('closing a decision does not reopen it', await ev(() => window.__app.session.modal === null));
   await clickUi('prompt');
-  // (Its story comes in word by word; a key before it is all there brings all of it and answers nothing.)
+  // (Its story comes in under a scan line; a key before it is all there brings all of it and answers nothing.)
   await unheld();
   await page.keyboard.press('1');
   await wait(200);

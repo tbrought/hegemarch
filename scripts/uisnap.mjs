@@ -435,7 +435,7 @@ async function stageAll() {
     });
     await snap('boon-tray');
     await dialog('boons-screen', () => window.__app.hud.modals.open({ kind: 'status', tab: 'boons' }));
-    // (A decision's story comes in word by word, and its choices after it: four seconds for all of it.)
+    // (A decision's story comes in under a scan line, and its choices after it: under a second for all of it.)
     await ev(() => {
       const app = window.__app;
       const g = app.session.game;

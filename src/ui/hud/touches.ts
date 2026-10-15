@@ -2,9 +2,9 @@
  * A Boon becoming ready, marked on its button in the top bar: a ring of violet light fills round it, as
  * round a world a seed ship kindles, dims and goes, and sparkles come at its corners; never a flash.
  * Each time one more Boon waits than at the last frame (so a run continued with a Boon waiting shows
- * it too); a Boon the player has chosen sets off
- * nothing. Not while a dialog is open: it would be over before the dialog is (a run opens with a Boon
- * waiting, under its omens). It comes when the dialog closes, if a Boon still waits.
+ * it too); a Boon the player has chosen sets off nothing. Not while a dialog is open: it would be over
+ * before the dialog is (a run opens with a Boon waiting, under its omens). It comes when the dialog
+ * closes, if a Boon still waits.
  */
 import { PAL, shade } from '../../render/palette';
 import { arcFrame, CALM, sparkles } from '../modals/pixelFx';
