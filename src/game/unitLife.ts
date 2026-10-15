@@ -10,7 +10,7 @@ import { ABILITY_LEVELS, DMG_TABLE, LEVEL_XP, MAX_LEVEL, UNITS } from './data/un
 import { mul } from './mods';
 import { recomputeHangar } from './worldStats';
 import type { DmgType, Unit, UnitType } from './types';
-import { dist, TAU } from './util';
+import { dist, possessive, TAU } from './util';
 import type { Game } from './Game';
 
 export function spawnUnit(g: Game, type: UnitType,
@@ -128,11 +128,12 @@ function noteLoss(g: Game, u: Unit, byFaction: number) {
   L.counts[u.type] = (L.counts[u.type] ?? 0) + 1;
   L.at = g.time;
   if (byFaction >= 0 && byFaction !== u.owner) L.by = byFaction;
+  if (blasting) L.martyr = true;
   const list = Object.entries(L.counts)
     .map(([t, c]) => `${c} ${UNITS[t as UnitType].name}${c > 1 ? 's' : ''}`)
     .join(', ');
   const where = node < 0 ? 'in flight' : u.node >= 0 ? `at ${g.nodes[node].name}` : `on the way to ${g.nodes[node].name}`;
-  note.text = `Lost ${where}${L.by >= 0 ? ` to ${g.factions[L.by].name}` : ''}: ${list}.`;
+  note.text = `Lost ${where}${L.by >= 0 ? ` to ${g.factions[L.by].name}${L.martyr ? ' (Martyr Cores)' : ''}` : ''}: ${list}.`;
 }
 
 /**
@@ -286,7 +287,16 @@ function raiseZeal(g: Game, u: Unit, isShip: boolean) {
   }
 }
 
-/** Martyr Cores: a ship that dies takes a share of its hull out of the enemies around it. */
+/** Is a Martyr Cores blast going off (the losses it causes say so: `noteLoss`)? */
+let blasting = false;
+
+/**
+ * Martyr Cores: a ship that dies takes a share of its hull out of the enemy ships around it, and out of
+ * the world it dies at if that world is an enemy's. A blast cracks a world and never takes it: ships
+ * must. Only enemies: a playtester lost Dreadnoughts to a rival's swarm with it and took the blasts for
+ * his own ("friendly fire"), so the blast says what it is (MARTYR, in its house's colour), the first one
+ * that reaches the player's ships or worlds is told, and a loss to one says so.
+ */
 function martyrBlast(g: Game, u: Unit, isShip: boolean) {
   const def = UNITS[u.type];
   const owner = g.factions[u.owner];
@@ -299,9 +309,26 @@ function martyrBlast(g: Game, u: Unit, isShip: boolean) {
     const rad = def.radius + 160;
     const oid = u.owner;
     g.deferred.push(() => {
-      if (g.fxEnabled) g.fx.push({ k: 'ring', x, y, r: rad, color: owner.color, node: nodeId });
+      if (g.fxEnabled) {
+        g.fx.push({ k: 'ring', x, y, r: rad, color: owner.color, node: nodeId });
+        g.fx.push({ k: 'text', x, y: y - 16, text: 'MARTYR', color: owner.color, node: nodeId });
+      }
+      let reached = false;
+      blasting = true;
       for (const o of [...g.buckets[nodeId]]) {
-        if (!o.dead && g.hostile(o.owner, oid) && dist(o.x, o.y, x, y) < rad) g.damageUnit(o, amt, 'energy', oid, null);
+        if (o.dead || !g.hostile(o.owner, oid) || dist(o.x, o.y, x, y) >= rad) continue;
+        if (o.owner === g.playerId) reached = true;
+        g.damageUnit(o, amt, 'energy', oid, null);
+      }
+      const n = g.nodes[nodeId];
+      if (n.kind === 'planet' && n.owner >= 0 && g.hostile(n.owner, oid) && dist(n.x, n.y, x, y) < rad + n.r) {
+        if (n.owner === g.playerId) reached = true;
+        g.damagePlanet(n, amt, 'energy', oid, true);
+      }
+      blasting = false;
+      if (reached && oid !== g.playerId && !g.ui['martyr:' + oid]) {
+        g.ui['martyr:' + oid] = 1;
+        g.notify(g.playerId, `${possessive(g.shortName(owner))} ships explode when they are destroyed (Martyr Cores), hurting your ships and worlds nearby.`, 'alert', nodeId);
       }
     });
   }
@@ -337,7 +364,7 @@ function lastOfItsKind(g: Game, u: Unit, byFaction: number) {
   }
   if (u.type === 'gate' && owner.gate && owner.gate.unit === u.id) {
     owner.gate = null;
-    g.notify(-1, `${owner.name}'s Starfire Gate has been destroyed!`, owner.isPlayer ? 'bad' : 'good', u.node);
+    g.notify(-1, `${possessive(owner.name)} Starfire Gate has been destroyed!`, owner.isPlayer ? 'bad' : 'good', u.node);
   }
   if (u.type === 'stronghold' && g.pirates.alive && u.id === g.pirates.stronghold) {
     g.pirates.alive = false;

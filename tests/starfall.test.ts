@@ -539,7 +539,8 @@ describe('rival houses and the Starfall', () => {
     while (!g.outcome && g.time < 45 * 60 && armedBy < 0) {
       g.step();
       g.fx.length = 0;
-      const d = g.tick % 20 === 0 ? g.armedStarfalls()[0] : undefined;
+      // (Looked for at every tick: what is asked of the moment it is armed, a grudge, can change a second later.)
+      const d = g.armedStarfalls()[0];
       if (d) {
         armedBy = d.owner;
         at = d.node;

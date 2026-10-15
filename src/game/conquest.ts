@@ -8,8 +8,10 @@ import { ECON } from './data/worlds';
 import type { DmgType, GNode, VictoryId } from './types';
 import type { Game } from './Game';
 import { isHearth, recomputeHangar } from './worldStats';
+import { possessive } from './util';
 
-export function damagePlanet(g: Game, n: GNode, amount: number, type: DmgType, byFaction: number) {
+/** Damage to a world. `spare`: it can crack the world but not take it (a Martyr blast): its hull stops at 1. */
+export function damagePlanet(g: Game, n: GNode, amount: number, type: DmgType, byFaction: number, spare = false) {
   if (n.owner < 0 || n.kind !== 'planet' || g.asleep(n.owner)) return;
   let dmg = amount * DMG_TABLE[type].planet;
   if (dmg <= 0) return;
@@ -47,7 +49,8 @@ export function damagePlanet(g: Game, n: GNode, amount: number, type: DmgType, b
     }
     g.notify(owner.id, `LAST STAND! The defenders of ${n.name} rise to arms.`, 'alert', n.id, false, { title: 'LAST STAND', sub: `The defenders of ${n.name} rise to arms.`, tone: 'red' });
   }
-  if (n.hp <= 0) {
+  if (n.hp <= 0 && spare) n.hp = 1;
+  else if (n.hp <= 0) {
     n.hp = 0;
     g.planetDefeated(n, byFaction);
   }
@@ -212,7 +215,7 @@ export function eliminate(g: Game, fid: number, byFaction: number) {
     by.stats.rivalsEliminated++;
     // Spoils of a fallen Hearth: a free Boon.
     by.pendingDrafts++;
-    if (by.isPlayer) g.notify(by.id, `Spoils of ${f.name}'s Hearth: a free Boon! (B)`, 'good');
+    if (by.isPlayer) g.notify(by.id, `Spoils of ${possessive(f.name)} Hearth: a free Boon! (B)`, 'good');
   }
   // (Where its Hearth stood is kept: the ending of the run goes there.)
   f.lostHearth = f.capital;

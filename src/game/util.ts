@@ -18,6 +18,11 @@ export function turnToward(cur: number, target: number, maxStep: number): number
   return cur + Math.sign(d) * maxStep;
 }
 
+/** A name that owns something: "Vael Imperium's", "Wayfarer Clans'". */
+export function possessive(name: string): string {
+  return name.endsWith('s') ? `${name}'` : `${name}'s`;
+}
+
 export function roman(n: number): string {
   const map: [number, string][] = [
     [10, 'X'],

@@ -4,7 +4,7 @@ import { UPGRADE_MAX } from '../data/eras';
 import { HEIR_BY_ID } from '../data/heirs';
 import { mul } from '../mods';
 import type { UnitType } from '../types';
-import { roman, TAU } from '../util';
+import { possessive, roman, TAU } from '../util';
 
 /** Ages, on the cradle: houses take their steps through the ages, and their units are upgraded with them. */
 function agesTick(g: Game, dt: number) {
@@ -87,8 +87,8 @@ export function productionTick(g: Game, dt: number) {
           const rad = n.r + 280;
           const u = g.spawnUnit('gate', f.id, n.id, { x: n.x + Math.cos(a) * rad, y: n.y + Math.sin(a) * rad });
           f.gate = { node: n.id, charge: 0, unit: u.id };
-          g.notify(-1, `${f.name}'s Starfire Gate at ${n.name} stands complete and is charging!`, f.isPlayer ? 'good' : 'alert', n.id, false,
-            f.isPlayer ? undefined : { title: 'THE GATE IS CHARGING', sub: `${g.shortName(f)}'s Starfire Gate at ${n.name} stands complete.`, tone: 'house', fid: f.id });
+          g.notify(-1, `${possessive(f.name)} Starfire Gate at ${n.name} stands complete and is charging!`, f.isPlayer ? 'good' : 'alert', n.id, false,
+            f.isPlayer ? undefined : { title: 'THE GATE IS CHARGING', sub: `${possessive(g.shortName(f))} Starfire Gate at ${n.name} stands complete.`, tone: 'house', fid: f.id });
         }
       }
     }

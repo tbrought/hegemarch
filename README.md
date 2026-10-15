@@ -226,6 +226,7 @@ npm run record:herald      # films the big moments of a run heralded across the 
 npm run record:omens       # films the omens coming in under their stars at the start of a run (.shots/omens.mp4)
 npm run record:touches     # films a Boon becoming ready and a goal reached, close up (.shots/touches.mp4)
 npm run record:discovery   # films a new player discovering Boons: a world attacked, the herald, the next choice (.shots/discovery.mp4)
+npm run record:martyr      # films a rival's Martyr swarm against your fleet, and a rival's news in its colours (.shots/martyr.mp4)
 npm run test:menus         # screenshots of every menu screen over the live sector
 npm run test:ages          # an Ages run end to end: cradle, ages, Ark, the crossing, arrival, saves
 npm run test:layouts       # every dialog at the smallest and largest screens, biggest offers and texts

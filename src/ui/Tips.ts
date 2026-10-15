@@ -24,6 +24,7 @@ export const TIPS: Record<string, string> = {
   fleet: `Ships gather in fleets. The badge beside a world (like ${IC.fleet}) counts your ships there: click it to select them, then click a world to send them.`,
   lostWorld: 'You lost a world. Take it back with Breakers, or protect your others: a Bastion guards your worlds one jump from it, and they take less damage while it stands. An enemy that keeps running stands and fights in its field: it cannot jump away quickly there.',
   converted: 'The Choir’s Ark talks ships round: your weakest ships near it change sides, and fight for it. Destroy that Ark, or keep damaged ships out of its reach.',
+  martyr: 'A rival has Martyr Cores: its ships explode when they are destroyed, hurting your ships nearby and the world they die at. Meet its swarms away from your worlds, and keep your capital ships back from them.',
   starfall: 'A rival armed a Starfall. In 2 minutes that star erupts: every ship in its system is destroyed, every world scorched. Destroy the Starfall, or get your ships out in time. Click the clock at the top right to look.',
   // Ages runs, on the cradle.
   ageReady: 'The Lore of your age is gathered. Press the button at the top (or A) to begin the next age. It takes Embers too, and a little time at your Hearth.',
@@ -80,6 +81,7 @@ export class Tips {
     else if (/has fallen to|devoured by the Hollow/.test(t)) this.show('lostWorld');
     else if (/^Gone over to /.test(t)) this.show('converted');
     else if (/ armed a Starfall at /.test(t)) this.show('starfall');
+    else if (/explode when they are destroyed \(Martyr Cores\)/.test(t)) this.show('martyr');
     else if (/^The .* Age begins!/.test(t)) {
       const era = this.s.game.player.era;
       this.show(era === 1 ? 'ageSiege' : era >= LAST_CRADLE_ERA ? 'ageArk' : 'ageNew');

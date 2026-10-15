@@ -167,7 +167,7 @@ export const CARDS: CardDef[] = [
 
   // ---------------- Epic ----------------
   { id: 'nanites', name: 'Nanite Swarm', rarity: 'epic', cat: 'war', max: 1, desc: 'All ships repair [0.8% hull per second], even in battle.', mods: (m) => flag(m, 'nanite', 0.008) },
-  { id: 'martyr', name: 'Martyr Cores', rarity: 'epic', cat: 'war', max: 1, desc: 'Destroyed ships explode, dealing [30% of their hull] to nearby enemies.', mods: (m) => flag(m, 'martyr', 0.3) },
+  { id: 'martyr', name: 'Martyr Cores', rarity: 'epic', cat: 'war', max: 1, desc: 'Destroyed ships explode, dealing [30% of their hull] to nearby enemy ships and to an enemy world they die at.', mods: (m) => flag(m, 'martyr', 0.3) },
   { id: 'reflect', name: 'Mirror Shields', rarity: 'epic', cat: 'war', max: 1, desc: 'Shields throw back [20% of the damage] they absorb.', mods: (m) => flag(m, 'reflect', 0.2) },
   { id: 'siphon', name: 'Siphon Hulls', rarity: 'epic', cat: 'war', max: 1, desc: 'Ships heal [8% of the damage] they deal.', mods: (m) => flag(m, 'siphon', 0.08) },
   { id: 'hivemind', name: 'Hivemind Link', rarity: 'epic', cat: 'war', max: 1, desc: 'Ships deal [4% more damage] for each friendly ship at the same world (up to 40%).', icons: ['fleet'], mods: (m) => flag(m, 'hivemind', 0.04) },

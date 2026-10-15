@@ -1,7 +1,7 @@
 {
   "name": "hegemarch",
   "private": true,
-  "version": "1.23.0",
+  "version": "1.23.1",
   "description": "Hegemarch: an 8-bit real-time space strategy roguelite. Light up a dark sector, world by world.",
   "type": "module",
   "scripts": {
@@ -51,6 +51,7 @@
     "record:omens": "node scripts/record-omens.mjs",
     "record:touches": "node scripts/record-touches.mjs",
     "record:discovery": "node scripts/record-discovery.mjs",
+    "record:martyr": "node scripts/record-martyr.mjs",
     "favicon": "node scripts/favicon.mjs"
   },
   "devDependencies": {

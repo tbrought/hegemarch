@@ -20,7 +20,8 @@ import { KEY_IDS } from '../game/data/boonKeys';
 import { chipText, destinyClocks, drawAges, drawDestinies } from './hud/destinies';
 import { jumpWait, jumpWaitText } from './hud/fleetCard';
 import { drawFlyers, drawTray } from './hud/tray';
-import { drawAttackArrows, drawBadges, drawIndicators, drawLog, drawMinimap, KIND_COLOR } from './hud/overlays';
+import { drawAttackArrows, drawBadges, drawIndicators, drawLog, drawMinimap } from './hud/overlays';
+import { newsColor } from './news';
 import { drawCard } from './hud/card';
 
 /**
@@ -187,8 +188,8 @@ export class Hud {
       // A big moment is announced across the screen (the log keeps its words); any other line, or a moment
       // not heralded (heralded a minute ago, or too many waiting), may show at the top.
       if (!n.herald || !herald(this, n.herald, n.t)) {
-        if (hearthFell) s.showToast(n.text, n.kind === 'good' ? PAL.gold : PAL.violet, 6);
-        else if (!revealedLog || n.kind === 'alert' || n.kind === 'bad') s.showToast(n.text, KIND_COLOR[n.kind], n.kind === 'alert' ? 5 : 4);
+        if (hearthFell) s.showToast(n.text, newsColor(g, n), 6);
+        else if (!revealedLog || n.kind === 'alert' || n.kind === 'bad') s.showToast(n.text, newsColor(g, n), n.kind === 'alert' ? 5 : 4);
       }
       if (n.pause && s.profile.settings.autoPause && !s.paused && !g.outcome && !this.tutorial.busy()) {
         s.paused = true;

@@ -3,6 +3,7 @@ import {
   DOMINATION_HOLD, DOMINATION_SHARE, GATE_CHARGE, RELIC_HOLD, relicsRequired, TREASURY_HOLD, treasuryTarget,
 } from '../data/victories';
 import type { Faction, VictoryId } from '../types';
+import { possessive } from '../util';
 
 /** Runs once per simulated second. */
 export function victoryTick(g: Game) {
@@ -41,7 +42,7 @@ export function victoryTick(g: Game) {
         f.gate = null;
       } else {
         f.gate.charge += 1;
-        if (f.gate.charge >= GATE_CHARGE / 2) warnOnce(g, f, 'gate50', `${f.name}'s Starfire Gate is half charged! When it is full, they will be ` +
+        if (f.gate.charge >= GATE_CHARGE / 2) warnOnce(g, f, 'gate50', `${possessive(f.name)} Starfire Gate is half charged! When it is full, they will be ` +
             `crowned Hegemarch.`);
         if (f.gate.charge >= GATE_CHARGE) return win(g, f, 'ascension', `${f.name} passed through the Starfire Gate.`);
       }
@@ -58,7 +59,7 @@ export function victoryTick(g: Game) {
     }
     if (has('treasury')) {
       if (!f.isPlayer && f.embers >= hoardNeed * 0.7) {
-        warnOnce(g, f, 'gold70', `${f.name}'s hoard has reached ${Math.floor(f.embers).toLocaleString('en-US')} Embers. Take their worlds to seize it!`);
+        warnOnce(g, f, 'gold70', `${possessive(f.name)} hoard has reached ${Math.floor(f.embers).toLocaleString('en-US')} Embers. Take their worlds to seize it!`);
       } else if (f.embers < hoardNeed * 0.5) delete f.warned.gold70;
       if (f.embers >= hoardNeed) {
         f.treasuryTimer += 1;

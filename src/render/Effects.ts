@@ -176,6 +176,8 @@ export class Effects {
           break;
         case 'text':
           if (!near(f.x, f.y, 200)) break;
+          // (The same words just said close by are not said again: a swarm's blasts say MARTYR once.)
+          if (this.floaters.some((o) => o.text === f.text && o.t < 0.8 && Math.abs(o.x - f.x) < 160 && Math.abs(o.y - f.y) < 160)) break;
           this.floaters.push({ x: f.x, y: f.y, t: 0, dur: 1.6, text: f.text, c: f.color });
           break;
         case 'armed':

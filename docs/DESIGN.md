@@ -317,6 +317,25 @@ the rest were dealt three to five choices before their question.
   nothing). Rival houses always have every Boon: the simulations and the golden traces of earlier runs
   came out byte for byte the same.
 
+**Martyr Cores** (1.23.1, `martyrBlast` in `unitLife.ts`). A destroyed ship explodes for 30% of its
+hull against the enemy ships around it and, since 1.23.1, against the world it dies at if that world
+is an enemy's. A blast cracks a world and never takes it (its hull stops at 1: ships must take it), so a
+swarm's dying blasts cannot capture a world nobody is left to hold. A playtester (Benn) lost
+Dreadnoughts and a fleet steamrolling a rival's Striker swarms and took it for friendly fire: it was the
+rival's Martyr Cores (rival houses take it too), and nothing said so. Measured, three Dreadnoughts and
+ten Guardians against a swarm of 12, 30 and 50 Strikers lose nothing without it and take 3,000, 12,000
+and 17,500 damage from the blasts with it, losing a Dreadnought and two Guardians to the largest. Its
+strength stays (he found the swing interesting, "very Ender's Game"); what changed is that it is seen:
+MARTYR in the house's colour over the blasts, the first blast of a rival that reaches the player's
+ships or worlds is told ("Wayfarer Clans' ships explode when they are destroyed (Martyr Cores)…") with
+a tip card the first time ever (meet its swarms away from your worlds, keep your capital ships back),
+a loss to one says so ("Lost at Lycea to Wayfarer Clans (Martyr Cores): …"), and the Rivals tab marks a
+house that has it and lists every rival's Boons under the pointer. The world it dies at is his own
+idea: where to fight a swarm with it is now a decision. Blasts that hurt their own house too were his
+other idea, and lose: a swarm with it would blow itself up in a chain (a Striker's blast is 270, its
+hull about 900), ships at a world bunch together so there is no keeping them apart, and the AI could not
+play round it.
+
 **Rarity.** A card is drawn by weight: Common 62, Rare 27, Epic 9, Legendary 2.2 (Blueprints ×1.6,
 Pacts ×0.55). An Epic is in about 24% of offers. Two things in the Hall of Heirs change that, and
 both say in numbers what they do, because a playtester had bought every rank of both and seen
@@ -975,6 +994,13 @@ Measured with `npm run simulate` and `npm run balance:passive`. Speeds are ½×,
 
 ## 6. Presentation
 
+- **The news in its colours** (1.23.1, `ui/news.ts`). A line of news (the log, the full log, the line
+  at the top) is in its kind's colour, good, bad, an alarm, an event, and every house it names is in that
+  house's own colour. A line about another house ("Vael Imperium has claimed the derelict dreadnought…",
+  "The Ark of …", "Wayfarer Clans' ships…") is in grey, a colour no house wears, as an event is (bone;
+  it was violet). Every kind's colour is also some house's (teal the Wayfarer Clans', red Vael's, ember
+  the Ashen Remnant's, violet the Lyceum's), and a playtester playing the Lyceum read a rival's news in
+  his own colour and took it for his.
 - **Feedback**: the Ember counter rolls toward its value and pops "+N"/"−N" for lump gains and
   spends, and a lump that comes in turns the count white for half a second (`hud/emberCount.ts`).
   (Until 1.18 it was white whenever the figure shown was 5 or more behind the real one. A steady

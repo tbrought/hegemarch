@@ -382,7 +382,7 @@ export class Game {
   spawnTutorialRaider(targetNode: number): Unit | null { return unitLife.spawnTutorialRaider(this, targetNode); }
 
   // ---- Worlds change hands, houses fall, a winner is named (conquest.ts) ----
-  damagePlanet(n: GNode, amount: number, type: DmgType, byFaction: number) { return conquest.damagePlanet(this, n, amount, type, byFaction); }
+  damagePlanet(n: GNode, amount: number, type: DmgType, byFaction: number, spare = false) { return conquest.damagePlanet(this, n, amount, type, byFaction, spare); }
   kindleWorld(n: GNode, fid: number) { return conquest.kindleWorld(this, n, fid); }
   planetDefeated(n: GNode, byFaction: number) { return conquest.planetDefeated(this, n, byFaction); }
   eliminate(fid: number, byFaction: number) { return conquest.eliminate(this, fid, byFaction); }

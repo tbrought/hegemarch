@@ -12,6 +12,7 @@ import { fmtTime } from '../../render/Renderer';
 import { icon } from '../../render/sprites';
 import type { HelpTab, Modals } from '../Modals';
 import { TIPS } from '../Tips';
+import { drawNews, newsColor } from '../news';
 
 /** The dialogs that are read (Status, How to Play, the Comms Log) are one size: going from one to another, nothing jumps. */
 export const BOOK_W = 420;
@@ -272,12 +273,12 @@ export function logView(modals: Modals, g: Ctx) {
   for (const { l, lines } of blocks) {
     const bh = lines.length * 10;
     if (ly + bh > top && ly < top + ah) {
-      const col = { info: PAL.mist, good: PAL.teal, bad: PAL.red, alert: PAL.ember, event: PAL.violet }[l.kind];
+      const col = newsColor(modals.g, l);
       const jump = l.node !== undefined && l.node >= 0;
       const id = 'loglist-' + l.id;
       if (jump && modals.ui.isHot(id)) rect(g, x + 6, ly - 1, w - 16, bh + 1, PAL.indigo);
       text(g, fmtTime(l.t), x + 8, ly + 1, PAL.slate, 'tiny');
-      lines.forEach((t, k) => text(g, t, tx, ly + k * 10, col));
+      lines.forEach((t, k) => drawNews(g, modals.g, t, tx, ly + k * 10, col));
       if (jump) {
         const node = l.node!;
         const cy = Math.max(ly - 1, top);

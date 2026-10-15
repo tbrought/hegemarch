@@ -6,7 +6,7 @@
 
 import { UNITS } from '../../game/data/units';
 import { burning } from '../../game/starfall';
-import type { Note, Unit } from '../../game/types';
+import type { Unit } from '../../game/types';
 import { fit, text, textWidth, wrap } from '../../render/font';
 import { PAL, shade } from '../../render/palette';
 import { bar, box, frame } from '../../render/pixel';
@@ -16,8 +16,8 @@ import { destinyClocks } from './destinies';
 import { fleetSummary, jumpWait, jumpWaitText } from './fleetCard';
 import type { Hud } from '../Hud';
 import { isHearth } from '../../game/worldStats';
+import { drawNews, newsColor } from '../news';
 
-export const KIND_COLOR: Record<Note['kind'], string> = { info: PAL.mist, good: PAL.teal, bad: PAL.red, alert: PAL.ember, event: PAL.violet };
 
 /** The number on the player's fleet badge at a world, as the map shows it ("" for none). */
 export function fleetLabel(hud: Hud, node: number): string {
@@ -232,8 +232,10 @@ export function drawLog(hud: Hud) {
     g.fillRect(3, y - 1, w, h);
     hud.logRight = Math.max(hud.logRight, 3 + w);
     hud.logBottom = Math.max(hud.logBottom, y + h - 1);
-    const color = age > 7 && !hot ? shade(KIND_COLOR[l.kind]) : KIND_COLOR[l.kind];
-    lines.forEach((t, k) => text(g, t, 6, y + 1 + k * 10, color));
+    // (In its colour, and the houses it names in theirs: ui/news.ts.)
+    const base = newsColor(hud.g, l);
+    const faded = age > 7 && !hot;
+    lines.forEach((t, k) => drawNews(g, hud.g, t, 6, y + 1 + k * 10, faded ? shade(base) : base, faded));
     // A hint, not a button: clicks and orders still reach the map under the log.
     hud.ui.hint(key, 3, y - 1, Math.max(w, 40), h, { scan: l.text, beside: true });
   }
