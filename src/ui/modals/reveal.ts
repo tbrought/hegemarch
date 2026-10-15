@@ -22,8 +22,6 @@ export const BEAT = [0.05, 0.1, 0.28, 0.55];
 export const BEAM = 0.36;
 /** Seconds of that before its face starts to be drawn (the motes alone). */
 export const MOTES = 0.14;
-/** Seconds a face flashes once it is all there, by tier, in steps of a twentieth: once for a Rare, twice for an Epic, three times for a Legendary. */
-export const FLASH = [0, 0.05, 0.1, 0.15];
 /** Seconds the sparkles round a card last once it is all there, by tier. */
 export const SPARKLE = [0, 0, 0.5, 0.9];
 

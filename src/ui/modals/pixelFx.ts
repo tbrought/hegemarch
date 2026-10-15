@@ -1,9 +1,11 @@
 /**
  * Pixel effects of the dialogs: a dashed frame for an empty place, a sparkle and sparkles round a
- * card, motes of light rising, and the running lights of a pad something is beamed in on. (The Boon
- * deal's first, in modals/draft.ts; a ship's level-up uses them too.)
+ * card, motes of light rising, and the running lights of a pad something is beamed in on (the Boon
+ * deal's first, in modals/draft.ts; a ship's level-up uses them too). And the kindling ring: a ring of
+ * ember light filling round a thing, as round a world a seed ship kindles, and the sparks it throws off
+ * as it closes (a rarer Boon, a level-up, the Ambition, a Boon ready). Nothing here flashes.
  */
-import { PAL } from '../../render/palette';
+import { light, PAL } from '../../render/palette';
 import { rect, type Ctx } from '../../render/pixel';
 
 /**
@@ -93,5 +95,55 @@ export function padLines(g: Ctx, x: number, y: number, w: number, h: number, col
   for (let yy = off; yy < h; yy += 4) {
     rect(g, x + 1, y + yy, 1, 2, col);
     rect(g, x + w - 2, y + yy, 1, 2, col);
+  }
+}
+
+/** The point `d` pixels round a place's frame, clockwise from the middle of its top edge. */
+function roundFrame(x: number, y: number, w: number, h: number, d: number): [number, number] {
+  const per = 2 * (w + h);
+  d = (((d + w / 2) % per) + per) % per;
+  if (d < w) return [x + d, y];
+  if ((d -= w) < h) return [x + w - 1, y + d];
+  if ((d -= h) < w) return [x + w - 1 - d, y + h - 1];
+  return [x, y + h - 1 - (d - w)];
+}
+
+/** The kindling ring round a place's frame, `k` of the way round (0 to 1, from the middle of its top, clockwise), its head bright while it fills. */
+export function arcFrame(g: Ctx, x: number, y: number, w: number, h: number, k: number, col: string) {
+  if (k <= 0) return;
+  const len = Math.floor(Math.min(1, k) * 2 * (w + h));
+  for (let d = 0; d < len; d++) {
+    const [px, py] = roundFrame(x, y, w, h, d);
+    rect(g, px, py, 1, 1, len - d <= 3 && k < 1 ? light(col) : col);
+  }
+}
+
+/** The kindling ring round a point, `k` of the way round, from its top. */
+export function arcRound(g: Ctx, x: number, y: number, r: number, k: number, col: string) {
+  if (k <= 0) return;
+  const n = Math.max(12, Math.round(r * 6.3));
+  const m = Math.floor(Math.min(1, k) * n);
+  for (let j = 0; j < m; j++) {
+    const a = -Math.PI / 2 + (j / n) * Math.PI * 2;
+    rect(g, Math.round(x + Math.cos(a) * r), Math.round(y + Math.sin(a) * r), 1, 1, m - j <= 2 && k < 1 ? light(col) : col);
+  }
+}
+
+/** Sparks flying out off a place's frame as its kindling ring closes, `since` seconds after it did; gone in under two thirds of a second. */
+export function sparkOut(g: Ctx, x: number, y: number, w: number, h: number, since: number, n: number, col: string, seed: number) {
+  const per = 2 * (w + h);
+  const cx = x + w / 2;
+  const cy = y + h / 2;
+  for (let j = 0; j < n; j++) {
+    const life = 0.4 + 0.25 * scatter(seed * 3 + j);
+    if (since < 0 || since > life) continue;
+    // (Blinking out at the end.)
+    if (since > life - 0.12 && Math.floor(since * 20) % 2) continue;
+    const [px, py] = roundFrame(x, y, w, h, (j / n) * per + scatter(seed + j) * 6);
+    const dx = px - cx;
+    const dy = py - cy;
+    const m = Math.hypot(dx, dy) || 1;
+    const v = 30 + 30 * scatter(seed * 7 + j);
+    rect(g, Math.round(px + (dx / m) * v * since), Math.round(py + (dy / m) * v * since), 1, 1, j % 3 === 0 ? PAL.bone : j % 2 ? col : light(col));
   }
 }

@@ -1,34 +1,32 @@
 /**
- * The story of a decision, coming in word by word: rich text (gains, losses, keywords) laid out as
- * `drawRich` lays it out, each word fading up out of the dark and settling a pixel, the words after
- * one another, and a phrase picked out in gold riding a slow ripple all the while.
+ * The story of a decision, coming in: rich text (gains, losses, keywords) laid out as `drawRich` lays
+ * it out, and a phrase picked out in gold riding a slow ripple all the while. A scan line in ember sweeps
+ * down it, a line every `LINE_GAP`, and each line it passes catches: ember, then gold, then its own
+ * colours. Quick, as the game is: a story of two lines is all there in under a quarter of a second.
  */
 import { lineHeight, text, textWidth, type FontId } from '../../render/font';
+import { PAL } from '../../render/palette';
+import { rect, type Ctx } from '../../render/pixel';
 import { RICH_DEFAULT, wrapRich, type RichColors } from '../../render/rich';
-import type { Ctx } from '../../render/pixel';
 
-/** Words a second. */
-export const WORDS_PER_SECOND = 9;
-/** Seconds a word takes to come up out of the dark. */
-export const WORD_FADE = 0.35;
+/** Seconds the scan line takes over a line. */
+export const LINE_GAP = 0.09;
+/** Seconds a line glows once the scan line has passed it: ember for half, gold for half. */
+export const LINE_GLOW = 0.2;
 
-/** How many words a rich text has (laid out at a width). */
-export function wordCount(s: string, maxW: number, font: FontId = 'main'): number {
-  let n = 0;
-  for (const line of wrapRich(s, maxW, font)) n += line.length;
-  return n;
+/** How many lines a rich text takes (laid out at a width). */
+export function lineCount(s: string, maxW: number, font: FontId = 'main'): number {
+  return wrapRich(s, maxW, font).length;
 }
 
-/** The moment a text that began to come in at `from` is all there. */
-export function storyEnd(words: number, from: number): number {
-  return words ? from + (words - 1) / WORDS_PER_SECOND + WORD_FADE : from;
+/** The moment a text of so many lines that began to come in at `from` is all there. */
+export function storyEnd(lines: number, from: number): number {
+  return from + Math.max(0, lines) * LINE_GAP;
 }
 
-/** How a word comes in, `age` seconds after its turn: how far out of the dark (0 to 1), and the pixel it has yet to settle. */
-export function wordIn(age: number): { alpha: number; dy: number } {
-  if (age < 0) return { alpha: 0, dy: 1 };
-  const a = Math.min(1, age / WORD_FADE);
-  return { alpha: 1 - (1 - a) * (1 - a), dy: age < WORD_FADE / 2 ? 1 : 0 };
+/** The colour of a line `age` seconds after the scan line passed it: ember, then gold, then its own. */
+export function lineGlow(age: number, own: string): string {
+  return age < LINE_GLOW / 2 ? PAL.ember : age < LINE_GLOW ? PAL.gold : own;
 }
 
 /**
@@ -39,35 +37,42 @@ export function drawStory(g: Ctx, s: string, x: number, y: number, maxW: number,
   const c = { ...RICH_DEFAULT, ...colors };
   const lh = lineHeight(font);
   const space = textWidth(' ', font) + 1;
-  const a0 = g.globalAlpha;
-  let i = 0;
+  const top = y;
+  let row = 0;
   let shown = 0;
   for (const line of wrapRich(s, maxW, font)) {
+    // (A line is there once the scan line has passed it, and glows a moment.)
+    const age = t - (row + 1) * LINE_GAP;
     let cx = x;
-    line.forEach((word, k) => {
-      if (k) cx += space;
-      const whole = word.map((p) => p.text).join('');
-      const wx = cx;
-      cx += textWidth(whole, font) + 1;
-      const { alpha, dy } = wordIn(t - i / WORDS_PER_SECOND);
-      i++;
-      if (alpha <= 0) return;
-      shown++;
-      g.globalAlpha = a0 * alpha;
-      const ripple = word[0].style === 'kw';
-      let px = wx;
-      for (const p of word) {
-        if (!ripple) {
-          px = text(g, p.text, px, y + dy, c[p.style], font);
-          continue;
+    if (age >= 0) {
+      const hot = age < LINE_GLOW;
+      line.forEach((word, k) => {
+        if (k) cx += space;
+        const wx = cx;
+        cx += textWidth(word.map((q) => q.text).join(''), font) + 1;
+        shown++;
+        const ripple = word[0].style === 'kw' && !hot;
+        let px = wx;
+        for (const q of word) {
+          const col = hot ? lineGlow(age, c[q.style]) : c[q.style];
+          if (!ripple) {
+            px = text(g, q.text, px, y, col, font);
+            continue;
+          }
+          // A slow ripple a pixel high running along the phrase: each letter rises and settles in its turn.
+          let n = 0;
+          for (const ch of q.text) px = text(g, ch, px, y - Math.round((Math.sin(clock * 3 - (wx + n++ * 5) * 0.11) * 0.5 + 0.5)), col, font);
         }
-        // A slow ripple a pixel high running along the phrase: each letter rises and settles in its turn.
-        let n = 0;
-        for (const ch of p.text) px = text(g, ch, px, y + dy - Math.round((Math.sin(clock * 3 - (wx + n++ * 5) * 0.11) * 0.5 + 0.5)), c[p.style], font);
-      }
-    });
+      });
+    }
     y += lh;
+    row++;
   }
-  g.globalAlpha = a0;
+  // The scan line, in ember, sweeping down over the lines still to come.
+  if (t >= 0 && t < row * LINE_GAP) {
+    const sy = top + Math.floor((t / LINE_GAP) * lh);
+    rect(g, x - 2, sy, maxW + 4, 1, PAL.ember);
+    rect(g, x - 2, sy - 1, maxW + 4, 1, PAL.wine);
+  }
   return { y, shown };
 }

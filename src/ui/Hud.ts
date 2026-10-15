@@ -290,8 +290,10 @@ export class Hud {
     const g = this.s.screen.g;
     this.ui.begin(dt);
     this.s.view.fieldPreview = -1;
-    // The run is over: the map and its ending have the screen to themselves.
+    // The run is over: the map and its ending have the screen to themselves. (No herald is drawn, so
+    // none has a place on the screen: until 1.23.2 the last one drawn kept its place here.)
     if (this.g.outcome) {
+      this.heraldRect = { x: 0, y: 0, w: 0, h: 0 };
       this.ending.draw(g, this.W, this.H);
       if (this.s.profile.settings.crt) this.scanlines();
       return;

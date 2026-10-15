@@ -22,8 +22,8 @@ import { MARK, marksOf } from '../Ui';
 import type { Modals } from '../Modals';
 import type { CardDef } from '../../game/data/cards';
 import type { SoundId } from '../../audio/Sfx';
-import { FLASH, MOTES, planDeal, SPARKLE, tierOf, type Deal } from './reveal';
-import { CALM, dashed, motes, padLines, sparkles } from './pixelFx';
+import { MOTES, planDeal, SPARKLE, tierOf, type Deal } from './reveal';
+import { arcFrame, CALM, dashed, motes, padLines, sparkles, sparkOut } from './pixelFx';
 
 export const BLUEPRINT_SHIP: Record<string, UnitType> = { bpCarrier: 'carrier', bpLancer: 'lancer', bpDread: 'dreadnought', bpStarbase: 'starbase', bpStarfall: 'starfall' };
 
@@ -184,11 +184,6 @@ export function draft(modals: Modals, g: Ctx) {
   const lay = { cw, ch, cx0, cy, inner, strip };
   cards.forEach((card, i) => i !== hotI && draftCard(modals, g, card, i, lay, e, plan, 0));
   if (hotI >= 0) draftCard(modals, g, cards[hotI], hotI, lay, e, plan, Math.min(3, 1 + Math.floor((modals.ui.time - modals.hoverAt) / 0.035)));
-  // A Legendary that has just come sets the dialog's frame flashing in gold for a moment.
-  for (let i = 0; i < n; i++) {
-    const since = e - plan.cards[i].shownAt;
-    if (!CALM && tiers[i] === 3 && since >= 0 && since < 1) box(g, x, y, w, h, null, [PAL.gold, PAL.bone, PAL.ember][Math.floor(since * 15) % 3]);
-  }
   const by = y + h - 16;
   const rr = `REROLL (${p.rerolls})`;
   modals.ui.button(g, 'reroll', x + 8, by, textWidth(rr, 'tiny') + 12, 12, rr, () => {
@@ -361,8 +356,8 @@ function draftCard(modals: Modals, g: Ctx, card: DraftCard, i: number, lay: Draf
     padLines(g, cx, ty, cw, ch, col, t);
     return;
   }
-  // All there: the face flashes (white, then its colour), and an Epic or a Legendary throws sparkles.
-  if (!CALM && since < FLASH[tier]) rect(g, cx + 1, ty + 1, cw - 2, ch - 2, Math.floor(since / 0.05) % 2 ? col : PAL.bone);
+  // All there: an Epic or a Legendary kindles, and throws sparkles. Nothing flashes.
+  if (!CALM) kindle(g, cx, ty, cw, ch, tier === 3 ? PAL.gold : col, tier, since, i);
   if (since < SPARKLE[tier]) sparkles(g, cx, ty, cw, ch, since, tier, col);
   modals.ui.hint('card-tag-' + i, cx + cw - 6 - tagW, ty + ch - 11, tagW + 4, 9, {
     tip: owned
@@ -377,4 +372,18 @@ function draftCard(modals: Modals, g: Ctx, card: DraftCard, i: number, lay: Draf
     });
   }
   modals.ui.hint('card-key-' + i, cx + 2, ty + ch - 11, 14, 9, { tip: `Press ${i + 1} to take this Boon.` });
+}
+
+/** Seconds the ring of an Epic or a Legendary card takes to fill round it. */
+export const CARD_KINDLE = 0.45;
+
+/**
+ * An Epic or a Legendary card that has just come kindles, as a world does when a seed ship reaches it:
+ * a ring of light (its colour; gold for a Legendary) fills round it from the middle of its top, and as
+ * it closes, sparks fly off it; the ring stays, a mark of its rarity. (Until 1.23.2 its face flashed.)
+ */
+function kindle(g: Ctx, cx: number, ty: number, cw: number, ch: number, col: string, tier: number, since: number, i: number) {
+  if (tier < 2) return;
+  arcFrame(g, cx - 1, ty - 1, cw + 2, ch + 2, since / CARD_KINDLE, col);
+  sparkOut(g, cx - 1, ty - 1, cw + 2, ch + 2, since - CARD_KINDLE, tier === 3 ? 36 : 20, col, i + 1);
 }

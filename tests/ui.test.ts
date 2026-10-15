@@ -2,7 +2,11 @@
 import { describe, expect, it } from 'vitest';
 import { LUMP, LUMP_FLASH, rollEmbers, type EmberCount } from '../src/ui/hud/emberCount';
 import { BEAM, BEAT, LAND_GAP, planDeal, tierOf } from '../src/ui/modals/reveal';
-import { storyEnd, WORD_FADE, wordIn, WORDS_PER_SECOND } from '../src/ui/modals/storyText';
+import { LINE_GAP, LINE_GLOW, lineGlow, storyEnd } from '../src/ui/modals/storyText';
+import { arcFrame, arcRound, sparkOut } from '../src/ui/modals/pixelFx';
+import { BOON_FLASH } from '../src/ui/hud/touches';
+import { PAL } from '../src/render/palette';
+import type { Ctx } from '../src/render/pixel';
 import { LEVEL_UP, levelUpEnd } from '../src/ui/modals/event';
 import { OMENS, omensPlan } from '../src/ui/modals/omensPlan';
 import { CHEER, sparkAt } from '../src/ui/Goals';
@@ -162,30 +166,70 @@ describe('a Boon draft is dealt, and its cards beamed in one by one', () => {
   });
 });
 
-describe('the story of a decision comes in word by word (a page of a storybook)', () => {
-  it('each word fades up out of the dark, settling a pixel as it does, and is whole after a third of a second', () => {
-    expect(wordIn(-0.01).alpha).toBe(0);
-    expect(wordIn(0).alpha).toBe(0);
-    const half = wordIn(WORD_FADE / 2);
-    expect(half.alpha).toBeGreaterThan(0.5);
-    expect(half.alpha).toBeLessThan(1);
-    expect(wordIn(0.05).dy).toBe(1);
-    expect(wordIn(WORD_FADE).alpha).toBe(1);
-    expect(wordIn(WORD_FADE).dy).toBe(0);
-    // (Smooth: it only ever comes up.)
-    let last = -1;
-    for (let k = 0; k <= 40; k++) {
-      const a = wordIn((k / 40) * WORD_FADE).alpha;
-      expect(a).toBeGreaterThanOrEqual(last);
-      last = a;
+/** A canvas that only notes what is drawn on it: each rectangle and its colour. */
+function noting() {
+  const drawn: { x: number; y: number; w: number; h: number; c: string }[] = [];
+  const g = { fillStyle: '', fillRect(x: number, y: number, w: number, h: number) { drawn.push({ x, y, w, h, c: this.fillStyle }); } };
+  return { g: g as unknown as Ctx, drawn };
+}
+
+describe('a rarer thing kindles, as a world does when a seed ship reaches it (a playtest of 1.23: never a flash)', () => {
+  it('the ring fills round a frame from the middle of its top, clockwise, and draws on the frame alone: nothing is ever filled', () => {
+    const [x, y, w, h] = [10, 20, 40, 30];
+    for (const k of [0.1, 0.5, 0.9, 1, 3]) {
+      const { g, drawn } = noting();
+      arcFrame(g, x, y, w, h, k, PAL.violet);
+      expect(drawn.length).toBe(Math.floor(Math.min(1, k) * 2 * (w + h)));
+      for (const d of drawn) {
+        expect(d.w * d.h).toBe(1);
+        expect(d.x === x || d.x === x + w - 1 || d.y === y || d.y === y + h - 1).toBe(true);
+      }
+      // (It starts at the middle of the top and goes right; once full, it is all in the frame's colour.)
+      expect(drawn[0]).toMatchObject({ x: x + w / 2, y });
+      if (k >= 1) expect(new Set(drawn.map((d) => d.c))).toEqual(new Set([PAL.violet]));
     }
+    const none = noting();
+    arcFrame(none.g, x, y, w, h, 0, PAL.violet);
+    arcRound(none.g, x, y, 6, -1, PAL.gold);
+    expect(none.drawn.length).toBe(0);
   });
 
-  it('nine words a second: a story of twenty words is all there in a little over two seconds', () => {
-    expect(WORDS_PER_SECOND).toBe(9);
-    expect(storyEnd(20, 0)).toBeCloseTo(19 / 9 + WORD_FADE, 9);
-    expect(storyEnd(20, 0)).toBeLessThan(2.6);
+  it('as it closes, sparks fly out from the frame, outward, and are gone in under two thirds of a second', () => {
+    const [x, y, w, h] = [100, 100, 60, 80];
+    const at = (s: number) => {
+      const { g, drawn } = noting();
+      sparkOut(g, x, y, w, h, s, 30, PAL.gold, 1);
+      return drawn;
+    };
+    expect(at(-0.01).length).toBe(0);
+    expect(at(0).length).toBe(30);
+    for (const d of at(0.3)) {
+      expect(d.w * d.h).toBe(1);
+      // (Outside the frame: they fly off it.)
+      expect(d.x < x || d.x > x + w - 1 || d.y < y || d.y > y + h - 1).toBe(true);
+    }
+    expect(at(0.66).length).toBe(0);
+  });
+
+  it('the BOON button is kindled in violet, its ring dimming before it goes; the mark is over in under a second', () => {
+    expect(BOON_FLASH.RING).toBeLessThan(BOON_FLASH.ALL - BOON_FLASH.DIM);
+    expect(BOON_FLASH.ALL).toBeLessThan(1);
+  });
+});
+
+describe('the story of a decision comes in under a scan line, as quick as the game is (a playtest of 1.23)', () => {
+  it('a line every LINE_GAP: a story of three lines is all there in under a third of a second', () => {
+    expect(storyEnd(3, 0)).toBeCloseTo(3 * LINE_GAP, 9);
+    expect(storyEnd(3, 0)).toBeLessThan(1 / 3);
     expect(storyEnd(0, 0.16)).toBe(0.16);
+    expect(storyEnd(2, 0.16)).toBeCloseTo(0.16 + 2 * LINE_GAP, 9);
+  });
+
+  it('each line glows as the scan line leaves it, ember then gold, then is its own colour; never white', () => {
+    expect(lineGlow(0, PAL.mist)).toBe(PAL.ember);
+    expect(lineGlow(LINE_GLOW * 0.75, PAL.mist)).toBe(PAL.gold);
+    expect(lineGlow(LINE_GLOW, PAL.mist)).toBe(PAL.mist);
+    for (let k = 0; k < 20; k++) expect(lineGlow((k / 20) * LINE_GLOW, PAL.mist)).not.toBe(PAL.bone);
   });
 
   it('every story picks out a phrase in gold (in braces), and no more than two', () => {
@@ -198,9 +242,11 @@ describe('the story of a decision comes in word by word (a page of a storybook)'
 });
 
 describe('a ship rising a level powers up before its abilities come in', () => {
-  it('rings close on it, the window flashes, and the abilities fade up one after another: all there in about a second and a third', () => {
-    expect(LEVEL_UP.FLASH).toBeLessThanOrEqual(LEVEL_UP.RINGS);
-    expect(LEVEL_UP.ABILITIES).toBeGreaterThan(LEVEL_UP.FLASH);
+  it('rings close on it, its window kindles, and the abilities fade up one after another: all there in about a second and a third', () => {
+    expect(LEVEL_UP.KINDLE).toBeLessThanOrEqual(LEVEL_UP.RINGS);
+    expect(LEVEL_UP.ABILITIES).toBeGreaterThan(LEVEL_UP.KINDLE);
+    // (The ring has closed round the window by the time the abilities are all there.)
+    expect(LEVEL_UP.KINDLE + LEVEL_UP.KINDLE_RING).toBeLessThanOrEqual(levelUpEnd(1) + 1e-9);
     expect(levelUpEnd(3)).toBeCloseTo(LEVEL_UP.ABILITIES + 2 * LEVEL_UP.ABILITY_GAP + LEVEL_UP.ABILITY_FADE, 9);
     expect(levelUpEnd(3)).toBeLessThan(1.4);
     expect(levelUpEnd(1)).toBeLessThan(levelUpEnd(3));

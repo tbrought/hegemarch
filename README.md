@@ -98,7 +98,7 @@ terms do the same.
 - **Scouts** wait for your order. Select one and press EXPLORE (or **E**), and it charts the dark
   world after world by itself. An **anomaly** (a violet swirl) waits until you send a ship to stop
   there; then you choose what to do, on a page that opens with a picture of it and its story coming
-  in word by word. Ships only passing through, and Scouts out exploring, fly on.
+  in under a scan line. Ships only passing through, and Scouts out exploring, fly on.
   A Scout sees the places next door, so while exploring it charts a guarded place from outside and
   keeps out of it; when the rest lies behind guards it says so and comes home. Every ship you lose
   is reported in the log, with the place and who destroyed it.

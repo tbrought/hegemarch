@@ -410,13 +410,13 @@ How Boons read:
   face is drawn in line by line from the top behind a white scan line. The cards come the commonest
   first and the rarest last, each after a beat that is longer for a rarer card (a Legendary's is
   half a second), and while a rarer card waits its empty place already shows a few motes of its
-  colour: an Epic or a Legendary is seen coming. Once a card is all there its face flashes white and
-  its colour (once for a Rare, twice for an Epic, three times for a Legendary), an Epic or a
-  Legendary throws pixel sparkles round its frame, each rarity has its own chiptune sting (a
-  Legendary's an "item found" fanfare), and a Legendary sets the dialog's frame flashing gold for a
-  second. Three Commons take about a second and a half, a hand with a Legendary a little over two;
-  a click or a number key while they come brings them all at once, and takes none unseen
-  (`skipDeal`, `Modals.revealing`). A player whose computer asks for less motion gets no flashes.
+  colour: an Epic or a Legendary is seen coming. Once a card is all there, an Epic or a Legendary
+  kindles (a ring of its colour, gold for a Legendary, fills round it and throws off sparks: see "A
+  rarer thing kindles" under Presentation) and throws pixel sparkles round its frame, and each rarity
+  has its own chiptune sting (a Legendary's an "item found" fanfare). (Until 1.23.2 a card's face
+  flashed white and a Legendary set the dialog's frame flashing.) Three Commons take about a second
+  and a half, a hand with a Legendary a little over two; a click or a number key while they come
+  brings them all at once, and takes none unseen (`skipDeal`, `Modals.revealing`).
   Under the pointer, once all are there, a card grows three pixels on each side, rises, and stands
   off the table on a hard two-pixel shadow. Before it the cards slid up 40 pixels in a third of a
   second, rarity was a colour of frame, and hover lifted a card two pixels: an Epic looked like a
@@ -867,14 +867,17 @@ Measured with `npm run simulate` and `npm run balance:passive`. Speeds are ½×,
   Closing a decision without choosing parks it behind a "! DECISION" button.
 - **A decision is a page of a storybook** (1.20, `ui/modals/event.ts`, `ui/modals/storyText.ts`).
   It opens from its middle; under the title a picture of what it is about (what its choices touch,
-  a Dreadnought turning beside an Ember) is alive in a window of deep space; the story comes in word
-  by word, nine words a second, each word fading up out of the dark over a third of a second and
-  settling a pixel as it does; a phrase of every story, marked in braces in the data (`EventDef.text`,
-  one or two a story, a test holds it), is picked out in gold and rides a slow ripple a pixel high;
-  then the choices slide in from the left one after another, and the outcome comes in the same way,
-  in gold. A soft tick every third word. About two and a half seconds in all for a story of twenty
-  words; a click, a number, Space or Enter while it comes brings all of it and answers nothing
-  unseen (`skipEvent`, `Modals.revealing`), and the choices take no click until they are there. Once
+  a Dreadnought turning beside an Ember) is alive in a window of deep space; the story comes in under
+  a scan line in ember, a line at a time, each line glowing ember, then gold, then its own colours
+  (since 1.23.2; it came in word by word, nine words a second, and a playtester found it slow: see "A
+  rarer thing kindles" under Presentation); a phrase of every story, marked in braces in the data
+  (`EventDef.text`, one or two a story, a test holds it), is picked out in gold and rides a slow
+  ripple a pixel high; then the choices slide in from the left one after another, and the outcome
+  comes in the same way, in gold. A soft tick as each line comes. All of it is there in under a
+  second; a click, a number, Space or Enter while it comes brings all of it and answers nothing
+  unseen (`skipEvent`, `Modals.revealing`), and the choices take no click until they are there. A
+  decision that opened by itself is all there before its first second, in which it takes no click
+  or key, is over. Once
   the outcome is all there, Enter or Space goes on, as CONTINUE does (as on the omens card).
   Before it the dialog was all there at once, the same frame as a tooltip's, and a player said so:
   "it just feels like a tooltip". Four ways in were made in the game and filmed (this one, a
@@ -884,9 +887,10 @@ Measured with `npm run simulate` and `npm run balance:passive`. Speeds are ½×,
   and its effects on the wrong text (on the choices, not the story). `npm run record:event` films
   it.
 - **A ship rising a level powers up** (1.21, `ui/modals/event.ts`). Above the abilities to choose
-  from, the ship itself is in a window of deep space: three rings close on it, the window flashes,
-  and LEVEL n comes up beside it in large gold letters and stays; then the abilities fade up one after
-  another (`LEVEL_UP`). A whine rising with the rings, a chord at the flash. All of it is there in
+  from, the ship itself is in a window of deep space: three rings close on it, the window kindles (a
+  ring of gold fills round it and throws off sparks; until 1.23.2 it flashed white), and LEVEL n comes
+  up beside it in large gold letters and stays; then the abilities fade up one after another
+  (`LEVEL_UP`). A whine rising with the rings, a chord as the window kindles. All of it is there in
   about a second and a third; a click, a number, Space or Enter brings it at once, and the abilities
   take no click until they are there. The abilities are numbered, and a number takes one, as it
   answers a decision (since 1.22.1: before, a number only brought the level-up in). Opened again
@@ -939,7 +943,8 @@ Measured with `npm run simulate` and `npm run balance:passive`. Speeds are ½×,
 - **The omens come in under their stars** (1.22, `ui/modals/cards.ts`, `ui/modals/omensPlan.ts`).
   Above the omens a window of the sector's sky: a star lights for each omen in turn (a ring closing on
   it, then a sparkle that twinkles on), joined to the last by a dotted line, as its omen fades up
-  below; the Ambition's star lights last, in gold, with a flash, its rule turns gold and sparkles run
+  below; the Ambition's star lights last, in gold, and kindles (a ring of gold fills round it; until
+  1.23.2 the sky flashed gold), its rule turns gold and sparkles run
   round its heading. A note as each star lights, a sting for the Ambition. About 2.3 seconds for two
   omens and an Ambition (`omensPlan`); a click on the card, a number, Space or Enter brings all of it
   (a key it takes for that does not also close it: until 1.22 Space or Enter on this card closed it,
@@ -954,16 +959,17 @@ Measured with `npm run simulate` and `npm run balance:passive`. Speeds are ½×,
 - **News that comes together plays each of its sounds once** (`Hud.update`): a rival Hearth taken
   brings its fall, a Boon and often a goal in the same moment, and played six sounds at once (three of
   them the same chime) until 1.22.2; now three.
-- **No flashing for a player who asks for less motion** (`CALM` in `ui/modals/pixelFx.ts`, from the
-  browser's prefers-reduced-motion): a Boon card's face, a Legendary's frame, a level-up's window, the
-  Ambition's sky and the BOON button do not flash white; the motes, lines, sparkles and words still
-  come. (Until 1.22.1 only the Boon cards held back.)
+- **Less for a player who asks for less motion** (`CALM` in `ui/modals/pixelFx.ts`, from the
+  browser's prefers-reduced-motion): no kindling ring or its sparks round a Boon card, a level-up's
+  window, the Ambition's star or the BOON button; the motes, lines, sparkles and words still come.
+  (Until 1.22.1 only the Boon cards held back; until 1.23.2 what was held back was white flashes.)
 - **A Boon ready is marked** (1.22, `ui/hud/touches.ts`). The moment one more Boon waits than a frame
-  before (the Lore is full, a new age, a Hearth taken), its button in the top bar flashes white and
-  fades, a frame runs out from it and sparkles light at its corners: under a second, on the classic
+  before (the Lore is full, a new age, a Hearth taken), a ring of violet fills round its button in the
+  top bar, dims and goes (until 1.23.2 the button flashed white and a frame ran out from it), and
+  sparkles light at its corners: under a second, on the classic
   top bar and the cradle's alike. A Boon chosen sets off nothing; a run continued with a Boon waiting
   shows it once. Not while a dialog is open: it would be over before the dialog is (a run opens with
-  a Boon waiting, under its omens: until 1.22.2 the flash was spent there unseen). It comes when the
+  a Boon waiting, under its omens: until 1.22.2 the mark was spent there unseen). It comes when the
   dialog closes, if a Boon still waits.
 - **A goal reached sends its Embers home** (1.22, `ui/Goals.ts`). The box holds the goal two seconds
   more under GOAL REACHED: the goal is struck through in teal, left to right; its reward leaves the
@@ -993,6 +999,30 @@ Measured with `npm run simulate` and `npm run balance:passive`. Speeds are ½×,
   all the same. The game stands still behind a decision, so the second costs nothing.
 
 ## 6. Presentation
+
+- **A rarer thing kindles; nothing flashes** (1.23.2, `arcFrame`, `arcRound` and `sparkOut` in
+  `ui/modals/pixelFx.ts`). An Epic or a Legendary Boon card once all there, a ship's window as it rises
+  a level, the Ambition's star on the omens card and the BOON button when a Boon is ready are marked
+  as a world is when a seed ship kindles it: a ring of light fills round the thing from the middle of
+  its top, clockwise, its head bright (the card's colour, gold for a Legendary and a level-up, violet
+  for the BOON button), in under half a second (`CARD_KINDLE`, `LEVEL_UP.KINDLE_RING`, `OMENS.KINDLE`,
+  `BOON_FLASH.RING`), and as it closes round a card or a ship's window, sparks fly off it and blink out
+  in under two thirds of a second. A card's ring stays, a mark of its rarity; the BOON button's dims
+  and goes. A story comes in under a scan line in ember (`ui/modals/storyText.ts`), a line every
+  0.09 seconds (`LINE_GAP`), each line glowing ember, then gold, then its own colours as the line
+  leaves it (`LINE_GLOW`): a story of two lines is all there in under a fifth of a second.
+  Until 1.23.2 a Boon card's face flashed white and its colour once all there, a Legendary set the
+  whole dialog's frame flashing gold, white and ember for a second, a level-up's window flashed white,
+  the Ambition's sky flashed gold and the BOON button flashed white, and a story came in word by word,
+  nine words a second. A playtester held up a hand to shield his eyes from the Boon dealt ("just the
+  flash was too much"; the rest of the juice he liked), and found the text slow; the designer, that it
+  was out of keeping with the pace of the game. Twelve ways were made in the game and filmed, three at
+  a time: soft glows, a quick blink and a single sparkle (glows and washes are not 8-bit); a ribbon,
+  stars and a colour cycle; fireworks, a shower of stars and a shock ring (not in the game's world);
+  a fleet's hyperspace arrival, a sensor's lock-on and kindling, of which kindling was chosen; then
+  three ways of kindling: a frame lit from dark in dither steps as a world is, this ring, and a band of
+  ember light running round with embers rising. `npm run record:fx` films it. A player whose computer
+  asks for less motion gets none of the rings or sparks.
 
 - **The news in its colours** (1.23.1, `ui/news.ts`). A line of news (the log, the full log, the line
   at the top) is in its kind's colour, good, bad, an alarm, an event, and every house it names is in that

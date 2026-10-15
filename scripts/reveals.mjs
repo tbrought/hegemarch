@@ -63,9 +63,10 @@ await clickAt('omens-begin');
 await wait(80);
 check('omens: BEGIN then begins', (await st()).modal === null);
 // The run opened with a Boon waiting: its button flashes once the omens are put away, not unseen under them.
-check('the BOON button flashes once the omens are put away, not under them', flashBefore < 0 && (await ev(() => window.__app.hud.boonReadyAt)) >= begunAt, `${flashBefore} ${begunAt} ${await ev(() => window.__app.hud.boonReadyAt)}`);
+check('the BOON button kindles once the omens are put away, not under them', flashBefore < 0 && (await ev(() => window.__app.hud.boonReadyAt)) >= begunAt, `${flashBefore} ${begunAt} ${await ev(() => window.__app.hud.boonReadyAt)}`);
 
-// ---- A decision that opens by itself: held, then a key brings all and answers nothing; then it answers; the outcome.
+// ---- A decision that opens by itself: held for its first second, by the end of which it is all there (a story comes in
+// quick); then a double click answers it once; the outcome.
 await ev(() => {
   const a = window.__app;
   const g = a.session.game;
@@ -78,21 +79,19 @@ await key('Digit1');
 await clickAt('ev-skip');
 s = await st();
 const unanswered = () => ev(() => window.__app.session.game.prompts.find((p) => p.id === 990001)?.result === undefined);
-check('decision: a key or a click in its first second does nothing', s.revealing && (await unanswered()), JSON.stringify(s));
+check('decision: a key or a click in its first second does nothing', s.guarded && (await unanswered()), JSON.stringify(s));
 await wait(1000);
-await key('Digit1');
 s = await st();
-check('decision: then a number brings all of it and answers nothing', !s.revealing && (await unanswered()), JSON.stringify(s));
+check('decision: by the end of its hold it is all there, and nothing is answered', !s.guarded && !s.revealing && (await unanswered()), JSON.stringify(s));
 // A double click on a choice answers once.
 const c0 = await onPage('choice-0');
 await page.mouse.dblclick(c0.x, c0.y);
 await wait(80);
 s = await st();
-check('decision: a double click answers once; the outcome comes in', !(await unanswered()) && s.modal === 'event' && s.revealing, JSON.stringify(s));
+check('decision: a double click answers once; the outcome comes in, held a moment', !(await unanswered()) && s.modal === 'event' && s.guarded, JSON.stringify(s));
 await wait(600);
-await key('Enter');
 s = await st();
-check('decision: Enter brings all of the outcome', s.modal === 'event' && !s.revealing && !!(await uiRect('ev-ok')), JSON.stringify(s));
+check('decision: the outcome is all there, CONTINUE under it', s.modal === 'event' && !s.revealing && !!(await uiRect('ev-ok')), JSON.stringify(s));
 await key('Enter');
 check('decision: and Enter then goes on, as CONTINUE does', (await st()).modal === null && (await ev(() => !window.__app.session.game.prompts.some((p) => p.id === 990001))));
 
@@ -113,6 +112,24 @@ check('decision: opened again once its time is past, it is all there at once', !
 await ev(() => {
   window.__app.hud.modals.close();
   window.__app.session.game.prompts = window.__app.session.game.prompts.filter((p) => p.id !== 990002);
+});
+
+// ---- A number while a decision (opened by the player: not held) comes in brings all of it, and answers nothing.
+await ev(() => {
+  const a = window.__app;
+  const g = a.session.game;
+  g.prompts.push({ id: 990003, event: 'comet', node: g.player.capital, unit: -1 });
+  a.hud.modals.open({ kind: 'event', promptId: 990003 });
+});
+await wait(100);
+s = await st();
+const coming = s.revealing;
+await key('Digit1');
+s = await st();
+check('decision: a number while it comes brings all of it and answers nothing', coming && !s.revealing && (await ev(() => window.__app.session.game.prompts.find((p) => p.id === 990003)?.result === undefined)), JSON.stringify(s));
+await ev(() => {
+  window.__app.hud.modals.close();
+  window.__app.session.game.prompts = window.__app.session.game.prompts.filter((p) => p.id !== 990003);
 });
 
 // ---- A Boon draft: a number while it is dealt brings all and takes none; then takes one; the next deal; a key in the guard after a choice does nothing.
@@ -311,11 +328,14 @@ await ev(() => {
   window.__app.session.modal = null;
 });
 
-// ---- The run's end leaves no herald on screen.
+// ---- The run's end leaves no herald on screen, not even one showing as it ends (until 1.23.2 that one
+// kept its place: a check that passed or failed by when a frame fell).
 await tell('THE LAST HERALD');
+await wait(300);
+const lastShown = await ev(() => window.__app.hud.heraldRect.w);
 await ev(() => window.__app.session.game.declareWinner(window.__app.session.game.playerId, 'conquest', 'Test.'));
 await wait(500);
-check('herald: never over the end of the run', (await ev(() => window.__app.hud.heraldRect.w)) === 0);
+check('herald: never over the end of the run, one showing as it ends put away', lastShown > 0 && (await ev(() => window.__app.hud.heraldRect.w)) === 0, `${lastShown}`);
 check('no console errors', errors.length === 0, errors.join(' | '));
 await browser.close();
 process.exit(done(errors));

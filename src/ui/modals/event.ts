@@ -12,8 +12,8 @@ import { box, rect, ring, type Ctx } from '../../render/pixel';
 import { drawRich, richLines } from '../../render/rich';
 import { termsIn } from '../glossary';
 import { drawSubjects, starWindow, subjectsIn, subjectsSize, type Look } from '../subjects';
-import { drawStory, storyEnd, wordCount } from './storyText';
-import { CALM, sparkles } from './pixelFx';
+import { drawStory, lineCount, storyEnd } from './storyText';
+import { arcFrame, CALM, sparkles, sparkOut } from './pixelFx';
 import type { Modals } from '../Modals';
 
 export function resolve(modals: Modals, promptId: number, choice: number) {
@@ -99,8 +99,7 @@ export function event(modals: Modals, g: Ctx, promptId: number) {
   if (seen.length) drawSubjects(g, seen, x + 8 + inner / 2, ly, PIC, { ...look, t: modals.ui.time, lively: true }, 'center');
   box(g, x + 8, ly, inner, PIC, null, PAL.violet);
   ly += PIC + 4;
-  // The story, word by word.
-  const words = wordCount(ev.text, inner);
+  // The story, under a scan line.
   const storyAt = done ? Infinity : t - open;
   const story = drawStory(g, ev.text, x + 8, ly, inner, storyAt, modals.ui.time, { body: PAL.mist });
   const storyTerms = termsIn(ev.text);
@@ -112,14 +111,14 @@ export function event(modals: Modals, g: Ctx, promptId: number) {
     rect(g, x + 8, ly - 3, inner, 1, PAL.indigo);
     const out = drawStory(g, modals.result!.text, x + 8, ly + 2, inner, t, modals.ui.time, { body: PAL.gold });
     storySounds(modals, out.shown);
-    modals.evDone = t >= storyEnd(wordCount(modals.result!.text, inner), 0);
+    modals.evDone = t >= storyEnd(lineCount(modals.result!.text, inner), 0);
     if (modals.evDone) modals.ui.button(g, 'ev-ok', x + w / 2 - 34, out.y + 6, 68, 13, 'CONTINUE', () => modals.close(), { primary: true });
     else modals.ui.add({ id: 'ev-skip', x, y, w, h, onClick: () => skipEvent(modals) });
     g.restore();
     return;
   }
   // The choices: once the story is all there, sliding in from the left one after another.
-  const cFrom = storyEnd(words, open) + 0.08;
+  const cFrom = storyEnd(lineCount(ev.text, inner), open) + 0.08;
   ev.choices.forEach((c, i) => {
     const age = t - (cFrom + i * CHOICE_GAP);
     if (age < 0) return;
@@ -148,18 +147,17 @@ export function event(modals: Modals, g: Ctx, promptId: number) {
   g.restore();
 }
 
-/** The sound of a story coming in: a soft tick every third word. */
+/** The sound of a story coming in: a soft tick as each line does (`shown`: the words showing). */
 function storySounds(modals: Modals, shown: number) {
   const prev = modals.evPrev;
   modals.evPrev = shown;
-  if (shown < 0 || shown <= prev) return;
-  if (Math.floor(shown / 3) !== Math.floor(prev / 3)) modals.s.sfx.play('tick', 0.2);
+  if (shown > Math.max(0, prev)) modals.s.sfx.play('tick', 0.2);
 }
 
 /** The ship's picture: the height of its window. */
 const SHIP_PIC = 40;
-/** The level-up, in seconds from its start: rings close on the ship until RINGS, the window flashes at FLASH, the abilities come in from ABILITIES, ABILITY_GAP apart, each over ABILITY_FADE. */
-export const LEVEL_UP = { RINGS: 0.6, FLASH: 0.6, ABILITIES: 0.8, ABILITY_GAP: 0.12, ABILITY_FADE: 0.25 };
+/** The level-up, in seconds from its start: rings close on the ship until RINGS, its window kindles from KINDLE (over KINDLE_RING), the abilities come in from ABILITIES, ABILITY_GAP apart, each over ABILITY_FADE. */
+export const LEVEL_UP = { RINGS: 0.6, KINDLE: 0.6, KINDLE_RING: 0.45, ABILITIES: 0.8, ABILITY_GAP: 0.12, ABILITY_FADE: 0.25 };
 
 /** A click or a key while a level-up is coming in: all of it is there at once. */
 export function skipAbility(modals: Modals) {
@@ -173,8 +171,8 @@ export function levelUpEnd(n: number): number {
 
 /**
  * A ship has risen a level and chooses an ability. Above the choices, the ship itself powers up in a
- * window of deep space: three rings close on it, the window flashes, and LEVEL n comes up beside it in
- * large letters and stays. Then the abilities fade up one after another. A click or a key brings all
+ * window of deep space: three rings close on it, a ring of gold light fills round the window and throws
+ * off sparks as it closes (as a world kindles), and LEVEL n comes up beside it in large letters and stays. Then the abilities fade up one after another. A click or a key brings all
  * of it at once; the abilities take a click once all are there.
  */
 export function ability(modals: Modals, g: Ctx, unitId: number) {
@@ -223,8 +221,7 @@ export function ability(modals: Modals, g: Ctx, unitId: number) {
     const s = t - k * 0.12;
     if (s >= 0 && s < ringTime) ring(g, mid.x, mid.y, Math.max(3, Math.round(48 * (1 - s / ringTime))), k % 2 ? PAL.gold : PAL.bone, 2);
   }
-  const flash = t - LEVEL_UP.FLASH;
-  if (!CALM && flash >= 0 && flash < 0.12) rect(g, wx + 1, ly + 1, inner - 2, SHIP_PIC - 2, Math.floor(flash / 0.06) % 2 ? PAL.gold : PAL.bone);
+  const flash = t - LEVEL_UP.KINDLE;
   if (flash >= 0.06) {
     const a0 = g.globalAlpha;
     g.globalAlpha = a0 * Math.min(1, (flash - 0.06) / 0.3);
@@ -234,6 +231,11 @@ export function ability(modals: Modals, g: Ctx, unitId: number) {
   }
   g.restore();
   box(g, wx, ly, inner, SHIP_PIC, null, PAL.gold);
+  // (The window kindles: a ring of gold light fills round it, and as it closes, sparks fly off.)
+  if (!CALM) {
+    arcFrame(g, wx - 1, ly - 1, inner + 2, SHIP_PIC + 2, flash / LEVEL_UP.KINDLE_RING, PAL.gold);
+    sparkOut(g, wx - 1, ly - 1, inner + 2, SHIP_PIC + 2, flash - LEVEL_UP.KINDLE_RING, 30, PAL.gold, 7);
+  }
   ly += SHIP_PIC + 4;
   // The abilities, fading up one after another.
   choices.forEach((id, i) => {
