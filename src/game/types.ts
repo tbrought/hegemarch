@@ -294,6 +294,12 @@ export interface AIState {
   burned?: { star: number; until: number };
   /** Attacks on a rival's world that the house gave up since it last took one, and the world it last gave up on. */
   stalled?: { n: number; wall: number };
+  /**
+   * What the house last saw at each place (by node id): the hostile strength there (`p`) and when (`t`,
+   * game seconds, -1 never). It plans by what it sees and this, not by what is there (ai.ts,
+   * `strengthAt`). Kept from its first look on.
+   */
+  memory?: { p: number[]; t: number[] };
 }
 
 export interface Mods {

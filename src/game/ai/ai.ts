@@ -75,6 +75,7 @@ export function aiTick(g: Game, f: Faction, dt: number) {
   if (g.cradle) g.cmdAdvance(f.id);
   else if (f.ark < 0 || !g.units.has(f.ark)) g.cmdRebuildArk(f.id);
 
+  remember(g, f);
   const ctx = analyze(g, f);
   observeEnemies(g, f, ctx);
   noteGrudges(g, f, ctx);
@@ -107,20 +108,59 @@ function isMilitary(u: Unit): boolean {
   return isWarship(u.type) && !u.temp;
 }
 
+/**
+ * The fog of war, for a rival house as for the player: it plans by what it can see, and by what it saw
+ * where it can no longer see, trusted less as the sighting grows old (to half after `MEMORY` seconds).
+ * Until 1.24 it planned by what was there: it knew which of the player's worlds were bare that moment,
+ * steered round fleets it had no eyes on, and read the world a fleet had just been ordered to, five jumps
+ * off, and called its own army home to meet it (a playtester: "they know things they don't have any eyes
+ * on"). A place it has never seen it takes to be empty.
+ */
+const MEMORY = 300;
+
+/** Note what the house sees now, for when it sees it no longer. */
+export function remember(g: Game, f: Faction) {
+  const ai = f.ai!;
+  const n = g.nodes.length;
+  if (!ai.memory || ai.memory.p.length !== n) ai.memory = { p: new Array(n).fill(0), t: new Array(n).fill(-1) };
+  const m = ai.memory;
+  for (let i = 0; i < n; i++) {
+    if (!f.visible[i]) continue;
+    m.p[i] = Math.round(g.hostilePowerAt(i, f.id) * 10) / 10;
+    m.t[i] = Math.round(g.time);
+  }
+}
+
+/** The hostile strength the house knows of at a place: what it sees there, or what it last saw there, trusted less with age. */
+export function strengthAt(g: Game, f: Faction, node: number): number {
+  if (f.visible[node]) return g.hostilePowerAt(node, f.id);
+  const m = f.ai?.memory;
+  if (!m || !(m.t[node] >= 0)) return 0;
+  return m.p[node] * Math.max(0.5, 1 - (g.time - m.t[node]) / (2 * MEMORY));
+}
+
+/**
+ * Early warning: the strength of rival warships the house can see on a starlane into one of its worlds,
+ * by world. Only the lane they are on: where they were ordered to is not to be seen. (Until 1.24 it was
+ * read: the world a fleet was sent to, from as far as the house could see the fleet.)
+ */
+export function seenIncoming(g: Game, f: Faction): Map<number, number> {
+  const incoming = new Map<number, number>();
+  for (const u of g.unitList) {
+    if (u.dead || !u.lane || !isWarship(u.type) || g.factions[u.owner].kind !== 'empire' || !g.hostile(u.owner, f.id)) continue;
+    const to = u.lane.to;
+    if (!f.visible[to] || g.nodes[to].owner !== f.id) continue;
+    incoming.set(to, (incoming.get(to) ?? 0) + g.unitPower(u));
+  }
+  return incoming;
+}
+
 function analyze(g: Game, f: Faction): Ctx {
   const worlds = g.worldsOf(f.id);
   const units = g.unitsOf(f.id);
   const military = units.filter(isMilitary);
   const threats: { node: number; power: number }[] = [];
-  // Early warning: rival warships we can see heading for one of our worlds count as a threat already.
-  const incoming = new Map<number, number>();
-  for (const u of g.unitList) {
-    if (u.dead || u.dest < 0 || !isWarship(u.type) || g.factions[u.owner].kind !== 'empire' || !g.hostile(u.owner, f.id)) continue;
-    const at = u.node >= 0 ? u.node : u.lane ? u.lane.to : -1;
-    if (at < 0 || at === u.dest || !f.visible[at]) continue;
-    if (g.nodes[u.dest].owner !== f.id) continue;
-    incoming.set(u.dest, (incoming.get(u.dest) ?? 0) + g.unitPower(u));
-  }
+  const incoming = seenIncoming(g, f);
   for (const p of worlds) {
     const hp = g.hostilePowerAt(p.id, f.id) + (incoming.get(p.id) ?? 0);
     if (hp > 0.5) threats.push({ node: p.id, power: hp });
@@ -259,7 +299,7 @@ function kindle(g: Game, f: Faction, ctx: Ctx) {
     // (A world that is held against it is the army's business. One that another house's seed ship has
     // already reached is lost: that one finishes first.)
     if (g.kindleBarred(n.id, f.id)) continue;
-    if (g.buckets[n.id].some((u) => !u.dead && u.type === 'seed' && u.owner !== f.id && u.order === 'kindle' && u.orderTarget === n.id)) continue;
+    if (f.visible[n.id] && g.buckets[n.id].some((u) => !u.dead && u.type === 'seed' && u.owner !== f.id && u.order === 'kindle' && u.orderTarget === n.id)) continue;
     let minHops = Infinity;
     let minLen = Infinity;
     for (const o of ctx.worlds) {
@@ -427,7 +467,7 @@ function sendIfNeeded(g: Game, f: Faction, units: Unit[], node: number, careful 
     return;
   }
   const strength = power(g, going);
-  g.cmdMove(f.id, going.map((u) => u.id), node, undefined, undefined, (id) => (g.hostilePowerAt(id, f.id) > strength * 0.6 ? DANGER : 0));
+  g.cmdMove(f.id, going.map((u) => u.id), node, undefined, undefined, (id) => (strengthAt(g, f, id) > strength * 0.6 ? DANGER : 0));
 }
 
 const DANGER = 40000;
@@ -440,7 +480,7 @@ function gatherPoint(g: Game, f: Faction, node: number): number {
   let best = -1;
   let bd = Infinity;
   for (const n of g.nodes) {
-    if (n.id === node || g.hostilePowerAt(n.id, f.id) > 0) continue;
+    if (n.id === node || strengthAt(g, f, n.id) > 0) continue;
     const hops = g.hops(n.id, node);
     if (hops < 1 || hops > 2) continue;
     // (A world of the house's own is better: its guns and walls are on the house's side.)
@@ -497,7 +537,7 @@ function chooseTarget(g: Game, f: Faction, armyPower: number, from: number): { n
   for (const n of g.nodes) {
     if (!f.explored[n.id]) continue;
     let value = 0;
-    let def = g.hostilePowerAt(n.id, f.id);
+    let def = strengthAt(g, f, n.id);
     if (n.kind === 'planet' && n.owner >= 0 && n.owner !== f.id) {
       const owner = g.factions[n.owner];
       if (owner.kind !== 'empire' || !g.hostile(n.owner, f.id)) continue;
@@ -668,7 +708,7 @@ function defend(g: Game, f: Faction, ctx: Ctx, all: Unit[], assigned: Set<number
  */
 function claimDerelicts(g: Game, f: Faction, all: Unit[], assigned: Set<number>) {
   for (const n of g.nodes) {
-    if (n.claim?.what !== 'derelict' || !f.explored[n.id] || g.hostilePowerAt(n.id, f.id) > 0) continue;
+    if (n.claim?.what !== 'derelict' || !f.explored[n.id] || strengthAt(g, f, n.id) > 0) continue;
     const holding = all.filter((u) => !assigned.has(u.id) && (u.node === n.id || u.dest === n.id));
     if (holding.length) {
       for (const u of holding) assigned.add(u.id);
@@ -693,7 +733,7 @@ function muster(g: Game, f: Faction, ctx: Ctx, army: Unit[], armyPower: number, 
   const age = ERAS[f.era].power;
   const idle = army.filter((u) => u.node !== ctx.staging && !u.lane && u.path.length === 0 && u.order === 'idle' && u.lastHit > 6);
   // (Not to a staging world that an enemy is sitting on: new ships would fly into it one at a time.)
-  if (idle.length && ctx.staging >= 0 && g.hostilePowerAt(ctx.staging, f.id) === 0) sendIfNeeded(g, f, idle, ctx.staging);
+  if (idle.length && ctx.staging >= 0 && strengthAt(g, f, ctx.staging) === 0) sendIfNeeded(g, f, idle, ctx.staging);
   // Before the first big attack, still clear guarded dark worlds nearby.
   const canAttack = g.time >= ai.firstAttackAt && g.time - ai.lastAttack > 45 && armyPower >= minArmy;
   const canClear = g.time < ai.firstAttackAt && g.time > 240 && g.time - ai.lastAttack > 60 && armyPower >= 8 * age;
@@ -755,7 +795,7 @@ function press(g: Game, f: Faction, army: Unit[], armyPower: number, minArmy: nu
     return;
   }
   const ours = g.powerAt(tn, f.id);
-  const theirs = g.hostilePowerAt(tn, f.id);
+  const theirs = strengthAt(g, f, tn);
   const arrived = army.filter((u) => u.node === tn).length;
   if (arrived > army.length * 0.5 && ours > 0 && theirs > ours * 1.8) {
     g.cmdRetreat(f.id, army.map((u) => u.id));
@@ -901,7 +941,7 @@ function defuse(g: Game, f: Faction, all: Unit[], assigned: Set<number>) {
     const home = f.capital >= 0 && g.nodes[f.capital].system === star.system;
     const free = all.filter((u) => !assigned.has(u.id));
     const here = free.filter((u) => at(u) === star.id || u.dest === star.id);
-    const escort = g.hostilePowerAt(star.id, f.id);
+    const escort = strengthAt(g, f, star.id);
     const near = d.fuse! < TOO_LATE ? [] : free.filter((u) => !here.includes(u) && (home || g.hops(at(u), star.id) <= 4) && isFinite(g.pathLen(at(u), star.id)) && !g.fireOnWay(at(u), star.id));
     // (Enough to fight the escort, or nobody goes: the rest of the fleet is better saved.)
     if (power(g, here) + power(g, near) < escort * 0.8) continue;
@@ -1019,7 +1059,7 @@ function ownStarfall(g: Game, f: Faction, ctx: Ctx, army: Unit[], armyPower: num
   if (at(d) === star.id && !d.lane) {
     // At the star: arm it when the escort holds the place; home again when the place cannot be held.
     const ours = g.powerAt(star.id, f.id);
-    const theirs = g.hostilePowerAt(star.id, f.id);
+    const theirs = strengthAt(g, f, star.id);
     if (theirs > ours * 1.8 && army.filter((u) => u.node === star.id).length > army.length * 0.5) {
       g.cmdRetreat(f.id, army.map((u) => u.id));
       ai.lastAttack = g.time;

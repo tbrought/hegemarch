@@ -441,6 +441,22 @@ How Boons read:
   screen**: every Boon by category, relics, house bonuses and omens, beside a totals panel of every
   bonus from every source.
 
+### The rival houses play in the fog of war (1.24)
+A rival house knows what it can see (its worlds, the places next to them, where its ships are, an
+Observatory's reach), and of a place it no longer sees, what it saw there last, trusted less as the
+sighting grows old (to half after five minutes: `strengthAt`, `remember` and `AIState.memory` in
+`ai/ai.ts`). A place it has never seen it takes to be empty. It chooses its targets, routes round
+danger, gathers and claims derelicts by that, and knows a fleet is coming when it sees it on the
+starlane in (above). Until 1.24 it planned by what was there: it knew which of the player's worlds were
+bare that very moment, steered round fleets it had no eyes on, and read the orders of fleets it could
+see. A playtester on Brutal: "It's not the faster decision making, it's that they know things that
+they don't have any eyes on." Now the player can feint, slip past, and lure a house into a fleet it
+did not see; and a house that has not looked at a Hearth for a while grows bolder about it. On every
+difficulty: Brutal's edges are its numbers, said on the setup screen (1.23.6), not knowledge. (Against
+a player who does nothing, the rivals now first strike on Normal at about 16–20 minutes, where they
+waited for 20–47 on the same sectors: a Hearth they have not seen is not known to be held. Hard and
+Brutal are much as they were.)
+
 ### Rushing
 There is no truce. What keeps an early rush risky:
 - **Hearth walls**: a Hearth's hull, shields and guns start at 45% and rise to full strength at
@@ -448,8 +464,10 @@ There is no truce. What keeps an early rush risky:
 - **AI restraint and grudges**: an AI house holds fire on other houses' worlds until its own first
   attack time, unless provoked. Striking its worlds or ships gives it a grudge: it may hit back at
   once and values the grudge target 2.5× when it picks targets.
-- **Early warning**: AI houses see fleets bound for their worlds once those fleets are in sight and
-  pull defenders home. Ships within four jumps answer a threat to a world; for the Hearth every
+- **Early warning**: AI houses see a fleet coming once it is on a starlane into one of their worlds,
+  and pull defenders home (`seenIncoming`). Where a fleet was ordered to is not to be seen: until 1.24
+  it was read, from as far as the house could see the fleet, and a playtester's every attack met the
+  whole rival army called home the moment he gave the order. Ships within four jumps answer a threat to a world; for the Hearth every
   ship does, from anywhere (a fleet used to go on besieging a far world while its own Hearth fell).
   Ships at a threatened world, or on their way to it, stay on that job as long as it needs them (up
   to half again the enemy's strength). Before 1.9 they were sent on to the army's business and back
@@ -675,7 +693,7 @@ Ages fuzzer found it at 1.18, on the first seed whose game the new rules sent th
 | Hearth walls at full strength (they start at 45%) | 12:00 |
 | Warlike AI houses rush (Hard / Brutal) | about 7:00 / 5:30 |
 | First Corsair raid | about 10:00 (12:00 Easy, 8:00 Brutal) |
-| First rival attack on a passive player | 13–17 min (20–30 Easy, 10–13 Brutal) |
+| First rival attack on a passive player | 16–20 min (31–36 Easy, 12–15 Hard, 10–13 Brutal; 1.24, `npm run balance:passive`) |
 | Galactic events | first at 6–7 min, then every 5–6 min |
 | The Maw opens (Purge the Void runs) | about 18–21 min |
 | Medium AI-only games | 22–60+ min, median about 41 (sectors without Dominion run longest) |
