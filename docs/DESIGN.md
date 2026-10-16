@@ -1305,8 +1305,9 @@ and not pictures of it, and it cannot drift from the rules.
 - **Nothing moves unasked** for a visitor who prefers reduced motion (a still picture and a button
   stand in for the live sector), the sector waits while it is off screen, and with scripts off the
   page is the picture, the pitch and the PLAY button.
-- **Round the page**: a footer with the ways on (the game, itch.io, the source) and the licence of the
-  typefaces; a page of its own for an address with nothing at it (`site/404.html`: a dark world and
+- **Round the page**: a footer with the ways on, each a tile of its own with a pixel picture over its
+  name (PLAY, ITCH.IO, GITHUB; until 1.24.1 three words in a row, alike, that read as a sentence: three
+  ways were made and the tiles chosen), and the licence of the typefaces; a page of its own for an address with nothing at it (`site/404.html`: a dark world and
   the way back); what a link to the site or to the game shows when it is shared (title, a line, the
   picture); the color of the browser round it on a phone. The game's own page says it needs
   JavaScript to a browser that has it off, where it used to be blank.

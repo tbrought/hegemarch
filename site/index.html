@@ -1151,16 +1151,6 @@
         color: var(--dusk);
         text-align: center;
       }
-      footer nav {
-        display: flex;
-        flex-wrap: wrap;
-        justify-content: center;
-        gap: 6px 22px;
-        margin-bottom: 10px;
-        font-family: var(--display);
-        font-size: 10px;
-        letter-spacing: 0.04em;
-      }
       footer a {
         color: var(--mist);
         text-decoration: none;
@@ -1180,6 +1170,54 @@
       footer small a {
         color: var(--dusk);
         padding: 0;
+      }
+      /*
+       * The footer's links: where else Hegemarch is, each a tile of its own, a pixel picture over its
+       * name (1.24.1). They were three words in a row, alike, and read as a sentence, not as three places.
+       */
+      .elsewhere {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: center;
+        gap: 18px;
+        margin: 0 auto 18px;
+      }
+      .elsewhere .tile {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 14px;
+        width: 132px;
+        height: 112px;
+        padding: 0;
+        background: var(--night);
+        text-decoration: none;
+        box-shadow:
+          0 calc(var(--px) * -1) 0 0 var(--slate),
+          0 var(--px) 0 0 var(--slate),
+          calc(var(--px) * -1) 0 0 0 var(--slate),
+          var(--px) 0 0 0 var(--slate);
+      }
+      .elsewhere .tile:hover,
+      .elsewhere .tile:focus-visible {
+        background: var(--indigo);
+        text-decoration: none;
+      }
+      .elsewhere .ico {
+        width: auto;
+        height: 30px;
+        fill: var(--mist);
+      }
+      .elsewhere .ico.go { fill: var(--house); }
+      .elsewhere .tile:hover .ico,
+      .elsewhere .tile:focus-visible .ico { fill: var(--gold); }
+      .elsewhere b {
+        font-family: var(--display);
+        font-size: 11px;
+        font-weight: normal;
+        letter-spacing: 0.04em;
+        color: var(--bone);
       }
       /* The climb of an Ages run: the picture the game's own title screen draws, and the ages under it. */
       .ages {
@@ -1401,10 +1439,10 @@
       </section>
     </main>
     <footer>
-      <nav aria-label="Elsewhere">
-        <a href="play/">PLAY</a>
-        <a href="https://hegemarch.itch.io/hegemarch" rel="noopener">ITCH.IO</a>
-        <a href="https://github.com/tbrought/hegemarch" rel="noopener">SOURCE ON GITHUB</a>
+      <nav class="elsewhere" aria-label="Elsewhere">
+        <a class="tile" href="play/"><svg class="ico go" viewBox="0 0 8 8" width="24" height="24" aria-hidden="true" shape-rendering="crispEdges"><path d="M0 0h1v1h-1zM0 1h1v1h-1zM1 1h1v1h-1zM0 2h1v1h-1zM1 2h1v1h-1zM2 2h1v1h-1zM0 3h1v1h-1zM1 3h1v1h-1zM2 3h1v1h-1zM3 3h1v1h-1zM0 4h1v1h-1zM1 4h1v1h-1zM2 4h1v1h-1zM3 4h1v1h-1zM0 5h1v1h-1zM1 5h1v1h-1zM2 5h1v1h-1zM0 6h1v1h-1zM1 6h1v1h-1zM0 7h1v1h-1z"/></svg><b>PLAY</b></a>
+        <a class="tile" href="https://hegemarch.itch.io/hegemarch" rel="noopener"><svg class="ico" viewBox="0 0 8 8" width="24" height="24" aria-hidden="true" shape-rendering="crispEdges"><path d="M3 0h1v1h-1zM4 0h1v1h-1zM3 1h1v1h-1zM4 1h1v1h-1zM3 2h1v1h-1zM4 2h1v1h-1zM1 3h1v1h-1zM2 3h1v1h-1zM3 3h1v1h-1zM4 3h1v1h-1zM5 3h1v1h-1zM6 3h1v1h-1zM2 4h1v1h-1zM3 4h1v1h-1zM4 4h1v1h-1zM5 4h1v1h-1zM3 5h1v1h-1zM4 5h1v1h-1zM0 6h1v1h-1zM7 6h1v1h-1zM0 7h1v1h-1zM1 7h1v1h-1zM2 7h1v1h-1zM3 7h1v1h-1zM4 7h1v1h-1zM5 7h1v1h-1zM6 7h1v1h-1zM7 7h1v1h-1z"/></svg><b>ITCH.IO</b></a>
+        <a class="tile" href="https://github.com/tbrought/hegemarch" rel="noopener"><svg class="ico" viewBox="0 0 13 7" width="39" height="21" aria-hidden="true" shape-rendering="crispEdges"><path d="M7 0h1v1h-1zM2 1h1v1h-1zM7 1h1v1h-1zM10 1h1v1h-1zM1 2h1v1h-1zM6 2h1v1h-1zM11 2h1v1h-1zM0 3h1v1h-1zM6 3h1v1h-1zM12 3h1v1h-1zM1 4h1v1h-1zM6 4h1v1h-1zM11 4h1v1h-1zM2 5h1v1h-1zM5 5h1v1h-1zM10 5h1v1h-1zM5 6h1v1h-1z"/></svg><b>GITHUB</b></a>
       </nav>
       Hegemarch v{{VERSION}}
       <small>Set in Pixelify Sans and Press Start 2P, under the <a href="fonts/OFL-pixelify-sans.txt">Open</a> <a href="fonts/OFL-press-start-2p.txt">Font License</a>.</small>
