@@ -263,9 +263,9 @@ try {
   check('the game and the download are where the links point', (await fetch(base + 'play/')).ok && (await fetch(base + 'hegemarch.zip')).ok);
   check('the footer shows the version', /Hegemarch v\d+\.\d+\.\d+/.test(await page.textContent('footer')), await page.textContent('footer'));
   const foot = await page.$$eval('footer .elsewhere .tile', (els) => els.map((e) => ({ href: e.getAttribute('href'), name: e.textContent.trim(), w: Math.round(e.getBoundingClientRect().width), pic: !!e.querySelector('svg') })));
-  check('the footer leads to the game, itch.io and the source', ['play/', 'https://hegemarch.itch.io/hegemarch', 'https://github.com/tbrought/hegemarch'].every((h) => foot.some((f) => f.href === h)), JSON.stringify(foot));
-  // (Each a tile of its own, a picture over its name, all one size: three places, not a sentence. 1.24.1.)
-  check('each is a tile of its own, with its picture and its name', foot.length === 3 && foot.every((f) => f.pic && f.name && f.w === foot[0].w), JSON.stringify(foot));
+  // (The places off the site, by their logos; playing and the download are the page's own buttons. 1.24.2.)
+  check('the footer leads to itch.io and the source, and nowhere on the page itself', foot.length === 2 && foot[0].href === 'https://hegemarch.itch.io/hegemarch' && foot[1].href === 'https://github.com/tbrought/hegemarch' && foot[0].name === 'itch.io' && foot[1].name === 'GitHub', JSON.stringify(foot));
+  check('each is a tile of its own, its logo over its name, both one size', foot.every((f) => f.pic && f.w === foot[0].w), JSON.stringify(foot));
   // The page carries its own typefaces: it asks nothing of another site.
   const asked = await page.evaluate(async () => {
     await document.fonts.ready;
