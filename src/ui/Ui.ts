@@ -87,6 +87,10 @@ export interface ButtonOpts {
   /** Draw a pulsing highlight (attention). */
   pulse?: boolean;
   align?: 'left' | 'center';
+  /** Its frame (and its pulse) in this colour, not a primary button's gold: a house's countdown in that house's colour. */
+  border?: string;
+  /** Draws its words itself, in place of plain text: a house it names in that house's colour (ui/news.ts). */
+  drawLabel?: (g: Ctx, s: string, x: number, y: number, color: string, font: FontId) => void;
 }
 
 export class Ui {
@@ -303,13 +307,14 @@ export class Ui {
       border = o.danger ? PAL.red : PAL.dusk;
     }
     if (pressed) fill = PAL.void;
+    if (o.border) border = o.border;
     if (o.disabled) {
       fill = PAL.night;
       border = PAL.indigo;
       fg = PAL.slate;
     }
     box(g, x, y, w, h, fill, border);
-    if (o.pulse && !o.disabled && Math.floor(this.time * 3) % 2 === 0) box(g, x - 1, y - 1, w + 2, h + 2, null, PAL.gold);
+    if (o.pulse && !o.disabled && Math.floor(this.time * 3) % 2 === 0) box(g, x - 1, y - 1, w + 2, h + 2, null, o.border ?? PAL.gold);
     const off = pressed ? 1 : 0;
     const ch = capHeight(font);
     const ty = y + Math.floor((h - ch) / 2) + off;
@@ -322,7 +327,8 @@ export class Ui {
     const centered = (o.align ?? (o.icon ? 'left' : 'center')) === 'center' && !o.icon && !o.right;
     const avail = centered ? w - 4 : w - (tx - x) - 4 - rightW;
     const shown = fit(label, avail, font);
-    if (centered) textCenter(g, shown, x + w / 2 + off, ty, fg, font);
+    if (o.drawLabel) o.drawLabel(g, shown, centered ? Math.round(x + w / 2 + off - textWidth(shown, font) / 2) : tx, ty, fg, font);
+    else if (centered) textCenter(g, shown, x + w / 2 + off, ty, fg, font);
     else text(g, shown, tx, ty, fg, font);
     if (o.right) text(g, o.right, x + w - rightW + off, ty, o.disabled ? PAL.slate : (o.rightColor ?? UI.accent), font);
     this.add({ id, x, y, w, h, onClick, onRight: o.onRight, tip: o.tip, tipTitle: o.tipTitle, tipColor: o.tipColor, terms: o.terms, scan: o.scan, disabled: o.disabled });

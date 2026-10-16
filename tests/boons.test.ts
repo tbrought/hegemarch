@@ -208,3 +208,14 @@ describe('Embers from kills (the third playtest)', () => {
     expect(modDelta(plain.computeMods(plain.player), plain.computeMods(plain.player, ['salvage'])).find((x) => x.key === 'killEmbers')?.novel).toBe(true);
   });
 });
+
+describe('Star Charts (a playtest of 1.23)', () => {
+  it('is not offered once the whole sector is charted: it would be 60 Lore and nothing', () => {
+    const g = mk();
+    const p = g.player;
+    expect(g.cardPool(p).some((c) => c.id === 'starCharts')).toBe(true);
+    g.exploreAll(p);
+    expect(g.cardPool(p).some((c) => c.id === 'starCharts')).toBe(false);
+    expect(g.grantRandomCard(p, ['rare'], (c) => c.id === 'starCharts')).toBeNull();
+  });
+});

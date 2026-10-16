@@ -140,6 +140,8 @@ export const CARDS: CardDef[] = [
   { id: 'reverse', name: 'Reverse Engineering', rarity: 'rare', cat: 'lore', max: 1, desc: 'Gain [10 Lore] for every enemy ship you destroy.', mods: (m) => flag(m, 'reverse', 10) },
   {
     id: 'starCharts', name: 'Star Charts', rarity: 'rare', cat: 'lore', max: 1, desc: 'Chart [the whole sector] right now, and gain [60 Lore].',
+    // (Not once the sector is charted: it would be 60 Lore and nothing. 1.23.6.)
+    when: (g, f) => g.nodes.some((_, i) => !f.explored[i]),
     onPick: (g, f) => {
       g.exploreAll(f);
       g.addLore(f, 60);

@@ -4,6 +4,7 @@ import { HEIRS } from '../src/game/data/heirs';
 import { ECON } from '../src/game/data/worlds';
 import { Game } from '../src/game/Game';
 import { mk, run, snapshot } from './helpers';
+import { difficultySummary, difficultyText } from '../src/ui/difficulty';
 
 describe('game creation', () => {
   for (const h of HEIRS) {
@@ -75,5 +76,28 @@ describe('saving changes nothing', () => {
     run(again, 5.2);
     for (const f of g.empires()) expect(again.nodes[f.capital].maxHp).toBe(g.nodes[f.capital].maxHp);
     expect(g.wallsOf(g.nodes[g.player.capital])).toBeGreaterThan(0.45);
+  });
+});
+
+describe('the difficulties, said plainly (a playtest of 1.23: "Brutal cheats")', () => {
+  it('a rival house on Brutal starts with 200 Embers and a Guardian more, and 10% more hull, than on Normal', () => {
+    const normal = mk({ difficulty: 1 });
+    const brutal = mk({ difficulty: 3 });
+    const rival = (g: Game) => g.factions.find((f) => f.kind === 'empire' && !f.isPlayer && f.heir === normal.factions[1].heir) ?? g.factions[1];
+    const a = rival(normal);
+    const b = rival(brutal);
+    expect(b.embers - a.embers).toBe(200);
+    const guardians = (g: Game, fid: number) => g.unitList.filter((u) => u.owner === fid && u.type === 'guardian').length;
+    expect(guardians(brutal, b.id) - guardians(normal, a.id)).toBe(1);
+    expect(b.mods.hull - a.mods.hull).toBeCloseTo(0.1, 9);
+  });
+
+  it('what each says is what it does', () => {
+    expect(difficultyText(1)).toBe('A fair fight: the rival houses get no bonus.');
+    expect(difficultySummary(1)).toBe('A fair fight: rivals have no bonus.');
+    const brutal = difficultyText(3);
+    for (const said of ['earn 40% more Embers', 'start with 200 Embers and a Guardian more', 'have 10% more hull on every ship', 'from 9:00', 'Corsair raids are 50% bigger', '×1.8 Legacy']) expect(brutal).toContain(said);
+    expect(difficultySummary(0)).toContain('earn 25% less');
+    expect(difficultySummary(3)).toBe('Rivals earn 40% more, start richer, have 10% more hull and attack sooner. Legacy ×1.8.');
   });
 });

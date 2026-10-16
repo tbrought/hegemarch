@@ -12,6 +12,7 @@ import type { Difficulty, MapSize } from '../../game/types';
 import { hasRun, saveProfile, todayKey } from '../../meta/profile';
 import { fmtTime } from '../../render/Renderer';
 import { esc } from '../../ui/format';
+import { difficultySummary, difficultyText } from '../../ui/difficulty';
 import { glossHtml } from '../../ui/glossary';
 import { startingFleet } from '../houseArt';
 import type { App } from '../App';
@@ -67,7 +68,9 @@ export function showSetup(app: App) {
         ['medium', 'MEDIUM', '4 houses · about 40 worlds · 35 to 50 minutes'],
         ['large', 'LARGE', '6 houses · about 60 worlds · 45 to 70 minutes'],
       ];
-  const diffHelp = ['Rivals earn less and attack late. Good for learning.', 'A fair fight.', 'Richer, faster, bolder rivals.', 'Merciless.'];
+  // (What each one gives the rivals, from the numbers the game plays by: a line under the buttons, all of it on a button. Until 1.23.6 Brutal said "Merciless." and nothing more.)
+  const diffHelp = DIFFICULTY_NAMES.map((_, i) => difficultySummary(i));
+  const diffTip = DIFFICULTY_NAMES.map((_, i) => difficultyText(i));
   const daily = st.daily;
   // A challenge taken up from a link: its sector is fixed (that is the challenge); the house is the player's to choose.
   const ch = app.challenge;
@@ -96,7 +99,7 @@ export function showSetup(app: App) {
       ${daily || ch ? '' : `<div class="opts">
         <div class="opt px-box"><h4>${ages ? 'SIZE' : 'SECTOR'}</h4><div class="row">${sizes.map(([k, n, d]) => `<button class="small ${st.size === k ? 'active' : ''}" data-sa="size:${k}" data-tip="${esc(d)}">${n}</button>`).join('')}</div>
           <div class="help">${sizes.find((x) => x[0] === st.size)![2]}</div></div>
-        <div class="opt px-box"><h4>DIFFICULTY</h4><div class="row">${DIFFICULTY_NAMES.map((n, i) => `<button class="small ${st.difficulty === i ? 'active' : ''} ${i > p.maxDifficulty ? 'disabled' : ''}" data-sa="diff:${i}" data-tip="${esc(i > p.maxDifficulty ? `Locked: win a run on ${DIFFICULTY_NAMES[i - 1]} to unlock it.` : diffHelp[i])}">${n.toUpperCase()}${i > p.maxDifficulty ? ' ×' : ''}</button>`).join('')}</div>
+        <div class="opt px-box"><h4>DIFFICULTY</h4><div class="row">${DIFFICULTY_NAMES.map((n, i) => `<button class="small ${st.difficulty === i ? 'active' : ''} ${i > p.maxDifficulty ? 'disabled' : ''}" data-sa="diff:${i}" data-tip="${esc(i > p.maxDifficulty ? `Locked: win a run on ${DIFFICULTY_NAMES[i - 1]} to unlock it. ${diffTip[i]}` : diffTip[i])}">${n.toUpperCase()}${i > p.maxDifficulty ? ' ×' : ''}</button>`).join('')}</div>
           <div class="help">${diffHelp[st.difficulty]}${p.maxDifficulty < 3 ? ' Win to unlock the next one.' : ''}</div></div>
         <div class="opt px-box"><h4>SEED</h4><div class="row"><input type="text" id="seed-input" placeholder="random" value="${esc(st.seed)}"><button class="small" data-sa="reseed" data-tip="Pick a random seed. The same seed always builds the same sector.">ROLL</button></div>
           <div class="help">Share a seed to replay the same sector.</div></div>

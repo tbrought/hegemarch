@@ -262,3 +262,34 @@ describe("the Whispering Rift takes a ship that can be offered", () => {
     expect(captain.why!(g, p, ctx)).toMatch(/^Your Ark is lost/);
   });
 });
+
+describe('the Merchant Guild (a playtest of 1.23)', () => {
+  const merchant = EVENT_BY_ID.merchant;
+  const ctx = { node: -1, unit: -1 };
+  it('its Rare Boon is never Star Charts, the maps it sells as the other choice', () => {
+    for (let seed = 1; seed <= 60; seed++) {
+      const g = mk({ seed });
+      const f = g.player;
+      f.embers = 5000;
+      merchant.choices[0].run(g, f, ctx);
+      expect(f.cards, `seed ${seed}`).not.toContain('starCharts');
+      expect(f.cards.length, `seed ${seed}`).toBe(1);
+    }
+  });
+
+  it('its maps are not sold to a house that has charted the whole sector, and it says why', () => {
+    const g = mk();
+    const f = g.player;
+    f.embers = 5000;
+    const maps = merchant.choices[1];
+    expect(maps.cond!(g, f, ctx)).toBe(true);
+    g.exploreAll(f);
+    expect(maps.cond!(g, f, ctx)).toBe(false);
+    expect(maps.why!(g, f, ctx)).toBe('Your house has charted the whole sector already.');
+    // (Too poor, and not charted: the usual words.)
+    const h = mk();
+    h.player.embers = 0;
+    expect(maps.cond!(h, h.player, ctx)).toBe(false);
+    expect(maps.why!(h, h.player, ctx)).toBeNull();
+  });
+});

@@ -4,6 +4,7 @@
  */
 
 import { PERK_EMBERS, PERK_HEARTH, PERK_HULL, PERK_LORE, PERK_WALLS } from '../meta/perks';
+import { AI_HULL } from './constants';
 import { CARD_BY_ID } from './data/cards';
 import { HEIR_BY_ID } from './data/heirs';
 import { RELIC_BY_ID } from './data/relics';
@@ -52,8 +53,8 @@ export function modSources(g: Game, f: Faction, extraCards: string[] = []): { la
           m.luck += perks.luck ?? 0;
         },
       });
-    } else if (g.config.difficulty >= 3) {
-      out.push({ label: 'Difficulty', apply: (m) => (m.hull += 0.1) });
+    } else if (AI_HULL[g.config.difficulty]) {
+      out.push({ label: 'Difficulty', apply: (m) => (m.hull += AI_HULL[g.config.difficulty]) });
     }
   } else if (f.kind === 'pirate' || f.kind === 'crisis') {
     const d = g.config.difficulty - 1;

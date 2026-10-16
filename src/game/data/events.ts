@@ -33,6 +33,8 @@ export interface EventDef {
 
 const leave = (text = 'You leave it undisturbed.'): EventChoice => ({ label: 'Move on', hint: 'Nothing happens.', passive: true, run: () => text });
 const afford = (n: number) => (_g: Game, f: Faction) => f.embers >= n;
+/** Has the house charted the whole sector? */
+const charted = (g: Game, f: Faction) => g.nodes.every((_, i) => !!f.explored[i]);
 
 /**
  * The ship an offering takes: the one that found the place, unless that is the Ark, which is never
@@ -312,13 +314,15 @@ export const EVENTS: EventDef[] = [
         cond: afford(240),
         run: (g, f) => {
           g.addEmbers(f, -240);
-          const c = g.grantRandomCard(f, ['rare'], (cd) => !cd.pact);
+          // (Never Star Charts: the guild sells its maps as the other choice. Until 1.23.6 the one could be the other.)
+          const c = g.grantRandomCard(f, ['rare'], (cd) => !cd.pact && cd.id !== 'starCharts');
           return c ? `You acquire ${c.name}.` : 'The guild had nothing worth buying after all.';
         },
       },
       {
         label: 'Buy their star maps', hint: '[!Costs 100 Embers]. Chart [the whole sector].',
-        cond: afford(100),
+        cond: (g, f) => afford(100)(g, f) && !charted(g, f),
+        why: (g, f) => (charted(g, f) ? 'Your house has charted the whole sector already.' : null),
         run: (g, f) => (g.addEmbers(f, -100), g.exploreAll(f), 'The guild’s maps reveal every star in the sector.'),
       },
       leave('The barge departs.'),

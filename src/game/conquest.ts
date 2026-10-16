@@ -9,6 +9,7 @@ import type { DmgType, GNode, VictoryId } from './types';
 import type { Game } from './Game';
 import { isHearth, recomputeHangar } from './worldStats';
 import { possessive } from './util';
+import { WORLD_FALLING } from './constants';
 
 /** Damage to a world. `spare`: it can crack the world but not take it (a Martyr blast): its hull stops at 1. */
 export function damagePlanet(g: Game, n: GNode, amount: number, type: DmgType, byFaction: number, spare = false) {
@@ -18,6 +19,8 @@ export function damagePlanet(g: Game, n: GNode, amount: number, type: DmgType, b
   // A world a Bastion protects takes less (`FIELD_GUARD`), for as long as that Bastion stands.
   dmg *= 1 - g.guardOf(n);
   const owner = g.factions[n.owner];
+  // (A new siege: the world may be told to be falling again.)
+  if (n.lastHit > 25) delete n.falling;
   if (n.lastHit > 25 && byFaction >= 0) {
     const who = g.factions[byFaction];
     const hearth = isHearth(n);
@@ -50,9 +53,18 @@ export function damagePlanet(g: Game, n: GNode, amount: number, type: DmgType, b
     g.notify(owner.id, `LAST STAND! The defenders of ${n.name} rise to arms.`, 'alert', n.id, false, { title: 'LAST STAND', sub: `The defenders of ${n.name} rise to arms.`, tone: 'red' });
   }
   if (n.hp <= 0 && spare) n.hp = 1;
-  else if (n.hp <= 0) {
+  if (n.hp <= 0) {
     n.hp = 0;
     g.planetDefeated(n, byFaction);
+    return;
+  }
+  // A world of the player's near the end of its hull is told, once a siege, with where it is (1.23.6). The
+  // player was told only when the siege began, and a playtester lost a Bastion without seeing it go. Not
+  // the Hearth, whose Last Stand says it.
+  if (n.owner === g.playerId && !g.config.autoplay && !isHearth(n) && !n.falling && n.hp < n.maxHp * WORLD_FALLING) {
+    n.falling = 1;
+    const who = byFaction >= 0 ? g.factions[byFaction] : null;
+    g.notify(n.owner, `${n.name} is falling: ${Math.max(1, Math.round((n.hp / n.maxHp) * 100))}% hull left${who && who.kind === 'empire' ? `, against ${who.name}` : ''}!`, 'alert', n.id);
   }
 }
 
@@ -115,6 +127,7 @@ export function planetDefeated(g: Game, n: GNode, byFaction: number) {
   }
   destroyDefenses(g, n, prev);
   refundQueues(g, n);
+  delete n.falling;
   n.owner = byFaction;
   n.capitalOf = -1;
   // A world that is taken is sacked: it loses a level, and starts again from a low Glow. Not by the
@@ -147,6 +160,7 @@ export function planetDefeated(g: Game, n: GNode, byFaction: number) {
 
 /** Return a world to the dark. */
 export function darken(g: Game, n: GNode) {
+  delete n.falling;
   n.owner = -1;
   n.capitalOf = -1;
   n.level = 1;

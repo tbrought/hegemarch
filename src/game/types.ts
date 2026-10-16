@@ -217,6 +217,8 @@ export interface GNode {
   /** Something claimable by keeping ships here (relic / derelict). */
   claim: null | { what: 'relic' | 'derelict'; f: number; t: number };
   lastStand: boolean;
+  /** The player has been told this world is falling, this siege (conquest.ts). Not there otherwise. */
+  falling?: 1;
   militiaCd: number;
   /**
    * A star that erupts: after `warn` seconds it burns for `t` seconds, and what is there takes `dps`. A

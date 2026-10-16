@@ -40,6 +40,12 @@ export const SAVE_VERSION = 4;
 export const DIFFICULTY_NAMES = ['Easy', 'Normal', 'Hard', 'Brutal'];
 /** AI income multiplier per difficulty. */
 export const AI_INCOME = [0.75, 1.0, 1.2, 1.4];
+/** Embers and Guardians a rival house starts with beyond its house's own, and hull on all its ships, per difficulty (ui/difficulty.ts says them). */
+export const AI_START_EMBERS = [0, 0, 100, 200];
+export const AI_START_GUARDIANS = [0, 0, 0, 1];
+export const AI_HULL = [0, 0, 0, 0.1];
+/** A world of the player's below this share of its hull is told to be falling, once a siege (conquest.ts). */
+export const WORLD_FALLING = 0.3;
 /** Seconds before the AI launches its first attack, per difficulty. */
 export const AI_FIRST_ATTACK = [960, 720, 630, 540];
 /** Warlord houses rush this early on Hard and Brutal (0 = never rush). */

@@ -4,6 +4,7 @@
  */
 
 import { DIFFICULTY_NAMES } from '../../game/constants';
+import { difficultyText } from '../difficulty';
 import { AMBITION_BY_ID } from '../../game/data/ambitions';
 import type { OfferOdds } from '../../game/boons';
 import { BLUEPRINT_BY, CARD_BY_ID, CARDS, CAT_LABEL, LEGENDARY_BY, RARITY_COLOR, type CardCat } from '../../game/data/cards';
@@ -188,6 +189,15 @@ function runTab(modals: Modals, g: Ctx, cx: number, cy: number, cw: number, p: F
   for (const [k, v] of rows) {
     text(g, k, cx, ly, PAL.dusk);
     text(g, v, cx + cw - textWidth(v), ly, PAL.bone);
+    ly += 10;
+  }
+  // What the difficulty gives the rival houses, said plainly (ui/difficulty.ts).
+  const d = modals.g.config.difficulty;
+  ly += 6;
+  text(g, DIFFICULTY_NAMES[d].toUpperCase(), cx, ly, PAL.gold, 'tiny');
+  ly += 9;
+  for (const l of wrap(difficultyText(d), cw, 'main')) {
+    text(g, l, cx, ly, PAL.mist);
     ly += 10;
   }
 }

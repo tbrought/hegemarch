@@ -8,7 +8,7 @@
  */
 import type { Game } from '../game/Game';
 import type { Faction, Note } from '../game/types';
-import { text } from '../render/font';
+import { text, type FontId } from '../render/font';
 import { PAL, shade } from '../render/palette';
 import type { Ctx } from '../render/pixel';
 
@@ -44,25 +44,28 @@ export function newsColor(g: Game, n: { text: string; kind: Note['kind'] }): str
 
 /**
  * Draw a line of news in its colour, every house it names in that house's own (shaded with the line when
- * it is fading). Returns the x after it.
+ * it is fading). `caseless`: names are found in capitals too (a countdown: "SOLAR CONCORD · RELIC HUNT").
+ * Returns the x after it.
  */
-export function drawNews(g: Ctx, game: Game, line: string, x: number, y: number, color: string, faded = false): number {
+export function drawNews(g: Ctx, game: Game, line: string, x: number, y: number, color: string, faded = false, font: FontId = 'main', caseless = false): number {
   const names = namesOf(game);
+  const hay = caseless ? line.toUpperCase() : line;
+  const key = (name: string) => (caseless ? name.toUpperCase() : name);
   let at = 0;
   let from = 0;
   let px = x;
   const flush = (to: number) => {
-    if (to > from) px = text(g, line.slice(from, to), px, y, color);
+    if (to > from) px = text(g, line.slice(from, to), px, y, color, font);
   };
   while (at < line.length) {
     const prev = at > 0 ? line[at - 1] : ' ';
-    const hit = /[A-Za-z]/.test(prev) ? null : names.find((n) => line.startsWith(n.name, at) && !/[A-Za-z]/.test(line[at + n.name.length] ?? ' '));
+    const hit = /[A-Za-z]/.test(prev) ? null : names.find((n) => hay.startsWith(key(n.name), at) && !/[A-Za-z]/.test(line[at + n.name.length] ?? ' '));
     if (!hit) {
       at++;
       continue;
     }
     flush(at);
-    px = text(g, hit.name, px, y, faded ? shade(hit.f.color) : hit.f.color);
+    px = text(g, line.slice(at, at + hit.name.length), px, y, faded ? shade(hit.f.color) : hit.f.color, font);
     at += hit.name.length;
     from = at;
   }

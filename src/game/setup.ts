@@ -5,7 +5,7 @@
  */
 
 import { makeAIState } from './ai/ai';
-import { AI_INCOME, CRISIS_AWAKEN, CRISIS_OFFSET, PIRATE_FIRST_RAID } from './constants';
+import { AI_INCOME, AI_START_EMBERS, AI_START_GUARDIANS, CRISIS_AWAKEN, CRISIS_OFFSET, PIRATE_FIRST_RAID } from './constants';
 import { AMBITIONS } from './data/ambitions';
 import { SPACE } from './data/eras';
 import { ANOMALY_EVENTS, OFFER_EVENTS } from './data/events';
@@ -147,11 +147,8 @@ function firstFleets(g: Game, nEmp: number): void {
       extraGuardians = perks.escort ?? 0;
     } else {
       const d = config.difficulty;
-      if (d >= 2) f.embers += 100;
-      if (d >= 3) {
-        f.embers += 100;
-        extraGuardians = 1;
-      }
+      f.embers += AI_START_EMBERS[d];
+      extraGuardians = AI_START_GUARDIANS[d];
     }
     const cap = f.capital;
     // On the cradle there is no Ark yet (it is the last thing a house builds there), and no siege units in the Stone Age.

@@ -317,6 +317,12 @@ the rest were dealt three to five choices before their question.
   nothing). Rival houses always have every Boon: the simulations and the golden traces of earlier runs
   came out byte for byte the same.
 
+**Star Charts and the Merchant Guild** (1.23.6). Star Charts (chart the whole sector and 60 Lore) is
+not offered once the house has charted the whole sector, by a Boon choice or anything else; the Merchant
+Guild's Rare Boon is never Star Charts, since its other choice is its maps, and its maps are not sold
+to a house that has charted everything ("Your house has charted the whole sector already."). A
+playtester bought a Rare Boon from the guild and got the maps it was selling beside it.
+
 **Martyr Cores** (1.23.1, `martyrBlast` in `unitLife.ts`). A destroyed ship explodes for 30% of its
 hull against the enemy ships around it and, since 1.23.1, against the world it dies at if that world
 is an enemy's. A blast cracks a world and never takes it (its hull stops at 1: ships must take it), so a
@@ -1037,6 +1043,26 @@ Measured with `npm run simulate` and `npm run balance:passive`. Speeds are ½×,
   it was violet). Every kind's colour is also some house's (teal the Wayfarer Clans', red Vael's, ember
   the Ashen Remnant's, violet the Lyceum's), and a playtester playing the Lyceum read a rival's news in
   his own colour and took it for his.
+- **A countdown in its house's colour** (1.23.6, `drawIndicators` in `ui/hud/overlays.ts`). A Destiny's
+  or a Starfall's clock at the top right has its frame in the colour of the house it belongs to, the
+  house's name in it in that colour, and its other words in white ("WAYFARER CLANS · RELIC HUNT IN
+  0:05"; the player's own, "EMBER HOARD · YOURS IN 1:10", in the player's colour). Until 1.23.6 a rival's
+  clock was all in red and the player's in gold: red is Vael Imperium's colour and gold the Solar
+  Concord's, and a playtester playing Vael read "SOLAR CONCORD · RELIC HUNT" in his own red.
+- **A world falling is told** (1.23.6, `damagePlanet` in `game/conquest.ts`). Below 30% of its hull
+  (`WORLD_FALLING`) a world of the player's says so, once a siege, at the top and in the log, and a click
+  on the line goes there: "Teros IV is falling: 22% hull left, against Lyceum Collective!" (not the
+  Hearth: its Last Stand says it). Until then the player was told when a siege began and no more, and a
+  playtester lost a Bastion without seeing it go. (A Bastion at level III with its full hull, alone,
+  destroys nine Lyceum ships on Normal or Brutal; a Forge falls to them in two and a half minutes. His
+  had been worn down before.)
+- **What a difficulty gives the rivals is said** (1.23.6, `ui/difficulty.ts`). Under the difficulty
+  buttons, in a line ("Rivals earn 40% more, start richer, have 10% more hull and attack sooner. Legacy
+  ×1.8."); in full on each button and on the Status screen (THIS RUN): the rivals' Embers, their start,
+  their hull, Legendary Boons, how often they make plans, when and how strong they attack, the
+  Corsairs, the Maw and the Legacy, all worked out from the numbers the game plays by
+  (`AI_INCOME`, `AI_START_EMBERS`, `AI_START_GUARDIANS`, `AI_HULL` and the rest in `game/constants.ts`).
+  Until 1.23.6 Brutal said "Merciless." and no more, and a playtester found its rivals cheated.
 - **Feedback**: the Ember counter rolls toward its value and pops "+N"/"−N" for lump gains and
   spends, and a lump that comes in turns the count white for half a second (`hud/emberCount.ts`).
   (Until 1.18 it was white whenever the figure shown was 5 or more behind the real one. A steady

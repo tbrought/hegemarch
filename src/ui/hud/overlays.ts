@@ -75,8 +75,13 @@ export function drawIndicators(hud: Hud) {
     const b = hud.bannerRect;
     if (b.w > 0 && x < b.x + b.w + 2 && y < b.y + b.h + 2) y = b.y + b.h + 2;
     const seen = c.node >= 0 && hud.s.explored(c.node);
+    // (Whose it is, in that house's colour: its frame, and its name in the words, the rest in a colour no
+    // house wears. Until 1.23.6 a rival's clock was all in red, Vael Imperium's colour, and the player's own
+    // in gold, the Solar Concord's: a playtester playing Vael read a rival's countdown as his own.)
+    const whose = hud.g.factions[c.fid]?.color ?? PAL.bone;
     hud.ui.button(g, c.id, x, y, w, 11, c.text, () => seen && hud.s.focusNode(c.node), {
-      font: 'tiny', color: c.mine ? PAL.gold : PAL.red, primary: !c.mine, pulse: c.left < 30, tip: `${c.tip}${seen ? ' Click to look.' : ''}`,
+      font: 'tiny', color: PAL.bone, border: whose, primary: !c.mine, pulse: c.left < 30, tip: `${c.tip}${seen ? ' Click to look.' : ''}`,
+      drawLabel: (gg, s, lx, ly, col, font) => drawNews(gg, hud.g, s, lx, ly, col, false, font, true),
     });
     y += 13;
   }

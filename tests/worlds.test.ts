@@ -273,3 +273,52 @@ describe('a Forge that suits its world builds cheaper (the third playtest)', () 
     expect(5000 - p.embers).toBe(g.shipCost(p, 'breaker', fit));
   });
 });
+
+describe('a world of the player\'s falling is told (a playtest of 1.23)', () => {
+  const falling = (g: ReturnType<typeof mk>) => g.notes.filter((n) => / is falling: \d+% hull left/.test(n.text));
+  it('once a siege, below 30% of its hull, with where it is and who is taking it; never the Hearth', () => {
+    const g = mk();
+    for (const f of g.factions) f.ai = null;
+    const p = g.player;
+    const r = g.factions[1];
+    const n = darkWorld(g);
+    n.owner = p.id;
+    g.refreshWorld(n);
+    n.sh = 0;
+    n.hp = n.maxHp;
+    // (A share of its hull: siege weapons hit worlds twice as hard, DMG_TABLE.)
+    const hit = (share: number) => g.damagePlanet(n, (n.maxHp * share) / 2, 'siege', r.id);
+    hit(0.5);
+    expect(falling(g).length).toBe(0);
+    hit(0.25);
+    expect(n.owner).toBe(p.id);
+    expect(falling(g).length).toBe(1);
+    expect(falling(g)[0].text).toMatch(new RegExp(`^${n.name} is falling: \\d+% hull left, against ${r.name}!$`));
+    expect(falling(g)[0].node).toBe(n.id);
+    // (Once a siege: more hits say nothing more.)
+    hit(0.05);
+    expect(falling(g).length).toBe(1);
+    // A new siege, after a lull, may tell it again.
+    n.lastHit = 30;
+    g.damagePlanet(n, 1, 'siege', r.id);
+    expect(falling(g).length).toBe(2);
+    // The Hearth has its Last Stand instead.
+    const home = g.nodes[p.capital];
+    home.sh = 0;
+    g.damagePlanet(home, (home.hp * 0.8) / 2, 'siege', r.id);
+    expect(home.hp).toBeLessThan(home.maxHp * 0.3);
+    expect(falling(g).some((x) => x.node === home.id)).toBe(false);
+  });
+
+  it('only the player is told, and a game the AI plays alone keeps no mark of it', () => {
+    const g = mk({ autoplay: true });
+    const r = g.factions[1];
+    const n = darkWorld(g);
+    n.owner = g.player.id;
+    g.refreshWorld(n);
+    n.sh = 0;
+    g.damagePlanet(n, (n.maxHp * 0.8) / 2, 'siege', r.id);
+    expect(n.hp).toBeLessThan(n.maxHp * 0.3);
+    expect(n.falling).toBeUndefined();
+  });
+});

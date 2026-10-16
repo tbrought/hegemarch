@@ -224,16 +224,27 @@ export function drawAges(hud: Hud) {
  * holding the relics, holding the hoard, charging the Gate. Each is a countdown on screen, the
  * player's own and, more to the point, a rival's that has to be broken in time.
  */
-export function destinyClocks(hud: Hud): { id: string; left: number; mine: boolean; text: string; tip: string; node: number }[] {
+/** A Destiny's or a Starfall's countdown, in the column at the top right: whose (`fid`), how long, what it says. */
+export interface Clock {
+  id: string;
+  fid: number;
+  left: number;
+  mine: boolean;
+  text: string;
+  tip: string;
+  node: number;
+}
+
+export function destinyClocks(hud: Hud): Clock[] {
   const g = hud.g;
-  const out: { id: string; left: number; mine: boolean; text: string; tip: string; node: number }[] = [];
+  const out: Clock[] = [];
   const has = (v: VictoryId) => g.victories.includes(v);
   for (const f of g.aliveEmpires()) {
     const mine = f.id === g.playerId;
     const add = (v: VictoryId, left: number, own: string, rival: string, node: number) => {
       const name = VICTORIES[v].name.toUpperCase();
       out.push({
-        id: `clock-${f.id}-${v}`, left: Math.max(0, left), mine, node,
+        id: `clock-${f.id}-${v}`, fid: f.id, left: Math.max(0, left), mine, node,
         text: mine ? `${name} · YOURS IN ${fmtTime(Math.max(0, left))}` : `${g.shortName(f).toUpperCase()} · ${name} IN ${fmtTime(Math.max(0, left))}`,
         tip: mine ? own : `${f.name} win by ${VICTORIES[v].name} when this runs out. ${rival}`,
       });
@@ -251,7 +262,7 @@ export function destinyClocks(hud: Hud): { id: string; left: number; mine: boole
     const mine = d.owner === g.playerId;
     const star = g.nodes[d.node];
     out.push({
-      id: `clock-starfall-${d.id}`, left: d.fuse!, mine, node: star.id,
+      id: `clock-starfall-${d.id}`, fid: d.owner, left: d.fuse!, mine, node: star.id,
       text: mine ? `STARFALL · ${star.name.toUpperCase()} ERUPTS IN ${fmtTime(d.fuse!)}` : `${g.shortName(f).toUpperCase()} · STARFALL AT ${star.name.toUpperCase()} IN ${fmtTime(d.fuse!)}`,
       tip: mine
         ? `Your Starfall at ${star.name}. Keep it alive until this runs out, and have your ships out of that system by then.`
