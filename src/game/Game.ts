@@ -112,6 +112,16 @@ export class Game {
   promptId = 1;
   /** Client-side state saved with the run (tutorial step, revealed HUD parts). Never read by the simulation. */
   ui: Record<string, number> = {};
+  /**
+   * A Daily run's orders, kept as the player gives them, so that the board can play the run again and
+   * read its result for itself (replay.ts): the tick each was given after, the order, its arguments. The
+   * player's orders come between ticks (the rival houses give theirs within one). Not there otherwise.
+   */
+  orders?: Order[];
+  /** Within a tick: an order given now is the simulation's own, not the player's. */
+  stepping = false;
+  /** Within an order being kept: one it gives in its turn is part of it. */
+  ordering = 0;
 
   // ---- derived / transient ----
   pathDist!: Float64Array;
@@ -142,6 +152,8 @@ export class Game {
   static create(config: GameConfig): Game {
     const g = new Game();
     setupGame(g, config);
+    // (A Daily keeps its orders from the first: its board plays them again.)
+    if (config.daily) g.orders = [];
     return g;
   }
 
@@ -548,6 +560,7 @@ export class Game {
 
   step() {
     if (this.outcome || this.ascended) return;
+    this.stepping = true;
     const dt = TICK;
     this.time += dt;
     this.tick++;
@@ -586,6 +599,7 @@ export class Game {
     if (this.tick % 20 === 0 || this.unitList.length > 4000) this.cleanup();
     this.fieldCache = null;
     this.fireCache = null;
+    this.stepping = false;
   }
 
   flushDeferred() {
@@ -608,3 +622,44 @@ export class Game {
 }
 
 export type { AIState };
+
+/** An order of the player's, as a Daily run keeps it: the tick it was given after, its name, its arguments (null for nothing). */
+export type Order = [tick: number, name: string, args: unknown[]];
+
+/** The orders a player gives: every command, an offer of Boons dealt, an outcome put away. */
+export const ORDER_NAMES = [
+  'cmdChooseCard', 'cmdReroll', 'cmdSkipDraft', 'cmdGoal', 'cmdChooseAbility', 'cmdResolvePrompt', 'dismissPrompt', 'ensureOffer',
+  'cmdMove', 'cmdAttack', 'cmdKindle', 'cmdSendSeed', 'cmdStop', 'cmdRetreat', 'cmdExplore', 'cmdSetRally', 'cmdArm', 'cmdQueueShip',
+  'cmdUpgrade', 'cmdSetRole', 'cmdQueueStarbase', 'cmdQueueGate', 'cmdQueueStarfall', 'cmdBuyBay', 'cmdRebuildArk', 'cmdCancel',
+  'cmdAdvance', 'cmdCancelAdvance',
+] as const;
+
+/** An argument as it is kept: nothing and a function as null, a list as a copy. */
+const keep = (a: unknown): unknown => (a === undefined || typeof a === 'function' ? null : Array.isArray(a) ? [...a] : a);
+/** An argument as an order kept is given again (replay.ts): null as nothing. */
+const kept = (a: unknown): unknown => (a === null || typeof a === 'function' ? undefined : a);
+
+// Every order the player gives, kept when the run keeps them: given between ticks, not within another.
+// (An offer only when one is dealt: the Boons screen asks for it every frame.) A kept order is carried out
+// as it will be given again: a function among its arguments (a way round danger, the AI's) cannot be
+// kept, and is left out of it now as it will be then.
+for (const name of ORDER_NAMES) {
+  const proto = Game.prototype as unknown as Record<string, (...a: unknown[]) => unknown>;
+  const given = proto[name];
+  proto[name] = function (this: Game, ...args: unknown[]) {
+    if (!this.orders || this.stepping || this.ordering) return given.apply(this, args);
+    const before = name === 'ensureOffer' ? (args[0] as Faction).draftOffer : null;
+    this.ordering++;
+    try {
+      const out = given.apply(this, args.map(kept));
+      if (name !== 'ensureOffer') this.orders.push([this.tick, name, args.map(keep)]);
+      else {
+        const f = args[0] as Faction;
+        if (f.id === this.playerId && !before && f.draftOffer) this.orders.push([this.tick, name, [f.id]]);
+      }
+      return out;
+    } finally {
+      this.ordering--;
+    }
+  };
+}

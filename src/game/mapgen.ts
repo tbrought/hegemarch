@@ -3,6 +3,7 @@ import { ANOMALY_NAMES, LAND_NAMES, RELIC_SITE_NAMES, STAR_COLORS, STAR_NAMES } 
 import { RNG } from './rng';
 import type { GNode, Lane, MapSize, NodeKind, PlanetType } from './types';
 import { dist, roman } from './util';
+import { datan2, dcos, dhypot, dsin } from './dmath';
 
 export interface SystemInfo {
   id: number;
@@ -110,11 +111,15 @@ function gabrielEdges(pts: { x: number; y: number }[]): [number, number][] {
     for (let j = i + 1; j < pts.length; j++) {
       const mx = (pts[i].x + pts[j].x) / 2;
       const my = (pts[i].y + pts[j].y) / 2;
-      const r2 = ((pts[i].x - pts[j].x) ** 2 + (pts[i].y - pts[j].y) ** 2) / 4;
+      const dx = pts[i].x - pts[j].x;
+      const dy = pts[i].y - pts[j].y;
+      const r2 = (dx * dx + dy * dy) / 4;
       let ok = true;
       for (let k = 0; k < pts.length && ok; k++) {
         if (k === i || k === j) continue;
-        if ((pts[k].x - mx) ** 2 + (pts[k].y - my) ** 2 < r2) ok = false;
+        const kx = pts[k].x - mx;
+        const ky = pts[k].y - my;
+        if (kx * kx + ky * ky < r2) ok = false;
       }
       if (ok) out.push([i, j]);
     }
@@ -203,15 +208,15 @@ function placeSystems(rng: RNG, nHomes: number, nCores: number): SysPos[] {
   const coreAngle = rng.float(0, Math.PI);
   for (let i = 0; i < nCores; i++) {
     const off = nCores === 1 ? 0 : (i === 0 ? -0.5 : 0.5) * coreSep;
-    sysPos.push({ x: Math.cos(coreAngle) * off, y: Math.sin(coreAngle) * off * 0.7, home: false });
+    sysPos.push({ x: dcos(coreAngle) * off, y: dsin(coreAngle) * off * 0.7, home: false });
   }
   const minSep = SYSTEM_RADIUS * 2 + 1700;
-  const ringR = Math.max(minSep / (2 * Math.sin(Math.PI / nHomes)) + 600, minSep + (nCores > 1 ? coreSep / 2 : 0) + 300);
+  const ringR = Math.max(minSep / (2 * dsin(Math.PI / nHomes)) + 600, minSep + (nCores > 1 ? coreSep / 2 : 0) + 300);
   const a0 = rng.float(0, Math.PI * 2);
   for (let i = 0; i < nHomes; i++) {
     const a = a0 + (i / nHomes) * Math.PI * 2 + rng.float(-0.18, 0.18);
     const r = ringR * rng.float(0.95, 1.08);
-    sysPos.push({ x: Math.cos(a) * r * 1.25, y: Math.sin(a) * r * 0.85, home: true });
+    sysPos.push({ x: dcos(a) * r * 1.25, y: dsin(a) * r * 0.85, home: true });
   }
   // Relaxation so no systems overlap.
   for (let it = 0; it < 80; it++) {
@@ -219,7 +224,7 @@ function placeSystems(rng: RNG, nHomes: number, nCores: number): SysPos[] {
       for (let j = i + 1; j < nSys; j++) {
         const dx = sysPos[j].x - sysPos[i].x;
         const dy = sysPos[j].y - sysPos[i].y;
-        const d = Math.hypot(dx, dy) || 1;
+        const d = dhypot(dx, dy) || 1;
         if (d < minSep) {
           const push = (minSep - d) / 2 + 1;
           const ux = dx / d;
@@ -346,9 +351,9 @@ function placeBodies(m: Build, s: number, sp: SysPos, starId: number, bodies: Bo
       else orbitIdx = rng.int(0, ORBITS.length - 1);
       const rad = ORBITS[orbitIdx] + rng.float(-140, 140) + (attempt > 150 ? rng.float(0, 500) : 0);
       let ang = rng.float(0, Math.PI * 2);
-      if (b.home) ang = Math.atan2(sp.y, sp.x) + rng.float(-0.6, 0.6); // face away from the core
-      const x = sp.x + Math.cos(ang) * rad;
-      const y = sp.y + Math.sin(ang) * rad * 0.92;
+      if (b.home) ang = datan2(sp.y, sp.x) + rng.float(-0.6, 0.6); // face away from the core
+      const x = sp.x + dcos(ang) * rad;
+      const y = sp.y + dsin(ang) * rad * 0.92;
       let ok = true;
       for (const other of nodes) {
         const need = Math.max(other.system === s ? 1000 : 1700, other.well + bodyWell + 90);
@@ -549,7 +554,7 @@ function placeLands(m: Build, houses: number) {
   for (let i = 0; i < houses; i++) {
     const a = a0 + (i / houses) * Math.PI * 2 + rng.float(-0.12, 0.12);
     const r = ring * rng.float(0.96, 1.06);
-    homePos.push({ x: Math.cos(a) * r * 1.25, y: Math.sin(a) * r * 0.85, a });
+    homePos.push({ x: dcos(a) * r * 1.25, y: dsin(a) * r * 0.85, a });
   }
   for (const h of homePos) {
     const n = add(h.x, h.y, 'terran');
@@ -564,8 +569,8 @@ function placeLands(m: Build, houses: number) {
     for (let attempt = 0; attempt < 400 && placed < 3; attempt++) {
       const a = rng.float(0, Math.PI * 2);
       const r = rng.float(LAND_SEP + 40, LAND_SEP + 620 + attempt * 2);
-      const x = h.x + Math.cos(a) * r;
-      const y = h.y + Math.sin(a) * r * 0.9;
+      const x = h.x + dcos(a) * r;
+      const y = h.y + dsin(a) * r * 0.9;
       if (!free(x, y)) continue;
       if (homePos.some((o, j) => j !== i && dist(x, y, o.x, o.y) < r + 500)) continue;
       add(x, y, rng.pick(OWN));
@@ -594,8 +599,8 @@ function placeLands(m: Build, houses: number) {
   for (let attempt = 0; attempt < 900 && placedMid < middle; attempt++) {
     const a = rng.float(0, Math.PI * 2);
     const r = Math.sqrt(rng.float(0, 1)) * ring * (0.5 + attempt / 1800);
-    const x = Math.cos(a) * r * 1.25;
-    const y = Math.sin(a) * r * 0.85;
+    const x = dcos(a) * r * 1.25;
+    const y = dsin(a) * r * 0.85;
     if (!free(x, y)) continue;
     const n = add(x, y, rng.pick(MIDDLE), rng.int(1, 2));
     n.r = Math.max(n.r, 76);

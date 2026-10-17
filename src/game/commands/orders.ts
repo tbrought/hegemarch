@@ -10,6 +10,7 @@ import type { Faction, QueueCheck, Unit } from '../types';
 import { dist, TAU } from '../util';
 import type { Game } from '../Game';
 import { cannotPay, WHY } from './checks';
+import { datan2, dcos, dsin } from '../dmath';
 
 function orderPath(g: Game, u: Unit, dest: number, avoid?: (nodeId: number) => number) {
   const start = u.lane ? u.lane.to : u.node;
@@ -62,9 +63,9 @@ export function cmdMove(g: Game, fid: number, ids: number[], dest: number, x?: n
       const d = dist(px, py, n.x, n.y);
       const minR = n.r + 40;
       if (d < minR) {
-        const a = Math.atan2(py - n.y, px - n.x);
-        px = n.x + Math.cos(a) * minR;
-        py = n.y + Math.sin(a) * minR;
+        const a = datan2(py - n.y, px - n.x);
+        px = n.x + dcos(a) * minR;
+        py = n.y + dsin(a) * minR;
       }
       u.ox = px;
       u.oy = py;
@@ -306,7 +307,7 @@ export function formation(n: number, spacing: number): [number, number][] {
     const count = ring * 6;
     for (let i = 0; i < count && out.length < n; i++) {
       const a = (i / count) * TAU + ring * 0.4;
-      out.push([Math.cos(a) * spacing * ring, Math.sin(a) * spacing * ring]);
+      out.push([dcos(a) * spacing * ring, dsin(a) * spacing * ring]);
     }
     ring++;
   }

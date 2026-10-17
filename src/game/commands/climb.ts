@@ -8,6 +8,7 @@ import { ERAS, LAST_CRADLE_ERA, SPACE, UPGRADE_MAX, UPGRADE_SPREAD } from '../da
 import type { Faction, QueueCheck } from '../types';
 import type { Game } from '../Game';
 import { cannotPay, WHY } from './checks';
+import { dhypot } from '../dmath';
 
 /** Why this house cannot take the step to the next age (or, from the last one, build its Ark), or null if it can. */
 export function checkAdvance(g: Game, fid: number): QueueCheck {
@@ -66,7 +67,7 @@ export function completeAdvance(g: Game, f: Faction) {
   let reach = 0;
   for (const u of g.unitList) {
     if (u.dead || u.owner !== f.id || u.era >= f.era) continue;
-    const far = home ? Math.hypot(u.x - home.x, u.y - home.y) : 0;
+    const far = home ? dhypot(u.x - home.x, u.y - home.y) : 0;
     u.rearm = Math.min(UPGRADE_MAX, far / UPGRADE_SPREAD);
     reach = Math.max(reach, Math.min(UPGRADE_MAX * UPGRADE_SPREAD, far));
   }

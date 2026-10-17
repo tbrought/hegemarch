@@ -1161,6 +1161,52 @@ table.stats tr.total td {
   margin: 0;
 }
 
+/* A Daily's board: the crown posted under three letters, and what became of it. */
+.board-box {
+  margin-top: 16px;
+}
+
+.board-box > p:first-of-type {
+  margin: 0 0 10px;
+}
+
+.board-name {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-family: var(--display);
+  font-size: 10px;
+  color: var(--dusk);
+}
+
+.board-name input[type='text'] {
+  width: 5ch;
+  font-family: var(--display);
+  font-size: 16px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.board-see {
+  font-family: var(--display);
+  font-size: 10px;
+  color: var(--sky);
+}
+
+.board-state {
+  margin: 10px 0 6px;
+  min-height: 1.4em;
+  color: var(--teal);
+}
+
+.board-state.warn {
+  color: var(--ember);
+}
+
+.board-box p.dim {
+  margin: 0;
+}
+
 /* A challenge taken up from a link, at the head of the setup. */
 .challenge {
   margin-bottom: 16px;

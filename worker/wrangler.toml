@@ -1,0 +1,27 @@
+# The Daily board's server (src/index.ts), on Cloudflare's free plan: see README.md, step by step.
+#   cd worker && npx wrangler deploy
+name = "hegemarch-board"
+main = "src/index.ts"
+compatibility_date = "2026-09-01"
+# Only at hegemarch.com/api/daily/..., not at a workers.dev address of its own.
+workers_dev = false
+routes = [{ pattern = "hegemarch.com/api/daily/*", zone_name = "hegemarch.com" }]
+
+[[d1_databases]]
+binding = "DB"
+database_name = "hegemarch-board"
+# The id `npx wrangler d1 create hegemarch-board` prints (README.md, step 2).
+database_id = "PASTE-THE-DATABASE-ID-HERE"
+
+# Every ten minutes: call the checker again for a run left waiting; once a day, prune.
+[triggers]
+crons = ["*/10 * * * *"]
+
+# The checker: GitHub Actions in this repository (.github/workflows/verify-daily.yml).
+[vars]
+GITHUB_REPO = "tbrought/hegemarch"
+GITHUB_WORKFLOW = "verify-daily.yml"
+
+# Secrets (README.md, step 4), never in this file:
+#   npx wrangler secret put VERIFY_SECRET
+#   npx wrangler secret put GITHUB_TOKEN

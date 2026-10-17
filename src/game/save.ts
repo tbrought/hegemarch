@@ -9,7 +9,7 @@ import { SAVE_VERSION } from './constants';
 import { CARD_BY_ID } from './data/cards';
 import { SPACE } from './data/eras';
 import { heirIdNow, HEIR_BY_ID } from './data/heirs';
-import type { Game, HistorySample } from './Game';
+import type { Game, HistorySample, Order } from './Game';
 import type { SystemInfo } from './mapgen';
 import { baseMods } from './mods';
 import { RNG } from './rng';
@@ -50,6 +50,8 @@ export interface SaveData {
   ui: Record<string, number>;
   ascended?: boolean;
   history?: HistorySample[];
+  /** A Daily run's orders (`Game.orders`). */
+  orders?: Order[];
 }
 
 export function serialize(g: Game): SaveData {
@@ -88,6 +90,7 @@ export function serialize(g: Game): SaveData {
     ui: g.ui,
     ascended: g.ascended || undefined,
     history: g.history,
+    orders: g.orders,
   };
 }
 
@@ -158,6 +161,7 @@ export function loadGame(g: Game, data: SaveData): void {
   g.ui = data.ui ?? {};
   g.ascended = data.ascended ?? false;
   g.history = data.history ?? [];
+  g.orders = data.orders;
   g.countSleepers();
   g.derive();
   for (const f of g.factions) g.recomputeMods(f);

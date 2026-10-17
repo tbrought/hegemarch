@@ -11,12 +11,13 @@ import type { Game } from '../Game';
 /**
  * A first goal reached (data/goals.ts): its small reward is paid, once a run. Which goals a player
  * still has is the client's to know (they are reached once, ever); the game only checks that this
- * one is truly reached here.
+ * one is truly reached here. Not in a Daily: every player of the day plays by the same rules, and
+ * what a player has reached before is their own (the board, 1.25).
  */
 export function cmdGoal(g: Game, fid: number, id: string): boolean {
   const goal = GOAL_BY_ID[id];
   const f = g.factions[fid];
-  if (!goal || !f || fid !== g.playerId || g.ui['goal:' + id] || !goal.done(g, f)) return false;
+  if (g.config.daily || !goal || !f || fid !== g.playerId || g.ui['goal:' + id] || !goal.done(g, f)) return false;
   g.ui['goal:' + id] = 1;
   g.addEmbers(f, GOAL_REWARD);
   g.notify(fid, `Goal reached: ${goal.label}. +${GOAL_REWARD} Embers.`, 'good');

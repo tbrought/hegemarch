@@ -22,6 +22,8 @@ src/game/        the simulation: no DOM, no clock, no Math.random
   data/            tables: ships, worlds, Boons, events, houses, relics, Destinies
   mapgen.ts        the sector generator
   ages.ts          an Ages run's passage from its cradle world to the stars
+  replay.ts        a Daily played again from its orders (the board), and what a list of orders may hold
+  dmath.ts         sine, cosine, arc tangent and length, the same to the last bit in every browser
 src/render/      drawing the map on a low-resolution canvas: Renderer, Camera, sprites, fonts
 src/ui/          everything drawn over the map during a run
   Ui.ts            the immediate-mode toolkit: what is drawn this frame is what can be clicked
@@ -34,10 +36,13 @@ src/app/         the page around the game
   screens/         the menu pages (HTML): title, setup, Hall of Heirs, Settings, results
   Session.ts       what the HUD and the input share about the run on screen
 src/audio/       sound effects and music, both synthesised
-src/meta/        the player's profile, Legacy and records (localStorage)
+src/meta/        the player's profile, Legacy and records (localStorage); board.ts, the Daily board's
+                 terms (what the game, the website and the board's server agree on)
 src/site/        the website's own script (hegemarch.com)
+worker/          the Daily board's server (a Cloudflare Worker with a D1 database; worker/README.md)
 tests/           unit tests, one file per subject (fields, ships, boons, rivals, ...)
-scripts/         balance simulations, fuzzers and browser suites
+scripts/         balance simulations, fuzzers and browser suites; verify-daily.ts, the board's checker
+                 (GitHub Actions); trailer/, the trailers, made from the game itself
 ```
 
 Dependencies run one way: `game/` imports nothing from the other folders (but for the numbers of the
@@ -70,11 +75,19 @@ A right-click on a world goes `Input` → `Actions.orderAt` → `g.cmdMove` → 
 ## Three rules that must hold
 
 1. **The simulation is deterministic.** In `src/game/`, use `g.rng`, never `Math.random`, `Date` or
-   anything from the DOM. The same seed and commands must give the same game.
+   anything from the DOM. The same seed and commands must give the same game, in every browser: use
+   `dsin`, `dcos`, `datan2` and `dhypot` (`dmath.ts`), never `Math.sin`, `cos`, `atan2`, `hypot`,
+   `pow`, `exp`, `log` or `**`, which each engine may round its own way (a Daily is played again
+   elsewhere, by the board's checker). `tests/dmath.test.ts` holds both.
 2. **State is plain data.** Everything in a save is JSON (`save.ts`). What can be recomputed is left
    out and rebuilt on load. A loaded game must continue exactly as the saved one would have.
 3. **The order of random draws is part of the game.** Reordering steps in `setup.ts` or `mapgen.ts`
    changes every sector. If you move code there, check the golden traces (below).
+4. **The player changes the game only by an order.** Every `g.cmd*` the HUD calls is in
+   `ORDER_NAMES` (`Game.ts`); a Daily keeps each one, with the tick it was given after, and the board
+   plays the run again from them (`replay.ts`). The UI may read the game as it likes, and keep its own
+   notes in `g.ui` (which the simulation never reads), but change nothing the game plays by: anything it
+   changed directly would be missing when the run is played again, and an honest crown would not stand.
 
 ## How to add things
 

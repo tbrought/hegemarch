@@ -58,12 +58,13 @@ export class Goals {
 
   /**
    * Is the goal box on offer right now? Not during the guided steps (one thing at a time), not on the
-   * cradle of an Ages run (its words are others), and not with tips turned off.
+   * cradle of an Ages run (its words are others), not in a Daily (the same rules for every player of the
+   * day: goals pay nothing there), and not with tips turned off.
    */
   private offered(): boolean {
     const s = this.hud.s;
     const g = s.game;
-    return s.profile.settings.tips && !g.cradle && !g.outcome && !this.hud.tutorial.busy() && g.player.capital >= 0;
+    return s.profile.settings.tips && !g.cradle && !g.config.daily && !g.outcome && !this.hud.tutorial.busy() && g.player.capital >= 0;
   }
 
   /** Are the goals on offer right now, with one still to reach? */

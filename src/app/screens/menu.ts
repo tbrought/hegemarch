@@ -72,7 +72,7 @@ export function showMenu(app: App) {
             <span class="mode-pitch">The long game. From the Stone Age to the stars.</span>
             <span class="mode-meta">50 TO 110 MIN</span>
           </button>
-          <button class="mode daily" data-sa="daily" data-tip="The same sector for every player today: medium, Normal, with [Legacy ×1.25]. The picture is the chart of today's sector.">
+          <button class="mode daily" data-sa="daily" data-tip="The same sector for every player today, by the same rules: medium, Normal, with [Legacy ×1.25]. The fastest crowns go on today's board. The picture is the chart of today's sector.">
             <canvas class="mode-art" data-art="daily" aria-hidden="true"></canvas>
             <span class="mode-name">DAILY RUN${dailyDone ? ' ✓' : ''}</span>
             <span class="mode-pitch">Today's sector, the same for every player. Legacy ×1.25.</span>

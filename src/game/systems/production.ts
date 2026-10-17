@@ -5,6 +5,7 @@ import { HEIR_BY_ID } from '../data/heirs';
 import { mul } from '../mods';
 import type { UnitType } from '../types';
 import { possessive, roman, TAU } from '../util';
+import { dcos, dsin } from '../dmath';
 
 /** Ages, on the cradle: houses take their steps through the ages, and their units are upgraded with them. */
 function agesTick(g: Game, dt: number) {
@@ -79,13 +80,13 @@ export function productionTick(g: Game, dt: number) {
         } else if (it.kind === 'starbase') {
           const a = (n.seed % 628) / 100;
           const rad = n.r + 240;
-          const u = g.spawnUnit('starbase', f.id, n.id, { x: n.x + Math.cos(a) * rad, y: n.y + Math.sin(a) * rad });
+          const u = g.spawnUnit('starbase', f.id, n.id, { x: n.x + dcos(a) * rad, y: n.y + dsin(a) * rad });
           u.a = a;
           g.notify(f.id, `A Starbase now guards ${n.name}.`, 'info', n.id);
         } else if (it.kind === 'gate') {
           const a = ((n.seed % 360) / 360) * TAU;
           const rad = n.r + 280;
-          const u = g.spawnUnit('gate', f.id, n.id, { x: n.x + Math.cos(a) * rad, y: n.y + Math.sin(a) * rad });
+          const u = g.spawnUnit('gate', f.id, n.id, { x: n.x + dcos(a) * rad, y: n.y + dsin(a) * rad });
           f.gate = { node: n.id, charge: 0, unit: u.id };
           g.notify(-1, `${possessive(f.name)} Starfire Gate at ${n.name} stands complete and is charging!`, f.isPlayer ? 'good' : 'alert', n.id, false,
             f.isPlayer ? undefined : { title: 'THE GATE IS CHARGING', sub: `${possessive(g.shortName(f))} Starfire Gate at ${n.name} stands complete.`, tone: 'house', fid: f.id });

@@ -14,8 +14,11 @@ import type { UnitType } from '../../src/game/types';
 const SHIP_TYPES = Object.keys(UNITS) as UnitType[];
 
 /** One random command: mostly sensible, sometimes nonsense. */
-export function randomCommand(g: Game, r: RNG, log: string[]) {
-  const fid = r.chance(0.9) ? g.playerId : r.int(0, g.factions.length - 1);
+export function randomCommand(g: Game, r: RNG, log: string[], onlyPlayer = false) {
+  // (`onlyPlayer`: orders as a player gives them, the player's own, and nothing given outright; the dice are
+  // thrown the same either way.)
+  const mine = r.chance(0.9);
+  const fid = mine || onlyPlayer ? g.playerId : r.int(0, g.factions.length - 1);
   const f = g.factions[fid];
   const own = g.worldsOf(fid);
   const anyNode = () => (r.chance(0.08) ? r.pick([-1, g.nodes.length, 99999]) : r.int(0, g.nodes.length - 1));
@@ -36,7 +39,8 @@ export function randomCommand(g: Game, r: RNG, log: string[]) {
     const d = g.starfallOf(fid);
     if (!d || r.chance(0.1)) {
       what = 'starfall';
-      if (r.chance(0.5) && f.kind === 'empire') {
+      // (Not as a player plays: given outright. Not given to a player who only gives orders.)
+      if (r.chance(0.5) && f.kind === 'empire' && !onlyPlayer) {
         if (!g.hasCard(f, 'bpStarfall')) g.addCard(f, 'bpStarfall');
         f.embers += 3000;
       }
@@ -59,7 +63,7 @@ export function randomCommand(g: Game, r: RNG, log: string[]) {
     case 22:
       // Ages: take the step to the next age (given what it takes, some of the time, so that the whole climb is reached).
       what = 'advance';
-      if (r.chance(0.6)) {
+      if (r.chance(0.6) && !onlyPlayer) {
         f.lore += 400;
         f.embers += 400;
       }

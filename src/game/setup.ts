@@ -21,6 +21,7 @@ import { RNG } from './rng';
 import { visibilityTick } from './systems/visibility';
 import type { Faction, FactionKind, GameConfig, UnitType } from './types';
 import { TAU } from './util';
+import { dcos, dsin } from './dmath';
 
 /**
  * Fill a new game: its Destinies and omens, its sector, the houses and what they start with, and what
@@ -181,7 +182,7 @@ function fillTheDark(g: Game, relics: number): void {
       for (let k = 0; k < count; k++) {
         const a = (k / count) * TAU + rng.float(0, 1);
         const type: UnitType = strong && k === 0 && rng.chance(0.45) ? 'sentinel' : 'militia';
-        g.spawnUnit(type, g.guardianId, n.id, { x: n.x + Math.cos(a) * (n.r + 110), y: n.y + Math.sin(a) * (n.r + 110) });
+        g.spawnUnit(type, g.guardianId, n.id, { x: n.x + dcos(a) * (n.r + 110), y: n.y + dsin(a) * (n.r + 110) });
       }
     }
     if (n.kind === 'relic') {
@@ -190,7 +191,7 @@ function fillTheDark(g: Game, relics: number): void {
       const sentinels = config.size === 'large' ? 5 : 4;
       for (let k = 0; k < sentinels; k++) {
         const a = (k / sentinels) * TAU;
-        g.spawnUnit('sentinel', g.guardianId, n.id, { x: n.x + Math.cos(a) * 170, y: n.y + Math.sin(a) * 170 });
+        g.spawnUnit('sentinel', g.guardianId, n.id, { x: n.x + dcos(a) * 170, y: n.y + dsin(a) * 170 });
       }
     }
     if (n.kind === 'anomaly') {

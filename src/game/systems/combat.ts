@@ -3,6 +3,7 @@ import { DMG_TABLE, UNITS } from '../data/units';
 import type { DmgType, GNode, Projectile, Unit, WeaponDef } from '../types';
 import { dist } from '../util';
 import { targetPos } from './movement';
+import { datan2, dcos, dhypot, dsin } from '../dmath';
 
 export function combatTick(g: Game, dt: number) {
   for (let nid = 0; nid < g.nodes.length; nid++) {
@@ -197,7 +198,7 @@ export function projectileTick(g: Game, dt: number) {
     }
     const dx = p.tx - p.x;
     const dy = p.ty - p.y;
-    const d = Math.hypot(dx, dy) || 1;
+    const d = dhypot(dx, dy) || 1;
     const step = p.speed * dt;
     p.life -= dt;
     if (d <= step + hitR * 0.6) {
@@ -211,7 +212,7 @@ export function projectileTick(g: Game, dt: number) {
     let mx = (dx / d) * step;
     let my = (dy / d) * step;
     if (p.kind === 'missile' && d > 80) {
-      const wob = Math.sin(p.life * 7 + p.wob * 3) * p.wob * 0.6;
+      const wob = dsin(p.life * 7 + p.wob * 3) * p.wob * 0.6;
       mx += (-dy / d) * step * wob;
       my += (dx / d) * step * wob;
     }
@@ -241,9 +242,9 @@ function planetGunTick(g: Game, node: GNode, b: Unit[], dt: number) {
     node.gunCd = 0.25;
     return;
   }
-  const a = Math.atan2(best.y - node.y, best.x - node.x);
-  const sx = node.x + Math.cos(a) * node.r;
-  const sy = node.y + Math.sin(a) * node.r;
+  const a = datan2(best.y - node.y, best.x - node.x);
+  const sx = node.x + dcos(a) * node.r;
+  const sy = node.y + dsin(a) * node.r;
   spawnProjectile(g, node.owner, 0, sx, sy, node.id, best.id, best.x, best.y, 1100, gun.dmg, 'energy', 'bolt');
   if (g.fxEnabled) g.fx.push({ k: 'shot', x: sx, y: sy, color: g.factions[node.owner].color, node: node.id, kind: 'bolt' });
   node.gunCd = gun.cd;

@@ -29,7 +29,9 @@ Requires Node 18+ (developed on Node 24). Any modern desktop browser works.
 
 The title screen offers three ways to play: a **Classic run** (25 to 70 minutes), an
 **Ages run** (the long game, see below) and the **Daily run** (today's sector, the same for every
-player). A run in progress is the banner at the top: CONTINUE.
+player and played by the same rules). Take a Daily's crown and you can post your time on the **Daily
+board** at hegemarch.com under three letters: the run is played again by the game before it goes up.
+A run in progress is the banner at the top: CONTINUE.
 
 The first run is **guided** (the First Night, BEGIN on the title screen). It shows you six things, one
 at a time:

@@ -32,9 +32,31 @@ const check = (name, ok, extra = '') => {
   console.log(`${ok ? 'ok  ' : 'FAIL'} ${name}${extra ? `  (${extra})` : ''}`);
 };
 
-/** Open the page in a fresh context; returns the page and the errors it logs. */
-async function open(opts = {}, query = '?debug') {
+// The Daily board's server (worker/), as it answers: today, three crowns; any other day, none.
+const utcDay = (ms) => {
+  const d = new Date(ms);
+  return `${d.getUTCFullYear()}-${d.getUTCMonth() + 1}-${d.getUTCDate()}`;
+};
+const BOARD = [
+  { name: 'ABC', heir: 'concord', time: 1865, victory: 'conquest' },
+  { name: 'ZED', heir: 'vael', time: 2210.5, victory: 'domination' },
+  { name: 'MOM', heir: 'choir', time: 3001, victory: 'treasury' },
+];
+/** The board asked from the page: at its own address on hegemarch.com, at hegemarch.com's from here. */
+const boardAsked = (u) => /^https:\/\/hegemarch\.com\/api\/daily\//.test(u);
+
+/**
+ * Open the page in a fresh context; returns the page and the errors it logs. `init`: run in the page
+ * before its own scripts (a player's profile in this browser).
+ */
+async function open(opts = {}, query = '?debug', init = null) {
   const context = await browser.newContext({ viewport: { width: 1440, height: 900 }, ...opts });
+  await context.route((u) => boardAsked(u.href), (route) => {
+    const day = new URL(route.request().url()).searchParams.get('day');
+    const runs = day === utcDay(Date.now()) ? BOARD : [];
+    route.fulfill({ status: 200, contentType: 'application/json', headers: { 'access-control-allow-origin': '*' }, body: JSON.stringify({ day, runs, count: runs.length }) });
+  });
+  if (init) await context.addInitScript(init);
   const page = await context.newPage();
   const errors = [];
   page.on('pageerror', (e) => errors.push(e.message));
@@ -66,7 +88,10 @@ const scrollTo = async (page, sel) => {
 
 try {
   // ------------------------------------------------------------------ desktop
-  const { page, errors } = await open();
+  // (A player who has played in this browser: their best times, by kind of run, for the board's YOUR BEST.)
+  const { page, errors } = await open({}, '?debug', () => {
+    localStorage.setItem('hegemarch.profile.v1', JSON.stringify({ runs: 9, wins: 3, records: { 'classic:medium:2': { crown: 2460, worlds: 20 }, 'classic:small:1': { crown: 1360.4 }, 'classic:large:1': { stand: 900 } } }));
+  });
   const wait = (ms) => page.waitForTimeout(ms);
   await wait(1500);
   check('the sector starts by itself', await page.evaluate(() => document.getElementById('hero').classList.contains('on')));
@@ -256,6 +281,23 @@ try {
   await page.screenshot({ path: '.shots/site-ages.png' });
   await scrollTo(page, '#play');
   check('the Daily Run clock counts down', /^\d\d:\d\d:\d\d$/.test(await page.textContent('[data-daily-clock]')), await page.textContent('[data-daily-clock]'));
+  // The Daily board (1.25): the day's fastest crowns, as the board has them, and the visitor's own best, as this browser has it.
+  await scrollTo(page, '#board');
+  await page.waitForTimeout(700);
+  // (A row's parts, as they are read: place, letters, house and Destiny, time.)
+  const parts = (sel) => page.$$eval(sel, (els) => els.map((e) => [...e.children].map((c) => c.textContent.replace(/\s+/g, ' ').trim()).join(' ')));
+  const rows = await parts('#board .board-list li');
+  check("the board shows today's fastest crowns, first to last, with house, Destiny and time", rows.length === 3 && rows[0] === '1st ABC Solar Concord by Conquest 31:05' &&
+    rows[2].startsWith('3rd MOM'), rows.join(' | '));
+  await page.screenshot({ path: '.shots/site-board.png' });
+  await page.click('#board [data-day="yesterday"]');
+  await page.waitForTimeout(500);
+  check("and yesterday's, as it closed", /No crowns were posted for yesterday/.test(await page.textContent('#board .board-state')) &&
+    (await page.getAttribute('#board [data-day="yesterday"]', 'aria-pressed')) === 'true', await page.textContent('#board .board-state'));
+  await page.click('#board [data-day="today"]');
+  const best = await parts('#board .best-list li');
+  check('your best: the fastest crowns this browser has, by kind of run', best.length === 2 && best[0] === 'Classic · Small · Normal 22:40' && best[1] === 'Classic · Medium · Hard 41:00' &&
+    /3 crowns in 9 runs/.test(await page.textContent('#board .best-state')), best.join(' | '));
   check('every section is lit by the end', (await page.$$eval('.band', (els) => els.every((e) => e.classList.contains('lit')))) === true);
   await page.screenshot({ path: '.shots/site-play.png' });
   const links = await page.$$eval('a[href="play/"]', (els) => els.length);
@@ -271,7 +313,8 @@ try {
     await document.fonts.ready;
     return {
       fonts: document.fonts.check('12px "Press Start 2P"') && document.fonts.check('16px "Pixelify Sans"'),
-      outside: performance.getEntriesByType('resource').map((e) => e.name).filter((u) => !u.startsWith(location.origin) && !u.startsWith('data:')),
+      // (The board is asked at hegemarch.com: the site's own server there, another here only because the test serves the page.)
+      outside: performance.getEntriesByType('resource').map((e) => e.name).filter((u) => !u.startsWith(location.origin) && !u.startsWith('data:') && !u.startsWith('https://hegemarch.com/api/daily/')),
     };
   });
   check('its typefaces come with it, and it asks nothing of another site', asked.fonts && asked.outside.length === 0, asked.outside.join(' '));
@@ -298,7 +341,7 @@ try {
       return { play: play.bottom <= hero.bottom + 1 && play.top >= 0, logo: logo.right <= window.innerWidth && logo.left >= 0, clear: logo.bottom < live.top && (live.bottom <= play.top + 1 || live.right <= play.left + 1) };
     });
     check(`${name}: the title, the live panel and PLAY all fit the opening screen`, fits.play && fits.logo && fits.clear, JSON.stringify(fits));
-    for (const sel of ['#run', '#houses', '#ships', '#boons', '#destinies', '#ages', '#play']) await scrollTo(o.page, sel);
+    for (const sel of ['#run', '#houses', '#ships', '#boons', '#destinies', '#ages', '#board', '#play']) await scrollTo(o.page, sel);
     check(`${name}: nothing runs off the side`, await noSideScroll(o.page));
     check(`${name}: every section lit`, await o.page.$$eval('.band', (els) => els.every((e) => e.classList.contains('lit'))));
     await o.page.screenshot({ path: `.shots/site-${name}-full.png`, fullPage: true });

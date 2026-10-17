@@ -1344,11 +1344,13 @@ src/app/       App (the frame loop and the shared state), run (a run's life), so
                (the pictures the menus draw), charts (the graphs of the results), share (a run to
                paste, and the link to its sector), rundata and Session (one run's shared UI state)
 src/site/      the website's script: the live sector, houses, fleet, Boon draft (see "The website")
-src/meta/      profile, settings, Legacy and the player's records
+src/meta/      profile, settings, Legacy and the player's records; board.ts, the Daily board's terms
+worker/        the Daily board's server (section 10)
 ```
 
 The simulation never touches the DOM or `Math.random` (visual jitter does), so the same seed gives
-the same game with or without rendering, and a saved run continues identically.
+the same game with or without rendering, and a saved run continues identically. Since 1.25 it is the
+same game in every browser as well (section 10).
 
 A class here holds state and says in what order things happen; what happens is a function in a module
 that takes the class's object (`killUnit(g, u)`, `drawTopBar(hud, R)`, `showSetup(app)`). `Game.ts`
@@ -1419,6 +1421,14 @@ UI snapshot of section 8: nothing in the game changed.)
 - `test:calm`: a player whose computer asks for less motion (1.23.3; no suite looked at it before):
   the omens, a Boon deal with an Epic and a Legendary, a level-up, a decision and its outcome, a Boon
   ready and a herald all come and go with no error, and no kindling ring.
+- The Daily board (section 10): `tests/replay.test.ts` (a Daily played again from its orders is the same
+  run to the tick, with effects on or off and saved and loaded halfway; only the player's orders are
+  kept, each once; a list of orders a player could not give is turned down), `tests/dmath.test.ts` (the
+  simulation's own trigonometry, and a scan of `src/game` for any other), `tests/board.test.ts` (the
+  board's server on its own schema in Node's SQLite), `test:board` (`scripts/board-e2e.ts`: a bot
+  crowned in today's Daily, sent, checked and shown; an order for a rival house, a time claimed four
+  times too fast and a version from before the board, all turned down) and `test:board-ui` (the results'
+  box against a board that answers as the real one does).
 - `test:site`: the packaged website served from `release/site`: the live sector (dawn, real time,
   news, the flight to a Hearth, sound, the crowning and the sector after it), the lighting of
   sections, the houses and their tour, the triangle, a whole Boon draft, then the page at laptop,
@@ -1537,3 +1547,72 @@ in about 21 minutes on Normal, at the price of a thin army.
 arrivals, saves); `npm run test:ages` plays a whole run in a browser; `npm run test:fuzz -- 12 55 --ages`
 fuzzes both stages and the crossing; `test:layouts` checks the cradle's cards and bars at every
 screen size; `scripts/ages-look.mjs` takes screenshots of every age for a visual review.
+
+## 10. The Daily board (1.25)
+
+The fastest crowns of each day's Daily, at hegemarch.com (`#board`), and in the game on the results of a
+crowned Daily: POST TO THE BOARD under three letters. A high score is a reason to play again, and the
+Daily is where scores mean something: every player of the day has the same sector.
+
+### The same run for everyone
+
+Until 1.25 a Daily was the day's seed played with the player's own perks from the Hall, their own unlocks
+and their own discovered Boons: the same sector, but not the same run. Now it is played by the same rules
+for everyone (`dailyConfig`, `game/replay.ts`): medium, Normal, no perks, every Boon in the deck,
+Legendaries and Pacts; only the house is the player's. Goals pay nothing in a Daily (what a player has
+reached before is their own), and their box is not shown there.
+
+### A time the game found
+
+A time on the board is not taken on its player's word. A Daily keeps the player's orders as they are given
+(`Game.orders`: every `g.cmd*` the HUD calls, with the tick it came after, and each offer of Boons dealt),
+and they are sent with the run. The **checker** plays the run again from the day's seed and those orders,
+in the version of the game the run began in, and reads the result itself: a crown of the player's own, and
+its time. A list of orders is taken only as a player could have given it (`badOrders`: known orders, in
+time, for the player's own house, with plain arguments), and a run is played for no longer than the time
+it claims and a minute. So a cheat must play a better game, and the board's time is always the game's.
+
+For that the simulation must be the same in every browser and on the checker's machine, to the last bit.
+JavaScript fixes `+ - * /` and `Math.sqrt`, but leaves `Math.sin`, `cos`, `atan2`, `hypot`, `pow`, `exp`
+and `log` to each engine, and engines differ in the last bit now and then; over thousands of ticks such a
+bit becomes another game. `game/dmath.ts` makes sine, cosine, arc tangent and length from the fixed
+operations alone (fdlibm's polynomials), and the simulation uses nothing else (`tests/dmath.test.ts` scans
+for it). Sorting, object order and number formatting are already fixed by the language.
+
+An order is carried out exactly as it will be played again: an argument that cannot be kept (a function,
+which only the AI passes) is left out of the order the moment it is given, not only when it is kept.
+
+### The parts
+
+```
+the game ──POST /api/daily/submit──▶ Worker (worker/src/index.ts) ──▶ D1 (runs: pending)
+                                        └─ workflow_dispatch, at most once a minute ──▶ GitHub Actions:
+                                           scripts/verify-daily.ts plays each run waiting, in its version's code
+                                           (the last commit with that version in package.json), and posts a verdict
+the website, the game ◀── GET /api/daily/board, /status ── Worker ◀── verdict (verified / rejected)
+```
+
+All of it runs on free plans: a Cloudflare Worker and D1 database on hegemarch.com's own zone (Workers
+Free allows 10 ms of CPU a request, which is why the replay is not done there), and GitHub Actions, free
+for a public repository. A run is on the board a minute or two after it is sent. The Worker calls the
+checker when a run comes in, and again from its cron every ten minutes while one waits; the checker takes
+every run waiting and looks again until none has come for a minute and a half. A run of a version that
+is not on GitHub yet waits, and is tried again every half hour for three days. Setting it up, step by
+step, is in `worker/README.md`.
+
+### What is kept
+
+Three letters (A to Z, and not a short list of words that should not stand on a board others read), the
+house, the time, the Destiny, the version, and the orders: no account, no address, no cookie, no IP. The
+orders of a run that did not stand are dropped at once, and of one that stands after fourteen days, but for
+each day's ten fastest. The website says so beside the board, and the results say so beside the button.
+The website's YOUR BEST is the player's own records, read from the game's profile in the same browser (the
+site and the game at /play/ share it): it never leaves the browser.
+
+### Shown as the rest of the game is
+
+On the results of a Daily the box is always there: for a crown, the three letters and POST TO THE BOARD;
+for a fall, or a Daily begun before the board, the same button greyed with why. Sent, it says what the
+board says: being checked, then its place ("On the board: 2nd of 5 on 2026-10-17"), or why it did not
+stand. On the website the board shows today's crowns as they come (asked again every minute) and
+yesterday's as they closed.

@@ -1,6 +1,7 @@
+import { dhypot } from './dmath';
 export const clamp = (v: number, lo: number, hi: number) => (v < lo ? lo : v > hi ? hi : v);
 export const lerp = (a: number, b: number, t: number) => a + (b - a) * t;
-export const dist = (x1: number, y1: number, x2: number, y2: number) => Math.hypot(x2 - x1, y2 - y1);
+export const dist = (x1: number, y1: number, x2: number, y2: number) => dhypot(x2 - x1, y2 - y1);
 
 export const TAU = Math.PI * 2;
 

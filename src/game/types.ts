@@ -485,6 +485,13 @@ export interface GameConfig {
   unlockPacts: boolean;
   autoplay?: boolean;
   daily?: boolean;
+  /** A Daily run: its day ("2026-10-17", UTC), whose sector it is and whose board it is for (replay.ts). */
+  day?: string;
+  /**
+   * The version of the game the run began in (a Daily: the board plays it again in that version). Never
+   * read by the simulation.
+   */
+  version?: string;
   /** Guided first run (the First Night). */
   tutorial?: boolean;
   forcedVictories?: VictoryId[];

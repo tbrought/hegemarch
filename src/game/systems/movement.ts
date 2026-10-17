@@ -6,6 +6,7 @@ import { mul } from '../mods';
 import { burning } from '../starfall';
 import type { Unit, UnitDef } from '../types';
 import { clamp, dist, turnToward } from '../util';
+import { datan2, dcos, dhypot, dsin } from '../dmath';
 
 /** Deterministic per-unit pseudo random in [0,1). */
 function uhash(id: number, salt: number): number {
@@ -38,7 +39,7 @@ export function movementTick(g: Game, dt: number) {
     }
     if (fixed(u)) {
       const tp = targetPos(g, u);
-      if (tp) u.a = turnToward(u.a, Math.atan2(tp.y - u.y, tp.x - u.x), def.turn * dt);
+      if (tp) u.a = turnToward(u.a, datan2(tp.y - u.y, tp.x - u.x), def.turn * dt);
       else u.a += dt * 0.05;
       continue;
     }
@@ -91,20 +92,20 @@ function startJump(g: Game, u: Unit) {
   const from = u.node;
   const fromN = g.nodes[from];
   const toN = g.nodes[to];
-  const back = Math.atan2(fromN.y - toN.y, fromN.x - toN.x);
+  const back = datan2(fromN.y - toN.y, fromN.x - toN.x);
   const ea = back + (uhash(u.id, 1) - 0.5) * 0.8;
   const er = toN.well * (0.6 + uhash(u.id, 2) * 0.2);
-  const ex = toN.x + Math.cos(ea) * er;
-  const ey = toN.y + Math.sin(ea) * er;
+  const ex = toN.x + dcos(ea) * er;
+  const ey = toN.y + dsin(ea) * er;
   const len = dist(u.x, u.y, ex, ey);
   const dur = Math.max(1, len / g.laneSpeedOf(u));
-  if (g.fxEnabled && !g.cradle) g.fx.push({ k: 'jumpOut', x: u.x, y: u.y, a: Math.atan2(ey - u.y, ex - u.x), node: from, color: g.factions[u.owner].color });
+  if (g.fxEnabled && !g.cradle) g.fx.push({ k: 'jumpOut', x: u.x, y: u.y, a: datan2(ey - u.y, ex - u.x), node: from, color: g.factions[u.owner].color });
   u.lane = { from, to, t: 0, dur, sx: u.x, sy: u.y, ex, ey };
   u.node = -1;
   u.charge = -1;
   u.target = 0;
   u.kindle = 0;
-  u.a = Math.atan2(ey - u.y, ex - u.x);
+  u.a = datan2(ey - u.y, ex - u.x);
   const jd = g.factions[u.owner].mods.flags.jumpDamage ?? 0;
   if (jd > 0) {
     u.hp -= u.maxHp * jd;
@@ -129,7 +130,7 @@ function transit(g: Game, u: Unit, dt: number) {
   const k = t < 0.5 ? 2 * t * t : 1 - 2 * (1 - t) * (1 - t);
   u.x = L.sx + (L.ex - L.sx) * k;
   u.y = L.sy + (L.ey - L.sy) * k;
-  u.a = Math.atan2(L.ey - L.sy, L.ex - L.sx);
+  u.a = datan2(L.ey - L.sy, L.ex - L.sx);
   if (L.t >= 1) arrive(g, u);
 }
 
@@ -140,17 +141,17 @@ function arrive(g: Game, u: Unit) {
   u.lane = null;
   u.x = L.ex;
   u.y = L.ey;
-  const a = Math.atan2(L.ey - L.sy, L.ex - L.sx);
+  const a = datan2(L.ey - L.sy, L.ex - L.sx);
   const s = g.speedOf(u);
-  u.vx = Math.cos(a) * s * 0.6;
-  u.vy = Math.sin(a) * s * 0.6;
+  u.vx = dcos(a) * s * 0.6;
+  u.vy = dsin(a) * s * 0.6;
   u.arrivedAt = g.time;
   u.wellTime = 0;
   g.buckets[u.node].push(u);
   if (g.fxEnabled && !g.cradle) g.fx.push({ k: 'jumpIn', x: u.x, y: u.y, a, node: u.node, color: g.factions[u.owner].color });
   if (u.path.length === 0) {
     // An explicit point only counts at the world it was given for (not after a stop or a new order).
-    if (!isNaN(u.ox) && Math.hypot(u.ox - n.x, u.oy - n.y) < n.r + 900) {
+    if (!isNaN(u.ox) && dhypot(u.ox - n.x, u.oy - n.y) < n.r + 900) {
       u.ax = u.ox;
       u.ay = u.oy;
     } else {
@@ -188,11 +189,11 @@ function steer(g: Game, u: Unit, def: UnitDef, dt: number) {
   const tp = targetPos(g, u);
   if (u.path.length > 0) {
     const nx = g.nodes[u.path[0]];
-    faceA = Math.atan2(nx.y - u.y, nx.x - u.x);
+    faceA = datan2(nx.y - u.y, nx.x - u.x);
   } else if (tp && canChase(u, def)) {
     const dx = tp.x - u.x;
     const dy = tp.y - u.y;
-    const d = Math.hypot(dx, dy) || 1;
+    const d = dhypot(dx, dy) || 1;
     const pref = prefRange(g, u, def) + tp.r;
     if (d > pref) {
       dvx = (dx / d) * spd;
@@ -203,22 +204,22 @@ function steer(g: Game, u: Unit, def: UnitDef, dt: number) {
       dvx = (-dy / d) * s * spd * 0.42 + (dx / d) * radial;
       dvy = (dx / d) * s * spd * 0.42 + (dy / d) * radial;
     }
-    faceA = Math.atan2(dy, dx);
+    faceA = datan2(dy, dx);
   } else {
     const dx = u.ax - u.x;
     const dy = u.ay - u.y;
-    const d = Math.hypot(dx, dy);
+    const d = dhypot(dx, dy);
     if (d > 6) {
       const s = Math.min(spd, d * 1.1);
       dvx = (dx / d) * s;
       dvy = (dy / d) * s;
     }
-    if (tp) faceA = Math.atan2(tp.y - u.y, tp.x - u.x);
+    if (tp) faceA = datan2(tp.y - u.y, tp.x - u.x);
   }
   const accel = spd * (def.radius < 12 ? 2.2 : 1.3) * dt;
   let ax = dvx - u.vx;
   let ay = dvy - u.vy;
-  const al = Math.hypot(ax, ay);
+  const al = dhypot(ax, ay);
   if (al > accel) {
     ax *= accel / al;
     ay *= accel / al;
@@ -227,8 +228,8 @@ function steer(g: Game, u: Unit, def: UnitDef, dt: number) {
   u.vy += ay;
   u.x += u.vx * dt;
   u.y += u.vy * dt;
-  const sp = Math.hypot(u.vx, u.vy);
-  const want = sp > spd * 0.3 ? Math.atan2(u.vy, u.vx) : (faceA ?? u.a);
+  const sp = dhypot(u.vx, u.vy);
+  const want = sp > spd * 0.3 ? datan2(u.vy, u.vx) : (faceA ?? u.a);
   u.a = turnToward(u.a, want, def.turn * dt);
 }
 
@@ -250,8 +251,8 @@ function fighterMove(g: Game, u: Unit, def: UnitDef, dt: number) {
   if (tp) {
     // Strafing runs: aim at a point that circles the target.
     const ang = g.time * 1.6 + (u.id % 7);
-    tx = tp.x + Math.cos(ang) * (tp.r + 45);
-    ty = tp.y + Math.sin(ang) * (tp.r + 45);
+    tx = tp.x + dcos(ang) * (tp.r + 45);
+    ty = tp.y + dsin(ang) * (tp.r + 45);
   } else if (parent) {
     tx = parent.x;
     ty = parent.y;
@@ -267,10 +268,10 @@ function fighterMove(g: Game, u: Unit, def: UnitDef, dt: number) {
   }
   const dx = tx - u.x;
   const dy = ty - u.y;
-  const want = Math.atan2(dy, dx);
+  const want = datan2(dy, dx);
   u.a = turnToward(u.a, want, def.turn * dt);
-  u.vx = Math.cos(u.a) * spd;
-  u.vy = Math.sin(u.a) * spd;
+  u.vx = dcos(u.a) * spd;
+  u.vy = dsin(u.a) * spd;
   u.x += u.vx * dt;
   u.y += u.vy * dt;
 }
@@ -344,9 +345,9 @@ function kindleStep(g: Game, u: Unit, dt: number) {
     else g.notify(u.owner, `Kindling ${n.name} stopped: the world is no longer dark.`, 'info', tid);
     return;
   }
-  const a = Math.atan2(u.y - n.y, u.x - n.x);
-  u.ax = n.x + Math.cos(a) * (n.r + 70);
-  u.ay = n.y + Math.sin(a) * (n.r + 70);
+  const a = datan2(u.y - n.y, u.x - n.x);
+  u.ax = n.x + dcos(a) * (n.r + 70);
+  u.ay = n.y + dsin(a) * (n.r + 70);
   // Only what fights stops a kindling (`kindleBarred`): not another house's seed ship, nor its Scout.
   if (g.kindleBarred(tid, u.owner)) {
     if (u.kindle >= 0 && u.wellTime > 2) {

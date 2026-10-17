@@ -1116,6 +1116,118 @@
         }
       }
 
+      /* ------------------------------------------------------------ the Daily board */
+      .board {
+        display: grid;
+        grid-template-columns: minmax(0, 3fr) minmax(0, 2fr);
+        gap: 22px 28px;
+        align-items: start;
+      }
+      .board .note {
+        grid-column: 1 / -1;
+      }
+      .board-day,
+      .your-best {
+        min-width: 0;
+        background: var(--night);
+        box-shadow: 0 0 0 var(--px) var(--indigo);
+        padding: 16px 18px;
+      }
+      .board-tabs {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+        margin: 0 0 14px calc(var(--px) * -1);
+      }
+      .board-tabs [aria-pressed='true'] {
+        color: var(--gold);
+        background: var(--indigo);
+      }
+      .board-list,
+      .best-list {
+        list-style: none;
+        margin: 0;
+        padding: 0;
+        display: grid;
+        gap: 6px;
+      }
+      .board-list li {
+        display: grid;
+        grid-template-columns: 4ch 5ch minmax(0, 1fr) auto;
+        gap: 12px;
+        align-items: baseline;
+        padding: 7px 10px;
+        background: var(--void);
+      }
+      .board-list .place {
+        font-family: var(--display);
+        font-size: 11px;
+        color: var(--dusk);
+      }
+      .board-list li:first-child .place {
+        color: var(--gold);
+      }
+      .board-list .who {
+        font-family: var(--display);
+        font-size: 14px;
+        font-weight: normal;
+        letter-spacing: 0.08em;
+        color: var(--bone);
+      }
+      .board-list .house {
+        min-width: 0;
+        color: var(--hc);
+        overflow-wrap: anywhere;
+      }
+      .board-list .house small {
+        font-size: 16px;
+        color: var(--dusk);
+      }
+      .board-list .time,
+      .best-list b {
+        font-family: var(--display);
+        font-size: 13px;
+        font-weight: normal;
+        color: var(--gold);
+        font-variant-numeric: tabular-nums;
+      }
+      .board-state,
+      .best-state {
+        margin: 10px 0 0;
+        font-size: 16px;
+        color: var(--dusk);
+      }
+      .board-state:empty {
+        display: none;
+      }
+      .your-best h3 {
+        margin: 0 0 14px;
+        font-family: var(--display);
+        font-weight: normal;
+        font-size: 13px;
+        letter-spacing: 0.04em;
+        color: var(--bone);
+      }
+      .best-list li {
+        display: flex;
+        justify-content: space-between;
+        align-items: baseline;
+        gap: 12px;
+      }
+      @media (max-width: 760px) {
+        .board {
+          grid-template-columns: minmax(0, 1fr);
+        }
+      }
+      @media (max-width: 480px) {
+        .board-list li {
+          grid-template-columns: 4ch 5ch minmax(0, 1fr);
+        }
+        .board-list .time {
+          grid-column: 2 / -1;
+        }
+      }
+
       /* ------------------------------------------------------------ the last call */
       .final {
         text-align: center;
@@ -1416,6 +1528,36 @@
         </div>
       </section>
 
+      <section class="band needs-js" id="board">
+        <header class="band-head">
+          <canvas class="node" aria-hidden="true"></canvas>
+          <h2>THE DAILY BOARD</h2>
+          <p class="sub">
+            Every day there is one sector for every player, played by the same rules. Take its crown and your time can go on the board. Each run
+            is played again before it goes up: a time on the board is one the game itself found.
+          </p>
+        </header>
+        <div class="band-body board">
+          <div class="board-day">
+            <div class="board-tabs" role="group" aria-label="Which day">
+              <button type="button" class="btn small" data-day="today" aria-pressed="true">TODAY</button>
+              <button type="button" class="btn small" data-day="yesterday" aria-pressed="false">YESTERDAY</button>
+            </div>
+            <ol class="board-list" aria-live="polite"></ol>
+            <p class="board-state"></p>
+          </div>
+          <div class="your-best">
+            <h3>YOUR BEST</h3>
+            <ul class="best-list"></ul>
+            <p class="best-state"></p>
+          </div>
+          <p class="note">
+            The board keeps the three letters a run is posted under, its house, its time and the orders it was played with, and nothing else: no
+            account, no email address, no cookies. Your best times stay in this browser.
+          </p>
+        </div>
+      </section>
+
       <section class="band" id="play">
         <header class="band-head">
           <canvas class="node" aria-hidden="true"></canvas>
@@ -1427,8 +1569,8 @@
             <a class="btn" href="hegemarch.zip" download>DOWNLOAD<small>Windows · macOS · Linux</small></a>
           </div>
           <p class="daily">
-            <b>Daily Run.</b> One sector, the same for every player, new each day. The next one opens in
-            <span data-daily-clock>a few hours</span>.
+            <b>Daily Run.</b> One sector, the same for every player and played by the same rules, new each day: its fastest
+            crowns go on the <a href="#board">board</a>. The next one opens in <span data-daily-clock>a few hours</span>.
           </p>
           <p class="note">
             Best on a computer with a mouse and keyboard. The First Night guides your first run step by step. The download is a single file:

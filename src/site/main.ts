@@ -4,6 +4,7 @@
  * into release/site/site.js; the page itself is site/index.html.
  */
 import { startAges } from './ages';
+import { startBoard } from './board';
 import { Draft } from './draft';
 import { startFleet } from './fleet';
 import { Hero } from './hero';
@@ -40,6 +41,8 @@ function boot() {
   part('lane', startLane);
   part('pictures', startPictures);
   part('daily', startDailyClock);
+  const board = byId('board');
+  if (board) part('board', () => startBoard(board));
   // For the site's own tests (scripts/site.mjs): ?debug hands them the moving parts.
   if (new URLSearchParams(location.search).has('debug')) Object.assign(window, { __site: { hero, houses, draft } });
 

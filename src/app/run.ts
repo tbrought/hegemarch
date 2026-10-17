@@ -12,6 +12,8 @@ import { HEIR_BY_ID } from '../game/data/heirs';
 import { TRAIT_BY_ID } from '../game/data/traits';
 import { VICTORIES } from '../game/data/victories';
 import { Game } from '../game/Game';
+import { dailyConfig } from '../game/replay';
+import { BOARD_LONGEST, isBoardDay } from '../meta/board';
 import { dailySeed, hashString, randomSeed } from '../game/rng';
 import type { GameConfig } from '../game/types';
 import { applyRunToProfile, computeLegacy, runFigures, runTime } from '../meta/legacy';
@@ -49,21 +51,22 @@ export function buildConfig(app: App): GameConfig {
       challenge: { heir: c.heir, won: c.won, time: c.time, victory: c.victory },
     };
   }
+  // A Daily is the day's sector by the same rules for every player (no perks from the Hall, every Boon):
+  // the board plays it again by them (game/replay.ts).
+  if (st.daily) return { ...dailyConfig(todayKey(), st.heir), version: GAME_VERSION };
   let seed: number;
-  if (st.daily) seed = dailySeed();
-  else if (st.seed.trim()) seed = /^\d+$/.test(st.seed.trim()) ? parseInt(st.seed.trim(), 10) >>> 0 : hashString(st.seed.trim());
+  if (st.seed.trim()) seed = /^\d+$/.test(st.seed.trim()) ? parseInt(st.seed.trim(), 10) >>> 0 : hashString(st.seed.trim());
   else seed = randomSeed();
   return {
     seed,
-    size: st.daily ? 'medium' : st.size,
-    difficulty: st.daily ? 1 : st.difficulty,
+    size: st.size,
+    difficulty: st.difficulty,
     heir: st.heir,
     perks: { ...app.profile.perks },
     unlockLegendary: app.profile.unlockLegendary,
     unlockPacts: app.profile.unlockPacts,
     ...discoveryConfig(app.profile),
-    daily: st.daily,
-    tutorial: st.guided && !st.daily && !st.ages,
+    tutorial: st.guided && !st.ages,
     // An Ages run begins on the cradle world.
     ...(st.ages ? { mode: 'ages' as const, stage: 'cradle' as const } : {}),
   };
@@ -290,7 +293,7 @@ function shareOf(g: Game): ResultsData['share'] {
   const link = challengeLink(mine);
   const run = {
     house: HEIR_BY_ID[p.heir]?.name ?? p.name, won: o.playerWon, by: o.playerWon ? vname(o.victory) : '', time: fmtTime(time),
-    size: g.config.size, difficulty: DIFFICULTY_NAMES[g.config.difficulty], daily: g.config.daily ? todayKey() : null, ages: g.config.mode === 'ages',
+    size: g.config.size, difficulty: DIFFICULTY_NAMES[g.config.difficulty], daily: g.config.daily ? (g.config.day ?? todayKey()) : null, ages: g.config.mode === 'ages',
     worlds: p.stats.maxWorlds, kills: p.stats.kills, lost: p.stats.shipsLost, boons: p.boons, link,
   };
   // Against the challenge it was, if it was one: the same sector, played by someone else.
@@ -364,11 +367,33 @@ export function endRun(app: App, abandoned = false) {
     ambition: g.ambition,
     charts: runCharts(g),
     details: runDetails(g, o),
+    board: boardOf(g),
   };
   s.modal = null;
   s.paused = true;
   // (The results come when the player goes on from the ending's tally: it used to give way to them
   // by itself after four seconds, which is no time to be crowned in.)
+}
+
+/**
+ * A Daily, for its board (meta/board.ts): the crown to send, with the orders it was played with (the board
+ * plays them again), or why it cannot go. Null: not a Daily.
+ */
+function boardOf(g: Game): ResultsData['board'] {
+  const c = g.config;
+  if (!c.daily) return null;
+  const o = g.outcome!;
+  const day = c.day ?? todayKey();
+  const why = !o.playerWon
+    ? 'Only a crown goes on the board.'
+    : !c.day || !g.orders
+      ? 'This Daily was begun before the board, and kept no orders for it to check.'
+      : !isBoardDay(day)
+        ? 'The board for that day is closed.'
+        : o.time > BOARD_LONGEST
+          ? 'The board takes crowns of three hours or less.'
+          : null;
+  return { day, heir: g.player.heir, version: c.version ?? GAME_VERSION, time: o.time, victory: o.victory, orders: g.orders ?? null, why };
 }
 
 /** The figures of a run as the results list them, each with the record it beat or the record that stands beside it. */

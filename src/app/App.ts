@@ -252,6 +252,8 @@ export class App {
   private onScreenInput(e: Event) {
     const t = e.target as HTMLInputElement;
     if (t.id === 'seed-input') this.setup.seed = t.value;
+    // (Three letters for the Daily board: A to Z, as they are typed.)
+    if (t.id === 'board-name') t.value = t.value.toUpperCase().replace(/[^A-Z]/g, '').slice(0, 3);
     if (t.dataset.track !== undefined) pickTrack(this, t.value);
     const key = t.dataset.setting as 'master' | 'sfx' | 'music' | undefined;
     if (key) {

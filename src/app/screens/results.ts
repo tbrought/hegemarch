@@ -7,7 +7,11 @@ import { AMBITION_BY_ID } from '../../game/data/ambitions';
 import { CARD_BY_ID, PACT_COLOR, RARITY_COLOR } from '../../game/data/cards';
 import { HEIR_BY_ID } from '../../game/data/heirs';
 import { RELIC_BY_ID } from '../../game/data/relics';
+import type { Order } from '../../game/Game';
+import { BOARD_PAGE, nameProblem, ordinal, packOrders, postRun, runStatus, type BoardStatus } from '../../meta/board';
 import type { LegacyReport } from '../../meta/legacy';
+import { saveProfile } from '../../meta/profile';
+import { fmtTime } from '../../render/Renderer';
 import { groupBoons } from '../../ui/boons';
 import { esc } from '../../ui/format';
 import { chartsHtml, mountCharts, type RunCharts } from '../charts';
@@ -36,6 +40,23 @@ export interface ResultsData {
   details: string;
   /** How every house stood, minute by minute, for the graphs (null: a run too short to draw). */
   charts: RunCharts | null;
+  /**
+   * A Daily, for its board (meta/board.ts): the crown to send, with its orders, or why it cannot go (`why`);
+   * once sent, its id, where it stands, and the line that says so. Null: not a Daily.
+   */
+  board: {
+    day: string;
+    heir: string;
+    version: string;
+    time: number;
+    victory: string;
+    orders: Order[] | null;
+    why: string | null;
+    id?: string;
+    status?: 'sending' | BoardStatus['status'];
+    said?: string;
+    warn?: boolean;
+  } | null;
 }
 
 /**
@@ -100,10 +121,27 @@ export function showResults(app: App) {
         <div class="lh-text"><p><b>Legacy is yours to keep.</b> Every run earns it, win or lose. Spend it in the <b>Hall of Heirs</b> on new houses to play, on perks that every future run starts with, and on rarer Boons. You have <b class="gold">◆${have}</b> to spend.</p>${buys}</div>
         <button class="${afford.length ? 'primary' : ''}" data-sa="results-hall">${afford.length ? 'SPEND IT' : 'SEE THE HALL'}</button>
       </div>`;
+  // A Daily: its board, where a crown can be posted under three letters (and is played again before it goes up).
+  const b = r.board;
+  const busy = !!b && (b.status === 'sending' || b.status === 'pending' || b.status === 'verified' || b.status === 'rejected');
+  const boardBox = b
+    ? `<div class="px-box board-box">
+        <h3>THE DAILY BOARD</h3>
+        <p>${b.why ? esc(b.why) : `Crowned in <span class="gold">${fmtTime(b.time)}</span>. Post it on the board of ${esc(b.day)}: the day's fastest crowns, at hegemarch.com.`}</p>
+        <div class="row">
+          <label class="board-name">YOUR LETTERS <input id="board-name" type="text" maxlength="3" autocomplete="off" spellcheck="false" aria-label="Three letters" value="${esc(app.profile.boardName ?? '')}"${b.why || busy ? ' disabled' : ''}></label>
+          <button class="small primary${b.why || busy ? ' disabled' : ''}" data-sa="board-post" data-tip="${esc(b.why ?? 'Sends this run to the board. The board plays it again to check it, and it goes up in a minute or two.')}">${boardButton(b)}</button>
+          <a class="board-see" href="${BOARD_PAGE}" target="_blank" rel="noopener">SEE THE BOARD</a>
+        </div>
+        <p class="board-state${b.warn ? ' warn' : ''}" aria-live="polite">${esc(b.said ?? '')}</p>
+        <p class="dim">The board keeps your three letters, your house, your time and the orders you gave (it plays the run again to check it), and nothing else: no account, no email address, no cookie.</p>
+      </div>`
+    : '';
   app.ui.innerHTML = `<div class="screen results${app.crt()}"><div class="page">
       <div class="logo" style="font-size:clamp(28px,6vw,56px);${r.won ? '' : 'color:var(--red);text-shadow:4px 4px 0 var(--wine),8px 8px 0 var(--night)'}">${r.title}</div>
       <div class="reason">${esc(r.reason)}</div>
       ${legacyHero}
+      ${boardBox}
       <div class="cols">
         <div class="px-box"><h3>THE REIGN OF ${esc((heir ? (heir.short ?? `the ${heir.name}`) : 'your house').toUpperCase())}</h3><table class="stats">${r.stats.map(([k, v, n]) => `<tr><td>${k}</td><td>${esc(v)}${n ? ` <span class="rec${n.fresh ? ' fresh' : ''}">${esc(n.text)}</span>` : ''}</td></tr>`).join('')}</table></div>
         <div class="px-box"><h3>LEGACY EARNED</h3><table class="stats">
@@ -153,8 +191,88 @@ export function showResults(app: App) {
   requestAnimationFrame(step);
 }
 
+/** The board's button, as the run stands with the board. */
+function boardButton(b: NonNullable<ResultsData['board']>): string {
+  return b.status === 'verified' ? 'ON THE BOARD' : b.status === 'pending' ? 'BEING CHECKED' : b.status === 'sending' ? 'SENDING…' : b.status === 'rejected' ? 'NOT TAKEN' : 'POST TO THE BOARD';
+}
+
+/** The board's line, and its button and letters as the run now stands. */
+function boardSays(app: App, said: string, warn = false) {
+  const b = app.results?.board;
+  if (!b) return;
+  b.said = said;
+  b.warn = warn;
+  if (app.screen !== 'results') return;
+  const busy = b.status === 'sending' || b.status === 'pending' || b.status === 'verified' || b.status === 'rejected';
+  const state = app.ui.querySelector<HTMLElement>('.board-state');
+  if (state) {
+    state.textContent = said;
+    state.classList.toggle('warn', warn);
+  }
+  const btn = app.ui.querySelector<HTMLElement>('[data-sa="board-post"]');
+  if (btn) {
+    btn.textContent = boardButton(b);
+    btn.classList.toggle('disabled', busy || !!b.why);
+  }
+  const input = app.ui.querySelector<HTMLInputElement>('#board-name');
+  if (input) input.disabled = busy || !!b.why;
+}
+
+/** Send the crown to the board, and follow it until it is checked. */
+async function postToBoard(app: App) {
+  const b = app.results?.board;
+  if (!b || b.why || !b.orders || b.status) return;
+  const input = app.ui.querySelector<HTMLInputElement>('#board-name');
+  const name = (input?.value ?? '').trim().toUpperCase();
+  const bad = nameProblem(name);
+  if (bad) {
+    boardSays(app, bad, true);
+    input?.focus();
+    return;
+  }
+  app.profile.boardName = name;
+  saveProfile(app.profile);
+  b.status = 'sending';
+  boardSays(app, 'Sending…');
+  try {
+    const packed = await packOrders(b.orders);
+    const r = await postRun({ day: b.day, heir: b.heir, version: b.version, name, time: b.time, victory: b.victory, ...packed });
+    b.id = r.id;
+    follow(app, b, r);
+  } catch (err) {
+    b.status = undefined;
+    boardSays(app, `The board could not be reached (${(err as Error).message}). Try again in a moment.`, true);
+  }
+}
+
+/** What became of a run sent: said as it comes, and asked again every ten seconds while it is checked (for up to a quarter of an hour). */
+function follow(app: App, b: NonNullable<ResultsData['board']>, s: BoardStatus) {
+  b.status = s.status;
+  if (s.status === 'verified') boardSays(app, `On the board: ${ordinal(s.rank ?? 1)} of ${s.of ?? 1} on ${b.day}.`);
+  else if (s.status === 'rejected') boardSays(app, `The board did not take it: ${s.reason ?? 'it did not stand'}.`, true);
+  else boardSays(app, 'Sent. The board is playing your run again to check it: a minute or two.');
+  if (s.status !== 'pending') return;
+  const started = Date.now();
+  const ask = async () => {
+    if (app.results?.board !== b || b.status !== 'pending' || !b.id) return;
+    if (Date.now() - started > 15 * 60_000) {
+      boardSays(app, 'Still being checked. See it on the board at hegemarch.com.');
+      return;
+    }
+    try {
+      const now = await runStatus(b.id);
+      if (now.status !== 'pending') return follow(app, b, now);
+    } catch {
+      /* (Asked again in a moment.) */
+    }
+    window.setTimeout(() => void ask(), 10_000);
+  };
+  window.setTimeout(() => void ask(), 8_000);
+}
+
 /** What the buttons of the results do. */
 export const resultsActions: ScreenActions = {
+  'board-post': (app) => void postToBoard(app),
   'copy-run': (app, _arg, el) => {
     copy(app, el, app.results?.details ?? '', '#run-details');
   },

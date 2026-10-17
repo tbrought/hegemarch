@@ -12,6 +12,7 @@ import { recomputeHangar } from './worldStats';
 import type { DmgType, Unit, UnitType } from './types';
 import { dist, possessive, TAU } from './util';
 import type { Game } from './Game';
+import { datan2, dcos, dsin } from './dmath';
 
 export function spawnUnit(g: Game, type: UnitType,
     owner: number,
@@ -25,8 +26,8 @@ export function spawnUnit(g: Game, type: UnitType,
   if (x === undefined || y === undefined) {
     const a = g.rng.float(0, TAU);
     const r = n.r + 70 + g.rng.float(0, 150);
-    x = n.x + Math.cos(a) * r;
-    y = n.y + Math.sin(a) * r;
+    x = n.x + dcos(a) * r;
+    y = n.y + dsin(a) * r;
   }
   const f = g.factions[owner];
   const ang = g.rng.float(0, TAU);
@@ -104,7 +105,7 @@ export function damageUnit(g: Game, t: Unit, amount: number, type: DmgType, byFa
     if (UNITS[src.type].role === 'capital' && src.owner !== g.crisisId) g.addXp(src, dealt * 0.02);
   }
   if (g.fxEnabled && (absorbed > 0 || hull > 0)) {
-    const ang = src ? Math.atan2(src.y - t.y, src.x - t.x) : 0;
+    const ang = src ? datan2(src.y - t.y, src.x - t.x) : 0;
     g.fx.push({ k: 'hit', x: t.x, y: t.y, shield: absorbed > 0 && t.sh > 0, r: def.radius, ang, node: t.node, color: g.factions[t.owner].color });
   }
   if (t.hp <= 0) g.killUnit(t, byFaction, src);

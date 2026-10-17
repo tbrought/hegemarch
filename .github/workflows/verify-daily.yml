@@ -1,0 +1,31 @@
+# The Daily board's checker (scripts/verify-daily.ts): it plays each run sent to the board again from its
+# orders, and tells the board what it found. The board (worker/) calls it when a run comes in, and again
+# every few minutes while a run waits. It needs the secret VERIFY_SECRET and the variable BOARD_API
+# (worker/README.md).
+name: Check the Daily board
+on:
+  workflow_dispatch:
+# One at a time: a call while it runs waits for it, and then takes whatever came in meanwhile.
+concurrency:
+  group: verify-daily
+  cancel-in-progress: false
+permissions:
+  contents: read
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      # (All of the history: a run is played again in the version it was played in.)
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci --ignore-scripts
+      - run: npx tsx scripts/verify-daily.ts
+        env:
+          BOARD_API: ${{ vars.BOARD_API }}
+          VERIFY_SECRET: ${{ secrets.VERIFY_SECRET }}
