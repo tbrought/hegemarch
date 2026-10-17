@@ -1,0 +1,96 @@
+// Trailers of the game, made from the game itself (studio.ts: its sectors, its renderer, its music).
+//   npx vite --port 5173 --strictPort         (the dev server serves the studio)
+//   node scripts/trailer/make.mjs scan 11,23,47        what happens in these sectors, and where (promo/trailers/scan-<seed>.json)
+//   node scripts/trailer/make.mjs stills <name>        one frame of every shot of a trailer (promo/trailers/<name>-stills/)
+//   node scripts/trailer/make.mjs video <name>         the trailer (promo/trailers/<name>.mp4, 1920x1080, 30 fps)
+// The trailers are written in trailers.mjs. Videos are made with ffmpeg (FFMPEG, or ffmpeg on the PATH).
+import { spawn } from 'node:child_process';
+import fs from 'node:fs';
+import path from 'node:path';
+import { DEV_URL, openBrowser } from '../lib/browser.mjs';
+import { TRAILERS } from './trailers.mjs';
+
+const OUT = 'promo/trailers';
+const FFMPEG = process.env.FFMPEG ?? 'ffmpeg';
+const [mode, arg] = process.argv.slice(2);
+fs.mkdirSync(OUT, { recursive: true });
+
+const { browser, page, errors } = await openBrowser({ viewport: { width: 1920, height: 1080 }, context: { deviceScaleFactor: 1 } });
+let onFrame = async () => {};
+await page.exposeFunction('sendFrame', (png) => onFrame(Buffer.from(png.slice(png.indexOf(',') + 1), 'base64')));
+await page.goto(new URL('scripts/trailer/studio.html', DEV_URL).href);
+await page.waitForFunction(() => window.studioReady === true, null, { timeout: 60000 });
+
+function ffmpeg(args) {
+  const p = spawn(FFMPEG, ['-hide_banner', '-loglevel', 'error', '-y', ...args], { stdio: ['pipe', 'inherit', 'inherit'] });
+  const done = new Promise((res, rej) => p.on('close', (code) => (code === 0 ? res() : rej(new Error(`ffmpeg exited ${code}`)))));
+  return { stdin: p.stdin, done };
+}
+
+if (mode === 'scan') {
+  for (const seed of (arg ?? '11').split(',').map(Number)) {
+    // (AGES=1: an Ages run, on its cradle world.)
+    const sector = { seed, size: 'medium', heir: 'concord', difficulty: 2, ...(process.env.AGES ? { ages: true } : {}) };
+    const r = await page.evaluate(({ sector }) => window.studio.scan(sector, 75), { sector });
+    fs.writeFileSync(path.join(OUT, `scan-${process.env.AGES ? 'ages-' : ''}${seed}.json`), JSON.stringify({ sector, ...r }));
+    const best = (kind, n = 4) => r.moments.filter((m) => m.kind === kind).sort((a, b) => b.score - a.score).slice(0, n)
+      .map((m) => `${(m.tick / 1200).toFixed(1)}m@${m.node}${m.kind === 'battle' ? `(${m.score})` : ''}`).join(' ');
+    console.log(`seed ${seed}: ${r.ms}ms, ${r.end ? `ends at ${(r.end.tick / 1200).toFixed(1)} min (${r.end.victory})` : 'undecided'}; ` +
+      `kindles ${r.moments.filter((m) => m.kind === 'kindle').length}, battles: ${best('battle')}, hearths: ${best('hearth')}, novas: ${best('nova')}, falls: ${best('fall')}`);
+  }
+} else {
+  const trailer = TRAILERS[arg];
+  if (!trailer) throw new Error(`no trailer "${arg}" (trailers.mjs: ${Object.keys(TRAILERS).join(', ')})`);
+  const shots = trailer.shots;
+  const dur = shots.reduce((s, x) => s + x.dur, 0);
+  if (mode === 'stills') {
+    // One frame of each shot, 60% of the way through it (or at its \`still\`), from the trailer as it plays.
+    const dir = path.join(OUT, `${arg}-stills`);
+    fs.mkdirSync(dir, { recursive: true });
+    let start = 0;
+    const pick = shots.map((shot) => {
+      const n = Math.round(shot.dur * 30);
+      const f = start + Math.floor(n * (shot.still ?? 0.6));
+      start += n;
+      return f;
+    });
+    let i = 0;
+    onFrame = async (buf) => {
+      const name = path.join(dir, `${String(++i).padStart(2, '0')}.png`);
+      fs.writeFileSync(name, buf);
+    };
+    await page.evaluate(({ shots, pick }) => window.studio.shoot(shots, 1, pick), { shots, pick });
+    console.log(`${dir}: ${i} stills`);
+  } else if (mode === 'video') {
+    const t0 = Date.now();
+    const frames = path.join(OUT, `${arg}.frames.mkv`);
+    // The frames, at the game's size, lossless; made four times larger pixel for pixel at the end.
+    const enc = ffmpeg(['-f', 'image2pipe', '-framerate', '30', '-c:v', 'png', '-i', '-', '-c:v', 'ffv1', frames]);
+    let n = 0;
+    onFrame = async (buf) => {
+      if (!enc.stdin.write(buf)) await new Promise((r) => enc.stdin.once('drain', r));
+      if (++n % 150 === 0) console.log(`  ${n} frames (${((Date.now() - t0) / 1000).toFixed(0)}s)`);
+    };
+    const sounds = await page.evaluate(({ shots }) => window.studio.shoot(shots), { shots });
+    enc.stdin.end();
+    await enc.done;
+    console.log(`${n} frames, ${sounds.length} sounds; the sound...`);
+    const wav = await page.evaluate(({ dur, music, sounds, sfx, shots }) => window.studio.sound(dur, music, sounds, sfx, window.studio.ducksOf(shots)), {
+      shots,
+      // (ONLY=music or ONLY=sounds: the one without the other, to hear how they sit together.)
+      dur, music: process.env.ONLY === 'sounds' ? [] : trailer.music, sounds: process.env.ONLY === 'music' ? [] : [...sounds, ...(trailer.sounds ?? [])], sfx: trailer.sfxVol ?? 0.55,
+    });
+    const wavPath = path.join(OUT, `${arg}.wav`);
+    fs.writeFileSync(wavPath, Buffer.from(wav, 'base64'));
+    const mp4 = path.join(OUT, `${arg}.mp4`);
+    const mux = ffmpeg(['-i', frames, '-i', wavPath, '-vf', 'scale=1920:1080:flags=neighbor', '-c:v', 'libx264', '-preset', 'slow', '-crf', '14', '-tune', 'animation',
+      '-pix_fmt', 'yuv420p', '-r', '30', '-af', 'loudnorm=I=-14:TP=-1.5:LRA=11', '-ar', '48000', '-c:a', 'aac', '-b:a', '256k', '-movflags', '+faststart', '-shortest', mp4]);
+    mux.stdin.end();
+    await mux.done;
+    fs.rmSync(frames);
+    fs.rmSync(wavPath);
+    console.log(`${mp4}: ${(fs.statSync(mp4).size / 1e6).toFixed(1)} MB, ${dur.toFixed(1)} s (${((Date.now() - t0) / 1000).toFixed(0)}s to make)`);
+  }
+}
+if (errors.length) console.log(errors.join('\n'));
+await browser.close();

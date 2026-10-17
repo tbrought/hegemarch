@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Trailer studio</title>
+    <!-- The trailer studio (make.mjs): the game's renderer, frame by frame. Served by the dev server. -->
+    <style>
+      @font-face {
+        font-family: 'Press Start 2P';
+        src: url('/src/fonts/press-start-2p.woff2') format('woff2');
+      }
+      @font-face {
+        font-family: 'Pixelify Sans';
+        font-weight: 400 700;
+        src: url('/src/fonts/pixelify-sans.woff2') format('woff2');
+      }
+      html,
+      body {
+        margin: 0;
+        background: #0b0a1a;
+        overflow: hidden;
+      }
+      #stage {
+        position: fixed;
+        left: 0;
+        top: 0;
+        width: 1920px;
+        height: 1080px;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="stage"><canvas id="world"></canvas></div>
+    <script type="module">
+      import * as studio from '/scripts/trailer/studio.ts';
+      window.studio = studio;
+      await document.fonts.load('8px "Press Start 2P"');
+      await document.fonts.load('16px "Pixelify Sans"');
+      window.studioReady = true;
+    </script>
+  </body>
+</html>
