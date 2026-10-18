@@ -124,7 +124,8 @@ if (mode === 'audit') {
         m ? res(JSON.parse(m[0])) : rej(new Error('loudnorm measured nothing'));
       });
     });
-    const norm = `volume=${(-14 - Number(measured.input_i)).toFixed(2)}dB,alimiter=limit=0.84:attack=5:release=60:level=false`;
+    // (And the last second and a half fades out, whatever is still sounding: a trailer ends in silence, not cut off.)
+    const norm = `volume=${(-14 - Number(measured.input_i)).toFixed(2)}dB,alimiter=limit=0.84:attack=5:release=60:level=false,afade=t=out:st=${(dur - 1.5).toFixed(2)}:d=1.5`;
     const mux = ffmpeg(['-i', frames, '-i', wavPath, '-vf', 'scale=1920:1080:flags=neighbor', '-c:v', 'libx264', '-preset', 'slow', '-crf', '14', '-tune', 'animation',
       '-pix_fmt', 'yuv420p', '-r', '30', '-af', norm, '-ar', '48000', '-c:a', 'aac', '-b:a', '256k', '-movflags', '+faststart', '-shortest', mp4]);
     mux.stdin.end();

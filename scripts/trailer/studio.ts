@@ -293,12 +293,17 @@ const FAR = new Float32Array(W * H).map((_, i) => {
  * The night over the picture, in dither: at the corners (a vignette, `v`), and in a band at the foot of it
  * where words are (`band`: from that height, 0..1, down), so that they read over anything.
  */
+/**
+ * The vignette (`v`), and the band of night under words at the foot of a shot: from nothing at 0.6 of the
+ * way down to nearly all night by 0.7, where the words are, so that no ship is ever over them; `band`
+ * (0..1) is how far it has come in, with the words.
+ */
 function dusk(v: number, band: number) {
   if (!v && !band) return;
   const img = frameCtx.getImageData(0, 0, W, H);
   const d = img.data;
   for (let y = 0; y < H; y++) {
-    const by = band ? Math.max(0, Math.min(1, (y / H - band) / (1 - band) * 1.6)) * 0.7 : 0;
+    const by = band ? Math.max(0, Math.min(1, (y / H - 0.6) / 0.1)) * 0.94 * band : 0;
     for (let x = 0; x < W; x++) {
       const i = y * W + x;
       const vv = v ? Math.max(0, Math.min(1, (FAR[i] - 0.62) / 0.5)) * v : 0;
@@ -740,8 +745,9 @@ export async function shoot(shots: Shot[], everyNth = 1, pick?: number[]): Promi
         ctx.putImageData(img, 0, 0);
       }
       // (The vignette, and the band under words at the foot of the picture.)
-      const low = (shot.text ?? []).some((c) => t >= c.at && t < c.until && (c.y ?? 0.5) >= 0.68 && c.style !== 'logo');
-      dusk(shot.vignette ?? 0, g && low ? 0.62 : 0);
+      // (The band comes in with the words over it, and goes with them.)
+      const low = Math.max(0, ...(shot.text ?? []).filter((c) => (c.y ?? 0.5) >= 0.68 && c.style !== 'logo').map((c) => (t >= c.at && t < c.until ? fadeOf(t, c.at, c.until, !c.held) : 0)));
+      dusk(shot.vignette ?? 0, g ? low : 0);
       if (shot.bars) {
         ctx.fillStyle = '#000000';
         ctx.fillRect(0, 0, W, shot.bars);
@@ -771,6 +777,8 @@ export interface MusicCue {
   until: number;
   /** The entry of the track's form to begin at (default: where its tune comes in). */
   part?: number;
+  /** The bar of that part to begin at (0: its first): an intro that runs into the head of the next part. */
+  fromBar?: number;
   vol?: number;
   /** Seconds it takes to go at its end. */
   fade?: number;
@@ -877,7 +885,7 @@ export async function sound(dur: number, music: MusicCue[], sounds: SoundCue[], 
     const player = new Music(sfx) as unknown as { bus: GainNode; schedule: (...a: unknown[]) => void; close: (...a: unknown[]) => number };
     player.bus = bus;
     let seg = m.part ?? Math.max(0, tr.form.findIndex(([, v]) => v.includes('l')));
-    let step = 0;
+    let step = (m.fromBar ?? 0) * tr.steps;
     // (Steps counted, not added up: a tune keeps its time to the sample over a minute.)
     const steps = Math.round((m.until - m.at) / stepDur);
     // The voices of each step: the arrangement's, bar by bar, or the tune's own.

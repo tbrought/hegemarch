@@ -90,8 +90,10 @@ const BATTLES = {
 };
 const battle = (which, dur, lines, look) => {
   const [seed, m, node, dx, dy] = BATTLES[which];
+  // (With words at its foot, the fighting is lifted above them.)
+  const up = dy + (lines ? -30 : 0);
   return { sector: S(seed), from: min(m) - 20, dur, speed: 1, dither: 0.4, loud: 1.1, duck: 0.88, ...look,
-    cam: [{ t: 0, node, zoom: 0.3, dx, dy }, { t: 1, node, zoom: 0.34, dx, dy }], text: words(dur, lines) };
+    cam: [{ t: 0, node, zoom: 0.3, dx, dy: up }, { t: 1, node, zoom: 0.34, dx, dy: up }], text: words(dur, lines) };
 };
 /** A house's hearth ringed by another's ships, and its fall (a little past the middle of the shot). */
 const HEARTHS = { violetOnBlue: [47, 24], tealRing: [11, 42] };
@@ -99,16 +101,19 @@ const hearthFalls = (which, dur, lines, look) => {
   const [seed, node] = HEARTHS[which];
   const fall = scan(String(seed)).moments.find((m) => m.kind === 'hearth' && m.node === node).tick;
   return { sector: S(seed), from: fall - sec(dur * 0.55), dur, speed: 1, dither: 0.4, loud: 1.1, duck: 0.88, ...look,
-    cam: [{ t: 0, node, zoom: 0.3 }, { t: 1, node, zoom: 0.35 }], text: words(dur, lines) };
+    cam: [{ t: 0, node, zoom: 0.3, dy: lines ? -30 : 0 }, { t: 1, node, zoom: 0.35, dy: lines ? -30 : 0 }], text: words(dur, lines) };
 };
 /** A star erupts in a battle (a second and a little before the cut), and the camera draws back from it. */
 const starfall = (dur, lines, look) => ({ sector: S(23), from: sec(2844.1 - (dur - 1.15)), dur, speed: 1, dither: 0.4, duck: 0.88, ...look,
   cam: [{ t: 0, node: 24, zoom: 0.22 }, { t: (dur - 1.2) / dur, node: 24, zoom: 0.22 }, { t: 1, node: 24, zoom: 0.16 }], text: words(dur, lines) });
 const ALL = ['concord', 'vael', 'wayfarer', 'lyceum', 'choir', 'ashen'];
-/** The six houses' banners, coming one after another, with their names. */
+/**
+ * The six houses' banners, coming one after another, with their names: two by three, each column wide enough
+ * for the longest name (CHOIR OF THE FIRST FLAME), each row tall enough that its names are clear of the next.
+ */
 const sixBanners = (dur, lines, look) => ({ blank: true, stars: true, dur, dither: 0.6, ...look,
-  panels: [{ at: 0.7, until: dur + 1, kind: 'banners', heirs: ALL, cols: 2, x: 40, y: 56, w: 400, h: 176, scale: 2, stagger: 0.45 }],
-  text: [{ at: 0.2, until: dur - 0.1, style: 'lore', lines, y: 0.15 }] });
+  panels: [{ at: 0.7, until: dur + 1, kind: 'banners', heirs: ALL, cols: 2, x: 40, y: 46, w: 400, h: 200, scale: 2, stagger: 0.4 }],
+  text: [{ at: 0.2, until: dur - 0.1, style: 'lore', lines, y: 0.11 }] });
 /** One of the game's pictures, large, on the night. */
 const picture = (kind, dur, lines, look) => ({ blank: true, stars: true, dur, dither: 0.4, ...look,
   panels: [{ at: 0.1, until: dur + 1, kind: 'art', art: kind, x: 90, y: 36, w: 300, h: 150, scale: 3, bare: true }],
@@ -123,150 +128,175 @@ const logo = (dur, lines, question, look = {}) => ({ blank: true, stars: true, d
 const PLAY = 'PLAY FREE IN YOUR BROWSER · HEGEMARCH.COM';
 const MODES = 'CLASSIC · AGES · DAILY';
 
+
+/** Each house: its name in its colour, its title, and a line of what it is (from its own). */
+const HOUSES = {
+  concord: ['SOLAR CONCORD', 'KEEPERS OF THE GOLDEN HEARTH', 'STEADY, STURDY AND RICH.', '#ffd23f'],
+  vael: ['VAEL IMPERIUM', 'THE BLOOD-SWORN HOUSE', 'THE DARK IS WON IN FIRE.', '#e0402f'],
+  wayfarer: ['WAYFARER CLANS', 'THE WANDERING HOUSE', 'FAST ON THE STARLANES.', '#2fd5a6'],
+  lyceum: ['LYCEUM COLLECTIVE', 'THE HIVE-MINDED HOUSE', 'QUICK TO LEARN, QUICK TO SWARM.', '#b05cff'],
+  choir: ['CHOIR OF THE FIRST FLAME', 'THE FAITHFUL HOUSE', 'THEY NEVER RUN.', '#3fa7ff'],
+  ashen: ['ASHEN REMNANT', 'THE LAST OF THE OLD LIGHT', 'THEY GAMBLE ALL ON FATE.', '#ff8a1f'],
+};
+/** Two houses, one over the other: each its name in its colour, its banner, its title and what it is (inside the black bars). */
+const pair = (dur, a, b, look) => {
+  const rows = [[a, 0, 50], [b, 0.8, 162]];
+  return { blank: true, stars: true, dur, dither: 0.5, ...look,
+    panels: rows.map(([id, at, y]) => ({ at: 0.3 + at, until: dur + 1, kind: 'banners', heirs: [id], names: false, x: 90, y, w: 300, h: 48, scale: 2 })),
+    text: rows.flatMap(([id, at, y]) => {
+      const [name, title, line, color] = HOUSES[id];
+      return [
+        { at: 0.3 + at, until: dur + 1, style: 'lore', lines: [name], y: (y - 12) / 270, color, type: false },
+        { at: 0.6 + at, until: dur + 1, style: 'caption', lines: [title], y: (y + 57) / 270, color: '#fff4e0' },
+        { at: 0.8 + at, until: dur + 1, style: 'caption', lines: [line], y: (y + 68) / 270 },
+      ];
+    }) };
+};
+
 /** A trailer: its shots, its music (its tunes, arranged), and the flame of the name. */
 const trailer = (shots, music, logoAt) => ({ shots, music, sounds: [[logoAt + 0.1, 'kindle', 0.8, 0]], sfxVol: 1.1 });
+const cinema = { bars: 20, vignette: 0.5 };
+/** The end of each: the name as its flame kindles, the last chord dying away under it, and the night. */
+const END = 8;
+const RING = 6.5;
+const endCard = () => logo(END, ['FROM THE STONE AGE TO THE STARS', PLAY], null, { ...cinema, out: 1.2 });
+
+/**
+ * The cradle, the same in each: First Fires begun two bars before the head of a part (the tribe's drums,
+ * the bass and the arpeggio), its melody from the head of the next, home at the end of its first phrase;
+ * its chord rings across the Ark's leaving, and the next tune begins as it fades.
+ */
+const cradle = (short) =>
+  short
+    ? [
+        firstFire(FF * 2, ['BEFORE THE STARS,', 'THERE WAS {ONE WORLD}.'], cinema),
+        climb(FF * 2, ['AGE BY AGE,', 'ITS PEOPLE [CLIMBED].'], cinema),
+        launch(FF * 2, ['UNTIL THEY LEFT IT', 'FOR THE {STARS}.'], cinema),
+      ]
+    : [
+        firstFire(FF * 2, ['BEFORE THE STARS,', 'THERE WAS {ONE WORLD}.'], cinema),
+        climb(FF * 2, ['AGE BY AGE,', 'ITS PEOPLE [CLIMBED].'], cinema),
+        cradleLate(FF * 2, ['UNTIL ONE WORLD', 'WAS [!NOT ENOUGH].'], cinema),
+        launch(4.4, ['THEY LEFT IT', 'FOR THE {STARS}.'], cinema),
+      ];
+const firstFires = (until, ring) => ({ track: 'First Fires', at: 0, until, part: 0, fromBar: 6, close: true, ring,
+  arrangement: [{ bars: 2, voices: 'abh', vol: 0.6 }, { bars: 4, voices: 'ablh', vol: 0.82 }] });
 
 // ------------------------------------------------------------------------------------------------
-// 1. First Light: the story, from a tribe's first fire to the crown among the stars.
+// 1. First Light: the cradle, then the theme of the game: the dark, a world lit, the six houses, the
+//    Boons, the houses at war, a star erupting, a hearth falling.
 // ------------------------------------------------------------------------------------------------
-const cinema = { bars: 20, vignette: 0.5 };
-const fl = [
-  firstFire(FF * 2, ['BEFORE THE STARS,', 'THERE WAS {ONE WORLD}.'], cinema),
-  climb(FF * 2, ['AGE BY AGE,', 'ITS PEOPLE [CLIMBED].'], cinema),
-  cradleLate(FF * 2, ['UNTIL ONE WORLD', 'WAS [!NOT ENOUGH].'], cinema),
-  launch(4.4, ['THEY LEFT IT', 'FOR THE {STARS}.'], cinema),
+const a = [
+  ...cradle(false),
   darkSector(HG * 2, ['BUT THE STARS', 'WERE [!DARK].'], cinema),
   kindle(HG * 2, ['{LIGHT} THEM AGAIN,', 'WORLD BY WORLD.'], cinema),
+  sixBanners(HG * 2, ['SIX {HOUSES} RISE.'], cinema),
+  picture('boons', HG * 2, ['BEND FATE', 'WITH {BOONS}.'], cinema),
   battle('goldOrange', HG * 2, ['EVERY HOUSE', 'WANTS {THE CROWN}.'], cinema),
   battle('redGoldViolet', HG * 2, null, cinema),
   starfall(HG * 2, null, cinema),
   hearthFalls('violetOnBlue', HG * 2, ['ONLY ONE', 'WILL BE {CROWNED}.'], cinema),
-  logo(5.2, ['FROM THE STONE AGE TO THE STARS', PLAY], null, cinema),
+  endCard(),
 ];
-const flLeap = at(fl, 3);
-const flStars = at(fl, 4);
-const flLogo = at(fl, 10);
 
 // ------------------------------------------------------------------------------------------------
-// 2. The Fall: the sector as it is, the six houses in it, where they began, and the war for the crown.
+// 2. First Light, the houses: after the cradle, The Empty Throne, and the six houses, two by two.
 // ------------------------------------------------------------------------------------------------
-const tf = [
-  darkSector(LR * 2, ['THE LAST {HEGEMARCH} FELL,', 'AND THE STARS WENT [!DARK].'], cinema),
-  sixBanners(LR * 2, ['SIX {HOUSES} REMAIN.'], cinema),
-  climb(LR * 2, ['EACH ONE [CLIMBED]', 'FROM A SINGLE WORLD,'], cinema),
-  launch(4, ['TO THE {STARS}.'], cinema),
-  kindle(TA * 3, ['NOW THEY {LIGHT} THE DARK,', 'WORLD BY WORLD.'], cinema),
-  battle('tealViolet', TA * 3, ['AND EVERY ONE', 'WANTS {THE CROWN}.'], cinema),
-  starfall(TA * 3, ['STARS WILL [!FALL].'], cinema),
-  hearthFalls('tealRing', TA * 3, ['HOUSES WILL [!FALL].', 'ONE WILL BE {CROWNED}.'], cinema),
-  logo(5.2, [MODES, PLAY], 'WHICH {HOUSE} WILL YOU LEAD?', cinema),
+const b = [
+  ...cradle(false),
+  darkSector(ET * 2, ['BUT THE STARS', 'WERE [!DARK].'], cinema),
+  kindle(ET * 2, ['SIX {HOUSES} LIT THEM AGAIN,', 'WORLD BY WORLD.'], cinema),
+  pair(ET * 2, 'concord', 'vael', cinema),
+  pair(ET * 2, 'wayfarer', 'lyceum', cinema),
+  pair(ET * 2, 'choir', 'ashen', cinema),
+  picture('boons', ET * 2, ['BEND FATE', 'WITH {BOONS}.'], cinema),
+  battle('redGoldViolet', ET * 2, ['EVERY HOUSE', 'WANTS {THE CROWN}.'], cinema),
+  hearthFalls('violetOnBlue', ET * 2, ['ONLY ONE', 'WILL BE {CROWNED}.'], cinema),
+  endCard(),
 ];
-const tfLeap = at(tf, 3);
-const tfStars = at(tf, 4);
-const tfLogo = at(tf, 8);
 
 // ------------------------------------------------------------------------------------------------
-// 3. Six Houses: the crown unclaimed, each house in its turn, and all of them at war for it.
+// 3. First Light, to arms: after the cradle, To Arms, faster, with more of the war.
 // ------------------------------------------------------------------------------------------------
-/** Each house: its name in its colour, its title, a line of what it is (from its own), and where it lives. */
-const HOUSES = {
-  concord: ['SOLAR CONCORD', 'KEEPERS OF THE GOLDEN HEARTH', 'STEADY, STURDY AND RICH.', '#ffd23f', ['90', 33]],
-  vael: ['VAEL IMPERIUM', 'THE BLOOD-SWORN HOUSE', 'THE DARK IS WON IN FIRE.', '#e0402f', ['90', 46]],
-  wayfarer: ['WAYFARER CLANS', 'THE WANDERING HOUSE', 'FAST ON THE STARLANES.', '#2fd5a6', ['11', 49]],
-  lyceum: ['LYCEUM COLLECTIVE', 'THE HIVE-MINDED HOUSE', 'QUICK TO LEARN, QUICK TO SWARM.', '#b05cff', ['90', 26]],
-  choir: ['CHOIR OF THE FIRST FLAME', 'THE FAITHFUL HOUSE', 'THEY NEVER RUN.', '#3fa7ff', ['23', 50]],
-  ashen: ['ASHEN REMNANT', 'THE LAST OF THE OLD LIGHT', 'THEY GAMBLE ALL ON FATE.', '#ff8a1f', ['90', 40]],
-};
-const house = (id) => {
-  const [name, title, line, color, [seed, node]] = HOUSES[id];
-  const dur = ET * 2;
-  return {
-    sector: S(Number(seed)), from: min(10), dur, speed: 1.2, dim: 0.5, dither: 0.5, vignette: 0.6, sounds: false,
-    cam: [{ t: 0, node, zoom: 0.13, dx: 30 }, { t: 1, node, zoom: 0.15, dx: -30 }],
-    // (Each house stays to the cut, and the next comes in over it.)
-    panels: [{ at: 0.3, until: dur + 1, kind: 'banners', heirs: [id], names: false, x: 30, y: 84, w: 420, h: 72, scale: 3 }],
-    text: [
-      { at: 0.1, until: dur + 1, style: 'lore', lines: [name], y: 0.22, color, type: false },
-      { at: 0.7, until: dur + 1, style: 'caption', lines: [title], y: 0.66, color: '#fff4e0' },
-      { at: 1.0, until: dur + 1, style: 'caption', lines: [line], y: 0.73 },
-    ],
-  };
-};
-const sh = [
-  darkSector(ET * 2, ['THE CROWN OF THE SECTOR', 'LIES {UNCLAIMED}.'], { vignette: 0.6 }),
-  ...ALL.map(house),
-  battle('redGoldViolet', ET * 2, ['SIX HOUSES.', 'ONE {CROWN}.'], { vignette: 0.5 }),
-  logo(5.2, [MODES, PLAY], 'WHICH WILL {YOU} LEAD?'),
+const c = [
+  ...cradle(false),
+  darkSector(TA * 4, ['BUT THE STARS', 'WERE [!DARK].'], cinema),
+  kindle(TA * 3, ['{LIGHT} THEM AGAIN,', 'WORLD BY WORLD.'], cinema),
+  sixBanners(TA * 3, ['SIX {HOUSES} RISE.'], cinema),
+  picture('boons', TA * 2, ['BEND FATE', 'WITH {BOONS}.'], cinema),
+  battle('tealViolet', TA * 3, ['EVERY HOUSE', 'WANTS {THE CROWN}.'], cinema),
+  battle('violetBlue', TA * 2, null, cinema),
+  starfall(TA * 3, null, cinema),
+  hearthFalls('violetOnBlue', TA * 4, ['ONLY ONE', 'WILL BE {CROWNED}.'], cinema),
+  endCard(),
 ];
-const shLogo = at(sh, 8);
 
 // ------------------------------------------------------------------------------------------------
-// 4. Light the Dark: what you do in it, in the build of one tune, to the war.
+// 4. First Light, short: the same story in fifty seconds.
 // ------------------------------------------------------------------------------------------------
-const hype = { vignette: 0.45 };
-const ld = [
-  card(BK * 2, ['THE SECTOR IS [!DARK].'], { dither: 1 }),
-  kindle(BK * 3, ['{KINDLE} ITS WORLDS.'], hype),
-  battle('goldOrange', BK * 3, ['[COMMAND] YOUR FLEETS.'], hype),
-  picture('boons', BK * 3, ['BEND FATE WITH {BOONS}.'], hype),
-  climb(BK * 3, ['[CLIMB] THE AGES.'], hype),
-  battle('tealBlue', BK * 2, null, hype),
-  battle('tealViolet', BK * 2, null, hype),
-  starfall(BK * 2, null, hype),
-  hearthFalls('violetOnBlue', BK * 3, ['TAKE {THE CROWN}.'], hype),
-  logo(BK * 3, [MODES, PLAY]),
+const d = [
+  ...cradle(true),
+  darkSector(4.4, ['BUT THE STARS', 'WERE [!DARK].'], cinema),
+  kindle(HG * 2, ['{LIGHT} THEM AGAIN,', 'WORLD BY WORLD.'], cinema),
+  sixBanners(HG * 2, ['SIX {HOUSES} RISE.'], cinema),
+  picture('boons', HG * 2, ['BEND FATE', 'WITH {BOONS}.'], cinema),
+  battle('goldOrange', HG * 2, ['EVERY HOUSE', 'WANTS {THE CROWN}.'], cinema),
+  hearthFalls('violetOnBlue', HG * 2, ['ONLY ONE', 'WILL BE {CROWNED}.'], cinema),
+  endCard(),
 ];
-const ldLogo = at(ld, 9);
+
+/** Where each act begins: the cradle's tune ends at the bridge, the next begins after it, and the name comes at the end. */
+const acts = (shots, bridge) => ({ bridge: at(shots, bridge), stars: at(shots, bridge + 1), end: at(shots, shots.length - 1) });
+const A = acts(a, 3);
+const B = acts(b, 3);
+const C = acts(c, 3);
+const D = acts(d, 3);
 
 export const TRAILERS = {
-  'first-light': trailer(
-    fl,
-    [
-      // The tribe's drums and the bass; the arpeggio; the melody at the head of its phrase; home, ringing, as the Ark leaves.
-      { track: 'First Fires', at: 0, until: flLeap, part: 0, close: true, ring: 4.4,
-        arrangement: [{ bars: 2, voices: 'bh', vol: 0.55 }, { bars: 2, voices: 'abh', vol: 0.68 }, { bars: 2, voices: 'abld', vol: 0.82 }] },
-      // The theme comes in under the ringing chord, quietly, and grows to the war.
-      { track: 'Hegemarch', at: flStars, until: flLogo, part: 0, close: true, ring: 5,
-        arrangement: [{ bars: 2, voices: 'b', vol: 0.55 }, { bars: 2, voices: 'ab', vol: 0.7 }, { bars: 4, voices: 'abld', vol: 0.9 }, { bars: 4, voices: 'ablde' }] },
-    ],
-    flLogo,
-  ),
-  'the-fall': trailer(
-    tf,
-    [
-      // The drone alone under the dark; the arpeggio under the houses; the melody as they climb; home, ringing, as an Ark leaves.
-      { track: 'Long Road', at: 0, until: tfLeap, part: 0, close: true, ring: 4,
-        arrangement: [{ bars: 2, voices: 'b', vol: 0.6 }, { bars: 2, voices: 'ab', vol: 0.72 }, { bars: 2, voices: 'abl', vol: 0.85 }] },
-      { track: 'To Arms', at: tfStars, until: tfLogo, part: 0, close: true, ring: 5,
-        arrangement: [{ bars: 3, voices: 'abd', vol: 0.75 }, { bars: 6, voices: 'abld', vol: 0.9 }, { bars: 3, voices: 'ablde' }] },
-    ],
-    tfLogo,
-  ),
-  'six-houses': trailer(
-    sh,
-    [{ track: 'The Empty Throne', at: 0, until: shLogo, part: 0, close: true, ring: 5,
-      arrangement: [{ bars: 2, voices: 'b', vol: 0.6 }, { bars: 2, voices: 'ab', vol: 0.7 }, { bars: 4, voices: 'abl', vol: 0.8 },
-        { bars: 6, voices: 'abld', vol: 0.9 }, { bars: 2, voices: 'abled' }] }],
-    shLogo,
-  ),
-  'light-the-dark': trailer(
-    ld,
-    [{ track: 'Breakers', at: 0, until: ldLogo, part: 1, close: true, ring: BK * 3 - 0.2,
-      arrangement: [{ bars: 2, voices: 'b', vol: 0.55 }, { bars: 3, voices: 'bh', vol: 0.62 }, { bars: 3, voices: 'bd', vol: 0.7 },
-        { bars: 3, voices: 'abd', vol: 0.78 }, { bars: 3, voices: 'abld', vol: 0.86 }, { bars: 9, voices: 'ablde' }] }],
-    ldLogo,
-  ),
+  'first-light': trailer(a, [
+    firstFires(A.bridge, A.stars - A.bridge),
+    // The theme begun four bars before the head of a part (bass, then arpeggio), its melody from the head of the
+    // next (the six houses), on into the second part, and home at the end of its first phrase, as a hearth falls.
+    { track: 'Hegemarch', at: A.stars, until: A.end, part: 0, fromBar: 4, close: true, ring: RING,
+      arrangement: [{ bars: 2, voices: 'b', vol: 0.55 }, { bars: 2, voices: 'ab', vol: 0.68 }, { bars: 8, voices: 'abld', vol: 0.86 }, { bars: 4, voices: 'ablde' }] },
+  ], A.end),
+  'first-light-houses': trailer(b, [
+    firstFires(B.bridge, B.stars - B.bridge),
+    // The Empty Throne, stately: its melody comes in with the houses, its drums with the war.
+    { track: 'The Empty Throne', at: B.stars, until: B.end, part: 0, fromBar: 4, close: true, ring: RING,
+      arrangement: [{ bars: 2, voices: 'b', vol: 0.6 }, { bars: 2, voices: 'ab', vol: 0.7 }, { bars: 8, voices: 'abl', vol: 0.85 }, { bars: 4, voices: 'abled' }] },
+  ], B.end),
+  'first-light-arms': trailer(c, [
+    firstFires(C.bridge, C.stars - C.bridge),
+    // To Arms: its drums from the first, its melody from the head of a part, its echo for the war.
+    { track: 'To Arms', at: C.stars, until: C.end, part: 0, fromBar: 4, close: true, ring: RING,
+      arrangement: [{ bars: 4, voices: 'bd', vol: 0.7 }, { bars: 8, voices: 'abld', vol: 0.85 }, { bars: 12, voices: 'ablde' }] },
+  ], C.end),
+  'first-light-short': trailer(d, [
+    firstFires(D.bridge, D.stars - D.bridge),
+    { track: 'Hegemarch', at: D.stars, until: D.end, part: 0, fromBar: 6, close: true, ring: RING,
+      arrangement: [{ bars: 2, voices: 'ab', vol: 0.65 }, { bars: 6, voices: 'abld', vol: 0.86 }, { bars: 2, voices: 'ablde' }] },
+  ], D.end),
 };
 
-// (Each tune's bars are its shots' bars, and its arrangement covers them all.)
+// The music is checked as it is heard: each tune runs whole bars of its shots, its melody comes in at the head
+// of a part (bar 1 of 8, where its phrase begins), and it comes home only at the end of a phrase (bar 4 or 8).
 for (const [name, t] of Object.entries(TRAILERS)) {
   for (const m of t.music) {
     const bpm = { 'First Fires': 88, 'Long Road': 72, Hegemarch: 112, 'To Arms': 132, 'The Empty Throne': 96, Breakers: 140 }[m.track];
     const bars = (m.until - m.at) / bar(bpm);
     if (Math.abs(bars - Math.round(bars)) > 0.01) throw new Error(`${name}: ${m.track} runs ${bars.toFixed(2)} bars`);
-    const arranged = (m.arrangement ?? []).reduce((s, a) => s + a.bars, 0);
+    const arranged = (m.arrangement ?? []).reduce((s, x) => s + x.bars, 0);
     if (m.arrangement && arranged !== Math.round(bars)) throw new Error(`${name}: ${m.track} is arranged for ${arranged} bars of ${Math.round(bars)}`);
+    const from = m.fromBar ?? 0;
+    if (m.close && (from + Math.round(bars)) % 4) throw new Error(`${name}: ${m.track} comes home in the middle of a phrase (bar ${(from + Math.round(bars)) % 8})`);
+    let k = 0;
+    for (const x of m.arrangement ?? []) {
+      const before = k === 0 ? '' : m.arrangement.slice(0, m.arrangement.indexOf(x)).map((y) => y.voices).join('');
+      if (x.voices.includes('l') && !before.includes('l') && (from + k) % 8) throw new Error(`${name}: ${m.track}'s melody comes in at bar ${((from + k) % 8) + 1} of a part`);
+      k += x.bars;
+    }
   }
   // (Words are up long enough to read: a shot with words is three and a half seconds at the least.)
-  for (const s of t.shots) if ((s.text ?? []).some((c) => c.style === 'lore') && s.dur < 3.4) throw new Error(`${name}: a shot of ${s.dur.toFixed(2)} s has words`);
+  for (const s of t.shots) if ((s.text ?? []).some((x) => x.style === 'lore') && s.dur < 3.4) throw new Error(`${name}: a shot of ${s.dur.toFixed(2)} s has words`);
 }
