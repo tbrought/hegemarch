@@ -23,7 +23,8 @@ import { drawHouseBanners } from '../../src/app/houseArt';
 import { drawModeArt } from '../../src/app/modeArt';
 import { HEIR_BY_ID } from '../../src/game/data/heirs';
 import { VICTORIES } from '../../src/game/data/victories';
-import { iconCanvas } from '../../src/render/sprites';
+import { iconCanvas, shipSprite } from '../../src/render/sprites';
+import { SPACE } from '../../src/game/data/eras';
 import { starWindow } from '../../src/ui/subjects';
 
 export const FPS = 30;
@@ -228,6 +229,17 @@ export interface Shot {
   panels?: Panel[];
   /** A vignette in dither, this strong (0..1): the corners go to night, pixel by pixel. */
   vignette?: number;
+  /**
+   * Seconds the shot takes to come in from night, and to go to it at its end: smooth fades (a dip through
+   * black between two shots), where `dither` is a dissolve pixel by pixel over the shot before.
+   */
+  fadeIn?: number;
+  fadeOut?: number;
+  /**
+   * An Ark, drawn over the world (the game shows none: a house's Ark leaving is its lands going dark): built
+   * row by row at a world from the shot's start to `lift`, its engine lit, then rising away on a trail of fire.
+   */
+  ark?: { node: number; color: string; lift: number };
 }
 
 const stage = document.getElementById('stage')!;
@@ -358,6 +370,62 @@ function followFleet(g: Game, ease = 0.12) {
   const y = us.reduce((s, u) => s + u!.y, 0) / us.length;
   fleet.x = Number.isNaN(fleet.x) ? x : fleet.x + (x - fleet.x) * ease;
   fleet.y = Number.isNaN(fleet.y) ? y : fleet.y + (y - fleet.y) * ease;
+}
+
+/** The Ark's trail: sparks that cool from bone to gold to ember to wine as they fall behind it. */
+let sparks: { x: number; y: number; vx: number; vy: number; age: number }[] = [];
+const SPARK_LIFE = 0.8;
+/** The ark of a shot, at `t` seconds into it (see Shot.ark): its pixels, three of the game's to one of its. */
+function drawArk(a: NonNullable<Shot['ark']>, t: number, g: Game) {
+  const n = g.nodes[a.node];
+  const [sx, sy] = renderer.cam.worldToScreen(n.x, n.y);
+  // (Pointing up: the sprites point right, turned a quarter.)
+  const spr = shipSprite('ark', a.color, 12, Math.floor(t * 12) % 2 === 0, SPACE);
+  const S = 3;
+  const k = Math.max(0, t - a.lift);
+  // Rising: slowly, then faster and faster, smaller as it goes; gone into the night within two seconds.
+  const scale = Math.max(0, 1 - k * 0.42);
+  const w = Math.max(1, Math.round(spr.width * S * scale));
+  const h = Math.max(1, Math.round(spr.height * S * scale));
+  const cx = Math.round(sx + k * k * 10);
+  const cy = Math.round(sy - 20 - (k * 18 + k * k * 46));
+  // Built row by row, from the keel up, a line of gold where it is being built.
+  const built = Math.min(1, t / (a.lift * 0.7));
+  if (scale > 0) {
+    const rows = Math.ceil(spr.height * built);
+    ctx.imageSmoothingEnabled = false;
+    ctx.drawImage(spr, 0, spr.height - rows, spr.width, rows, cx - w / 2, cy + h / 2 - rows * S * scale, w, rows * S * scale);
+    if (built < 1) {
+      ctx.fillStyle = PAL.gold;
+      ctx.fillRect(Math.round(cx - w / 2) - 2, Math.round(cy + h / 2 - rows * S * scale), w + 4, 1);
+    }
+  }
+  // The engine: lit once it is built; sparks under it, a trail behind it once it rises.
+  const lit = t > a.lift * 0.75 && scale > 0.05;
+  if (lit) {
+    const many = k > 0 ? 5 : 1;
+    for (let i = 0; i < many; i++) {
+      sparks.push({ x: cx + (Math.random() - 0.5) * w * 0.5, y: cy + h / 2, vx: (Math.random() - 0.5) * 14, vy: 10 + Math.random() * 30, age: 0 });
+    }
+  }
+  // (A ring runs out from the world as it lifts, as one does from a world kindled.)
+  if (k > 0 && k < 0.6) {
+    const r = 6 + k * 70;
+    ctx.fillStyle = k < 0.2 ? PAL.bone : k < 0.4 ? PAL.gold : PAL.ember;
+    for (let d = 0; d < 360; d += 4) {
+      if (k > 0.4 && Math.floor(d / 8) % 2) continue;
+      ctx.fillRect(Math.round(sx + Math.cos((d * Math.PI) / 180) * r), Math.round(sy + Math.sin((d * Math.PI) / 180) * r * 0.8), 1, 1);
+    }
+  }
+  sparks = sparks.filter((p) => (p.age += 1 / FPS) < SPARK_LIFE);
+  for (const p of sparks) {
+    p.x += p.vx / FPS;
+    p.y += p.vy / FPS;
+    const q = p.age / SPARK_LIFE;
+    ctx.fillStyle = q < 0.2 ? PAL.bone : q < 0.45 ? PAL.gold : q < 0.75 ? PAL.ember : PAL.wine;
+    const size = q < 0.45 ? 2 : 1;
+    ctx.fillRect(Math.round(p.x), Math.round(p.y), size, size);
+  }
 }
 
 function camAt(g: Game, keys: CamKey[], k: number): { x: number; y: number; zoom: number } {
@@ -681,6 +749,7 @@ export async function shoot(shots: Shot[], everyNth = 1, pick?: number[]): Promi
     const frames = Math.round(shot.dur * FPS);
     const g = shot.blank || !shot.sector ? null : gameAt(shot.sector, shot.from);
     fleet = null;
+    sparks = [];
     if (g && shot.cam?.some((c) => c.follow)) pickFleet(g);
     const heard = {
       ctx: {},
@@ -718,6 +787,7 @@ export async function shoot(shots: Shot[], everyNth = 1, pick?: number[]): Promi
           ctx.fillStyle = `rgba(11, 10, 26, ${shot.dim})`;
           ctx.fillRect(0, 0, W, H);
         }
+        if (shot.ark) drawArk(shot.ark, t, g);
       }
       // Coming in over the last shot, pixel by pixel; going to black at the end.
       const din = shot.dither ? Math.min(1, t / shot.dither) : 1;
@@ -755,6 +825,19 @@ export async function shoot(shots: Shot[], everyNth = 1, pick?: number[]): Promi
       }
       for (const p of shot.panels ?? []) panel(p, t, clock);
       for (const cue of shot.text ?? []) words(cue, t, clock);
+      const fin = shot.fadeIn ? Math.min(1, t / shot.fadeIn) : 1;
+      const fout = shot.fadeOut ? Math.max(0, Math.min(1, (shot.dur - 1 / FPS - t) / shot.fadeOut)) : 1;
+      if (fin * fout < 1) {
+        const k = fin * fout;
+        const img = ctx.getImageData(0, 0, W, H);
+        const d = img.data;
+        for (let i = 0; i < d.length; i += 4) {
+          d[i] = 11 + (d[i] - 11) * k;
+          d[i + 1] = 10 + (d[i + 1] - 10) * k;
+          d[i + 2] = 26 + (d[i + 2] - 26) * k;
+        }
+        ctx.putImageData(img, 0, 0);
+      }
       // (The last frame, words and all, is what the next shot comes in over: what stays to the cut dissolves.)
       if (f === frames - 1) prev = ctx.getImageData(0, 0, W, H);
       // (`pick`: only these frames are sent, for a look at the trailer without the whole of it.)
@@ -905,10 +988,10 @@ export async function sound(dur: number, music: MusicCue[], sounds: SoundCue[], 
       // (A battle's tune does not ring home in the game, where the next one follows at once: here it does.)
       const home = m.at + steps * stepDur;
       player.close({ ...tr, mood: 'title' }, home, m.ring ? m.ring / 6 : stepDur);
-      // (Its chord dies away as it rings, by forty decibels, and to nothing at the end of it: it does not hold, then stop.)
+      // (Its chord dies away as it rings, by thirty decibels, and to nothing at the end of it: it does not hold, then stop.)
       if (m.ring) {
         bus.gain.setValueAtTime(level, home);
-        bus.gain.exponentialRampToValueAtTime(level * 0.01, home + m.ring);
+        bus.gain.exponentialRampToValueAtTime(level * 0.03, home + m.ring);
         bus.gain.linearRampToValueAtTime(0, home + m.ring + 0.1);
       }
     }
