@@ -1161,7 +1161,7 @@ table.stats tr.total td {
   margin: 0;
 }
 
-/* A Daily's board: the crown posted under three letters, and what became of it. */
+/* A Daily's board: the crown posted under three to five letters, and what became of it. */
 .board-box {
   margin-top: 16px;
 }
@@ -1180,7 +1180,7 @@ table.stats tr.total td {
 }
 
 .board-name input[type='text'] {
-  width: 5ch;
+  width: 7.5ch;
   font-family: var(--display);
   font-size: 16px;
   letter-spacing: 0.12em;
@@ -2186,4 +2186,272 @@ button[data-tip],
   justify-content: center;
   gap: 12px;
   margin-top: 18px;
+}
+
+/* The throne of a crowned Daily (screens/throne.ts): today's board as an arcade's high-score table, this
+   run's row blinking where its time would put it, and its letters to type, three to five. */
+.screen.throne .page {
+  max-width: 720px;
+  display: grid;
+  justify-items: center;
+  gap: 10px;
+  text-align: center;
+}
+
+.throne-crown .crown-mark {
+  width: 66px;
+  height: 42px;
+  fill: var(--gold);
+}
+
+.throne-title {
+  margin: 0;
+  font-family: var(--display);
+  font-size: clamp(22px, 4vw, 34px);
+  letter-spacing: 0.06em;
+  color: var(--gold);
+  text-shadow: 3px 3px 0 var(--wine);
+}
+
+.throne-head {
+  margin: 0;
+  font-family: var(--display);
+  font-size: 13px;
+  letter-spacing: 0.06em;
+  color: var(--bone);
+}
+
+.throne-head.gold {
+  color: var(--gold);
+}
+
+.throne-time {
+  margin: 0;
+  color: var(--mist);
+}
+
+.throne-time b {
+  font-family: var(--display);
+  font-weight: normal;
+  font-size: 13px;
+  color: var(--gold);
+}
+
+.throne-table {
+  margin: 8px auto 0;
+  border-collapse: collapse;
+  width: min(560px, 100%);
+  font-variant-numeric: tabular-nums;
+}
+
+.throne-table td {
+  padding: 7px 12px;
+  text-align: left;
+  border-bottom: 2px solid var(--night);
+}
+
+.throne-table td:first-child {
+  width: 4.5em;
+  font-family: var(--display);
+  font-size: 11px;
+  color: var(--dusk);
+}
+
+.throne-table td.who {
+  width: 8em;
+  font-family: var(--display);
+  font-size: 14px;
+  letter-spacing: 0.12em;
+  color: var(--bone);
+}
+
+.throne-table td:nth-child(3) {
+  color: var(--hc);
+}
+
+.throne-table td.time {
+  text-align: right;
+  font-family: var(--display);
+  font-size: 12px;
+  color: var(--gold);
+}
+
+.throne-table tr.you td {
+  background: var(--night);
+}
+
+.throne-table tr.you td.who {
+  color: var(--gold);
+  animation: throne-blink 1s steps(2, jump-none) infinite;
+}
+
+.you-tag {
+  margin-left: 10px;
+  font-size: 8px;
+  color: var(--ember);
+}
+
+.throne-table tr.gap td {
+  text-align: center;
+  color: var(--dusk);
+  border: 0;
+}
+
+.throne-of,
+.throne-note {
+  margin: 2px 0 0;
+  font-size: 15px;
+  color: var(--dusk);
+}
+
+.throne-entry {
+  display: flex;
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.slot-col {
+  display: grid;
+  justify-items: center;
+  gap: 6px;
+}
+
+.throne-entry button.roll {
+  padding: 4px 12px;
+  background: none;
+  border: 0;
+  box-shadow: none;
+  cursor: pointer;
+}
+
+.throne-entry button.roll svg {
+  width: 21px;
+  height: 12px;
+  fill: var(--dusk);
+}
+
+.throne-entry button.roll:hover svg {
+  fill: var(--gold);
+}
+
+.throne-entry button.slot {
+  display: grid;
+  place-items: center;
+  width: 64px;
+  height: 72px;
+  padding: 0;
+  font-family: var(--display);
+  font-size: 34px;
+  color: var(--bone);
+  background: var(--void);
+  border: 3px solid var(--indigo);
+  box-shadow: none;
+  cursor: pointer;
+}
+
+.throne-entry button.slot.extra {
+  border-style: dashed;
+}
+
+.throne-entry button.slot.blank {
+  color: var(--slate);
+}
+
+.throne-entry button.slot.at {
+  border-color: var(--gold);
+  animation: throne-cursor 0.8s steps(2, jump-none) infinite;
+}
+
+/* Posted: each letter stamped in turn, a ring running out from it (bone, gold, ember), as a world is kindled. */
+.throne-entry button.slot.stamped {
+  color: var(--gold);
+  border-color: var(--ember);
+  animation: throne-stamp 0.6s steps(6, jump-none) both;
+  animation-delay: calc(var(--k) * 0.14s);
+}
+
+@keyframes throne-stamp {
+  0% {
+    color: var(--ember);
+    box-shadow: 0 0 0 0 var(--bone);
+  }
+  40% {
+    box-shadow: 0 0 0 6px var(--gold);
+  }
+  80% {
+    box-shadow: 0 0 0 11px var(--ember);
+  }
+  100% {
+    color: var(--gold);
+    box-shadow: 0 0 0 14px transparent;
+  }
+}
+
+@keyframes throne-cursor {
+  50% {
+    border-color: var(--indigo);
+  }
+}
+
+@keyframes throne-blink {
+  50% {
+    color: var(--slate);
+  }
+}
+
+.throne-hint {
+  margin: 4px 0 0;
+  font-size: 14px;
+  color: var(--dusk);
+}
+
+.throne-state {
+  min-height: 1.4em;
+  margin: 0;
+  color: var(--teal);
+}
+
+.throne-state.warn {
+  color: var(--ember);
+}
+
+.throne-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 12px;
+  margin-top: 4px;
+}
+
+.throne-privacy {
+  max-width: 60ch;
+  font-size: 13px;
+}
+
+/* The results' box, when its run is the fastest of the day. */
+.board-box h3 .crown-mark {
+  width: 22px;
+  height: 14px;
+  fill: currentColor;
+  vertical-align: -2px;
+}
+
+.board-box.crowned {
+  box-shadow:
+    0 calc(var(--px) * -1) 0 0 var(--gold),
+    0 var(--px) 0 0 var(--gold),
+    calc(var(--px) * -1) 0 0 0 var(--gold),
+    var(--px) 0 0 0 var(--gold);
+}
+
+.board-box.crowned h3 {
+  color: var(--gold);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .throne-table tr.you td.who,
+  .throne-entry button.slot.at,
+  .throne-entry button.slot.stamped {
+    animation: none;
+  }
 }

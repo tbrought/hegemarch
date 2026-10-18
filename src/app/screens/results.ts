@@ -56,7 +56,11 @@ export interface ResultsData {
     status?: 'sending' | BoardStatus['status'];
     said?: string;
     warn?: boolean;
+    /** Checked, and the fastest of its day: its player is today's Hegemarch. */
+    crowned?: boolean;
   } | null;
+  /** The throne (screens/throne.ts) has been shown for this run: once is enough. */
+  throneSeen?: boolean;
 }
 
 /**
@@ -121,20 +125,20 @@ export function showResults(app: App) {
         <div class="lh-text"><p><b>Legacy is yours to keep.</b> Every run earns it, win or lose. Spend it in the <b>Hall of Heirs</b> on new houses to play, on perks that every future run starts with, and on rarer Boons. You have <b class="gold">◆${have}</b> to spend.</p>${buys}</div>
         <button class="${afford.length ? 'primary' : ''}" data-sa="results-hall">${afford.length ? 'SPEND IT' : 'SEE THE HALL'}</button>
       </div>`;
-  // A Daily: its board, where a crown can be posted under three letters (and is played again before it goes up).
+  // A Daily: its board, where a crown can be posted under three to five letters (and is played again before it goes up).
   const b = r.board;
   const busy = !!b && (b.status === 'sending' || b.status === 'pending' || b.status === 'verified' || b.status === 'rejected');
   const boardBox = b
-    ? `<div class="px-box board-box">
-        <h3>THE DAILY BOARD</h3>
+    ? `<div class="px-box board-box${b.crowned ? ' crowned' : ''}">
+        <h3>${b.crowned ? `${CROWN_SVG} YOU ARE TODAY'S HEGEMARCH` : 'THE DAILY BOARD'}</h3>
         <p>${b.why ? esc(b.why) : `Crowned in <span class="gold">${fmtTime(b.time)}</span>. Post it on the board of ${esc(b.day)}: the day's fastest crowns, at hegemarch.com.`}</p>
         <div class="row">
-          <label class="board-name">YOUR LETTERS <input id="board-name" type="text" maxlength="3" autocomplete="off" spellcheck="false" aria-label="Three letters" value="${esc(app.profile.boardName ?? '')}"${b.why || busy ? ' disabled' : ''}></label>
+          <label class="board-name">YOUR LETTERS <input id="board-name" type="text" maxlength="5" placeholder="ABC" autocomplete="off" spellcheck="false" aria-label="Three to five letters" value="${esc(app.profile.boardName ?? '')}"${b.why || busy ? ' disabled' : ''}></label>
           <button class="small primary${b.why || busy ? ' disabled' : ''}" data-sa="board-post" data-tip="${esc(b.why ?? 'Sends this run to the board. The board plays it again to check it, and it goes up in a minute or two.')}">${boardButton(b)}</button>
           <a class="board-see" href="${BOARD_PAGE}" target="_blank" rel="noopener">SEE THE BOARD</a>
         </div>
         <p class="board-state${b.warn ? ' warn' : ''}" aria-live="polite">${esc(b.said ?? '')}</p>
-        <p class="dim">The board keeps your three letters, your house, your time and the orders you gave (it plays the run again to check it), and nothing else: no account, no email address, no cookie.</p>
+        <p class="dim">The board keeps your letters, your house, your time and the orders you gave (it plays the run again to check it), and nothing else: no account, no email address, no cookie.</p>
       </div>`
     : '';
   app.ui.innerHTML = `<div class="screen results${app.crt()}"><div class="page">
@@ -191,6 +195,10 @@ export function showResults(app: App) {
   requestAnimationFrame(step);
 }
 
+/** The crown, in pixels, as the website draws it. */
+export const CROWN_SVG =
+  '<svg class="crown-mark" viewBox="0 0 11 7" shape-rendering="crispEdges" aria-hidden="true"><path d="M0 0h1v7H0zM5 0h1v7H5zM10 0h1v7h-1zM1 2h1v5H1zM4 2h3v5H4zM9 2h1v5H9zM2 3h2v4H2zM7 3h2v4H7z"/></svg>';
+
 /** The board's button, as the run stands with the board. */
 function boardButton(b: NonNullable<ResultsData['board']>): string {
   return b.status === 'verified' ? 'ON THE BOARD' : b.status === 'pending' ? 'BEING CHECKED' : b.status === 'sending' ? 'SENDING…' : b.status === 'rejected' ? 'NOT TAKEN' : 'POST TO THE BOARD';
@@ -216,9 +224,16 @@ function boardSays(app: App, said: string, warn = false) {
   }
   const input = app.ui.querySelector<HTMLInputElement>('#board-name');
   if (input) input.disabled = busy || !!b.why;
+  // (The fastest of the day: the box says so, in gold.)
+  const box = app.ui.querySelector<HTMLElement>('.board-box');
+  if (box && b.crowned) {
+    box.classList.add('crowned');
+    const h = box.querySelector('h3');
+    if (h) h.innerHTML = `${CROWN_SVG} YOU ARE TODAY'S HEGEMARCH`;
+  }
 }
 
-/** Send the crown to the board, and follow it until it is checked. */
+/** The letters typed in the results' box, sent (and said why not, if they will not do). */
 async function postToBoard(app: App) {
   const b = app.results?.board;
   if (!b || b.why || !b.orders || b.status) return;
@@ -230,6 +245,13 @@ async function postToBoard(app: App) {
     input?.focus();
     return;
   }
+  await sendToBoard(app, name);
+}
+
+/** Send the crown to the board under these letters (good ones), and follow it until it is checked: from the results, or from the throne. */
+export async function sendToBoard(app: App, name: string) {
+  const b = app.results?.board;
+  if (!b || b.why || !b.orders || b.status) return;
   app.profile.boardName = name;
   saveProfile(app.profile);
   b.status = 'sending';
@@ -241,14 +263,18 @@ async function postToBoard(app: App) {
     follow(app, b, r);
   } catch (err) {
     b.status = undefined;
-    boardSays(app, `The board could not be reached (${(err as Error).message}). Try again in a moment.`, true);
+    console.warn('the board could not be reached', err);
+    boardSays(app, 'The board could not be reached. Try again in a moment.', true);
   }
 }
 
 /** What became of a run sent: said as it comes, and asked again every ten seconds while it is checked (for up to a quarter of an hour). */
 function follow(app: App, b: NonNullable<ResultsData['board']>, s: BoardStatus) {
   b.status = s.status;
-  if (s.status === 'verified') boardSays(app, `On the board: ${ordinal(s.rank ?? 1)} of ${s.of ?? 1} on ${b.day}.`);
+  if (s.status === 'verified' && s.rank === 1) {
+    b.crowned = true;
+    boardSays(app, `The fastest crown of ${b.day}, of ${s.of ?? 1}: your letters are on the front page of hegemarch.com.`);
+  } else if (s.status === 'verified') boardSays(app, `On the board: ${ordinal(s.rank ?? 1)} of ${s.of ?? 1} on ${b.day}.`);
   else if (s.status === 'rejected') boardSays(app, `The board did not take it: ${s.reason ?? 'it did not stand'}.`, true);
   else boardSays(app, 'Sent. The board is playing your run again to check it: a minute or two.');
   if (s.status !== 'pending') return;

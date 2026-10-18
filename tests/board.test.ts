@@ -16,13 +16,17 @@ import { unpack } from '../scripts/verify-daily';
 const DAY = 24 * 60 * 60 * 1000;
 
 describe('what the board and the game agree on', () => {
-  it('three letters, A to Z, and not those that are not to stand on a board', () => {
-    expect(nameProblem('ABC')).toBeNull();
-    expect(nameProblem('abc')).toMatch(/Three letters/);
-    expect(nameProblem('AB')).toMatch(/Three letters/);
-    expect(nameProblem('AB1')).toMatch(/Three letters/);
-    expect(nameProblem(42)).toMatch(/Three letters/);
-    expect(nameProblem('KKK')).toMatch(/Not those three/);
+  it('three to five letters, A to Z, and not those that are not to stand on a board', () => {
+    for (const ok of ['ABC', 'NOVA', 'ACERS', 'ZZZZZ']) expect(nameProblem(ok), ok).toBeNull();
+    for (const bad of ['abc', 'AB', 'ABCDEF', 'AB1', 'A C', '', 42, null]) expect(nameProblem(bad), String(bad)).toMatch(/Three to five letters/);
+    // Slurs, hate, sexual words, the hardest swearing: as the whole name, and the worst anywhere in one.
+    for (const no of ['KKK', 'FUCK', 'XFUCK', 'FUCKS', 'SHITE', 'NIGGA', 'NAZIS', 'RAPE', 'CHINK', 'KYS', 'SEX', 'WANK']) {
+      expect(nameProblem(no), no).toMatch(/Not those letters/);
+    }
+    // Mild words stand, and so does a word that merely holds a refused one.
+    for (const yes of ['ASS', 'DAMN', 'HELL', 'CRAP', 'BUTT', 'PISS', 'WTF', 'TURD', 'CLASS', 'BASSO', 'GRAPE', 'DRAPE', 'CUMIN', 'SWANK', 'SPICY', 'SCRAP']) {
+      expect(nameProblem(yes), yes).toBeNull();
+    }
   });
 
   it('the day as the seed knows it, today\'s and yesterday\'s board open', () => {
@@ -105,8 +109,9 @@ describe('the board\'s server', () => {
       [b.entry({ day: 'today' }), /No such day/],
       [b.entry({ heir: 'Robert"); DROP TABLE runs;--' }), /No such house/],
       [b.entry({ version: 'latest' }), /No such version/],
-      [b.entry({ name: 'KKK' }), /Not those three/],
-      [b.entry({ name: 'ab' }), /Three letters/],
+      [b.entry({ name: 'KKK' }), /Not those letters/],
+      [b.entry({ name: 'ab' }), /Three to five letters/],
+      [b.entry({ name: 'ABCDEF' }), /Three to five letters/],
       [b.entry({ time: 4 * 60 * 60 }), /three hours or less/],
       [b.entry({ time: -1 }), /three hours or less/],
       [b.entry({ victory: '' }), /No such Destiny/],
@@ -252,6 +257,10 @@ describe('the board\'s server', () => {
         { day: ago(4), name: 'ABC', heir: 'vael', time: 2000, victory: 'conquest', reign: 1 },
       ],
     });
+    // A name taken down by hand ("???", README.md) counts as no one's reign, however many days it stands on.
+    await b.env.DB.prepare("UPDATE crowns SET name = '???' WHERE day IN (?, ?)").bind(ago(3), ago(4)).run();
+    expect((await b.call('/throne')).body.past).toMatchObject([{ name: 'ZED', reign: 1 }, { name: '???', reign: 1 }, { name: '???', reign: 1 }]);
+    await b.env.DB.prepare("UPDATE crowns SET name = 'ABC' WHERE day IN (?, ?)").bind(ago(3), ago(4)).run();
     // A late run of two days ago, checked now, takes that day's crown: the days are crowned again.
     await add(ago(2), 'ABC', 2200);
     await crownDays(b.env, now);

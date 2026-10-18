@@ -71,7 +71,7 @@ export interface Profile {
   lastSetup?: { heir: string; size: MapSize; difficulty: Difficulty };
   /** The player's records, by kind of run (meta/records.ts: "classic:medium:1"). */
   records: Record<string, Records>;
-  /** The three letters the player last posted a run to the Daily board under (meta/board.ts). */
+  /** The letters the player last posted a run to the Daily board under (meta/board.ts): three to five. */
   boardName?: string;
 }
 

@@ -1,6 +1,6 @@
 /**
  * The Daily board (1.25): the fastest crowns of each day's sector, at hegemarch.com. A crowned Daily can
- * be sent to it under three letters; a checker plays the run again from its orders before it goes up
+ * be sent to it under three to five letters; a checker plays the run again from its orders before it goes up
  * (game/replay.ts, scripts/verify-daily.ts), so a time on the board is one the game itself found.
  *
  * What the game, the website and the board's server (worker/) agree on: where the board is, the letters
@@ -24,7 +24,7 @@ export interface BoardEntry {
   heir: string;
   /** The version of the game the run began in: the checker plays it again in that version. */
   version: string;
-  /** Three letters, A to Z. */
+  /** Three to five letters, A to Z. */
   name: string;
   /** The crown's time, in seconds of game time, as the player's game found it (the checker finds its own). */
   time: number;
@@ -112,16 +112,34 @@ export function isBoardDay(day: string, now = Date.now()): boolean {
   return day === dayOf(now) || day === dayOf(now - 24 * 60 * 60 * 1000);
 }
 
-// Three letters that are not to stand on a board others read.
-const UNSAID = new Set([
-  'ASS', 'CNT', 'COC', 'COK', 'CUM', 'CUK', 'CUN', 'DIC', 'DIK', 'DIX', 'FAG', 'FAP', 'FCK', 'FKU', 'FUC', 'FUK', 'FUQ', 'HOE', 'JIZ',
-  'KKK', 'KYS', 'NAZ', 'NGA', 'NGR', 'NIG', 'PIS', 'PNS', 'PUS', 'RAP', 'SEX', 'SHT', 'SLT', 'SUK', 'TIT', 'TWT', 'VAG', 'WTF', 'XXX',
+/**
+ * Letters that are not to stand on a board others read (and today's, on the front page of the website):
+ * slurs, hate, sexual words, the hardest swearing, and "kill yourself". Mild words stand (ASS, DAMN, HELL,
+ * CRAP, BUTT, PISS, WTF): this is not a nursery. Only A to Z can be typed, so nothing hides behind a digit.
+ *
+ * - SPELLED_ANYWHERE: the worst, refused anywhere in a name ("XFUCK" too). Each is chosen so that no
+ *   ordinary word of five letters holds it: "RAPE" is not here (GRAPE), nor "ASS" (CLASS), nor "CUM" (CUMIN).
+ * - WHOLE: refused as the whole name only, so that a word that merely holds one stands.
+ */
+const SPELLED_ANYWHERE = [
+  'FUCK', 'FCUK', 'FUKK', 'PHUK', 'CUNT', 'KUNT', 'SHIT', 'SHYT', 'NIGG', 'NIGR', 'NIGA', 'FAGG', 'KIKE', 'KYKE', 'TWAT', 'NAZI',
+  'KKK', 'JIZZ', 'PORN', 'DILDO', 'WHORE', 'SLUT', 'PEDO', 'PUSSY', 'PUSY', 'COCK', 'DICK',
+];
+const WHOLE = new Set([
+  // Three letters.
+  'CNT', 'COC', 'COK', 'CUM', 'CUK', 'CUN', 'DIC', 'DIK', 'DIX', 'FAG', 'FAP', 'FCK', 'FKU', 'FUC', 'FUK', 'FUQ', 'HOE', 'JAP', 'JIZ',
+  'KYS', 'NAZ', 'NGA', 'NGR', 'NIG', 'PNS', 'SEX', 'SHT', 'SLT', 'TWT', 'VAG', 'WOP', 'XXX', 'YID',
+  // Four and five.
+  'ANAL', 'ANUS', 'BITCH', 'BOOB', 'BOOBS', 'CHINK', 'COON', 'COONS', 'CUMS', 'DAGO', 'DYKE', 'DYKES', 'FAGS', 'FAGOT', 'GOOK', 'GOOKS',
+  'HITLR', 'HOMO', 'HOMOS', 'INJUN', 'MONG', 'MUFF', 'NEGRO', 'PAKI', 'PAKIS', 'PENIS', 'PIKEY', 'PUBE', 'PUBES', 'RAPE', 'RAPED',
+  'RAPER', 'RAPES', 'RETRD', 'SEMEN', 'SPAZ', 'SPIC', 'SPICK', 'SPICS', 'SPUNK', 'SQUAW', 'TARD', 'TARDS', 'TITS', 'TITTY', 'WANK',
+  'WANKS', 'WANKR',
 ]);
 
 /** Why these are not letters a run can go up under, or null when they are. */
 export function nameProblem(name: unknown): string | null {
-  if (typeof name !== 'string' || !/^[A-Z]{3}$/.test(name)) return 'Three letters, A to Z.';
-  if (UNSAID.has(name)) return 'Not those three: try others.';
+  if (typeof name !== 'string' || !/^[A-Z]{3,5}$/.test(name)) return 'Three to five letters, A to Z.';
+  if (WHOLE.has(name) || SPELLED_ANYWHERE.some((w) => name.includes(w))) return 'Not those letters: try others.';
   return null;
 }
 

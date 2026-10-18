@@ -33,7 +33,7 @@ src/ui/          everything drawn over the map during a run
 src/app/         the page around the game
   App.ts           the frame loop and the shared state
   run.ts           a run's life: started, continued, saved, ended
-  screens/         the menu pages (HTML): title, setup, Hall of Heirs, Settings, results
+  screens/         the menu pages (HTML): title, setup, Hall of Heirs, Settings, the throne, results
   Session.ts       what the HUD and the input share about the run on screen
 src/audio/       sound effects and music, both synthesised
 src/meta/        the player's profile, Legacy and records (localStorage); board.ts, the Daily board's

@@ -293,66 +293,60 @@
         background: rgba(11, 10, 26, 0.9);
         box-shadow: 0 0 0 var(--px) var(--gold);
       }
-      /* Who holds today's throne (src/site/throne.ts): under the name of the game, on the night. */
-      /* (One line, so that the sector playing behind it is seen: two on a narrow screen.) */
+      /* Who holds today's throne (src/site/throne.ts): one small line over PLAY, on the night (no box: the
+         sector playing behind it is seen, and the title stays the title). */
       .throne {
         display: inline-flex;
         flex-wrap: wrap;
         justify-content: center;
         align-items: center;
-        gap: 4px 12px;
-        margin: 16px auto 0;
-        padding: 8px 16px;
-        max-width: min(760px, 100%);
+        gap: 2px 9px;
+        max-width: 100%;
+        font-size: 16px;
         text-decoration: none;
         color: var(--mist);
-        background: rgba(11, 10, 26, 0.88);
-        box-shadow: 0 0 0 var(--px) var(--gold);
+        text-shadow:
+          2px 2px 0 var(--void),
+          -2px -2px 0 var(--void),
+          2px -2px 0 var(--void),
+          -2px 2px 0 var(--void);
       }
       .throne[hidden] {
         display: none;
       }
-      .throne:hover,
-      .throne:focus-visible {
-        box-shadow: 0 0 0 var(--px) var(--bone);
-      }
-      .throne.empty {
-        box-shadow: 0 0 0 var(--px) var(--slate);
+      .throne:hover .throne-what,
+      .throne:focus-visible .throne-what {
+        text-decoration: underline;
       }
       .crown-mark {
-        width: 22px;
-        height: 14px;
+        width: 17px;
+        height: 11px;
         fill: var(--gold);
       }
       .throne.empty .crown-mark {
-        fill: var(--slate);
+        fill: var(--dusk);
       }
       .throne-head {
         font-family: var(--display);
-        font-size: 11px;
+        font-size: 10px;
         letter-spacing: 0.08em;
         color: var(--gold);
       }
       .throne.empty .throne-head {
-        color: var(--bone);
+        color: var(--mist);
       }
       .throne-name {
         font-family: var(--display);
         font-weight: normal;
-        font-size: clamp(15px, 1.8vw, 20px);
-        letter-spacing: 0.1em;
+        font-size: 13px;
+        letter-spacing: 0.08em;
         color: var(--bone);
-        text-shadow: 0.08em 0.08em 0 var(--wine);
       }
       .throne-name:empty {
         display: none;
       }
-      .throne-what {
-        font-size: 18px;
-      }
-      .throne-what b {
-        font-weight: normal;
-        color: var(--bone);
+      .throne-go {
+        color: var(--gold);
       }
       .throne .house,
       .podium .house,
@@ -1343,7 +1337,7 @@
       }
       .board-list li {
         display: grid;
-        grid-template-columns: 4ch 5ch minmax(0, 1fr) auto;
+        grid-template-columns: 4ch 6.2rem minmax(0, 1fr) auto;
         gap: 12px;
         align-items: baseline;
         padding: 7px 10px;
@@ -1420,7 +1414,7 @@
       }
       @media (max-width: 480px) {
         .board-list li {
-          grid-template-columns: 4ch 5ch minmax(0, 1fr);
+          grid-template-columns: 4ch 6.2rem minmax(0, 1fr);
         }
         .board-list .time {
           grid-column: 2 / -1;
@@ -1599,14 +1593,6 @@
       <div class="hero-top">
         <h1 class="logo">HEGEMARCH</h1>
         <p class="tagline">The last Hegemarch fell, and the sector went dark. <br />Light it again, world by world, and take the crown.</p>
-        <!-- Who holds today's throne: the fastest crown of the Daily Run (src/site/throne.ts). -->
-        <a class="throne" href="#board" hidden>
-          <svg class="crown-mark" viewBox="0 0 11 7" shape-rendering="crispEdges" aria-hidden="true"><path d="M0 0h1v7H0zM5 0h1v7H5zM10 0h1v7h-1zM1 2h1v5H1zM4 2h3v5H4zM9 2h1v5H9zM2 3h2v4H2zM7 3h2v4H7z"/></svg>
-          <span class="throne-head">TODAY'S HEGEMARCH</span>
-          <b class="throne-name"></b>
-          <span class="throne-what"></span>
-          <span class="throne-go" aria-hidden="true">▸</span>
-        </a>
       </div>
       <p class="crown" hidden></p>
       <div class="hero-bottom">
@@ -1616,6 +1602,14 @@
           <ul class="live-houses"></ul>
         </section>
         <div class="cta">
+          <!-- Who holds today's throne: the fastest crown of the Daily Run (src/site/throne.ts). One small line over PLAY. -->
+          <a class="throne" href="#board" hidden>
+            <svg class="crown-mark" viewBox="0 0 11 7" shape-rendering="crispEdges" aria-hidden="true"><path d="M0 0h1v7H0zM5 0h1v7H5zM10 0h1v7h-1zM1 2h1v5H1zM4 2h3v5H4zM9 2h1v5H9zM2 3h2v4H2zM7 3h2v4H7z"/></svg>
+            <span class="throne-head">TODAY'S HEGEMARCH</span>
+            <b class="throne-name"></b>
+            <span class="throne-what"></span>
+            <span class="throne-go" aria-hidden="true">▸</span>
+          </a>
           <div class="actions">
             <a class="btn primary big" href="play/">▶ PLAY NOW<small>Free, in your browser, nothing to install</small></a>
             <a class="btn download" href="hegemarch.zip" download>DOWNLOAD<small>Windows · macOS · Linux</small></a>
@@ -1669,7 +1663,7 @@
           <h2>THE DAILY THRONE</h2>
           <p class="sub">
             Every day there is one sector for every player, played by the same rules. The fastest crown of the day makes its player that day's
-            Hegemarch, and their three letters stay on this page. Each run is played again before it goes up: a time here is one the game itself
+            Hegemarch, and their letters stay on this page. Each run is played again before it goes up: a time here is one the game itself
             found.
           </p>
         </header>
@@ -1698,7 +1692,7 @@
             <p class="best-state"></p>
           </div>
           <p class="note">
-            The board keeps the three letters a run is posted under, its house, its time and the orders it was played with, and nothing else: no
+            The board keeps the letters a run is posted under, its house, its time and the orders it was played with, and nothing else: no
             account, no email address, no cookies. Your best times stay in this browser.
           </p>
         </div>

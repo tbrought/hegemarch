@@ -1572,7 +1572,7 @@ screen size; `scripts/ages-look.mjs` takes screenshots of every age for a visual
 ## 10. The Daily board (1.25)
 
 The fastest crowns of each day's Daily, at hegemarch.com (`#board`), and in the game on the results of a
-crowned Daily: POST TO THE BOARD under three letters. A high score is a reason to play again, and the
+crowned Daily: three to five letters on the throne, as an arcade takes them. A high score is a reason to play again, and the
 Daily is where scores mean something: every player of the day has the same sector.
 
 ### The same run for everyone
@@ -1623,8 +1623,8 @@ step, is in `worker/README.md`.
 
 ### What is kept
 
-Three letters (A to Z, and not a short list of words that should not stand on a board others read), the
-house, the time, the Destiny, the version, and the orders: no account, no address, no cookie, no IP. The
+Three to five letters (A to Z), the house, the time, the Destiny, the version, and the orders: no account,
+no address, no cookie, no IP. The
 orders of a run that did not stand are dropped at once, and of one that stands after fourteen days, but for
 each day's ten fastest. The website says so beside the board, and the results say so beside the button.
 The website's YOUR BEST is the player's own records, read from the game's profile in the same browser (the
@@ -1632,7 +1632,7 @@ site and the game at /play/ share it): it never leaves the browser.
 
 ### Shown as the rest of the game is
 
-On the results of a Daily the box is always there: for a crown, the three letters and POST TO THE BOARD;
+On the results of a Daily the box is always there: for a crown, its letters and POST TO THE BOARD;
 for a fall, or a Daily begun before the board, the same button greyed with why. Sent, it says what the
 board says: being checked, then its place ("On the board: 2nd of 5 on 2026-10-17"), or why it did not
 stand. On the website the board shows today's crowns as they come (asked again every minute) and
@@ -1656,3 +1656,34 @@ The Worker keeps each day's Hegemarch in its own table (`crowns`), set again eve
 last four days while a late run may still change it, so the line outlives the runs it came from;
 `/api/daily/throne` is one request for all of it. PLAY TODAY'S DAILY opens the game at `play/#daily`, on
 today's Daily, ready to play (a first visit is shown the title screen, with the First Night).
+
+On the website it is one small line over PLAY ("TODAY'S HEGEMARCH ACE II 31:05", or THE THRONE IS EMPTY)
+since 1.25.3: as a box under the title it covered the sector playing behind it, and outshouted the name.
+
+### Taking the throne, as an arcade takes a name (1.25.3)
+
+A box on the results, under the Legacy, was where the board was: a player who had just won a forty-minute
+run read past it. So a crowned Daily the board takes goes by **the throne** on its way to its results
+(`screens/throne.ts`): the day's board as an arcade's high-score table, with this run's row already in the
+place its time would take, blinking, waiting for letters. The headline says what is at stake: YOU WOULD
+TAKE THE THRONE (the front page of the website), A PLACE ON TODAY'S PODIUM, or 12TH OF 40 TODAY.
+
+- The letters are typed as an arcade takes them: three to five, A to Z (the keys), rolled with Up and Down
+  or the arrows over and under each, moved over with Left and Right; Enter posts. The row fills as they are
+  typed, beside the names it would beat. The last letters a player posted under are there to begin with.
+- The button says what it does (TAKE THE THRONE, or POST MY TIME), and is greyed with why while there are
+  fewer than three letters. NOT TODAY goes to the results, where the run can still be posted.
+- Posted, each letter is stamped in turn, a ring running out from it, as a world is kindled; the run is
+  sent, and the results come (the results' box goes on following it). Checked and the fastest of its day,
+  the box turns gold: YOU ARE TODAY'S HEGEMARCH.
+- The board out of reach: the throne still takes the letters, says so, and the results can try again.
+- A lost Daily, a Daily the board does not take, and any other run go straight to their results.
+
+### What a name may be (1.25.3)
+
+Three to five letters, A to Z (`nameProblem`, `meta/board.ts`, which the game, the website and the Worker
+all use; the Worker's is the one that counts). Refused: slurs, hate, sexual words, the hardest swearing and
+"kill yourself"; mild words stand (ASS, DAMN, HELL, CRAP, WTF). The worst are refused anywhere in a name
+(`SPELLED_ANYWHERE`: "XFUCK" too), each chosen so that no ordinary word of five letters holds it; the rest
+only as the whole name (`WHOLE`), so that GRAPE, CLASS and CUMIN stand. No list is whole: a name can be taken
+down by hand to "???" (`worker/README.md`), which counts as no one's reign.

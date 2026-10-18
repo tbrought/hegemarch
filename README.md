@@ -30,7 +30,7 @@ Requires Node 18+ (developed on Node 24). Any modern desktop browser works.
 The title screen offers three ways to play: a **Classic run** (25 to 70 minutes), an
 **Ages run** (the long game, see below) and the **Daily run** (today's sector, the same for every
 player and played by the same rules). Take a Daily's crown and you can post your time on the **Daily
-board** at hegemarch.com under three letters: the run is played again by the game before it goes up.
+board** at hegemarch.com under three to five letters, as an arcade takes them: the run is played again by the game before it goes up.
 The day's fastest crown makes its player that day's Hegemarch, named on the website's front page.
 A run in progress is the banner at the top: CONTINUE.
 

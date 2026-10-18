@@ -1,16 +1,15 @@
 /**
  * The throne (1.25.2): the fastest crown of the day makes its player that day's Hegemarch, and the page
- * says so where it is seen first, under the name of the game: who holds today's throne (or that it is
- * empty, and who held yesterday's). Down the page, on the board, the day's three fastest stand on a podium,
+ * says so where its call to play is, in one small line over PLAY: who holds today's throne and their
+ * time, or that it is empty (1.25.3: it was a box under the title, and too much). Down the page, on the board, the day's three fastest stand on a podium,
  * and the Hegemarchs of the days before stand in a line, each with its reign ("ABC II": letters crowned a
  * second time). From the board's server (worker/: /throne), asked again every minute while the page is seen.
  */
 import { HEIR_BY_ID } from '../game/data/heirs';
-import { dayOf, fetchThrone, regnal, type Throne } from '../meta/board';
+import { fetchThrone, regnal, type Throne } from '../meta/board';
 import { fmtTime } from '../render/Renderer';
 import { esc } from './stage';
 
-const DAY = 24 * 60 * 60 * 1000;
 const MONTHS = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'];
 /** "16 OCT": a day of the board, as the line of Hegemarchs gives it. */
 const dateOf = (day: string) => {
@@ -32,17 +31,12 @@ export function startThrone(plaque: HTMLElement | null, board: HTMLElement | nul
   const lineState = board?.querySelector<HTMLElement>('.line-state') ?? null;
 
   const show = (t: Throne) => {
-    const yesterday = t.past.find((c) => c.day === dayOf(Date.now() - DAY));
     if (plaque) {
       const first = t.today[0];
       plaque.classList.toggle('empty', !first);
       plaque.querySelector('.throne-head')!.textContent = first ? 'TODAY\'S HEGEMARCH' : 'THE THRONE IS EMPTY';
       plaque.querySelector('.throne-name')!.textContent = first ? regnal(first.name, first.reign) : '';
-      plaque.querySelector('.throne-what')!.innerHTML = first
-        ? `${house(first.heir)} · ${fmtTime(first.time)}`
-        : yesterday
-          ? `No one has taken today's crown. Yesterday's: <b>${esc(regnal(yesterday.name, yesterday.reign))}</b>, ${house(yesterday.heir)}, ${fmtTime(yesterday.time)}`
-          : 'No one has taken today\'s crown. It could be yours.';
+      plaque.querySelector('.throne-what')!.textContent = first ? fmtTime(first.time) : 'Take today\'s crown';
       plaque.hidden = false;
     }
     if (podium) {

@@ -55,6 +55,8 @@ const MAX_PENDING = 300;
 const CALL_GAP = 60_000;
 const RETRY_GAP = 30 * 60_000;
 const DAY = 24 * 60 * 60_000;
+/** A name taken down by hand (README.md, "Taking a name down"): it shows as this, and counts as no one's. */
+const BLANKED = '???';
 
 const CORS = {
   'access-control-allow-origin': '*',
@@ -191,14 +193,16 @@ async function throne(env: Env, now: number): Promise<Response> {
   const all = await env.DB.prepare("SELECT COUNT(*) AS n FROM runs WHERE day = ? AND status = 'verified'").bind(day).first<{ n: number }>();
   const today = [];
   for (const r of top.results) {
-    const had = await env.DB.prepare('SELECT COUNT(*) AS n FROM crowns WHERE name = ? AND ord < ?').bind(r.name, ord).first<{ n: number }>();
+    // (A name taken down is "???": it reigns once, whoever it was.)
+    const had = r.name === BLANKED ? null : await env.DB.prepare('SELECT COUNT(*) AS n FROM crowns WHERE name = ? AND ord < ?').bind(r.name, ord).first<{ n: number }>();
     today.push({ ...r, reign: (had?.n ?? 0) + 1 });
   }
   const past = await env.DB.prepare(
-    `SELECT day, name, heir, time, victory, (SELECT COUNT(*) FROM crowns d WHERE d.name = c.name AND d.ord <= c.ord) AS reign
+    `SELECT day, name, heir, time, victory,
+            CASE WHEN c.name = ? THEN 1 ELSE (SELECT COUNT(*) FROM crowns d WHERE d.name = c.name AND d.ord <= c.ord) END AS reign
        FROM crowns c WHERE c.ord < ? ORDER BY c.ord DESC LIMIT ${THRONE_DAYS}`,
   )
-    .bind(ord)
+    .bind(BLANKED, ord)
     .all();
   return json({ day, today, count: all?.n ?? 0, past: past.results }, 200, { 'cache-control': 'public, max-age=30' });
 }

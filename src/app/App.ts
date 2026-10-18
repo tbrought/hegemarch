@@ -20,6 +20,7 @@ import { showMenu, tickMenu } from './screens/menu';
 import { showSetup } from './screens/setup';
 import { showSettings } from './screens/settings';
 import { type ResultsData, showResults } from './screens/results';
+import { showThrone, throneKey, wantsThrone } from './screens/throne';
 import { SCREEN_ACTIONS } from './screens/index';
 
 /**
@@ -36,7 +37,7 @@ import { SCREEN_ACTIONS } from './screens/index';
  *   Session.ts      what the HUD and the input share about the run on the screen (selection, pause, speed)
  *   Attract.ts      the sector that plays itself behind the menus
  */
-type ScreenId = 'menu' | 'setup' | 'hall' | 'howto' | 'settings' | 'loading' | 'game' | 'results';
+type ScreenId = 'menu' | 'setup' | 'hall' | 'howto' | 'settings' | 'loading' | 'game' | 'throne' | 'results';
 
 export class App {
   canvas: HTMLCanvasElement;
@@ -123,6 +124,8 @@ export class App {
     this.soundBtn.addEventListener('click', () => toggleSound(this));
     this.ui.addEventListener('click', (e) => this.onScreenAction(e));
     window.addEventListener('keydown', (e) => {
+      // (The throne takes letters as an arcade does: every key it knows is its own.)
+      if (throneKey(this, e)) return;
       if (e.code === 'Escape' && this.screen === 'setup' && this.setup.confirm) {
         this.setup.confirm = '';
         showSetup(this);
@@ -267,8 +270,8 @@ export class App {
   private onScreenInput(e: Event) {
     const t = e.target as HTMLInputElement;
     if (t.id === 'seed-input') this.setup.seed = t.value;
-    // (Three letters for the Daily board: A to Z, as they are typed.)
-    if (t.id === 'board-name') t.value = t.value.toUpperCase().replace(/[^A-Z]/g, '').slice(0, 3);
+    // (Three to five letters for the Daily board: A to Z, as they are typed.)
+    if (t.id === 'board-name') t.value = t.value.toUpperCase().replace(/[^A-Z]/g, '').slice(0, 5);
     if (t.dataset.track !== undefined) pickTrack(this, t.value);
     const key = t.dataset.setting as 'master' | 'sfx' | 'music' | undefined;
     if (key) {
@@ -300,7 +303,8 @@ export class App {
   showMenu() { showMenu(this); }
   autosave() { autosave(this); }
   teardownSession() { teardownSession(this); }
-  showResults() { showResults(this); }
+  /** The results of the run that has ended: a crowned Daily the board takes goes by the throne first (screens/throne.ts). */
+  showResults() { if (wantsThrone(this)) showThrone(this); else showResults(this); }
   showSettings() { showSettings(this); }
 
   crt(): string {

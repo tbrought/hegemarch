@@ -1,7 +1,8 @@
 // The Daily board in the game (1.25), against a board that answers as the real one does (worker/): a
-// crowned Daily posted under three letters, sent, checked and placed; letters that will not do; a board
-// that cannot be reached; a Daily that was lost (the button there, greyed, with why); and a classic run,
-// which has no board. And the game opened from the website's throne (play/#daily).
+// crowned Daily goes by the throne (1.25.3: the day's board as an arcade's table, its letters typed there,
+// three to five) on its way to its results; posted there, or from its results; letters that will not do;
+// a board that cannot be reached; a Daily that was lost (no throne; the button there, greyed, with why);
+// and a classic run, which has no board. And the game opened from the website's throne (play/#daily).
 //   node scripts/board-ui.mjs     (npm run test:board-ui; needs a dev server)
 import zlib from 'node:zlib';
 import { checks, DEV_URL, openBrowser } from './lib/browser.mjs';
@@ -25,7 +26,9 @@ await page.route('https://hegemarch.com/api/daily/**', async (route) => {
     sent.push(JSON.parse(route.request().postData()));
     return json({ id: '0123456789abcdef', status: 'pending' }, 202);
   }
-  if (url.pathname.endsWith('/status')) return json(++asked < 2 ? { status: 'pending' } : { status: 'verified', time: 1234, rank: 2, of: 5 });
+  if (url.pathname.endsWith('/board')) return json({ day: url.searchParams.get('day'), runs: [{ name: 'ZED', heir: 'vael', time: 2210, victory: 'conquest' }], count: 1 });
+  // (The first run sent is placed second; any after it is the fastest of the day.)
+  if (url.pathname.endsWith('/status')) return json(++asked < 2 ? { status: 'pending' } : sent.length > 1 ? { status: 'verified', time: 2, rank: 1, of: 6 } : { status: 'verified', time: 1234, rank: 2, of: 5 });
   return json({ error: 'Nothing here.' }, 404);
 });
 
@@ -59,26 +62,40 @@ async function ended(mode, won) {
   }, won);
   await page.waitForFunction(() => window.__app.results !== null && window.__app.session?.game.outcomeHandled, null, { timeout: 10000 });
   await ev(() => window.__app.showResults());
-  await page.waitForTimeout(400);
+  await page.waitForTimeout(600);
 }
 
-// A crowned Daily.
+// A crowned Daily: the throne first, its row already in its place, waiting for letters.
 await ended('daily', true);
+const throne = () => ev(() => ({ screen: window.__app.screen, head: document.querySelector('.throne-head')?.textContent, rows: [...document.querySelectorAll('.throne-table tr')].map((r) => r.textContent.replace(/\s+/g, ' ').trim()) }));
+let t = await throne();
+check('a crowned Daily goes by the throne, its row first on the day\'s board', t.screen === 'throne' && t.head === 'YOU WOULD TAKE THE THRONE' && /^1st/.test(t.rows[0] ?? '') && /YOU/.test(t.rows[0] ?? '') && /ZED/.test(t.rows[1] ?? ''), JSON.stringify(t));
+await page.keyboard.type('a1bcdeX');
+const slots = () => page.$$eval('.throne-entry .slot', (els) => els.map((e) => e.textContent).join(''));
+check('letters as an arcade takes them: A to Z, five at most', (await slots()) === 'ABCDX', await slots());
+await page.keyboard.press('ArrowUp');
+check('rolled: the letter under the cursor goes on one', (await slots()) === 'ABCDY', await slots());
+for (let i = 0; i < 3; i++) await page.keyboard.press('Backspace');
+check('erased back to two, and the post button greyed with why', (await slots()) === 'AB···' && (await page.$eval('[data-sa="throne-post"]', (b) => b.classList.contains('disabled'))), await slots());
+await page.click('[data-sa="throne-skip"]');
+await page.waitForTimeout(300);
+check('NOT TODAY: to the results, where it can still be posted', (await ev(() => window.__app.screen)) === 'results' && (await page.$('.board-box')) !== null);
 const state = () => page.textContent('.board-state');
 check('a crowned Daily has the board on its results', (await page.$('.board-box')) !== null);
 check('with its button ready', (await page.textContent('[data-sa="board-post"]')) === 'POST TO THE BOARD' && !(await page.$eval('[data-sa="board-post"]', (b) => b.classList.contains('disabled'))));
 await page.fill('#board-name', '');
 await page.type('#board-name', 'a1b');
 check('the letters are A to Z, as they are typed', (await page.inputValue('#board-name')) === 'AB', await page.inputValue('#board-name'));
+check('the box shows what it takes', (await page.getAttribute('#board-name', 'placeholder')) === 'ABC' && (await page.getAttribute('#board-name', 'maxlength')) === '5');
 await page.click('[data-sa="board-post"]');
-check('two letters will not do, and it says why', /Three letters/.test(await state()) && sent.length === 0, await state());
+check('two letters will not do, and it says why', /Three to five letters/.test(await state()) && sent.length === 0, await state());
 // The board out of reach: it says so, and the button is there to try again.
 down = true;
 await page.fill('#board-name', '');
 await page.type('#board-name', 'xyz');
 await page.click('[data-sa="board-post"]');
 await page.waitForTimeout(600);
-check('a board out of reach is said, and can be tried again', /could not be reached/.test(await state()) && (await page.textContent('[data-sa="board-post"]')) === 'POST TO THE BOARD', await state());
+check('a board out of reach is said (not in the browser\'s words), and can be tried again', /^The board could not be reached\. Try again/.test(await state()) && (await page.textContent('[data-sa="board-post"]')) === 'POST TO THE BOARD', await state());
 down = false;
 await page.click('[data-sa="board-post"]');
 await page.waitForTimeout(800);
@@ -100,8 +117,24 @@ check('checked: its place on the day\'s board', new RegExp(`On the board: 2nd of
 check('and it cannot be sent twice', await page.$eval('[data-sa="board-post"]', (b) => b.classList.contains('disabled')) && (await page.isDisabled('#board-name')));
 await page.screenshot({ path: '.shots/board-results.png' });
 
-// A Daily that was lost: the button is there, greyed, with why.
+// Another crowned Daily, posted from the throne: its letters stamped, the run sent, the results after; the fastest of the day, so said.
+await ended('daily', true);
+await page.keyboard.press('Backspace');
+await page.keyboard.press('Backspace');
+await page.keyboard.press('Backspace');
+await page.keyboard.type('acers');
+await page.keyboard.press('Enter');
+await page.waitForTimeout(300);
+check('posted from the throne: the letters stamped, the run sent under them', (await page.$$('.throne-entry .slot.stamped')).length === 5 && sent.length === 2 && sent[1].name === 'ACERS', JSON.stringify(sent.map((x) => x.name)));
+await page.waitForFunction(() => window.__app.screen === 'results', null, { timeout: 8000 }).catch(() => {});
+check('and on to the results, where it is followed', (await ev(() => window.__app.screen)) === 'results' && (await page.$eval('[data-sa="board-post"]', (b) => b.classList.contains('disabled'))));
+await page.waitForFunction(() => /front page/.test(document.querySelector('.board-state')?.textContent ?? ''), null, { timeout: 40000 }).catch(() => {});
+check("the fastest of the day: today's Hegemarch, in gold", /YOU ARE TODAY'S HEGEMARCH/.test(await page.textContent('.board-box h3')) && (await page.$('.board-box.crowned')) !== null, await page.textContent('.board-box h3'));
+await page.screenshot({ path: '.shots/board-results-crowned.png' });
+
+// A Daily that was lost: no throne; on its results, the button is there, greyed, with why.
 await ended('daily', false);
+check('a lost Daily does not go by the throne', (await ev(() => window.__app.screen)) === 'results');
 check('a lost Daily has the board too, greyed, with why', /Only a crown goes on the board/.test(await page.textContent('.board-box')) &&
   (await page.$eval('[data-sa="board-post"]', (b) => b.classList.contains('disabled'))) && (await page.isDisabled('#board-name')));
 await page.screenshot({ path: '.shots/board-results-lost.png' });

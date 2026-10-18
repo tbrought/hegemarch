@@ -1,6 +1,6 @@
 # The Daily board's server
 
-The fastest crowns of each day's Daily, at hegemarch.com. A player who is crowned in a Daily can send the run to the board under three letters.
+The fastest crowns of each day's Daily, at hegemarch.com. A player who is crowned in a Daily can send the run to the board under three to five letters.
 Before it goes up, a checker plays the run again from its orders and reads the result itself. A time on the board is one the game found, not
 one a player typed in.
 
@@ -17,7 +17,7 @@ the website ◀──GET /api/daily/board, /throne── Worker ◀── verdic
 It all runs on free plans: Cloudflare Workers Free (100,000 requests a day), D1 Free (5 GB, 5 million rows read a day), and GitHub Actions,
 which is free for a public repository. A run is checked a minute or two after it is sent.
 
-**What it keeps:** three letters, the house, the time, the Destiny, the version, and the run's orders (until they are no longer needed:
+**What it keeps:** three to five letters, the house, the time, the Destiny, the version, and the run's orders (until they are no longer needed:
 see `prune` in `src/index.ts`). There are no accounts, email addresses or cookies, and IP addresses are never stored.
 
 ## Setting it up (once)
@@ -94,6 +94,19 @@ Run the commands from the `worker` folder.
 10. **Optional: a rate limit.** In the Cloudflare dashboard, open hegemarch.com → **Security → WAF → Rate limiting rules → Create rule**.
     Match: URI Path equals `/api/daily/submit`. Rate: 10 requests per 10 seconds, counted by IP. Action: Block for 10 seconds. The free
     plan allows one such rule. Cloudflare counts requests at its edge and keeps nothing on the board.
+
+## Taking a name down
+
+The names a run may go up under are checked by the Worker (`nameProblem` in `../src/meta/board.ts`: its two lists, `SPELLED_ANYWHERE`
+and `WHOLE`). If you change the lists, deploy the Worker again (`npx wrangler deploy`). If a name gets through that should not stand,
+blank it to `???` (it keeps its place; it counts as no one's reign). Put in its day and its letters:
+
+```
+npx wrangler d1 execute hegemarch-board --remote --command "UPDATE runs SET name = '???' WHERE day = '2026-10-18' AND name = 'XXXXX'"
+npx wrangler d1 execute hegemarch-board --remote --command "UPDATE crowns SET name = '???' WHERE day = '2026-10-18' AND name = 'XXXXX'"
+```
+
+(The second matters for a day more than four days gone: the last four are crowned again from their runs every ten minutes.)
 
 ## With every release
 
