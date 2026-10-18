@@ -27,7 +27,21 @@ function ffmpeg(args) {
   return { stdin: p.stdin, done };
 }
 
-if (mode === 'scan') {
+if (mode === 'audit') {
+  // The game's own mix in its biggest battles (its levels, its limit of voices, no compressor), measured.
+  const S = (seed) => ({ seed, size: 'medium', heir: 'concord', difficulty: 2 });
+  const battles = [
+    ['the last siege (seed 90)', { sector: S(90), from: Math.round(58.55 * 1200), dur: 10, speed: 1, sounds: true, cam: [{ t: 0, node: 46, zoom: 0.25 }] }],
+    ['a Hearth falls (seed 11)', { sector: S(11), from: Math.round(30.05 * 1200), dur: 10, speed: 1, sounds: true, cam: [{ t: 0, node: 34, zoom: 0.3 }] }],
+    ['the same, at three times the speed', { sector: S(11), from: Math.round(30.05 * 1200), dur: 10, speed: 3, sounds: true, cam: [{ t: 0, node: 34, zoom: 0.3 }] }],
+  ];
+  for (const [name, shot] of battles) {
+    const sounds = await page.evaluate(({ shot }) => window.studio.shoot([shot], 1e9), { shot });
+    const r = await page.evaluate(({ sounds, raw }) => window.studio.audit(10, sounds, [{ track: 'To Arms', at: 0, until: 10, part: 1 }], raw), { sounds, raw: process.env.FIXED !== '1' });
+    const perSec = (sounds.length / 10).toFixed(0);
+    console.log(`${name}: ${perSec} sounds a second asked for; peak ${r.peak.toFixed(2)}, ${r.over} samples past full scale (${r.overPct.toFixed(2)}%), ${r.impulses} single-sample leaps`);
+  }
+} else if (mode === 'scan') {
   for (const seed of (arg ?? '11').split(',').map(Number)) {
     // (AGES=1: an Ages run, on its cradle world.)
     const sector = { seed, size: 'medium', heir: 'concord', difficulty: 2, ...(process.env.AGES ? { ages: true } : {}) };
@@ -42,6 +56,9 @@ if (mode === 'scan') {
   const trailer = TRAILERS[arg];
   if (!trailer) throw new Error(`no trailer "${arg}" (trailers.mjs: ${Object.keys(TRAILERS).join(', ')})`);
   const shots = trailer.shots;
+  // Every line measured in its own type first: none too wide, no word left on its own.
+  const problems = await page.evaluate(({ shots }) => window.studio.lint(shots), { shots });
+  if (problems.length) throw new Error(`the words of "${arg}" will not do:\n  ${problems.join('\n  ')}`);
   const dur = shots.reduce((s, x) => s + x.dur, 0);
   if (mode === 'stills') {
     // One frame of each shot, 60% of the way through it (or at its \`still\`), from the trailer as it plays.
@@ -83,8 +100,21 @@ if (mode === 'scan') {
     const wavPath = path.join(OUT, `${arg}.wav`);
     fs.writeFileSync(wavPath, Buffer.from(wav, 'base64'));
     const mp4 = path.join(OUT, `${arg}.mp4`);
+    // As loud as YouTube plays a video (-14 LUFS, peaks under -1.5 dB), measured first and then set in one
+    // move for the whole of it: a level that rode up and down with the music would not be smooth. A limiter
+    // last of all keeps every peak under -1.5 dB (the sound is encoded after it, and must never pass full scale).
+    const measured = await new Promise((res, rej) => {
+      const p = spawn(FFMPEG, ['-hide_banner', '-i', wavPath, '-af', 'loudnorm=I=-14:TP=-1.5:LRA=11:print_format=json', '-f', 'null', '-'], { stdio: ['ignore', 'ignore', 'pipe'] });
+      let err = '';
+      p.stderr.on('data', (d) => (err += d));
+      p.on('close', () => {
+        const m = /\{[\s\S]*\}/.exec(err.slice(err.lastIndexOf('[Parsed_loudnorm')));
+        m ? res(JSON.parse(m[0])) : rej(new Error('loudnorm measured nothing'));
+      });
+    });
+    const norm = `loudnorm=I=-14:TP=-1.5:LRA=11:measured_I=${measured.input_i}:measured_TP=${measured.input_tp}:measured_LRA=${measured.input_lra}:measured_thresh=${measured.input_thresh}:offset=${measured.target_offset}:linear=true,alimiter=limit=0.84:attack=5:release=60:level=false`;
     const mux = ffmpeg(['-i', frames, '-i', wavPath, '-vf', 'scale=1920:1080:flags=neighbor', '-c:v', 'libx264', '-preset', 'slow', '-crf', '14', '-tune', 'animation',
-      '-pix_fmt', 'yuv420p', '-r', '30', '-af', 'loudnorm=I=-14:TP=-1.5:LRA=11', '-ar', '48000', '-c:a', 'aac', '-b:a', '256k', '-movflags', '+faststart', '-shortest', mp4]);
+      '-pix_fmt', 'yuv420p', '-r', '30', '-af', norm, '-ar', '48000', '-c:a', 'aac', '-b:a', '256k', '-movflags', '+faststart', '-shortest', mp4]);
     mux.stdin.end();
     await mux.done;
     fs.rmSync(frames);

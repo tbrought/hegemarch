@@ -142,8 +142,14 @@ export interface TextCue {
   /** Where its middle is, top to bottom (0..1); default by its style. And left to right (default: the middle). */
   y?: number;
   x?: number;
-  /** Comes in letter by letter (the default for lore), or all at once. */
+  /**
+   * How it comes in. By default as the game's decisions tell their stories (lore, captions, big words): a
+   * scan line sweeps down it a line at a time, each line catching ember, then gold, then its own colours.
+   * `type: true`: letter by letter. `type: false`: all at once (pixel by pixel). `held`: there already (the
+   * same words going on over a cut).
+   */
   type?: boolean;
+  held?: boolean;
   /** Letters a second, when it comes in letter by letter. */
   cps?: number;
   color?: string;
@@ -171,6 +177,8 @@ export interface Panel {
   /** Names under banners and icons (the default), and their icons' color. */
   names?: boolean;
   color?: string;
+  /** Banners and icons come one after another, this many seconds apart. */
+  stagger?: number;
 }
 
 export interface Shot {
@@ -348,18 +356,67 @@ function wrapped(lines: string[], n?: number): string[] {
   });
 }
 
-/** The words of a cue at `t` seconds into its shot: letter by letter (or pixel by pixel), and gone pixel by pixel. */
-function words(cue: TextCue, t: number) {
+/** The words of a cue at `t` seconds into its shot: as a story (or letter by letter, or pixel by pixel), and gone pixel by pixel. */
+function words(cue: TextCue, t: number, clock: number) {
   if (t < cue.at || t >= cue.until) return;
-  const typed = cue.type ?? cue.style === 'lore';
-  laid(fadeOf(t, cue.at, cue.until, !typed), () => wordsNow({ ...cue, lines: wrapped(cue.lines, cue.wrap) }, t, typed));
+  const how = cue.held ? 'now' : cue.type === true ? 'type' : cue.type === false || cue.style === 'title' || cue.style === 'logo' ? 'now' : 'story';
+  laid(fadeOf(t, cue.at, cue.until, how === 'now' && !cue.held), () => wordsNow({ ...cue, lines: wrapped(cue.lines, cue.wrap) }, t, how, clock));
 }
 
-function wordsNow(cue: TextCue, t: number, typed: boolean) {
+// The words of the story, as the game's decisions tell theirs (ui/modals/storyText.ts), at the size of a
+// trailer: marked as the game marks its own, {a phrase} in gold on a slow ripple, [a gain] in teal, [!a
+// loss] in red; a scan line in ember sweeps down a line at a time, and each line it passes catches, ember
+// then gold, then its own colours.
+/** Seconds the scan line takes over a line, and seconds a line glows once it has passed. */
+const STORY_GAP = 0.22;
+const STORY_GLOW = 0.5;
+type RunStyle = 'body' | 'kw' | 'gain' | 'loss';
+/** A line as runs of its styles. */
+function runsOf(l: string): { text: string; style: RunStyle }[] {
+  const out: { text: string; style: RunStyle }[] = [];
+  const re = /\{([^}]*)\}|\[!([^\]]*)\]|\[([^\]]*)\]/g;
+  let last = 0;
+  for (let m = re.exec(l); m; m = re.exec(l)) {
+    if (m.index > last) out.push({ text: l.slice(last, m.index), style: 'body' });
+    out.push(m[1] !== undefined ? { text: m[1], style: 'kw' } : m[2] !== undefined ? { text: m[2], style: 'loss' } : { text: m[3], style: 'gain' });
+    last = re.lastIndex;
+  }
+  if (last < l.length) out.push({ text: l.slice(last), style: 'body' });
+  return out;
+}
+/** A line without its marks: what is drawn, and what is measured. */
+const plainOf = (l: string) => runsOf(l).map((r) => r.text).join('');
+
+/**
+ * A line of runs, outlined in the night, its middle at `cx`: `glow` (ember, gold) over all of it while it
+ * catches; a phrase in gold riding its ripple once it has; no more than `shown` letters.
+ */
+function richLine(l: string, cx: number, y: number, size: number, body: string, glow: string | null, clock: number, shown = Infinity) {
+  ctx.font = `${size}px ${FONT}`;
+  ctx.textBaseline = 'top';
+  const colors: Record<RunStyle, string> = { body, kw: PAL.gold, gain: PAL.teal, loss: PAL.red };
+  let x = Math.round(cx - ctx.measureText(plainOf(l)).width / 2);
+  const o = Math.max(1, Math.round(size / 8));
+  const lift = Math.max(1, Math.round(size / 16));
+  let n = 0;
+  for (const r of runsOf(l)) {
+    for (const ch of r.text) {
+      if (n++ >= shown) return;
+      // (Each letter of a phrase in gold rises and settles in its turn, a wave running along it.)
+      const bob = r.style === 'kw' && !glow ? Math.round((Math.sin(clock * 3 - (x / size) * 0.55) * 0.5 + 0.5) * lift) : 0;
+      ctx.fillStyle = PAL.void;
+      for (const [dx, dy] of [[-o, 0], [o, 0], [0, -o], [0, o], [-o, -o], [o, -o], [-o, o], [o, o]]) ctx.fillText(ch, x + dx, y - bob + dy);
+      ctx.fillStyle = glow ?? colors[r.style];
+      ctx.fillText(ch, x, y - bob);
+      x += ctx.measureText(ch).width;
+    }
+  }
+}
+
+function wordsNow(cue: TextCue, t: number, how: 'story' | 'type' | 'now', clock: number) {
   const style = cue.style;
   const size = style === 'title' ? 32 : style === 'big' ? 24 : style === 'lore' ? 16 : 8;
   const gap = style === 'caption' ? 6 : style === 'lore' ? 10 : 12;
-  const shown = typed ? Math.floor((t - cue.at) * (cue.cps ?? 20)) : Infinity;
   const color = cue.color ?? (style === 'title' ? PAL.gold : style === 'big' ? PAL.bone : style === 'lore' ? PAL.bone : PAL.mist);
   if (style === 'logo') {
     const cy = Math.round(H * (cue.y ?? 0.46));
@@ -368,14 +425,38 @@ function wordsNow(cue: TextCue, t: number, typed: boolean) {
     cue.lines.forEach((l, i) => line(l, W / 2, cy + 52 + i * 14, 8, i === 0 ? PAL.bone : PAL.mist));
     return;
   }
+  const cx = Math.round(W * (cue.x ?? 0.5));
   const total = cue.lines.length * size + (cue.lines.length - 1) * gap;
-  let y = Math.round(H * (cue.y ?? (style === 'caption' ? 0.86 : 0.5)) - total / 2);
-  let left = shown;
-  for (const l of cue.lines) {
-    const part = l.slice(0, Math.max(0, left));
-    left -= l.length;
-    if (part) line(part, Math.round(W * (cue.x ?? 0.5)), y, size, color, style === 'title');
+  const top = Math.round(H * (cue.y ?? (style === 'caption' ? 0.86 : 0.5)) - total / 2);
+  if (style === 'title') {
+    // (The name: letter by letter or all at once, with the shadows of the logo.)
+    const shown = how === 'type' ? Math.floor((t - cue.at) * (cue.cps ?? 20)) : Infinity;
+    cue.lines.forEach((l, i) => line(plainOf(l).slice(0, shown), cx, top + i * (size + gap), size, color, true));
+    return;
+  }
+  const since = t - cue.at;
+  let left = how === 'type' ? Math.floor(since * (cue.cps ?? 20)) : Infinity;
+  let y = top;
+  cue.lines.forEach((l, i) => {
+    if (how === 'story') {
+      const age = since - (i + 1) * STORY_GAP;
+      if (age >= 0) richLine(l, cx, y, size, color, age < STORY_GLOW / 2 ? PAL.ember : age < STORY_GLOW ? PAL.gold : null, clock);
+    } else {
+      richLine(l, cx, y, size, color, null, clock, left);
+      left -= plainOf(l).length;
+    }
     y += size + gap;
+  });
+  // The scan line, in ember over wine, sweeping down over the lines still to come.
+  if (how === 'story' && since < cue.lines.length * STORY_GAP) {
+    ctx.font = `${size}px ${FONT}`;
+    const wide = Math.max(...cue.lines.map((l) => ctx.measureText(plainOf(l)).width)) + size;
+    const sy = top + Math.floor((since / STORY_GAP) * (size + gap));
+    const x0 = Math.round(cx - wide / 2);
+    ctx.fillStyle = PAL.wine;
+    ctx.fillRect(x0, sy - 1, Math.round(wide), 1);
+    ctx.fillStyle = PAL.ember;
+    ctx.fillRect(x0, sy, Math.round(wide), 1);
   }
 }
 
@@ -407,6 +488,23 @@ function boxed(x: number, y: number, w: number, h: number) {
 
 function panel(p: Panel, t: number, clock: number) {
   if (t < p.at || t >= p.until) return;
+  // (Banners or icons that come one after another: each a panel of its own, laid in its turn.)
+  if (p.stagger && p.kind !== 'art') {
+    const ids = p.kind === 'banners' ? (p.heirs ?? []) : (p.icons ?? []);
+    const cols = Math.min(ids.length, p.cols ?? ids.length);
+    const rows = Math.ceil(ids.length / cols);
+    const cw = Math.floor((p.w - 8 * (cols - 1)) / cols);
+    const ch = Math.floor((p.h - 8 * (rows - 1)) / rows);
+    ids.forEach((id, i) => {
+      const one: Panel = {
+        ...p, stagger: undefined, cols: 1, at: p.at + i * p.stagger!,
+        x: p.x + (i % cols) * (cw + 8), y: p.y + Math.floor(i / cols) * (ch + 8), w: cw, h: ch,
+        ...(p.kind === 'banners' ? { heirs: [id] } : { icons: [id] }),
+      };
+      panel(one, t, clock);
+    });
+    return;
+  }
   const scale = p.scale ?? 2;
   laid(fadeOf(t, p.at, p.until), () => {
     // (The game's pictures are drawn into canvases on the page, then taken off them; nothing else is there meanwhile.)
@@ -552,7 +650,7 @@ export async function shoot(shots: Shot[], everyNth = 1, pick?: number[]): Promi
       }
       for (const p of shot.panels ?? []) panel(p, t, clock);
       if (f === frames - 1) prev = ctx.getImageData(0, 0, W, H);
-      for (const cue of shot.text ?? []) words(cue, t);
+      for (const cue of shot.text ?? []) words(cue, t, clock);
       // (`pick`: only these frames are sent, for a look at the trailer without the whole of it.)
       if (pick ? pick.includes(frameNo) : frameNo % everyNth === 0) await window.sendFrame(out.toDataURL('image/png'));
       frameNo++;
@@ -576,6 +674,13 @@ export interface MusicCue {
   vol?: number;
   /** Seconds it takes to go at its end. */
   fade?: number;
+  /**
+   * It ends as the game ends a track: home to its first chord, left to ring (`Music.close`), not faded.
+   * `until` must then be the end of one of its parts.
+   */
+  close?: boolean;
+  /** Seconds its last chord rings (default: the game's, six steps and at least 1.6 s): to the next tune, or to the end. */
+  ring?: number;
 }
 
 /** The music under each shot: from, to, how far it steps back (Shot.duck). */
@@ -604,17 +709,26 @@ export async function sound(dur: number, music: MusicCue[], sounds: SoundCue[], 
   // A compressor between the engine and the speakers, as on any trailer: the loud (a star erupting) is
   // held down, so that the rest may be as loud as it should.
   const comp = c.createDynamicsCompressor();
-  comp.threshold.value = -22;
-  comp.knee.value = 8;
-  comp.ratio.value = 5;
-  comp.attack.value = 0.004;
-  comp.release.value = 0.25;
+  comp.threshold.value = -18;
+  comp.knee.value = 10;
+  comp.ratio.value = 3;
+  comp.attack.value = 0.01;
+  comp.release.value = 0.35;
+  // And after it a limiter: nothing past -6 dB of the loudest, however much fighting there is at once.
+  const limiter = c.createDynamicsCompressor();
+  limiter.threshold.value = -6;
+  limiter.knee.value = 0;
+  limiter.ratio.value = 20;
+  limiter.attack.value = 0.001;
+  limiter.release.value = 0.12;
   sfx.master!.disconnect();
   sfx.master!.connect(comp);
-  comp.connect(c.destination);
+  comp.connect(limiter);
+  limiter.connect(c.destination);
   // The music steps back under a shot of fighting, and forward again after it.
   const under = c.createGain();
   under.connect(comp);
+  void limiter;
   under.gain.setValueAtTime(1, 0);
   for (const [from, , level] of ducks) under.gain.setTargetAtTime(level, from, 0.12);
   // (The engine's levels glide to where they are set: here they are there from the first sample.)
@@ -633,23 +747,32 @@ export async function sound(dur: number, music: MusicCue[], sounds: SoundCue[], 
     bus.connect(musicIn);
     const vol = m.vol ?? 1;
     const fade = m.fade ?? 1.5;
+    const stepDur = 60 / tr.bpm / 2;
     bus.gain.setValueAtTime(0, 0);
     bus.gain.setValueAtTime(0, m.at);
-    bus.gain.linearRampToValueAtTime(vol, m.at + 0.03);
-    bus.gain.setValueAtTime(vol, Math.max(m.at + 0.03, m.until - fade));
-    bus.gain.linearRampToValueAtTime(0, m.until);
-    const player = new Music(sfx) as unknown as { bus: GainNode; schedule: (...a: unknown[]) => void };
+    bus.gain.linearRampToValueAtTime(vol, m.at + 0.02);
+    if (!m.close) {
+      bus.gain.setValueAtTime(vol, Math.max(m.at + 0.02, m.until - fade));
+      bus.gain.linearRampToValueAtTime(0, m.until);
+    }
+    const player = new Music(sfx) as unknown as { bus: GainNode; schedule: (...a: unknown[]) => void; close: (...a: unknown[]) => number };
     player.bus = bus;
     let seg = m.part ?? Math.max(0, tr.form.findIndex(([, v]) => v.includes('l')));
     let step = 0;
-    const stepDur = 60 / tr.bpm / 2;
-    for (let t = m.at; t < m.until; t += stepDur) {
+    // (Steps counted, not added up: a tune keeps its time to the sample over a minute.)
+    const steps = Math.round((m.until - m.at) / stepDur);
+    for (let k = 0; k < steps; k++) {
       const [id, voices] = tr.form[seg];
       const p = tr.parts[id];
-      player.schedule(tr, p, voices, step, t, stepDur);
+      player.schedule(tr, p, voices, step, m.at + k * stepDur, stepDur);
       if (++step < p.chords.length * tr.steps) continue;
       step = 0;
       seg = (seg + 1) % tr.form.length;
+    }
+    if (m.close) {
+      if (step !== 0) throw new Error(`${m.track} is closed in the middle of a part (step ${step})`);
+      // (A battle's tune does not ring home in the game, where the next one follows at once: here it does.)
+      player.close({ ...tr, mood: 'title' }, m.at + steps * stepDur, m.ring ? m.ring / 6 : stepDur);
     }
   }
   // Each sound at its moment: the render stops there, the sound is played, and it goes on.
@@ -700,4 +823,133 @@ export async function sound(dur: number, music: MusicCue[], sounds: SoundCue[], 
   let bin = '';
   for (let i = 0; i < bytes.length; i += 0x8000) bin += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
   return btoa(bin);
+}
+
+// ---------------------------------------------------------------------------------------------------
+// The game's own mix, measured
+// ---------------------------------------------------------------------------------------------------
+
+/**
+ * Play these sounds as the game plays them (its levels: the default settings; its limit of voices; no
+ * compressor) with its music under them, and measure what comes out: the loudest sample, how many go past
+ * full scale (which a speaker cannot play: they are clipped, and crackle), and the biggest jump from one
+ * sample to the next (a click). `fix`: the game's own output stage is used (`Sfx.unlock`), whatever it is.
+ */
+export async function audit(dur: number, sounds: SoundCue[], music: MusicCue[], raw = true) {
+  const rate = 48000;
+  const c = new OfflineAudioContext(2, Math.ceil(rate * dur), rate);
+  Object.defineProperty(c, 'state', { get: () => 'running' });
+  const real = window.AudioContext;
+  (window as unknown as { AudioContext: unknown }).AudioContext = function () {
+    return c;
+  };
+  const settings = defaultSettings();
+  const sfx = new Sfx(settings);
+  sfx.unlock();
+  (window as unknown as { AudioContext: unknown }).AudioContext = real;
+  // (The levels where the game's settings put them, from the first sample.)
+  if (raw) {
+    for (const [node, v] of [[sfx.master!, settings.master * 0.6], [sfx.sfxGain!, settings.sfx], [sfx.musicGain!, settings.music * 0.5]] as const) {
+      node.gain.cancelScheduledValues(0);
+      node.gain.setValueAtTime(v, 0);
+    }
+  }
+  // The voices sounding at each moment, as the game counts them (one is freed when its sound ends).
+  const ends: number[] = [];
+  const voiced = sfx as unknown as { voices: number; tone: (...a: unknown[]) => void; noiseBurst: (...a: unknown[]) => void };
+  const tone = voiced.tone.bind(sfx);
+  const burst = voiced.noiseBurst.bind(sfx);
+  voiced.tone = (...a: unknown[]) => {
+    ends.push((a[4] as number) + (a[5] as number) + 0.02);
+    tone(...a);
+  };
+  voiced.noiseBurst = (...a: unknown[]) => {
+    ends.push((a[1] as number) + (a[2] as number) + 0.02);
+    burst(...a);
+  };
+  for (const m of music) {
+    const tr = TRACKS.find((x) => x.name === m.track)!;
+    const bus = c.createGain();
+    bus.connect(sfx.musicGain!);
+    const player = new Music(sfx) as unknown as { bus: GainNode; schedule: (...a: unknown[]) => void };
+    player.bus = bus;
+    let seg = m.part ?? 0;
+    let step = 0;
+    const stepDur = 60 / tr.bpm / 2;
+    for (let t = m.at; t < m.until; t += stepDur) {
+      const [id, voices] = tr.form[seg];
+      const p = tr.parts[id];
+      player.schedule(tr, p, voices, step, t, stepDur);
+      if (++step < p.chords.length * tr.steps) continue;
+      step = 0;
+      seg = (seg + 1) % tr.form.length;
+    }
+  }
+  const at = new Map<number, SoundCue[]>();
+  for (const s of sounds) {
+    if (s[0] >= dur) continue;
+    const q = Math.floor((s[0] * rate) / 128) * 128;
+    if (q > 0) at.set(q, [...(at.get(q) ?? []), s]);
+  }
+  for (const [q, list] of at) {
+    void c.suspend(q / rate).then(() => {
+      const now = q / rate;
+      voiced.voices = ends.filter((e) => e > now).length;
+      for (const [, id, vol, pan] of list) sfx.play(id, vol, pan);
+      void c.resume();
+    });
+  }
+  const buf = await c.startRendering();
+  let peak = 0;
+  let over = 0;
+  let jump = 0;
+  const worst: [number, number][] = [];
+  // A single sample that leaps away from both of its neighbours (a sample let through at full strength).
+  let impulses = 0;
+  for (let ch = 0; ch < 2; ch++) {
+    const d = buf.getChannelData(ch);
+    let p = 0;
+    for (const v of d) p = Math.max(p, Math.abs(v));
+    for (let i = 1; i < d.length - 1; i++) {
+      const j = Math.abs(d[i] - (d[i - 1] + d[i + 1]) / 2);
+      if (j > p * 0.4 && Math.sign(d[i] - d[i - 1]) !== Math.sign(d[i + 1] - d[i])) impulses++;
+    }
+  }
+  for (let ch = 0; ch < 2; ch++) {
+    const d = buf.getChannelData(ch);
+    for (let i = 0; i < d.length; i++) {
+      const a = Math.abs(d[i]);
+      if (a > peak) peak = a;
+      if (a > 1) over++;
+      if (i > 0) {
+        const j = Math.abs(d[i] - d[i - 1]);
+        if (j > jump) jump = j;
+        if (j > 0.35) worst.push([i / rate, j]);
+      }
+    }
+  }
+  return { peak, over, overPct: (100 * over) / (buf.length * 2), jump, clicks: worst.length, impulses, firstClicks: worst.slice(0, 8) };
+}
+
+/**
+ * Every line of a trailer measured in its own type, before a frame is made: a line wider than the picture
+ * (less a margin) is an error, and so is a line of one word under a longer one (a word left on its own).
+ */
+export function lint(shots: Shot[]): string[] {
+  const problems: string[] = [];
+  const m = document.createElement('canvas').getContext('2d')!;
+  shots.forEach((shot, i) => {
+    for (const cue of shot.text ?? []) {
+      const size = cue.style === 'title' ? 32 : cue.style === 'big' ? 24 : cue.style === 'lore' ? 16 : 8;
+      const lines = cue.style === 'logo' ? cue.lines : wrapped(cue.lines, cue.wrap);
+      lines.map(plainOf).forEach((l, k, all) => {
+        m.font = `${size}px ${FONT}`;
+        const w = m.measureText(l).width;
+        const room = cue.x !== undefined ? 2 * Math.min(cue.x, 1 - cue.x) * W - 8 : W - 24;
+        if (w > room) problems.push(`shot ${i + 1}: "${l}" is ${Math.round(w)} px wide, with room for ${Math.round(room)}`);
+        if (k > 0 && !l.includes(' ') && all[k - 1].length > l.length * 2) problems.push(`shot ${i + 1}: "${l}" is a word on its own under "${all[k - 1]}"`);
+      });
+    }
+  });
+  return problems;
 }
