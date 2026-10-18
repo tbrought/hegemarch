@@ -56,6 +56,8 @@ export interface Moment {
   node: number;
   score: number;
   who: number;
+  /** A battle's: the houses with ships there (ids), and -1 if the Hollow or raiders are there too. */
+  sides?: number[];
 }
 
 /** Play a sector through (its houses all the game's AI) and note what happened where: the shots there are. */
@@ -66,6 +68,7 @@ export function scan(s: SectorSpec, minutes: number) {
   const hearth = g.nodes.map((n) => isHearth(n));
   const alive = g.factions.map((f) => f.alive);
   const heat = new Map<string, number>();
+  const sides = new Map<string, Set<number>>();
   const moments: Moment[] = [];
   const start = new Map(g.factions.map((f) => [f.id, f.capital]));
   const era = g.factions.map((f) => f.era);
@@ -78,9 +81,18 @@ export function scan(s: SectorSpec, minutes: number) {
       else if ((f.k === 'shot' || f.k === 'beam' || f.k === 'boom') && f.node >= 0) {
         const key = `${f.node}:${Math.floor(g.tick / 100)}`;
         heat.set(key, (heat.get(key) ?? 0) + (f.k === 'boom' ? (f.size >= 20 ? 12 : 3) : 1));
+        if (!sides.has(key)) sides.set(key, new Set());
       }
     }
     g.fx.length = 0;
+    // (Who is fighting: every second, the houses with ships at each world being fought over.)
+    if (g.tick % 20 === 0) {
+      const now = Math.floor(g.tick / 100);
+      for (const u of g.unitList) {
+        if (u.dead || u.lane) continue;
+        sides.get(`${u.node}:${now}`)?.add(g.factions[u.owner]?.kind === 'empire' ? u.owner : -1);
+      }
+    }
     for (const n of g.nodes) {
       const was = owner[n.id];
       if (n.owner === was) continue;
@@ -102,7 +114,7 @@ export function scan(s: SectorSpec, minutes: number) {
   }
   for (const [key, v] of heat) {
     const [node, w] = key.split(':').map(Number);
-    if (v >= 40) moments.push({ kind: 'battle', tick: w * 100, node, score: v, who: -1 });
+    if (v >= 40) moments.push({ kind: 'battle', tick: w * 100, node, score: v, who: -1, sides: [...(sides.get(key) ?? [])].sort() });
   }
   return {
     moments,
