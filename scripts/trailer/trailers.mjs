@@ -30,7 +30,7 @@ const sum = (shots) => shots.reduce((s, x) => s + x.dur, 0);
 const at = (shots, i) => sum(shots.slice(0, i));
 
 // A bar of each tune: eight steps of an eighth note. (A part of a tune is eight bars.)
-const bar = (bpm) => (60 / bpm / 2) * 8;
+const bar = (bpm, steps = 8) => (60 / bpm / 2) * steps;
 const FF = bar(88); // First Fires: the cradle, A minor
 const LR = bar(72); // Long Road: the cradle, D dorian
 const HG = bar(112); // Hegemarch: the theme, A minor
@@ -486,14 +486,173 @@ Object.assign(TRAILERS, {
   'short-starfall': short(sd, [bed('To Arms', sd, 0, [{ bars: 2, voices: 'bd', vol: 0.6 }, { bars: 6, voices: 'abd', vol: 0.68 }, { bars: 8, voices: 'abd', vol: 0.78 }])]),
 });
 
+// ------------------------------------------------------------------------------------------------
+// The Six Houses: a lore series of Shorts, a house a week, to be narrated over (promo/houses/scripts.html).
+// Each the same shape: its Ark's signature, slowed, with no words; its name; where it comes from; how it
+// plays; its Ark; its motto; and next week's house. Every shot is of a sector that house leads, its Ark
+// among the others' (scan-<seed>-<house>.json: HEIR=<house> node scripts/trailer/make.mjs scan <seed>).
+// ------------------------------------------------------------------------------------------------
+const SL = (60 / 84 / 2) * 6; // Starlanes: in three, A minor
+const CR = bar(104); // The Crowning: C major
+const EM = bar(80); // Embers: F major
+const HOUSE_SEED = { vael: 90, wayfarer: 11, concord: 23, lyceum: 47, choir: 8, ashen: 5 };
+const SIGNATURE = { vael: 'barrage', wayfarer: 'nanite', concord: 'aegis', lyceum: 'strikewing', choir: 'conversion', ashen: 'phaselance' };
+const hsec = (id) => S(HOUSE_SEED[id], { heir: id });
+const hscan = (id) => scan(`${HOUSE_SEED[id]}-${id}`);
+const hue = (id) => HOUSES[id][3];
+/** The house's moment of a kind nearest `m` minutes (a battle: one it fights in, at `node`). */
+const near = (id, kind, m, node) => {
+  const mine = (x) => (kind === 'battle' ? x.sides?.includes(0) && !x.sides.includes(-1) : x.who === 0) && (kind !== 'ability' || (x.ark && x.ability === SIGNATURE[id]));
+  const list = hscan(id).moments.filter((x) => x.kind === kind && mine(x) && (node === undefined || x.node === node));
+  if (!list.length) throw new Error(`${id}: no ${kind}${node === undefined ? '' : ` at ${node}`}`);
+  return list.sort((a, b) => Math.abs(a.tick - min(m)) - Math.abs(b.tick - min(m)))[0];
+};
+/** A keyword or two at the top, its {phrases} in the house's colour. */
+const hup = (id, shot, lines) => ({ ...shot, bars: 0, vignette: 0.35, text: lines ? [{ at: 0.25, until: shot.dur - 0.12, style: 'lore', lines, y: 0.22, accent: hue(id) }] : [] });
+/**
+ * Its Ark casting its signature at about `m` minutes: slowed as it does, then coming up to speed; the camera on
+ * the Ark (`dy` pixels under the middle: less, where its fleet is below it and would fall under YouTube's buttons).
+ */
+const hCast = (id, m, dur, lines, slow = 0.4, dy = 30) => {
+  const c = near(id, 'ability', m);
+  return hup(id, { sector: hsec(id), from: c.tick - Math.round(0.9 * slow * 20), dur, speed: [slow, Math.min(1, slow * 2.5)], loud: 1, duck: 0.9,
+    cam: [{ t: 0, x: c.x, y: c.y, zoom: 0.6, dy }, { t: 1, x: c.x, y: c.y, zoom: 0.48, dy }] }, lines);
+};
+/** Its home world as its light first spreads (a second before the first world it kindles). */
+const hHome = (id, dur, lines) => {
+  const home = hscan(id).houses[0].hearth;
+  return hup(id, { sector: hsec(id), from: near(id, 'kindle', 0).tick - sec(1), dur, speed: 1, loud: 0.5,
+    cam: [{ t: 0, node: home, zoom: 0.45, dy: 30 }, { t: 1, node: home, zoom: 0.3, dy: 30 }] }, lines);
+};
+/** Its biggest fleet out on the starlanes at about `m` minutes, followed. */
+const hVoyage = (id, m, dur, lines, speed = 1.5) => hup(id, { sector: hsec(id), from: near(id, 'voyage', m).tick, dur, speed, loud: 0.6,
+  cam: [{ t: 0, follow: 0, zoom: 0.36, dy: 30 }, { t: 1, follow: 0, zoom: 0.3, dy: 30 }] }, lines);
+/** A battle it fights at `node`, at about `m` minutes. */
+const hBattle = (id, m, node, dur, lines, zoom = 0.34) => hup(id, { sector: hsec(id), from: near(id, 'battle', m, node).tick - sec(1), dur, speed: 1, loud: 1, duck: 0.9,
+  cam: [{ t: 0, node, zoom, dy: 30 }, { t: 1, node, zoom: zoom * 1.12, dy: 30 }] }, lines);
+/** The house's realm from above, its colour spreading over the first minutes. */
+const hRealm = (id, dur, lines) => hup(id, { sector: hsec(id), from: sec(10), dur, speed: [12, 60], sounds: false,
+  cam: [{ t: 0, zoom: 'fit', fit: 1.6 }, { t: 1, zoom: 'fit', fit: 1.75 }] }, lines);
+/** Its name in its colour, its title, its banner, and what it is. */
+const hName = (id, dur) => {
+  const [name, title, wide, color] = HOUSES[id];
+  // (Upright, a long name goes on two lines, and Lyceum's line is said shorter.)
+  const names = id === 'choir' ? ['CHOIR OF THE', 'FIRST FLAME'] : name.length > 15 ? name.split(' ') : [name];
+  const line = id === 'lyceum' ? 'QUICK TO LEARN AND SWARM.' : wide;
+  return { blank: true, stars: true, dur, vignette: 0.3,
+    panels: [{ at: 0.7, until: dur + 1, kind: 'banners', heirs: [id], names: false, x: 20, y: 196, w: 230, h: 48, scale: 2 }],
+    text: [
+      { at: 0.2, until: dur - 0.1, style: 'lore', lines: names, y: names.length > 1 ? 0.27 : 0.3, color, type: false },
+      { at: 0.5, until: dur - 0.1, style: 'caption', lines: [title], y: 0.365, color: '#fff4e0' },
+      { at: 1.0, until: dur - 0.1, style: 'caption', lines: [line], y: 0.555 },
+    ] };
+};
+/** The real draft of the house's run, its cards dealt and panned as they come, one taken. */
+const hDraft = (id, dur, lines, hover, zoom = 1.6) => ({ blank: true, stars: true, dur, vignette: 0.3,
+  draft: { sector: hsec(id), tick: min(8), hover, pan: 'deal', zoom },
+  text: [{ at: 0.25, until: dur - 0.15, style: 'lore', lines, y: 0.12, accent: hue(id) }] });
+/** Its motto, large, on the night. */
+const hMotto = (id, dur, lines) => ({ blank: true, stars: true, dur, vignette: 0.3, text: [{ at: 0.3, until: dur - 0.12, style: 'big', lines, y: 0.4, accent: hue(id) }] });
+/** The name, as its flame kindles: lead this house, free; and next week's house (its banner), or the question the series ends on. */
+const LEAD = { vael: 'VAEL', wayfarer: 'WAYFARERS', concord: 'CONCORD', lyceum: 'LYCEUM', choir: 'CHOIR', ashen: 'REMNANT' };
+const hEnd = (id, next) => ({ blank: true, stars: true, dur: 5, vignette: 0.4,
+  panels: next ? [{ at: 1.7, until: 6, kind: 'banners', heirs: [next], x: 45, y: 316, w: 180, h: 36, scale: 1 }] : [],
+  text: [
+    { at: 0.1, until: 5, style: 'logo', lines: [`LEAD THE {${LEAD[id]}}`, 'FREE AT HEGEMARCH.COM'], y: 0.42, accent: hue(id) },
+    next ? { at: 1.5, until: 5, style: 'caption', lines: ['NEXT WEEK'], y: 0.635 } : { at: 1.5, until: 5, style: 'lore', lines: ['WHICH HOUSE', 'ARE YOU?'], y: 0.69 },
+  ] });
+
+// 1. The Vael Imperium: To Arms.
+const hv = [
+  hCast('vael', 8.78, TA * 3, null),
+  hName('vael', TA * 3),
+  hHome('vael', TA * 2, ['FROM {VAELOR}']),
+  hVoyage('vael', 7.42, TA * 2, ['SWORN TO {WAR}']),
+  hBattle('vael', 8.5, 26, TA * 2, ['+15% {DAMAGE}']),
+  { ...hBattle('vael', 12.42, 18, TA * 2, ['{CHEAPER} SHIPS', '[!LESS LORE]'], 0.3), hard: true },
+  hCast('vael', 12.63, TA * 3, ['THE {TYRANT}', 'MISSILE BARRAGE'], 0.6),
+  hMotto('vael', TA * 3, ['THE DARK', 'IS WON', 'IN {FIRE}']),
+  hEnd('vael', 'wayfarer'),
+];
+// 2. The Wayfarer Clans: Starlanes, in three.
+const hw = [
+  hCast('wayfarer', 30.26, SL * 2, null),
+  hName('wayfarer', SL * 2),
+  hHome('wayfarer', SL * 2, ['FROM {DRIFTHOLM}']),
+  hVoyage('wayfarer', 28.08, SL * 2, ['NOMAD', '{FLEETS}']),
+  hVoyage('wayfarer', 29.25, SL * 2, ['STARLANES', '{30%} FASTER'], 2.5),
+  hRealm('wayfarer', SL * 2, ['KINDLING', '{35%} CHEAPER']),
+  hCast('wayfarer', 30.68, SL * 2, ['THE {WANDERER}', 'NANITE CLOUD'], 0.6),
+  hMotto('wayfarer', SL * 2, ['NEVER', '{STILL}']),
+  hEnd('wayfarer', 'concord'),
+];
+// 3. The Solar Concord: The Crowning.
+const hc = [
+  hBattle('concord', 39.5, 25, CR * 2, null, 0.3),
+  hName('concord', CR * 2),
+  hHome('concord', CR * 2, ['FROM {AURELIA}']),
+  hVoyage('concord', 20.33, CR * 2, ['KEEPERS OF', 'THE OLD {LIGHT}']),
+  hRealm('concord', CR * 2, ['+10% {EMBERS}']),
+  { ...hBattle('concord', 70.67, 25, CR * 2, ['{STURDIER} WORLDS'], 0.3), dip: true },
+  hCast('concord', 22.99, CR * 2, ['THE {SOVEREIGN}', 'AEGIS FIELD'], 0.6, -60),
+  hMotto('concord', CR * 2, ['WE KEEP', 'THE {LIGHT}']),
+  hEnd('concord', 'lyceum'),
+];
+// 4. The Lyceum Collective: Breakers.
+const hl = [
+  hCast('lyceum', 10.55, BK * 3, null),
+  hName('lyceum', BK * 3),
+  hHome('lyceum', BK * 2, ['FROM {LYCEA}']),
+  hVoyage('lyceum', 11.08, BK * 2, ['ONE {MIND}']),
+  hBattle('lyceum', 12, 31, BK * 2, ['+25% {LORE}', 'MORE BOONS']),
+  { ...hBattle('lyceum', 18.33, 24, BK * 2, ['CHEAP', '{STRIKERS}'], 0.3), hard: true },
+  hCast('lyceum', 12.85, BK * 3, ['THE {OVERMIND}', 'STRIKE WING'], 0.6),
+  hMotto('lyceum', BK * 3, ['MANY MINDS', 'ONE {SWARM}']),
+  hEnd('lyceum', 'choir'),
+];
+// 5. The Choir of the First Flame: Embers.
+const hf = [
+  hCast('choir', 18.45, EM * 1.5, null),
+  hName('choir', EM * 1.5),
+  hHome('choir', EM * 1.5, ['FROM {CANTICLE}']),
+  hVoyage('choir', 10.42, EM * 1.5, ['THE FIRST', '{FLAME}']),
+  hBattle('choir', 9, 24, EM * 1.5, ['EVERY LOSS', 'FEEDS {ZEAL}']),
+  { ...hBattle('choir', 18.25, 37, EM * 1.5, ['THEY NEVER {RUN}'], 0.3), hard: true },
+  hCast('choir', 15.06, EM * 1.5, ['THE {CANTOR}', 'CONVERSION'], 0.6),
+  hMotto('choir', EM * 1.5, ['WHAT', 'OTHERS', 'DESTROY,', 'WE {CONVERT}']),
+  hEnd('choir', 'ashen'),
+];
+// 6. The Ashen Remnant: Last Stand; its draft of four.
+const ha = [
+  hCast('ashen', 22.48, LS * 2, null),
+  hName('ashen', LS * 3),
+  hHome('ashen', LS * 2, ['FROM {CINDER}']),
+  hVoyage('ashen', 21.75, LS * 2, ['OUT OF', 'THE {FIRE}']),
+  hDraft('ashen', LS * 4, ['{FOUR} BOONS', 'TO CHOOSE'], [3, LS * 4 * 0.72]),
+  { ...hBattle('ashen', 26.92, 2, LS * 2, ['+2 {REROLLS}', '[!FEWER EMBERS]'], 0.3), dip: true },
+  hCast('ashen', 14.57, LS * 3, ['{EMBER THRONE}', 'EMBER LANCE'], 0.6),
+  hMotto('ashen', LS * 2, ['FATE', 'FAVOURS', 'THE {BURNED}']),
+  hEnd('ashen', null),
+];
+const war = (vol) => [{ bars: 2, voices: 'bd', vol: vol - 0.16 }, { bars: 6, voices: 'abd', vol: vol - 0.08 }, { bars: 12, voices: 'abd', vol }];
+Object.assign(TRAILERS, {
+  'house-vael': short(hv, [bed('To Arms', hv, 0, war(0.76))]),
+  'house-wayfarer': short(hw, [bed('Starlanes', hw, 0, [{ bars: 4, voices: 'b', vol: 0.55 }, { bars: 12, voices: 'ab', vol: 0.7 }])]),
+  'house-concord': short(hc, [bed('The Crowning', hc, 0, [{ bars: 2, voices: 'b', vol: 0.55 }, { bars: 6, voices: 'ab', vol: 0.62 }, { bars: 8, voices: 'abd', vol: 0.72 }])]),
+  'house-lyceum': short(hl, [bed('Breakers', hl, 0, war(0.76))]),
+  'house-choir': short(hf, [bed('Embers', hf, 0, [{ bars: 2, voices: 'b', vol: 0.55 }, { bars: 4, voices: 'ab', vol: 0.62 }, { bars: 6, voices: 'abh', vol: 0.7 }])]),
+  'house-ashen': short(ha, [bed('Last Stand', ha, 0, war(0.76))]),
+});
+
 // The music is checked as it is heard: each tune runs whole bars of its shots; it begins on its home chord; its
 // melody comes in at the head of a part (bar 1 of 8, where its phrase begins); and it comes home only at the end
 // of a phrase (bar 4 or 8).
-const HOME_BARS = { 'First Fires': [0, 1, 4, 5], Hegemarch: [0, 4], 'The Empty Throne': [0, 4], 'To Arms': [0, 1, 4, 5], Breakers: [0, 1, 4, 5], 'Last Stand': [0, 1, 4, 5] };
+const HOME_BARS = { 'First Fires': [0, 1, 4, 5], Hegemarch: [0, 4], 'The Empty Throne': [0, 4], 'To Arms': [0, 1, 4, 5], Breakers: [0, 1, 4, 5], 'Last Stand': [0, 1, 4, 5],
+  Starlanes: [0, 1, 8, 9], 'The Crowning': [0, 3, 7], Embers: [0, 4] };
 for (const [name, t] of Object.entries(TRAILERS)) {
   for (const m of t.music) {
-    const bpm = { 'First Fires': 88, 'Long Road': 72, Hegemarch: 112, 'To Arms': 132, 'The Empty Throne': 96, Breakers: 140, 'Last Stand': 126 }[m.track];
-    const bars = (m.until - m.at) / bar(bpm);
+    const bpm = { 'First Fires': 88, 'Long Road': 72, Hegemarch: 112, 'To Arms': 132, 'The Empty Throne': 96, Breakers: 140, 'Last Stand': 126, Starlanes: 84, 'The Crowning': 104, Embers: 80 }[m.track];
+    const bars = (m.until - m.at) / bar(bpm, m.track === 'Starlanes' ? 6 : 8);
     if (Math.abs(bars - Math.round(bars)) > 0.01) throw new Error(`${name}: ${m.track} runs ${bars.toFixed(2)} bars`);
     const arranged = (m.arrangement ?? []).reduce((s, x) => s + x.bars, 0);
     if (m.arrangement && arranged !== Math.round(bars)) throw new Error(`${name}: ${m.track} is arranged for ${arranged} bars of ${Math.round(bars)}`);

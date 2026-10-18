@@ -58,13 +58,18 @@ function makeGame(s: SectorSpec): Game {
 // ---------------------------------------------------------------------------------------------------
 
 export interface Moment {
-  kind: 'kindle' | 'conquest' | 'hearth' | 'nova' | 'battle' | 'fall' | 'era' | 'launch';
+  kind: 'kindle' | 'conquest' | 'hearth' | 'nova' | 'battle' | 'fall' | 'era' | 'launch' | 'ability' | 'voyage';
   tick: number;
   node: number;
   score: number;
   who: number;
   /** A battle's: the houses with ships there (ids), and -1 if the Hollow or raiders are there too. */
   sides?: number[];
+  /** An ability's: which, where its ship stood, and whether that ship was its house's Ark. (Its score: the enemies in reach.) */
+  ability?: string;
+  x?: number;
+  y?: number;
+  ark?: boolean;
 }
 
 /** Play a sector through (its houses all the game's AI) and note what happened where: the shots there are. */
@@ -85,6 +90,14 @@ export function scan(s: SectorSpec, minutes: number) {
     g.step();
     for (const f of g.fx) {
       if (f.k === 'nova') moments.push({ kind: 'nova', tick: g.tick, node: f.node, score: 10, who: -1 });
+      else if (f.k === 'ability' && f.node >= 0) {
+        // (Who cast it: the ship of that ability standing where it was cast.)
+        const by = g.buckets[f.node].find((u) => !u.dead && u.abil.some((a) => a.id === f.id) && Math.abs(u.x - f.x) < 1 && Math.abs(u.y - f.y) < 1);
+        if (by) {
+          const near = g.buckets[f.node].filter((o) => !o.dead && g.hostile(by.owner, o.owner) && Math.hypot(o.x - f.x, o.y - f.y) <= f.r).length;
+          moments.push({ kind: 'ability', tick: g.tick, node: f.node, score: near, who: by.owner, ability: f.id, x: Math.round(f.x), y: Math.round(f.y), ark: by.type === 'ark' });
+        }
+      }
       else if ((f.k === 'shot' || f.k === 'beam' || f.k === 'boom') && f.node >= 0) {
         const key = `${f.node}:${Math.floor(g.tick / 100)}`;
         heat.set(key, (heat.get(key) ?? 0) + (f.k === 'boom' ? (f.size >= 20 ? 12 : 3) : 1));
@@ -92,6 +105,21 @@ export function scan(s: SectorSpec, minutes: number) {
       }
     }
     g.fx.length = 0;
+    // (Fleets on the starlanes: every five seconds, each house's biggest on one lane, its ships counted, and where it is bound.)
+    if (g.tick % 100 === 0) {
+      const fleets = new Map<string, number>();
+      for (const u of g.unitList) {
+        if (u.dead || !u.lane || u.type === 'seed' || u.type === 'fighter' || g.factions[u.owner]?.kind !== 'empire') continue;
+        const k = `${u.owner}:${u.lane.from}:${u.lane.to}`;
+        fleets.set(k, (fleets.get(k) ?? 0) + 1);
+      }
+      const best = new Map<number, [number, number]>();
+      for (const [k, n] of fleets) {
+        const [who, , to] = k.split(':').map(Number);
+        if (n >= 6 && n > (best.get(who)?.[0] ?? 0)) best.set(who, [n, to]);
+      }
+      for (const [who, [n, to]] of best) moments.push({ kind: 'voyage', tick: g.tick, node: to, score: n, who });
+    }
     // (Who is fighting: every second, the houses with ships at each world being fought over.)
     if (g.tick % 20 === 0) {
       const now = Math.floor(g.tick / 100);
@@ -148,8 +176,8 @@ export interface CamKey {
   /** Off the place, in screen pixels at the game's size (to leave room for words). */
   dx?: number;
   dy?: number;
-  /** With the biggest fleet on the move when the shot begins, wherever it goes (its middle). */
-  follow?: boolean;
+  /** With the biggest fleet on the move when the shot begins, wherever it goes (its middle); a number: that house's. */
+  follow?: boolean | number;
 }
 
 /** Words over a shot. */
@@ -174,6 +202,8 @@ export interface TextCue {
   /** Letters a second, when it comes in letter by letter. */
   cps?: number;
   color?: string;
+  /** The colour of its {phrases} (gold): a house's, in its own words. */
+  accent?: string;
   /** Lines longer than this many letters are broken at a space. */
   wrap?: number;
 }
@@ -382,24 +412,28 @@ function laid(level: number, draw: () => void) {
 }
 
 /** The fleet a shot rides with: its ships, and where its middle was last seen (smoothed: a ship leaping does not jolt it). */
-let fleet: { ids: number[]; x: number; y: number } | null = null;
-function pickFleet(g: Game) {
+let fleet: { ids: number[]; x: number; y: number; ease: number } | null = null;
+function pickFleet(g: Game, who?: number) {
   const groups = new Map<string, number[]>();
   for (const u of g.unitList) {
-    if (u.dead || !u.lane || u.type === 'seed') continue;
-    const k = `${u.owner}:${u.dest}`;
+    if (u.dead || !u.lane || u.type === 'seed' || (who !== undefined && (u.owner !== who || u.type === 'fighter'))) continue;
+    // (A house's: the ships on one starlane, together, without the Fighters its Carriers hold; any house's: all bound for one place.)
+    const k = who === undefined ? `${u.owner}:${u.dest}` : `${u.owner}:${u.lane.from}:${u.lane.to}`;
     groups.set(k, [...(groups.get(k) ?? []), u.id]);
   }
   const ids = [...groups.values()].sort((a, b) => b.length - a.length)[0] ?? [];
-  fleet = { ids, x: NaN, y: NaN };
+  // (A house's own fleet is held close: on a starlane it is fast, and a loose camera falls behind it.)
+  fleet = { ids, x: NaN, y: NaN, ease: who === undefined ? 0.12 : 0.45 };
   followFleet(g, 1);
 }
-function followFleet(g: Game, ease = 0.12) {
+function followFleet(g: Game, ease = fleet?.ease ?? 0.12) {
   if (!fleet) return;
   const us = fleet.ids.map((id) => g.units.get(id)).filter((u) => u && !u.dead);
   if (!us.length) return;
-  const x = us.reduce((s, u) => s + u!.x, 0) / us.length;
-  const y = us.reduce((s, u) => s + u!.y, 0) / us.length;
+  // (Its middle; a house's, the middle of most of it, so that a ship or two astray does not pull the picture off it.)
+  const mid = (v: number[]) => v.sort((p, q) => p - q)[v.length >> 1];
+  const x = fleet.ease > 0.12 ? mid(us.map((u) => u!.x)) : us.reduce((s, u) => s + u!.x, 0) / us.length;
+  const y = fleet.ease > 0.12 ? mid(us.map((u) => u!.y)) : us.reduce((s, u) => s + u!.y, 0) / us.length;
   fleet.x = Number.isNaN(fleet.x) ? x : fleet.x + (x - fleet.x) * ease;
   fleet.y = Number.isNaN(fleet.y) ? y : fleet.y + (y - fleet.y) * ease;
 }
@@ -514,7 +548,7 @@ function camAt(g: Game, keys: CamKey[], k: number): { x: number; y: number; zoom
     const fit = key.zoom === 'fit';
     const zoom = fit ? cam.minZoom * (key.fit ?? 1) : (key.zoom as number);
     const n = key.node !== undefined ? g.nodes[key.node] : null;
-    if (key.follow && fleet && !Number.isNaN(fleet.x)) return { x: fleet.x - (key.dx ?? 0) / zoom, y: fleet.y - (key.dy ?? 0) / zoom, zoom };
+    if (key.follow !== undefined && key.follow !== false && fleet && !Number.isNaN(fleet.x)) return { x: fleet.x - (key.dx ?? 0) / zoom, y: fleet.y - (key.dy ?? 0) / zoom, zoom };
     const x = fit && key.x === undefined && !n ? (g.bounds.minX + g.bounds.maxX) / 2 : (n?.x ?? key.x ?? 0);
     const y = fit && key.y === undefined && !n ? (g.bounds.minY + g.bounds.maxY) / 2 : (n?.y ?? key.y ?? 0);
     return { x: x - (key.dx ?? 0) / zoom, y: y - (key.dy ?? 0) / zoom, zoom };
@@ -616,10 +650,10 @@ const plainOf = (l: string) => runsOf(l).map((r) => r.text).join('');
  * A line of runs, outlined in the night, its middle at `cx`: `glow` (ember, gold) over all of it while it
  * catches; a phrase in gold riding its ripple once it has; no more than `shown` letters.
  */
-function richLine(l: string, cx: number, y: number, size: number, body: string, glow: string | null, clock: number, shown = Infinity) {
+function richLine(l: string, cx: number, y: number, size: number, body: string, glow: string | null, clock: number, shown = Infinity, kw: string = PAL.gold) {
   ctx.font = `${size}px ${FONT}`;
   ctx.textBaseline = 'top';
-  const colors: Record<RunStyle, string> = { body, kw: PAL.gold, gain: PAL.teal, loss: PAL.red };
+  const colors: Record<RunStyle, string> = { body, kw, gain: PAL.teal, loss: PAL.red };
   let x = Math.round(cx - ctx.measureText(plainOf(l)).width / 2);
   const o = Math.max(1, Math.round(size / 8));
   const lift = Math.max(1, Math.round(size / 16));
@@ -666,7 +700,7 @@ function wordsNow(cue: TextCue, t: number, how: 'story' | 'type' | 'now', clock:
     }
     cue.lines.forEach((l, i) => {
       const age = since - 0.9 - i * 0.3;
-      if (age >= 0) richLine(l, W / 2, cy + big + 20 + i * 14, 8, i === 0 ? PAL.bone : PAL.mist, age < STORY_GLOW / 2 ? PAL.ember : age < STORY_GLOW ? PAL.gold : null, clock);
+      if (age >= 0) richLine(l, W / 2, cy + big + 20 + i * 14, 8, i === 0 ? PAL.bone : PAL.mist, age < STORY_GLOW / 2 ? PAL.ember : age < STORY_GLOW ? PAL.gold : null, clock, Infinity, cue.accent);
     });
     return;
   }
@@ -685,9 +719,9 @@ function wordsNow(cue: TextCue, t: number, how: 'story' | 'type' | 'now', clock:
   cue.lines.forEach((l, i) => {
     if (how === 'story') {
       const age = since - (i + 1) * STORY_GAP;
-      if (age >= 0) richLine(l, cx, y, size, color, age < STORY_GLOW / 2 ? PAL.ember : age < STORY_GLOW ? PAL.gold : null, clock);
+      if (age >= 0) richLine(l, cx, y, size, color, age < STORY_GLOW / 2 ? PAL.ember : age < STORY_GLOW ? PAL.gold : null, clock, Infinity, cue.accent);
     } else {
-      richLine(l, cx, y, size, color, null, clock, left);
+      richLine(l, cx, y, size, color, null, clock, left, cue.accent);
       left -= plainOf(l).length;
     }
     y += size + gap;
@@ -831,7 +865,10 @@ export async function shoot(shots: Shot[], everyNth = 1, pick?: number[]): Promi
     const g = shot.blank || !shot.sector ? null : gameAt(shot.sector, shot.from);
     fleet = null;
     sparks = [];
-    if (g && shot.cam?.some((c) => c.follow)) pickFleet(g);
+    if (g && shot.cam?.some((c) => c.follow !== undefined && c.follow !== false)) {
+      const f = shot.cam.find((c) => typeof c.follow === 'number')?.follow;
+      pickFleet(g, typeof f === 'number' ? f : undefined);
+    }
     const heard = {
       ctx: {},
       play: (id: SoundId, vol = 0.5, pan = 0) => sounds.push([clock, id, Math.min(1, vol * (shot.loud ?? 1)), pan]),

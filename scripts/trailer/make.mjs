@@ -48,9 +48,11 @@ if (mode === 'audit') {
 } else if (mode === 'scan') {
   for (const seed of (arg ?? '11').split(',').map(Number)) {
     // (AGES=1: an Ages run, on its cradle world.)
-    const sector = { seed, size: 'medium', heir: 'concord', difficulty: 2, ...(process.env.AGES ? { ages: true } : {}) };
+    // (HEIR=vael: a sector led by that house, its own Ark among the others.)
+    const heir = process.env.HEIR ?? 'concord';
+    const sector = { seed, size: 'medium', heir, difficulty: 2, ...(process.env.AGES ? { ages: true } : {}) };
     const r = await page.evaluate(({ sector }) => window.studio.scan(sector, 75), { sector });
-    fs.writeFileSync(path.join(OUT, `scan-${process.env.AGES ? 'ages-' : ''}${seed}.json`), JSON.stringify({ sector, ...r }));
+    fs.writeFileSync(path.join(OUT, `scan-${process.env.AGES ? 'ages-' : ''}${seed}${process.env.HEIR ? `-${heir}` : ''}.json`), JSON.stringify({ sector, ...r }));
     const best = (kind, n = 4) => r.moments.filter((m) => m.kind === kind).sort((a, b) => b.score - a.score).slice(0, n)
       .map((m) => `${(m.tick / 1200).toFixed(1)}m@${m.node}${m.kind === 'battle' ? `(${m.score})` : ''}`).join(' ');
     console.log(`seed ${seed}: ${r.ms}ms, ${r.end ? `ends at ${(r.end.tick / 1200).toFixed(1)} min (${r.end.victory})` : 'undecided'}; ` +
