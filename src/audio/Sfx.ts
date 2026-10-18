@@ -13,6 +13,13 @@ type Wave = 'p12' | 'p25' | 'p50' | 'tri';
 
 const midi = (n: number) => 440 * Math.pow(2, (n - 69) / 12);
 
+/**
+ * Seconds ahead of the clock a sound is set to begin. The page sees the audio clock move a block at a time
+ * (512 samples, 10.7 ms, on Windows), and the block after it may already be in hand: a sound set to begin
+ * inside it began late, from the middle of its rise, all at once: a click. (Until 1.25.1 it was 5 ms.)
+ */
+const AHEAD = 0.03;
+
 export class Sfx {
   ctx: AudioContext | null = null;
   master: GainNode | null = null;
@@ -22,6 +29,12 @@ export class Sfx {
   private noise: AudioBuffer | null = null;
   private lastPlay = new Map<SoundId, number>();
   private voices = 0;
+  /**
+   * One panner for each place in the stereo field (in tenths), made when first wanted and kept: a sound
+   * goes through the one for its place. (Until 1.25.1 every sound had a panner of its own, kept for three
+   * seconds: in a big battle, hundreds of them, all at work.)
+   */
+  private panners = new Map<number, StereoPannerNode>();
   /**
    * Pitch factor for the sound effect being played (combat sounds wobble a little). It is set only
    * while play() runs: the music shares tone(), and a factor left over from a gunshot would put
@@ -62,7 +75,16 @@ export class Sfx {
     }
     const c = this.ctx;
     this.master = c.createGain();
-    this.master.connect(c.destination);
+    // The last stage: a limiter that holds everything under full scale, however much plays at once and
+    // however loud the settings (a speaker cannot play past it, and what goes past crackles).
+    const limiter = c.createDynamicsCompressor();
+    limiter.threshold.value = -3;
+    limiter.knee.value = 0;
+    limiter.ratio.value = 20;
+    limiter.attack.value = 0.002;
+    limiter.release.value = 0.15;
+    this.master.connect(limiter);
+    limiter.connect(c.destination);
     this.sfxGain = c.createGain();
     this.sfxGain.connect(this.master);
     this.musicGain = c.createGain();
@@ -129,7 +151,9 @@ export class Sfx {
     else o.setPeriodicWave(this.waves.get(w)!);
     o.frequency.setValueAtTime(f0, t0);
     if (f1 !== f0) o.frequency.exponentialRampToValueAtTime(Math.max(20, f1), t0 + dur);
+    // (Silent from the moment it is made: see noiseBurst.)
     const gn = c.createGain();
+    gn.gain.value = 0;
     gn.gain.setValueAtTime(0, t0);
     gn.gain.linearRampToValueAtTime(vol, t0 + attack);
     gn.gain.setValueAtTime(vol, t0 + Math.max(attack, dur * 0.6));
@@ -152,9 +176,15 @@ export class Sfx {
     s.buffer = this.noise;
     s.loop = true;
     s.playbackRate.value = rate;
+    // Silent from the moment it is made, and from silence in four thousandths of a second. A gain is made at
+    // full strength, and only turned down at the sound's moment: the noise's first sample, a sample before
+    // that, went through at full strength, a click; and a burst begun at full strength began with another.
+    // A battle's bolts and flak, twenty a second each, made a crackle of them (a player heard it, 1.25.1).
     const gn = c.createGain();
-    gn.gain.setValueAtTime(vol, t0);
-    gn.gain.exponentialRampToValueAtTime(0.001, t0 + dur);
+    gn.gain.value = 0;
+    gn.gain.setValueAtTime(0, t0);
+    gn.gain.linearRampToValueAtTime(vol, t0 + 0.004);
+    gn.gain.exponentialRampToValueAtTime(0.001, t0 + Math.max(dur, 0.008));
     let node: AudioNode = s;
     if (filter) {
       const f = c.createBiquadFilter();
@@ -178,7 +208,7 @@ export class Sfx {
   note(n: number, vol = 0.3, dur = 0.14) {
     const c = this.ctx;
     if (!c || !this.sfxGain || c.state !== 'running') return;
-    const t = c.currentTime + 0.005;
+    const t = c.currentTime + AHEAD;
     this.tone(this.sfxGain, 'p25', midi(n), midi(n), t, dur, vol * 0.35);
     this.tone(this.sfxGain, 'tri', midi(n - 12), midi(n - 12), t, dur * 1.6, vol * 0.3);
   }
@@ -193,15 +223,19 @@ export class Sfx {
     this.lastPlay.set(id, now);
     this.pitch = ['laser', 'bolt', 'flak', 'shell', 'lance', 'missile', 'boom', 'bigboom', 'jump'].includes(id) ? 0.94 + Math.random() * 0.12 : 1;
     let dest: AudioNode = this.sfxGain;
-    if (pan !== 0 && c.createStereoPanner) {
-      const p = c.createStereoPanner();
-      p.pan.value = Math.max(-1, Math.min(1, pan));
-      p.connect(this.sfxGain);
+    const place = Math.round(Math.max(-1, Math.min(1, pan)) * 10);
+    if (place !== 0 && c.createStereoPanner) {
+      let p = this.panners.get(place);
+      if (!p) {
+        p = c.createStereoPanner();
+        p.pan.value = place / 10;
+        p.connect(this.sfxGain);
+        this.panners.set(place, p);
+      }
       dest = p;
-      window.setTimeout(() => p.disconnect(), 3000);
     }
     const v = vol * 0.35;
-    const t = now + 0.005;
+    const t = now + AHEAD;
     try {
       this.effect(id, dest, t, v);
     } finally {

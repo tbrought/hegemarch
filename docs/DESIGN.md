@@ -34,7 +34,7 @@ the depth into the draft and the screen into a "one thing at a time" model.
 | UI | Immediate-mode pixel UI on the canvas; DOM only for menus | The HUD sits on the same pixel grid as the game. Menus use web fonts (Press Start 2P, Pixelify Sans) with pixel-style borders. |
 | Simulation | Deterministic, fixed 20 Hz tick, seeded RNG, commands as the only input | Headless tests and balance runs, seed sharing, daily runs, save/load mid-run. |
 | Players | Single player against AI houses | Roguelites are solo and pausable; the deterministic core leaves room for replays or lockstep later. |
-| Art and audio | Fully procedural | Dithered worlds, ship sprites as character art, chiptune synth and sequencer; no asset pipeline. |
+| Art and audio | Fully procedural | Dithered worlds, ship sprites as character art, chiptune synth and sequencer; no asset pipeline. Every sound starts from silence (see "A sound without a click"). |
 
 ## 3. Words
 
@@ -1316,6 +1316,25 @@ and not pictures of it, and it cannot drift from the rules.
   picture); the color of the browser round it on a phone. The game's own page says it needs
   JavaScript to a browser that has it off, where it used to be blank.
 
+### A sound without a click (1.25.1)
+
+A player heard crackling and popping when many ships fired at once. Measured offline, the mix never came
+near full scale; recorded off the real audio device, one sound in two of a bolt or a burst of flak began
+with a single sample far louder than the rest of it (0.66, between samples of 0.001). Every sound goes
+through a gain that the engine turns down to silence at the sound's moment, and a gain is made at full
+strength: the first sample of a burst of noise, a sample before that moment, went through at full strength.
+An oscillator starts near zero, so only the noises clicked; but a battle fires bolts and flak twenty a
+second each, and the clicks were the crackle (and, in a big battle, the loudest samples of the whole mix).
+
+So every sound is silent from the moment it is made, and a burst of noise rises from silence in four
+thousandths of a second; sounds are set to begin 30 ms ahead (the page sees the audio clock move a block
+of 10.7 ms at a time, and a sound set inside the block already in hand began late, at full strength);
+a tune that falls behind skips the notes it is late for instead of playing them all at once; the panner a
+sound goes through is one of a few kept, not one made for every sound and kept three seconds (hundreds at
+work in a big battle); and a limiter at the very end holds everything under full scale at any setting. On
+the same battles, single-sample leaps fell from 4 to 16 every ten seconds to none (`scripts/audio.mjs`
+checks each sound; `scripts/trailer/make.mjs audit` measures a battle's mix).
+
 ## 7. Architecture
 
 [CODE_TOUR.md](CODE_TOUR.md) is the way in for a developer: the folders, one frame, one order, how to
@@ -1408,6 +1427,8 @@ UI snapshot of section 8: nothing in the game changed.)
   and `test:starfall` (`scripts/starfall.mjs`: the same in the browser, from the button at the Hearth
   to an order through the fire and a rival's Starfall at home). `scripts/layouts.mjs` stages its
   cards at their fullest on the smallest screen.
+- `test:audio`: a battle's music in tune and never clipping; and every sound of a battle played alone,
+  recorded as it leaves the effects' bus, starting from silence (1.25.1: see below).
 - `test:sound`: the sound button and the first click, with a browser that waits for one and with one
   that does not, at desktop and phone widths.
 - `test:uifuzz`, `test:layouts`, `test:menus`: random play through the real UI (fails on any error or

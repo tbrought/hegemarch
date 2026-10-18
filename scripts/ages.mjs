@@ -239,7 +239,10 @@ try {
   check('the omens of the sector are shown on arrival', st.modal === 'omens' && stars.victories === 3);
   check('the run was saved on arrival', stars.saved === 'stars');
   await shot('5-stars');
-  await clickUi('omens-begin');
+  // (A click while the omens are still coming in brings them all and takes nothing, as a player's would:
+  // BEGIN is clicked until the card has gone.)
+  for (let i = 0; i < 4 && (await ev(() => window.__app.session.modal?.kind)) === 'omens'; i++) await clickUi('omens-begin', { required: false });
+  check('the omens are put away', (await ev(() => window.__app.session.modal?.kind ?? null)) !== 'omens');
   check('the HUD is the HUD of the stars', !!(await uiRect('dest-conquest')) && !(await uiRect('ages')) && !(await uiRect('age')));
   await ev(() => {
     const s = window.__app.session;
@@ -248,8 +251,13 @@ try {
   await wait(300);
   const starTip = await hover('build-striker');
   check('and a Striker is a Striker again', /Striker/.test(starTip) && !/Hunter/.test(starTip), starTip.slice(0, 60));
-  await page.keyboard.press('KeyU');
-  await wait(300);
+  // (U opens the Status screen. A key pressed in the moment something else has the game's attention, a
+  // herald coming in, is not lost on a player, who presses it again: the script does as a player would.)
+  for (let i = 0; i < 4 && (await ev(() => window.__app.session.modal?.kind)) !== 'status'; i++) {
+    if (i) console.log(`  (U again: ${JSON.stringify(await ev(() => ({ modal: window.__app.session.modal?.kind ?? null, focus: document.activeElement?.tagName })))})`);
+    await page.keyboard.press('KeyU');
+    await wait(400);
+  }
   await clickUi('tab-rivals');
   await wait(300);
   await shot('6-rivals');

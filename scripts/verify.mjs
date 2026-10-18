@@ -42,6 +42,8 @@ const steps = [
   ['frame', 'node scripts/frame.mjs', true],
   ['board ui', 'node scripts/board-ui.mjs', true],
   ['sound', 'node scripts/sound.mjs', true],
+  // (A battle's music in tune and never clipping, and every sound starting from silence: 1.25.1.)
+  ['audio', 'node scripts/audio.mjs', true],
   ['uifuzz', 'node scripts/uifuzz.mjs 120 1', true],
   ['uifuzz --ages', 'node scripts/uifuzz.mjs 100 2 --ages', true],
 ].filter(([name, , browser]) => (only ? only.includes(name) : !(quick && browser)));

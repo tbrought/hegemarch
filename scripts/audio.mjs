@@ -115,6 +115,68 @@ for (let i = 0; i < 4; i++) {
 const names = [...tracks.map((t) => t.title), tracks[tracks.length - 1].next];
 check('the battle music has several tracks, and the next is never the one before', new Set(names).size >= 3 && names.every((t, i) => i === 0 || t !== names[i - 1]), names.join(' > '));
 check('each of them plays, in tune', tracks.every((t) => t.ok && t.mood === 'war'));
+
+// Every sound of a battle starts from silence (1.25.1). A gain made at full strength, and turned down only
+// at its sound's moment, let the first sample of a burst of noise through: a click, as often as not, and in
+// a battle a crackle of them. Each sound is played alone, recorded as it comes out of the effects' bus, and
+// its first samples read against its loudest.
+const onsets = await page.evaluate(async () => {
+  const app = window.__app;
+  // (The battle above stops, and its music: only the sounds played here are heard.)
+  app.session.paused = true;
+  app.music.play(null);
+  await new Promise((r) => setTimeout(r, 1500));
+  const sfx = app.sfx;
+  const c = sfx.ctx;
+  const code = 'class Rec extends AudioWorkletProcessor { process(i) { const ch = i[0][0]; if (ch) this.port.postMessage(ch.slice(0)); return true; } } registerProcessor("rec", Rec);';
+  await c.audioWorklet.addModule(URL.createObjectURL(new Blob([code], { type: 'text/javascript' })));
+  const rec = new AudioWorkletNode(c, 'rec');
+  const chunks = [];
+  rec.port.onmessage = (e) => chunks.push(e.data);
+  sfx.sfxGain.connect(rec);
+  const mute = c.createGain();
+  mute.gain.value = 0;
+  rec.connect(mute);
+  mute.connect(c.destination);
+  const out = {};
+  for (const id of ['laser', 'bolt', 'flak', 'shell', 'lance', 'missile', 'boom', 'bigboom']) {
+    chunks.length = 0;
+    for (let i = 0; i < 8; i++) {
+      await new Promise((r) => setTimeout(r, 1200 + Math.random() * 40));
+      sfx.play(id, 0.8, 0);
+    }
+    await new Promise((r) => setTimeout(r, 1300));
+    const d = new Float32Array(chunks.reduce((s, x) => s + x.length, 0));
+    let o = 0;
+    for (const x of chunks) {
+      d.set(x, o);
+      o += x.length;
+    }
+    let quiet = 0;
+    let loud = 0;
+    let heard = 0;
+    for (let i = 0; i < d.length; i++) {
+      if (Math.abs(d[i]) < 1e-5) {
+        quiet++;
+        continue;
+      }
+      if (quiet > 96) {
+        let peak = 0;
+        for (let k = i; k < Math.min(d.length, i + 960); k++) peak = Math.max(peak, Math.abs(d[k]));
+        if (peak > 0.002) {
+          heard++;
+          if (Math.max(Math.abs(d[i]), Math.abs(d[i + 1] ?? 0), Math.abs(d[i + 2] ?? 0)) > peak * 0.5) loud++;
+        }
+      }
+      quiet = 0;
+    }
+    out[id] = { heard, loud };
+  }
+  sfx.sfxGain.disconnect(rec);
+  return out;
+});
+const clicks = Object.entries(onsets).filter(([, v]) => v.loud > 0 || v.heard < 6);
+check('every sound of a battle starts from silence: no click', clicks.length === 0, Object.entries(onsets).map(([k, v]) => `${k} ${v.loud}/${v.heard}`).join(', '));
 check('no errors', errors.length === 0, errors.join(' | '));
 console.log(failures ? `\n${failures} FAILED` : '\nALL PASSED');
 await browser.close();

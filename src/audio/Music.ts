@@ -468,21 +468,27 @@ export class Music {
       this.nextTime = Math.max(c.currentTime + 0.1, this.startAt);
     }
     if (this.nextTime < c.currentTime - 0.5) this.nextTime = c.currentTime + 0.05;
-    while (this.nextTime < c.currentTime + 0.25) {
-      const tr: Track = this.track;
-      const [id, voices] = tr.form[this.seg];
-      const p = tr.parts[id];
-      const stepDur = 60 / tr.bpm / 2;
-      this.schedule(tr, p, voices, this.step, this.nextTime, stepDur);
-      this.nextTime += stepDur;
-      if (++this.step < p.chords.length * tr.steps) continue;
-      this.step = 0;
-      if (++this.seg < tr.form.length) continue;
-      // The track is over: it comes home, there is a breath, and another track of the mood begins.
-      this.seg = 0;
-      this.nextTime += this.close(tr, this.nextTime, stepDur);
-      this.track = this.draw(tr.mood);
-    }
+    // A tune that has fallen behind (a frame that took long) skips the notes it is late for. Played late,
+    // a note began at once and at full strength, in the middle of its sound: a click (until 1.25.1).
+    for (let n = 0; this.nextTime < c.currentTime + 0.03 && n < 64; n++) this.advance(false);
+    while (this.nextTime < c.currentTime + 0.3) this.advance(true);
+  }
+
+  /** One step of the tune: its notes scheduled (`play`) or passed over, and on to the next step, part or track. */
+  private advance(play: boolean) {
+    const tr: Track = this.track!;
+    const [id, voices] = tr.form[this.seg];
+    const p = tr.parts[id];
+    const stepDur = 60 / tr.bpm / 2;
+    if (play) this.schedule(tr, p, voices, this.step, this.nextTime, stepDur);
+    this.nextTime += stepDur;
+    if (++this.step < p.chords.length * tr.steps) return;
+    this.step = 0;
+    if (++this.seg < tr.form.length) return;
+    // The track is over: it comes home, there is a breath, and another track of the mood begins.
+    this.seg = 0;
+    this.nextTime += play ? this.close(tr, this.nextTime, stepDur) : stepDur * 2;
+    this.track = this.draw(tr.mood);
   }
 
   /**
