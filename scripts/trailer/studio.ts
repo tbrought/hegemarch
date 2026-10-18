@@ -227,7 +227,7 @@ export interface Shot {
   /** The world behind is darkened this much (0..1), for what is over it to read. */
   dim?: number;
   panels?: Panel[];
-  /** A vignette in dither, this strong (0..1): the corners go to night, pixel by pixel. */
+  /** A vignette, this strong (0..1): the corners darken toward night, smoothly. */
   vignette?: number;
   /**
    * Seconds the shot takes to come in from night, and to go to it at its end: smooth fades (a dip through
@@ -302,13 +302,10 @@ const FAR = new Float32Array(W * H).map((_, i) => {
   return Math.sqrt(x * x * 2 + y * y * 2);
 });
 /**
- * The night over the picture, in dither: at the corners (a vignette, `v`), and in a band at the foot of it
- * where words are (`band`: from that height, 0..1, down), so that they read over anything.
- */
-/**
  * The vignette (`v`), and the band of night under words at the foot of a shot: from nothing at 0.6 of the
  * way down to nearly all night by 0.7, where the words are, so that no ship is ever over them; `band`
- * (0..1) is how far it has come in, with the words.
+ * (0..1) is how far it has come in, with the words. Both darken smoothly, every pixel a little (night in
+ * dither, over a bright land, reads as black specks eating into it).
  */
 function dusk(v: number, band: number) {
   if (!v && !band) return;
@@ -320,10 +317,11 @@ function dusk(v: number, band: number) {
       const i = y * W + x;
       const vv = v ? Math.max(0, Math.min(1, (FAR[i] - 0.62) / 0.5)) * v : 0;
       const level = Math.max(vv, by);
-      if (level > 0 && (bayer(x, y) + 0.5) / 16 < level) {
-        d[i * 4] = 11;
-        d[i * 4 + 1] = 10;
-        d[i * 4 + 2] = 26;
+      if (level > 0) {
+        const keep = 1 - level;
+        d[i * 4] = 11 + (d[i * 4] - 11) * keep;
+        d[i * 4 + 1] = 10 + (d[i * 4 + 1] - 10) * keep;
+        d[i * 4 + 2] = 26 + (d[i * 4 + 2] - 26) * keep;
       }
     }
   }
@@ -388,7 +386,7 @@ function drawArk(a: NonNullable<Shot['ark']>, t: number, g: Game) {
   const w = Math.max(1, Math.round(spr.width * S * scale));
   const h = Math.max(1, Math.round(spr.height * S * scale));
   const cx = Math.round(sx + k * k * 10);
-  const cy = Math.round(sy - 20 - (k * 18 + k * k * 46));
+  const cy = Math.round(sy - 32 - (k * 18 + k * k * 46));
   // Built row by row, from the keel up, a line of gold where it is being built.
   const built = Math.min(1, t / (a.lift * 0.7));
   if (scale > 0) {
