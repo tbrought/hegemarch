@@ -903,7 +903,14 @@ export async function sound(dur: number, music: MusicCue[], sounds: SoundCue[], 
     if (m.close) {
       if (step !== 0 && !m.arrangement) throw new Error(`${m.track} is closed in the middle of a part (step ${step})`);
       // (A battle's tune does not ring home in the game, where the next one follows at once: here it does.)
-      player.close({ ...tr, mood: 'title' }, m.at + steps * stepDur, m.ring ? m.ring / 6 : stepDur);
+      const home = m.at + steps * stepDur;
+      player.close({ ...tr, mood: 'title' }, home, m.ring ? m.ring / 6 : stepDur);
+      // (Its chord dies away as it rings, by forty decibels, and to nothing at the end of it: it does not hold, then stop.)
+      if (m.ring) {
+        bus.gain.setValueAtTime(level, home);
+        bus.gain.exponentialRampToValueAtTime(level * 0.01, home + m.ring);
+        bus.gain.linearRampToValueAtTime(0, home + m.ring + 0.1);
+      }
     }
   }
   // A riser before a drop, made with the game's own pulse: a sweep up, louder as it goes, cut at the drop.
