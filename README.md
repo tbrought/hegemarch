@@ -201,7 +201,8 @@ frame and an order flow, and how to add a ship, a Boon, an event or a dialog.
 ```bash
 npm run verify             # everything below in one command (starts its own dev server for the
                            # browser suites); -- --quick leaves the browser out, -- --release also
-                           # builds, packages and checks the build and the site
+                           # builds, packages and checks the build and the site (about 13 minutes:
+                           # the steps run side by side; -- --serial runs them one at a time)
 npm run typecheck          # tsc --noEmit
 npm test                   # Vitest: rules, combat triangle, victories, determinism, save/load, AI soak runs
 npm run simulate -- 5 medium 1 60 [-v]   # headless AI-vs-AI games with pacing stats

@@ -35,6 +35,19 @@ async function open(policy, size = { width: 1280, height: 720 }, scrollbars = fa
   return { browser, page };
 }
 
+/**
+ * The state once `ok` is true of it, or as it is after `ms` (a sound starts, and a gain ramps, in its own
+ * time: on a busy machine, more than the half second a fixed wait gave it, and the button was read early).
+ */
+async function settle(page, ok, ms = 5000) {
+  let s = await state(page);
+  for (let t = 0; t < ms && !ok(s); t += 100) {
+    await page.waitForTimeout(100);
+    s = await state(page);
+  }
+  return s;
+}
+
 const state = (page) =>
   page.evaluate(() => {
     const app = window.__app;
@@ -65,13 +78,11 @@ const state = (page) =>
   check(s.ctx !== 'running', 'and nothing plays');
   await page.screenshot({ path: '.shots/sound-asleep.png' });
   await page.mouse.click(24, 400);
-  await page.waitForTimeout(500);
-  s = await state(page);
+  s = await settle(page, (x) => x.ctx === 'running' && x.playing === 'title' && x.state === 'on' && /SOUND ON/.test(x.label));
   check(s.ctx === 'running' && s.playing === 'title' && s.state === 'on' && /SOUND ON/.test(s.label), `a click anywhere starts the title music, and the button says so (${s.label}, playing ${s.playing})`);
   check(s.screen === 'menu', 'that click was on nothing: the title screen is still up');
   await page.click('#sound');
-  await page.waitForTimeout(300);
-  s = await state(page);
+  s = await settle(page, (x) => x.muted && x.state === 'off' && x.saved === true && x.gain < 0.02);
   check(s.muted && s.state === 'off' && /SOUND OFF/.test(s.label) && s.saved === true, `one click on the button turns the sound off, and it is remembered (${s.label})`);
   check(s.gain < 0.02, `nothing is heard (master gain ${s.gain.toFixed(3)})`);
   await page.screenshot({ path: '.shots/sound-off.png' });
@@ -80,8 +91,7 @@ const state = (page) =>
   s = await state(page);
   check(s.muted && s.state === 'off', `it is still off after a reload (${s.label})`);
   await page.click('#sound');
-  await page.waitForTimeout(500);
-  s = await state(page);
+  s = await settle(page, (x) => !x.muted && x.state === 'on' && x.ctx === 'running' && x.gain > 0.1);
   check(!s.muted && s.state === 'on' && s.ctx === 'running' && s.gain > 0.1, `and one click turns it on again (${s.label}, gain ${s.gain.toFixed(2)})`);
   // Every menu screen has the button, and it covers nothing.
   for (const sa of ['setup', 'hall', 'howto', 'settings']) {

@@ -1435,7 +1435,14 @@ UI snapshot of section 8: nothing in the game changed.)
 - `npm run verify` (`scripts/verify.mjs`): everything below in one command (types, unit tests, the
   fuzzers, the golden traces and the UI snapshot if they were recorded, and every browser suite, for
   which it starts its own dev server). `--quick` leaves the browser out; `--release` builds, packages
-  and checks the build and the site as well.
+  and checks the build and the site as well. Since 1.26 the steps run side by side: the simulation's one
+  after another, beside them the browser suites three at a time, longest first (each has a browser of its
+  own), then the few that time what they hear or see or compare a picture to the pixel (`ALONE`: uisnap,
+  reveals, frame, audio) with nothing beside them, then the release steps. 27.5 minutes one after another
+  became 12.7. Running side by side found three suites that could not bear a busy machine: `frame` ran the
+  camera into the edge of the map on some sectors (it starts from the middle of the sector now), `sound`
+  read its button half a second after a click whatever the audio was doing (it waits for the sound now),
+  and the UI snapshot's pictures came a frame late (it runs alone). `--serial` runs them one at a time.
 - **Golden traces** (`npm run golden -- record|check`, `scripts/golden.ts`): the proof that a change to
   the code changed nothing in the game. 24 fixed runs are played (rival houses alone, random commands,
   both together, Ages runs from the cradle to the stars, runs loaded from their own save half way) and

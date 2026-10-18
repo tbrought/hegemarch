@@ -5,19 +5,35 @@
 //   node scripts/verify.mjs --quick      without the browser (types, unit tests, fuzzers, golden traces)
 //   node scripts/verify.mjs --release    then builds and packages, and checks the built game and the site
 //   node scripts/verify.mjs --only=qol,e2e     some steps, by name
+//   node scripts/verify.mjs --serial     one step at a time, as it was before 1.26 (to look into a failure
+//                                        with nothing else running beside it)
 //
 // It starts its own dev server for the browser suites (port 5173) and stops it again; if one is running
 // already, it uses that one and leaves it alone.
+//
+// Since 1.26 the steps run side by side (they took 29 minutes one after another, on a machine of 16 cores
+// that sat mostly idle): the simulation's steps one after another, and beside them the browser suites, three
+// at a time, the longest first (each has a browser of its own: nothing it keeps is another's). The few that
+// time what they hear or see (`ALONE`) run after, with nothing else running. Then the release steps, which
+// check the build, last.
 import { spawn } from 'node:child_process';
 import fs from 'node:fs';
 
 const args = process.argv.slice(2);
 const quick = args.includes('--quick');
 const release = args.includes('--release');
+const serial = args.includes('--serial');
 const only = args.find((a) => a.startsWith('--only='))?.slice(7).split(',');
 const PORT = 5173;
+/** Browser suites at a time. */
+const AT_ONCE = 3;
+/**
+ * Suites that time what they hear or see, or compare a picture to the pixel: run with nothing else beside
+ * them (a busy machine is heard as clicks, and a picture made over several frames comes a frame late).
+ */
+const ALONE = new Set(['uisnap', 'audio', 'reveals', 'frame']);
 
-/** [name, command, needs a browser?] */
+/** [name, command, needs a browser?]. The browser suites stand longest first: they are started in this order. */
 const steps = [
   ['types', 'npx tsc --noEmit', false],
   ['unit tests', 'npx vitest run', false],
@@ -26,26 +42,26 @@ const steps = [
   ['fuzz --ages', 'npx tsx scripts/fuzz.ts 4 20 --ages', false],
   ['board', 'npx tsx scripts/board-e2e.ts', false],
   ...(fs.existsSync('.golden/trace.json') ? [['golden', 'npx tsx scripts/golden.ts check', false]] : []),
+  ['uifuzz', 'node scripts/uifuzz.mjs 120 1', true],
+  ['uifuzz --ages', 'node scripts/uifuzz.mjs 100 2 --ages', true],
   ...(fs.existsSync('.golden/ui.json') ? [['uisnap', 'node scripts/uisnap.mjs check', true]] : []),
+  ['sound', 'node scripts/sound.mjs', true],
+  ['layouts', 'node scripts/layouts.mjs', true],
+  ['ages', 'node scripts/ages.mjs', true],
+  ['fit', 'node scripts/fit.mjs', true],
   ['e2e', 'node scripts/e2e.mjs', true],
   ['tutorial', 'node scripts/tutorial.mjs', true],
-  ['stopped', 'node scripts/stopped.mjs', true],
   ['qol', 'node scripts/qol.mjs', true],
-  ['starfall', 'node scripts/starfall.mjs', true],
-  ['ages', 'node scripts/ages.mjs', true],
-  ['layouts', 'node scripts/layouts.mjs', true],
-  ['fit', 'node scripts/fit.mjs', true],
-  ['reveals', 'node scripts/reveals.mjs', true],
   ['discovery', 'node scripts/discovery.mjs', true],
   ['menus', 'node scripts/menus.mjs', true],
   ['calm', 'node scripts/calm.mjs', true],
-  ['frame', 'node scripts/frame.mjs', true],
   ['board ui', 'node scripts/board-ui.mjs', true],
-  ['sound', 'node scripts/sound.mjs', true],
+  ['starfall', 'node scripts/starfall.mjs', true],
+  ['stopped', 'node scripts/stopped.mjs', true],
+  ['reveals', 'node scripts/reveals.mjs', true],
+  ['frame', 'node scripts/frame.mjs', true],
   // (A battle's music in tune and never clipping, and every sound starting from silence: 1.25.1.)
   ['audio', 'node scripts/audio.mjs', true],
-  ['uifuzz', 'node scripts/uifuzz.mjs 120 1', true],
-  ['uifuzz --ages', 'node scripts/uifuzz.mjs 100 2 --ages', true],
 ].filter(([name, , browser]) => (only ? only.includes(name) : !(quick && browser)));
 const after = release
   ? [
@@ -91,27 +107,47 @@ function stopServer() {
 }
 
 const results = [];
+/** Run one step and say how it went, all on one line when it is done (steps run side by side). */
+async function step([name, cmd]) {
+  const t = Date.now();
+  const { code, out } = await run(cmd);
+  const ok = code === 0 && !BAD.test(out);
+  const secs = Math.round((Date.now() - t) / 1000);
+  let said = `${name.padEnd(14)} ${ok ? 'ok  ' : 'FAIL'}  ${String(secs).padStart(4)}s`;
+  if (!ok) {
+    const lines = out.trimEnd().split(/\r?\n/);
+    // (What it said was wrong, and the lines under each that say how: "DIFF setup: html", then what differs.)
+    const bad = lines.flatMap((l, i) => (BAD.test(l) || /error/i.test(l) ? [l, ...lines.slice(i + 1, i + 4).filter((x) => /^\s/.test(x))] : []));
+    said += '\n' + (bad.length ? bad.slice(0, 16) : lines.slice(-12)).map((l) => '    ' + l.slice(0, 300)).join('\n');
+  }
+  console.log(said);
+  results.push({ name, ok });
+}
+/** Steps one after another. */
+async function inTurn(list) {
+  for (const s of list) await step(s);
+}
+/** Steps `n` at a time, each taken up in its order as one ends. */
+async function atOnce(list, n) {
+  const queue = [...list];
+  await Promise.all(Array.from({ length: Math.min(n, queue.length) }, async () => {
+    while (queue.length) await step(queue.shift());
+  }));
+}
+
 const t0 = Date.now();
 try {
-  for (const [name, cmd, browser] of [...steps, ...after]) {
-    if (browser) await startServer();
-    else if (name === 'package') stopServer();
-    const t = Date.now();
-    process.stdout.write(`${name.padEnd(14)} `);
-    const { code, out } = await run(cmd);
-    const ok = code === 0 && !BAD.test(out);
-    const secs = Math.round((Date.now() - t) / 1000);
-    console.log(`${ok ? 'ok  ' : 'FAIL'}  ${String(secs).padStart(4)}s`);
-    results.push({ name, ok });
-    if (!ok) {
-      const lines = out.trimEnd().split(/\r?\n/);
-      const bad = lines.filter((l) => BAD.test(l) || /error/i.test(l));
-      console.log(
-        (bad.length ? bad.slice(0, 12) : lines.slice(-12))
-          .map((l) => '    ' + l.slice(0, 300))
-          .join('\n'),
-      );
-    }
+  const sim = steps.filter(([, , browser]) => !browser);
+  const web = steps.filter(([, , browser]) => browser);
+  if (web.length) await startServer();
+  if (serial) await inTurn(steps);
+  else {
+    await Promise.all([inTurn(sim), atOnce(web.filter(([name]) => !ALONE.has(name)), AT_ONCE)]);
+    await inTurn(web.filter(([name]) => ALONE.has(name)));
+  }
+  for (const s of after) {
+    if (s[0] === 'package') stopServer();
+    await step(s);
   }
 } finally {
   stopServer();

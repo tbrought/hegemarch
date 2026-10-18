@@ -28,8 +28,18 @@ await frame.evaluate(() => {
 });
 const box = await (await page.$('#f')).boundingBox();
 const st = () => frame.evaluate(() => ({ focus: document.hasFocus(), keys: window.__keys, cam: Math.round(window.__app.renderer.cam.x) }));
-/** Hold the right arrow a moment: did the key reach the game, and did the camera move? */
+/**
+ * Hold the right arrow a moment: did the key reach the game, and did the camera move? (The camera starts
+ * from the middle of the sector each time: four holds to the right from a home near its right-hand edge
+ * ran it into the edge, and the last did not move it, on some sectors and not others.)
+ */
 const arrow = async () => {
+  await frame.evaluate(() => {
+    const cam = window.__app.renderer.cam;
+    const b = cam.bounds;
+    cam.x = cam.tx = (b.minX + b.maxX) / 2;
+    cam.y = cam.ty = (b.minY + b.maxY) / 2;
+  });
   const a = await st();
   await page.keyboard.down('ArrowRight');
   await page.waitForTimeout(400);

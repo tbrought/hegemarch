@@ -130,6 +130,7 @@ page's actions table in `app/screens/`.
 ```bash
 npm run verify              # everything: types, unit tests, fuzzers, every browser suite
 npm run verify -- --quick   # without a browser
+npm run verify -- --serial  # one step at a time, nothing beside it (to look into a failure)
 npm test                    # unit tests only
 ```
 
