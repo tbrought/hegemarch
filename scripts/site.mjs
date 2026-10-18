@@ -42,6 +42,17 @@ const BOARD = [
   { name: 'ZED', heir: 'vael', time: 2210.5, victory: 'domination' },
   { name: 'MOM', heir: 'choir', time: 3001, victory: 'treasury' },
 ];
+// The throne (1.25.2), as the board's server answers it: today's three, with the reigns they would be; the days before.
+const ago = (k) => utcDay(Date.now() - k * 24 * 60 * 60 * 1000);
+const THRONE = {
+  today: BOARD.map((r, i) => ({ ...r, reign: [2, 1, 1][i] })),
+  count: 3,
+  past: [
+    { day: ago(1), name: 'ZED', heir: 'vael', time: 1690, victory: 'conquest', reign: 2 },
+    { day: ago(2), name: 'ABC', heir: 'concord', time: 2002, victory: 'domination', reign: 1 },
+    { day: ago(3), name: 'ZED', heir: 'vael', time: 2500, victory: 'conquest', reign: 1 },
+  ],
+};
 /** The board asked from the page: at its own address on hegemarch.com, at hegemarch.com's from here. */
 const boardAsked = (u) => /^https:\/\/hegemarch\.com\/api\/daily\//.test(u);
 
@@ -49,10 +60,14 @@ const boardAsked = (u) => /^https:\/\/hegemarch\.com\/api\/daily\//.test(u);
  * Open the page in a fresh context; returns the page and the errors it logs. `init`: run in the page
  * before its own scripts (a player's profile in this browser).
  */
-async function open(opts = {}, query = '?debug', init = null) {
+async function open({ throne = THRONE, ...opts } = {}, query = '?debug', init = null) {
   const context = await browser.newContext({ viewport: { width: 1440, height: 900 }, ...opts });
   await context.route((u) => boardAsked(u.href), (route) => {
-    const day = new URL(route.request().url()).searchParams.get('day');
+    const url = new URL(route.request().url());
+    if (url.pathname.endsWith('/throne')) {
+      return route.fulfill({ status: 200, contentType: 'application/json', headers: { 'access-control-allow-origin': '*' }, body: JSON.stringify({ day: utcDay(Date.now()), ...throne }) });
+    }
+    const day = url.searchParams.get('day');
     const runs = day === utcDay(Date.now()) ? BOARD : [];
     route.fulfill({ status: 200, contentType: 'application/json', headers: { 'access-control-allow-origin': '*' }, body: JSON.stringify({ day, runs, count: runs.length }) });
   });
@@ -113,6 +128,13 @@ try {
   check('the houses are listed with their worlds', chips.length >= 2 && chips.every((c) => /\d+ worlds?|fallen/.test(c)), chips.join(' | '));
   await page.screenshot({ path: '.shots/site-hero-live.png' });
   check('the hero fits the window', await noSideScroll(page));
+  // The throne (1.25.2): who holds today's, under the name of the game.
+  const plaque = await page.evaluate(() => {
+    const t = document.querySelector('#hero .throne');
+    return { shown: !t.hidden, head: t.querySelector('.throne-head').textContent, name: t.querySelector('.throne-name').textContent, what: t.querySelector('.throne-what').textContent, href: t.getAttribute('href') };
+  });
+  check("the throne under the title: today's Hegemarch, with the reign, house and time", plaque.shown && plaque.head === "TODAY'S HEGEMARCH" && plaque.name === 'ABC II' &&
+    plaque.what === 'Solar Concord · 31:05' && plaque.href === '#board', JSON.stringify(plaque));
 
   // A world changes hands: the news says so.
   await page.evaluate(() => {
@@ -285,11 +307,20 @@ try {
   await scrollTo(page, '#board');
   await page.waitForTimeout(700);
   // (A row's parts, as they are read: place, letters, house and Destiny, time.)
-  const parts = (sel) => page.$$eval(sel, (els) => els.map((e) => [...e.children].map((c) => c.textContent.replace(/\s+/g, ' ').trim()).join(' ')));
+  const parts = (sel) => page.$$eval(sel, (els) => els.map((e) => [...e.children].map((c) => c.textContent.replace(/\s+/g, ' ').trim()).filter((t) => t).join(' ')));
   const rows = await parts('#board .board-list li');
   check("the board shows today's fastest crowns, first to last, with house, Destiny and time", rows.length === 3 && rows[0] === '1st ABC Solar Concord by Conquest 31:05' &&
     rows[2].startsWith('3rd MOM'), rows.join(' | '));
   await page.screenshot({ path: '.shots/site-board.png' });
+  // The podium (second, first, third, left to right) and the line of Hegemarchs, newest first.
+  const podium = await parts('#board .podium .step');
+  check("the podium: today's three, the first in the middle, crowned", podium.length === 3 && podium[0] === '2ND ZED Vael Imperium 36:50' &&
+    podium[1] === "TODAY'S HEGEMARCH ABC II Solar Concord 31:05" && podium[2] === '3RD MOM Choir of the First Flame 50:01' && (await page.$('#board .podium .first .crown-mark')) !== null, podium.join(' | '));
+  const line = await parts('#board .line-list li');
+  const dated = (k) => { const d = new Date(Date.now() - k * 24 * 60 * 60 * 1000); return `${d.getUTCDate()} ${['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'][d.getUTCMonth()]}`; };
+  check('the line of Hegemarchs: the days before, newest first, each with its reign', line.length === 3 && line[0] === `${dated(1)} ZED II Vael Imperium 28:10` &&
+    line[1] === `${dated(2)} ABC Solar Concord 33:22` && line[2] === `${dated(3)} ZED Vael Imperium 41:40`, line.join(' | '));
+  check("the board's PLAY opens today's Daily", (await page.getAttribute('#board .throne-call a', 'href')) === 'play/#daily');
   await page.click('#board [data-day="yesterday"]');
   await page.waitForTimeout(500);
   check("and yesterday's, as it closed", /No crowns were posted for yesterday/.test(await page.textContent('#board .board-state')) &&
@@ -338,14 +369,35 @@ try {
       const play = document.querySelector('.hero .btn.primary').getBoundingClientRect();
       const logo = document.querySelector('.logo').getBoundingClientRect();
       const live = document.querySelector('.live').getBoundingClientRect();
-      return { play: play.bottom <= hero.bottom + 1 && play.top >= 0, logo: logo.right <= window.innerWidth && logo.left >= 0, clear: logo.bottom < live.top && (live.bottom <= play.top + 1 || live.right <= play.left + 1) };
+      const throne = document.querySelector('.hero .throne').getBoundingClientRect();
+      return {
+        play: play.bottom <= hero.bottom + 1 && play.top >= 0, logo: logo.right <= window.innerWidth && logo.left >= 0, clear: logo.bottom < live.top && (live.bottom <= play.top + 1 || live.right <= play.left + 1),
+        throne: throne.height > 0 && throne.left >= 0 && throne.right <= window.innerWidth && throne.bottom <= Math.min(play.top, live.top) + 1,
+      };
     });
-    check(`${name}: the title, the live panel and PLAY all fit the opening screen`, fits.play && fits.logo && fits.clear, JSON.stringify(fits));
-    for (const sel of ['#run', '#houses', '#ships', '#boons', '#destinies', '#ages', '#board', '#play']) await scrollTo(o.page, sel);
+    check(`${name}: the title, the throne, the live panel and PLAY all fit the opening screen`, fits.play && fits.logo && fits.clear && fits.throne, JSON.stringify(fits));
+    for (const sel of ['#run', '#board', '#houses', '#ships', '#boons', '#destinies', '#ages', '#play']) await scrollTo(o.page, sel);
     check(`${name}: nothing runs off the side`, await noSideScroll(o.page));
     check(`${name}: every section lit`, await o.page.$$eval('.band', (els) => els.every((e) => e.classList.contains('lit'))));
     await o.page.screenshot({ path: `.shots/site-${name}-full.png`, fullPage: true });
     check(`${name}: no errors`, o.errors.length === 0, o.errors.slice(0, 3).join(' | '));
+    await o.context.close();
+  }
+
+  // ------------------------------------------------------------------ an empty throne
+  {
+    const o = await open({ throne: { today: [], count: 0, past: THRONE.past } });
+    await o.page.waitForTimeout(1500);
+    const t = await o.page.evaluate(() => {
+      const el = document.querySelector('#hero .throne');
+      return { shown: !el.hidden, empty: el.classList.contains('empty'), head: el.querySelector('.throne-head').textContent, what: el.querySelector('.throne-what').textContent };
+    });
+    check("an empty throne says so, and who held yesterday's", t.shown && t.empty && t.head === 'THE THRONE IS EMPTY' && t.what === "No one has taken today's crown. Yesterday's: ZED II, Vael Imperium, 28:10", JSON.stringify(t));
+    await o.page.screenshot({ path: '.shots/site-throne-empty.png' });
+    await scrollTo(o.page, '#board');
+    const podium = await o.page.$$eval('#board .podium .step', (els) => els.map((e) => [...e.children].map((c) => c.textContent.trim()).filter((t) => t).join(' ')));
+    check('and the podium keeps its three places, open', podium.length === 3 && podium[1] === "TODAY'S HEGEMARCH EMPTY No crown yet today --:--" && podium[0] === '2ND OPEN Yours to take --:--', podium.join(' | '));
+    check('an empty throne: no errors', o.errors.length === 0, o.errors.slice(0, 3).join(' | '));
     await o.context.close();
   }
 

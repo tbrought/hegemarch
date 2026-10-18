@@ -7,9 +7,9 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { TICK } from '../src/game/constants';
 import { REPLAY_TICKS } from '../src/game/replay';
-import { BOARD_LONGEST, dayOf, isBoardDay, nameProblem, ordinal, packOrders, type BoardEntry } from '../src/meta/board';
+import { BOARD_LONGEST, dayOf, isBoardDay, nameProblem, ordinal, ordOf, packOrders, regnal, type BoardEntry } from '../src/meta/board';
 import { todayKey } from '../src/meta/profile';
-import worker, { callChecker, prune, type Env } from '../worker/src/index';
+import worker, { callChecker, crownDays, prune, type Env } from '../worker/src/index';
 import { testDb } from '../scripts/lib/d1';
 import { unpack } from '../scripts/verify-daily';
 
@@ -33,6 +33,13 @@ describe('what the board and the game agree on', () => {
     expect(isBoardDay('2026-10-6', now)).toBe(true);
     expect(isBoardDay('2026-10-5', now)).toBe(false);
     expect(isBoardDay('2026-10-8', now)).toBe(false);
+  });
+
+  it('a day as a number, and a name with its reign, as a ruler\'s is written', () => {
+    expect(ordOf('1970-1-2')).toBe(1);
+    expect(ordOf('2026-10-17') - ordOf('2026-10-7')).toBe(10);
+    expect(ordOf('2026-3-1') - ordOf('2026-2-28')).toBe(1);
+    expect([1, 2, 3, 4, 9, 14, 40, 1999].map((n) => regnal('ABC', n))).toEqual(['ABC', 'ABC II', 'ABC III', 'ABC IV', 'ABC IX', 'ABC XIV', 'ABC XL', 'ABC MCMXCIX']);
   });
 
   it('places, and the longest crown the checker plays', () => {
@@ -203,6 +210,52 @@ describe('the board\'s server', () => {
     expect(calls).toHaveLength(2);
     // (No token: no call, and no harm.)
     expect(await callChecker({ ...b.env, GITHUB_TOKEN: undefined }, Date.now() + 10 * 60_000)).toBe(false);
+  });
+
+  it('crowns each day gone by its Hegemarch, counts their reigns, and shows the throne', async () => {
+    const b = board();
+    const now = Date.now();
+    let n = 0;
+    const add = (day: string, name: string, time: number, status = 'verified') =>
+      b.env.DB.prepare("INSERT INTO runs (id, day, name, heir, version, claimed, time, victory, orders, enc, status, created) VALUES (?, ?, ?, 'vael', '1.25.0', 60, ?, 'conquest', 'o', 'gzip', ?, ?)")
+        .bind(`d${String(++n).padStart(15, '0')}`, day, name, time, status, now)
+        .run();
+    const ago = (k: number) => dayOf(now - k * DAY);
+    // Four days ago and three days ago, ABC was fastest; two days ago, ZED (ABC was slower, and a faster run did not stand); yesterday, no one.
+    await add(ago(4), 'ABC', 2000);
+    await add(ago(4), 'ZED', 2100);
+    await add(ago(3), 'ABC', 1900);
+    await add(ago(2), 'ABC', 2500);
+    await add(ago(2), 'ZED', 2400);
+    await add(ago(2), 'BAD', 100, 'rejected');
+    // Today: ABC leads, MOM second, ZED third, and a fourth.
+    for (const [name, time] of [['ZED', 2300], ['ABC', 1500], ['MOM', 1700], ['SLO', 4000]] as const) await add(dayOf(now), name, time);
+    await crownDays(b.env, now);
+    expect(await b.sql('SELECT day, name, time FROM crowns ORDER BY ord')).toEqual([
+      { day: ago(4), name: 'ABC', time: 2000 },
+      { day: ago(3), name: 'ABC', time: 1900 },
+      { day: ago(2), name: 'ZED', time: 2400 },
+    ]);
+    const t = await b.call('/throne');
+    expect(t.headers.get('cache-control')).toMatch(/max-age/);
+    expect(t.body).toEqual({
+      day: dayOf(now),
+      count: 4,
+      today: [
+        { name: 'ABC', heir: 'vael', time: 1500, victory: 'conquest', reign: 3 },
+        { name: 'MOM', heir: 'vael', time: 1700, victory: 'conquest', reign: 1 },
+        { name: 'ZED', heir: 'vael', time: 2300, victory: 'conquest', reign: 2 },
+      ],
+      past: [
+        { day: ago(2), name: 'ZED', heir: 'vael', time: 2400, victory: 'conquest', reign: 1 },
+        { day: ago(3), name: 'ABC', heir: 'vael', time: 1900, victory: 'conquest', reign: 2 },
+        { day: ago(4), name: 'ABC', heir: 'vael', time: 2000, victory: 'conquest', reign: 1 },
+      ],
+    });
+    // A late run of two days ago, checked now, takes that day's crown: the days are crowned again.
+    await add(ago(2), 'ABC', 2200);
+    await crownDays(b.env, now);
+    expect((await b.call('/throne')).body.past).toMatchObject([{ name: 'ABC', reign: 3 }, { name: 'ABC', reign: 2 }, { name: 'ABC', reign: 1 }]);
   });
 
   it('keeps itself small: a run never checked is given up, one turned down forgotten, and old orders dropped but for the fastest', async () => {

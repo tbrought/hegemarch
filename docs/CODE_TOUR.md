@@ -38,7 +38,7 @@ src/app/         the page around the game
 src/audio/       sound effects and music, both synthesised
 src/meta/        the player's profile, Legacy and records (localStorage); board.ts, the Daily board's
                  terms (what the game, the website and the board's server agree on)
-src/site/        the website's own script (hegemarch.com)
+src/site/        the website's own script (hegemarch.com): the live sector, the houses, the board, the throne
 worker/          the Daily board's server (a Cloudflare Worker with a D1 database; worker/README.md)
 tests/           unit tests, one file per subject (fields, ships, boons, rivals, ...)
 scripts/         balance simulations, fuzzers and browser suites; verify-daily.ts, the board's checker

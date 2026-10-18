@@ -7,13 +7,14 @@
  *   POST /api/daily/submit        a run (meta/board.ts: BoardEntry): { id, status }
  *   GET  /api/daily/status?id=    what became of it: { status, time, rank, of, reason }
  *   GET  /api/daily/board?day=    a day's fastest crowns: { day, runs, count }
+ *   GET  /api/daily/throne        today's three fastest and the Hegemarchs of the days before (meta/board.ts: Throne)
  *   GET  /api/daily/pending       the checker's: runs to check, with their orders (VERIFY_SECRET)
  *   POST /api/daily/verdict       the checker's: what it found (VERIFY_SECRET)
  *
  * It keeps three letters, a house, a time and a run's orders, and nothing else: no account, no address,
  * no cookie, no IP. A run's orders are dropped once they are no longer needed (`prune`).
  */
-import { BOARD_LONGEST, BOARD_SHOWN, isBoardDay, nameProblem, type BoardEntry } from '../../src/meta/board';
+import { BOARD_LONGEST, BOARD_SHOWN, dayOf, isBoardDay, nameProblem, ordOf, THRONE_DAYS, type BoardEntry } from '../../src/meta/board';
 
 // The little of D1 and of the Workers runtime used here (@cloudflare/workers-types has it all).
 export interface D1Result<T = Record<string, unknown>> {
@@ -177,6 +178,54 @@ async function board(url: URL, env: Env): Promise<Response> {
   return json({ day, runs: runs.results, count: all?.n ?? 0 }, 200, { 'cache-control': 'public, max-age=30' });
 }
 
+/**
+ * The throne (1.25.2): today's three fastest crowns, and the Hegemarch of each day before, newest first.
+ * Each with its reign: how many days its letters have been crowned, this one too (today's, if they keep it).
+ */
+async function throne(env: Env, now: number): Promise<Response> {
+  const day = dayOf(now);
+  const ord = ordOf(day);
+  const top = await env.DB.prepare("SELECT name, heir, time, victory FROM runs WHERE day = ? AND status = 'verified' ORDER BY time, created LIMIT 3")
+    .bind(day)
+    .all<{ name: string; heir: string; time: number; victory: string }>();
+  const all = await env.DB.prepare("SELECT COUNT(*) AS n FROM runs WHERE day = ? AND status = 'verified'").bind(day).first<{ n: number }>();
+  const today = [];
+  for (const r of top.results) {
+    const had = await env.DB.prepare('SELECT COUNT(*) AS n FROM crowns WHERE name = ? AND ord < ?').bind(r.name, ord).first<{ n: number }>();
+    today.push({ ...r, reign: (had?.n ?? 0) + 1 });
+  }
+  const past = await env.DB.prepare(
+    `SELECT day, name, heir, time, victory, (SELECT COUNT(*) FROM crowns d WHERE d.name = c.name AND d.ord <= c.ord) AS reign
+       FROM crowns c WHERE c.ord < ? ORDER BY c.ord DESC LIMIT ${THRONE_DAYS}`,
+  )
+    .bind(ord)
+    .all();
+  return json({ day, today, count: all?.n ?? 0, past: past.results }, 200, { 'cache-control': 'public, max-age=30' });
+}
+
+/**
+ * Crown the days gone by: each of the last few days' fastest crown is its Hegemarch. (Set again each time,
+ * while a run of that day may still come in or be checked: after three days, every run of it has been.)
+ */
+export async function crownDays(env: Env, now: number) {
+  for (let k = 1; k <= 4; k++) {
+    const day = dayOf(now - k * DAY);
+    const best = await env.DB.prepare("SELECT name, heir, time, victory FROM runs WHERE day = ? AND status = 'verified' ORDER BY time, created LIMIT 1")
+      .bind(day)
+      .first<{ name: string; heir: string; time: number; victory: string }>();
+    if (!best) {
+      await env.DB.prepare('DELETE FROM crowns WHERE day = ?').bind(day).run();
+      continue;
+    }
+    await env.DB.prepare(
+      `INSERT INTO crowns (day, ord, name, heir, time, victory) VALUES (?, ?, ?, ?, ?, ?)
+         ON CONFLICT (day) DO UPDATE SET name = excluded.name, heir = excluded.heir, time = excluded.time, victory = excluded.victory`,
+    )
+      .bind(day, ordOf(day), best.name, best.heir, best.time, best.victory)
+      .run();
+  }
+}
+
 /** The checker's: the runs to check, oldest first (not one it looked at in the last half hour and could not check yet). */
 async function pending(env: Env, now: number): Promise<Response> {
   const runs = await env.DB.prepare(
@@ -238,6 +287,7 @@ export default {
       if (path === '/api/daily/submit' && req.method === 'POST') return await submit(req, env, ctx, now);
       if (path === '/api/daily/status' && req.method === 'GET') return await status(url, env);
       if (path === '/api/daily/board' && req.method === 'GET') return await board(url, env);
+      if (path === '/api/daily/throne' && req.method === 'GET') return await throne(env, now);
       if (path === '/api/daily/pending' && req.method === 'GET') return isChecker(req, env) ? await pending(env, now) : fail('Not yours.', 401);
       if (path === '/api/daily/verdict' && req.method === 'POST') return isChecker(req, env) ? await verdict(req, env, now) : fail('Not yours.', 401);
       return fail('Nothing here.', 404);
@@ -247,13 +297,14 @@ export default {
     }
   },
 
-  /** Every ten minutes (wrangler.toml): call the checker again for a run left waiting, and once a day, prune. */
+  /** Every ten minutes (wrangler.toml): call the checker again for a run left waiting, crown the days gone by, and once a day, prune. */
   async scheduled(_event: unknown, env: Env, ctx: Ctx) {
     const now = Date.now();
     const late = await env.DB.prepare("SELECT COUNT(*) AS n FROM runs WHERE status = 'pending' AND created < ? AND (checked IS NULL OR checked < ?)")
       .bind(now - 5 * 60_000, now - RETRY_GAP)
       .first<{ n: number }>();
     if (late?.n) ctx.waitUntil(callChecker(env, now, 5 * 60_000).catch((err) => console.error('the checker could not be called', err)));
+    await crownDays(env, now);
     const d = new Date(now);
     if (d.getUTCHours() === 4 && d.getUTCMinutes() < 10) await prune(env, now);
   },

@@ -1,7 +1,7 @@
 // The Daily board in the game (1.25), against a board that answers as the real one does (worker/): a
 // crowned Daily posted under three letters, sent, checked and placed; letters that will not do; a board
 // that cannot be reached; a Daily that was lost (the button there, greyed, with why); and a classic run,
-// which has no board.
+// which has no board. And the game opened from the website's throne (play/#daily).
 //   node scripts/board-ui.mjs     (npm run test:board-ui; needs a dev server)
 import zlib from 'node:zlib';
 import { checks, DEV_URL, openBrowser } from './lib/browser.mjs';
@@ -113,6 +113,23 @@ check('and sends nothing', sent.length === before);
 // A classic run has no board.
 await ended('setup', true);
 check('a classic run has no board', (await page.$('.board-box')) === null);
+
+// Opened from the website's throne (1.25.2): play/#daily is today's Daily, ready to play; a first visit, the
+// title screen (where the First Night is offered).
+// (A new address, not a new hash alone: the page is loaded again.)
+await page.goto(DEV_URL + '?from=site#daily');
+await page.waitForFunction(() => !!window.__app, null, { timeout: 60000 });
+await page.waitForTimeout(500);
+const opened = await ev(() => ({ screen: window.__app.screen, daily: window.__app.setup.daily, hash: location.hash }));
+check("#daily opens today's Daily, ready to play, and leaves the address as it was", opened.screen === 'setup' && opened.daily === true && opened.hash === '', JSON.stringify(opened));
+const fresh = await browser.newContext({ viewport: { width: 1400, height: 900 } });
+const first = await fresh.newPage();
+await first.goto(DEV_URL + '#daily');
+await first.waitForFunction(() => !!window.__app, null, { timeout: 60000 });
+await first.waitForTimeout(500);
+const met = await first.evaluate(() => ({ screen: window.__app.screen, hash: location.hash }));
+check('a first visit by #daily is shown the title screen, and the First Night', met.screen === 'menu' && met.hash === '' && (await first.$('[data-sa="first-night"]')) !== null, JSON.stringify(met));
+await fresh.close();
 
 const code = done(errors);
 await browser.close();

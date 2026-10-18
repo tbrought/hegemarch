@@ -49,6 +49,25 @@ export interface Board {
   count: number;
 }
 
+/** A day's Hegemarch: the fastest crown of a day gone by, and how many days its letters have been crowned. */
+export interface Crowned extends BoardRun {
+  day: string;
+  reign: number;
+}
+
+/**
+ * The throne (1.25.2): today's three fastest crowns (each with the reign it would be, if it holds), how
+ * many crowns stand today, and the Hegemarchs of the days before, newest first.
+ */
+export interface Throne {
+  day: string;
+  today: (BoardRun & { reign: number })[];
+  count: number;
+  past: Crowned[];
+}
+/** How many days gone by the throne shows. */
+export const THRONE_DAYS = 14;
+
 /** What became of a run sent to the board. */
 export interface BoardStatus {
   status: 'pending' | 'verified' | 'rejected';
@@ -64,6 +83,22 @@ export interface BoardStatus {
 export function dayOf(ms: number): string {
   const d = new Date(ms);
   return `${d.getUTCFullYear()}-${d.getUTCMonth() + 1}-${d.getUTCDate()}`;
+}
+
+/** A day as a number, to put days in order: days since 1 January 1970. */
+export function ordOf(day: string): number {
+  const [y, m, d] = day.split('-').map(Number);
+  return Math.round(Date.UTC(y, m - 1, d) / (24 * 60 * 60 * 1000));
+}
+
+/** A name with its reign, as a ruler's is written: "ABC" the first time, then "ABC II", "ABC III". */
+export function regnal(name: string, reign: number): string {
+  if (reign <= 1) return name;
+  const R: [number, string][] = [[1000, 'M'], [900, 'CM'], [500, 'D'], [400, 'CD'], [100, 'C'], [90, 'XC'], [50, 'L'], [40, 'XL'], [10, 'X'], [9, 'IX'], [5, 'V'], [4, 'IV'], [1, 'I']];
+  let n = reign;
+  let out = '';
+  for (const [v, s] of R) for (; n >= v; n -= v) out += s;
+  return `${name} ${out}`;
 }
 
 /** "1st", "2nd", "3rd", "11th": a place on the board. */
@@ -134,4 +169,9 @@ export function runStatus(id: string): Promise<BoardStatus> {
 /** A day's board. */
 export function fetchBoard(day: string): Promise<Board> {
   return ask(`/board?day=${encodeURIComponent(day)}`);
+}
+
+/** The throne: today's fastest three and the Hegemarchs of the days before. */
+export function fetchThrone(): Promise<Throne> {
+  return ask('/throne');
 }

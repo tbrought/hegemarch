@@ -1610,7 +1610,7 @@ the game ──POST /api/daily/submit──▶ Worker (worker/src/index.ts) ─�
                                         └─ workflow_dispatch, at most once a minute ──▶ GitHub Actions:
                                            scripts/verify-daily.ts plays each run waiting, in its version's code
                                            (the last commit with that version in package.json), and posts a verdict
-the website, the game ◀── GET /api/daily/board, /status ── Worker ◀── verdict (verified / rejected)
+the website, the game ◀── GET /api/daily/board, /status, /throne ── Worker ◀── verdict (verified / rejected)
 ```
 
 All of it runs on free plans: a Cloudflare Worker and D1 database on hegemarch.com's own zone (Workers
@@ -1637,3 +1637,22 @@ for a fall, or a Daily begun before the board, the same button greyed with why. 
 board says: being checked, then its place ("On the board: 2nd of 5 on 2026-10-17"), or why it did not
 stand. On the website the board shows today's crowns as they come (asked again every minute) and
 yesterday's as they closed.
+
+### The throne (1.25.2)
+
+A board at the foot of a page is a board nobody sees, and what a player wants from one is their name where
+others will see it. So the fastest crown of the day makes its player **that day's Hegemarch**, in the
+game's own words (the last Hegemarch fell; the player takes the crown): on the website,
+
+- under the name of the game, in one line: who holds today's throne, their house and their time; or THE
+  THRONE IS EMPTY, and who held yesterday's. It leads to the board.
+- the board is the second section of the page, THE DAILY THRONE: today's three fastest on a podium (the
+  first in the middle, crowned; places not yet taken stand open, and say so), PLAY TODAY'S DAILY, and
+  **the line of Hegemarchs**: each day gone by, its Hegemarch, newest first. Those letters stay.
+- a name crowned again is numbered as a ruler's is: ABC, then ABC II, ABC III (`regnal`). Today's three
+  carry the number they would have if they hold.
+
+The Worker keeps each day's Hegemarch in its own table (`crowns`), set again every ten minutes for the
+last four days while a late run may still change it, so the line outlives the runs it came from;
+`/api/daily/throne` is one request for all of it. PLAY TODAY'S DAILY opens the game at `play/#daily`, on
+today's Daily, ready to play (a first visit is shown the title screen, with the First Night).

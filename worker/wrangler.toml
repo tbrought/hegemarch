@@ -11,7 +11,7 @@ routes = [{ pattern = "hegemarch.com/api/daily/*", zone_name = "hegemarch.com" }
 binding = "DB"
 database_name = "hegemarch-board"
 # The id `npx wrangler d1 create hegemarch-board` prints (README.md, step 2).
-database_id = "PASTE-THE-DATABASE-ID-HERE"
+database_id = "8197448b-d3e9-469a-8212-ef0284157e86"
 
 # Every ten minutes: call the checker again for a run left waiting; once a day, prune.
 [triggers]

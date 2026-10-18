@@ -10,7 +10,8 @@ the game ──POST /api/daily/submit──▶ Worker (this folder) ──▶ D1
                                          └─ workflow_dispatch ──▶ GitHub Actions: scripts/verify-daily.ts
                                                                    plays each pending run again, in the version
                                                                    it was played in, and posts a verdict
-the website ◀──GET /api/daily/board── Worker ◀── verdict (runs: verified / rejected)
+the website ◀──GET /api/daily/board, /throne── Worker ◀── verdict (runs: verified / rejected)
+                                         └─ every ten minutes: each day gone by gets its Hegemarch (crowns)
 ```
 
 It all runs on free plans: Cloudflare Workers Free (100,000 requests a day), D1 Free (5 GB, 5 million rows read a day), and GitHub Actions,
@@ -86,7 +87,7 @@ Run the commands from the `worker` folder.
    It answers at `hegemarch.com/api/daily/...` (the route is in `wrangler.toml`), alongside the website.
 
 8. **Check that it answers.** Open `https://hegemarch.com/api/daily/board?day=2026-10-17` (any day). It should show
-   `{"day":"2026-10-17","runs":[],"count":0}`.
+   `{"day":"2026-10-17","runs":[],"count":0}`. And `https://hegemarch.com/api/daily/throne` should show `"today":[]` and `"past":[]`.
 
 9. **Deploy the game and the website (`release/`) as usual.** From 1.25 on, a crowned Daily offers POST TO THE BOARD on its results.
 
@@ -95,6 +96,8 @@ Run the commands from the `worker` folder.
     plan allows one such rule. Cloudflare counts requests at its edge and keeps nothing on the board.
 
 ## With every release
+
+**If `schema.sql` has changed, run step 4 again** (it only adds what is missing; nothing is lost). 1.25.2 added the `crowns` table.
 
 **Push the release commit when you deploy it (or before).** The checker plays a run in the version it was played in. It finds that
 version's code by the version in `package.json` on GitHub. A run from a version that isn't on GitHub yet waits: it is tried again every
@@ -112,8 +115,8 @@ half hour, for up to three days.
 
 | File | What it is |
 | --- | --- |
-| `src/index.ts` | The Worker: submit, status, board, and the checker's pending and verdict. |
-| `schema.sql` | The database: `runs`, and `meta` (when the checker was last called). |
+| `src/index.ts` | The Worker: submit, status, board, throne, and the checker's pending and verdict. |
+| `schema.sql` | The database: `runs`, `crowns` (each day's Hegemarch, kept for good) and `meta` (when the checker was last called). Safe to run again: it only adds what is missing. |
 | `wrangler.toml` | Its name, route, database, the cron trigger (every ten minutes: a waiting run is called for again, and once a day the board is pruned). |
 | `../scripts/verify-daily.ts` | The checker (GitHub Actions). |
 | `../src/game/replay.ts` | How a run is played again, and what a list of orders may hold. |

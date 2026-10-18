@@ -11,6 +11,7 @@ import { Hero } from './hero';
 import { Houses } from './houses';
 import { startDailyClock, startDestinies, startLane, startPictures } from './page';
 import { drawStages } from './stage';
+import { startThrone } from './throne';
 
 /** One part failing must not take the rest of the page with it. */
 function part<T>(name: string, make: () => T): T | null {
@@ -43,6 +44,7 @@ function boot() {
   part('daily', startDailyClock);
   const board = byId('board');
   if (board) part('board', () => startBoard(board));
+  part('throne', () => startThrone(document.querySelector<HTMLElement>('#hero .throne'), board));
   // For the site's own tests (scripts/site.mjs): ?debug hands them the moving parts.
   if (new URLSearchParams(location.search).has('debug')) Object.assign(window, { __site: { hero, houses, draft } });
 

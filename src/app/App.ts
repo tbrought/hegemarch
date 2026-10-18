@@ -163,6 +163,21 @@ export class App {
       if (this.profile.heirs.includes(this.challenge.heir)) this.setup.heir = this.challenge.heir;
       this.savedRun = describeSavedRun();
       showSetup(this);
+    } else if (location.hash === '#daily') {
+      // Opened from the website's throne (1.25.2): today's Daily, ready to play. (A first visit is shown the
+      // title screen instead, where the First Night is offered.)
+      try {
+        history.replaceState(null, '', location.pathname + location.search);
+      } catch {
+        /* (As above.) */
+      }
+      if (this.profile.runs > 0) {
+        this.setup.daily = true;
+        this.setup.ages = false;
+        this.setup.confirm = '';
+        this.savedRun = describeSavedRun();
+        showSetup(this);
+      } else showMenu(this);
     } else showMenu(this);
     void this.attract.start();
     requestAnimationFrame(this.loop);

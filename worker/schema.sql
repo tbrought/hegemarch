@@ -27,6 +27,20 @@ CREATE TABLE IF NOT EXISTS runs (
 CREATE INDEX IF NOT EXISTS runs_board ON runs (day, status, time);
 CREATE INDEX IF NOT EXISTS runs_status ON runs (status, created);
 
+-- Each day's Hegemarch (1.25.2): the fastest crown of a day gone by, kept when its runs are long gone. Set
+-- again every ten minutes for the last few days, while a late run may still change it (index.ts, crownDays).
+CREATE TABLE IF NOT EXISTS crowns (
+  day TEXT PRIMARY KEY,
+  -- The day as a number (days since 1 January 1970), to put the days in order.
+  ord INTEGER NOT NULL,
+  name TEXT NOT NULL,
+  heir TEXT NOT NULL,
+  time REAL NOT NULL,
+  victory TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS crowns_ord ON crowns (ord);
+CREATE INDEX IF NOT EXISTS crowns_name ON crowns (name, ord);
+
 CREATE TABLE IF NOT EXISTS meta (key TEXT PRIMARY KEY, value TEXT NOT NULL);
 -- When the checker was last called (ms): it is called at most once a minute.
 INSERT OR IGNORE INTO meta (key, value) VALUES ('dispatched', '0');
