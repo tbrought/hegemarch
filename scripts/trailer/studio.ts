@@ -26,6 +26,9 @@ import { HEIR_BY_ID } from '../../src/game/data/heirs';
 import { VICTORIES } from '../../src/game/data/victories';
 import { iconCanvas, shipSprite } from '../../src/render/sprites';
 import { SPACE } from '../../src/game/data/eras';
+import { Session, type SessionHooks } from '../../src/app/Session';
+import { Hud } from '../../src/ui/Hud';
+import { defaultProfile } from '../../src/meta/profile';
 import { starWindow } from '../../src/ui/subjects';
 
 export const FPS = 30;
@@ -243,6 +246,14 @@ export interface Shot {
    * row by row at a world from the shot's start to `lift`, its engine lit, then rising away on a trail of fire.
    */
   ark?: { node: number; color: string; lift: number };
+  /**
+   * The game's own Boon draft: a run of `sector` at `tick`, a Boon waiting, its dialog dealt and drawn by
+   * the game's own HUD at the game's own size (480x270), sounds and all. `hover`: from that second, the
+   * pointer rests on that card (0, 1, 2), which rises and grows as in play. Upright, the dialog is wider
+   * than the picture: the picture pans across it from `pan[0]` to `pan[1]` seconds into the shot. `zoom`:
+   * its pixels this many times the size of the world's (2: a close-up, a card about the picture's width).
+   */
+  draft?: { sector: SectorSpec; tick: number; hover?: [number, number]; pan?: [number, number]; zoom?: number };
 }
 
 const stage = document.getElementById('stage')!;
@@ -446,6 +457,52 @@ function drawArk(a: NonNullable<Shot['ark']>, t: number, g: Game) {
     const size = q < 0.45 ? 2 : 1;
     ctx.fillRect(Math.round(p.x), Math.round(p.y), size, size);
   }
+}
+
+/** The HUD a shot's draft is drawn by, on a canvas of the game's landscape size; its run its own (the shots' run is not touched). */
+let draftRig: { hud: Hud; canvas: HTMLCanvasElement; c: CanvasRenderingContext2D } | null = null;
+function makeDraftRig(d: NonNullable<Shot['draft']>, heard: Sfx) {
+  const g = makeGame(d.sector);
+  g.fxEnabled = false;
+  while (g.tick < d.tick && !g.outcome) g.step();
+  g.player.pendingDrafts = Math.max(1, g.player.pendingDrafts);
+  const canvas = document.createElement('canvas');
+  canvas.width = 480;
+  canvas.height = 270;
+  const c = canvas.getContext('2d')!;
+  c.imageSmoothingEnabled = false;
+  const face = { W: 480, H: 270, g: c, scale: 1, dpr: 1, canvas, onResize() {}, toInternal: () => [0, 0] } as unknown as Screen;
+  const s = new Session(g, renderer, face, heard, null as unknown as Music, defaultProfile(), { quit() {} } as unknown as SessionHooks);
+  const hud = new Hud(s);
+  s.modal = { kind: 'draft' };
+  draftRig = { hud, canvas, c };
+}
+/** The draft at `t` seconds into its shot: dealt, a card perhaps under the pointer; drawn into the frame (panned, upright). */
+function drawDraft(d: NonNullable<Shot['draft']>, t: number) {
+  const { hud, canvas, c } = draftRig!;
+  const card = d.hover && t >= d.hover[1] ? hud.ui.regions.find((r) => r.id === `card-${d.hover![0]}`) : null;
+  hud.ui.mx = card ? card.x + card.w / 2 : -1;
+  hud.ui.my = card ? card.y + card.h / 2 : -1;
+  c.clearRect(0, 0, 480, 270);
+  hud.ui.begin(1 / FPS);
+  if (hud.s.modal) hud.modals.draw(c);
+  // (Its dialog's box, from the regions its cards and buttons left: where to pan from and to.)
+  const parts = hud.ui.regions.filter((r) => r.id !== 'modal-back');
+  const xs = parts.map((r) => [r.x, r.x + r.w]);
+  // (Upright, the dialog sits a little low, the words over it clear of its title.)
+  const top = (Math.min(...parts.map((r) => r.y)) - 32) * (d.zoom ?? 1);
+  const bottom = (Math.max(...parts.map((r) => r.y + r.h)) + 6) * (d.zoom ?? 1);
+  const z = d.zoom ?? 1;
+  const left = (Math.min(...xs.map((x) => x[0])) - 8) * z;
+  const right = (Math.max(...xs.map((x) => x[1])) + 8) * z;
+  let x = Math.round((W - 480 * z) / 2);
+  if (W < right - left && d.pan) {
+    const k = smooth(Math.max(0, Math.min(1, (t - d.pan[0]) / (d.pan[1] - d.pan[0]))));
+    x = Math.round(-(left + (right - left - W) * k));
+  }
+  ctx.imageSmoothingEnabled = false;
+  const y = PORTRAIT ? Math.round(H * 0.6 - (top + bottom) / 2) : Math.round((H - 270 * z) / 2);
+  ctx.drawImage(canvas, x, y, 480 * z, 270 * z);
 }
 
 function camAt(g: Game, keys: CamKey[], k: number): { x: number; y: number; zoom: number } {
@@ -776,6 +833,7 @@ export async function shoot(shots: Shot[], everyNth = 1, pick?: number[]): Promi
       ctx: {},
       play: (id: SoundId, vol = 0.5, pan = 0) => sounds.push([clock, id, Math.min(1, vol * (shot.loud ?? 1)), pan]),
     } as unknown as Sfx;
+    if (shot.draft) makeDraftRig(shot.draft, heard);
     for (let f = 0; f < frames; f++) {
       const t = f / FPS;
       const k = frames > 1 ? f / (frames - 1) : 0;
@@ -846,6 +904,7 @@ export async function shoot(shots: Shot[], everyNth = 1, pick?: number[]): Promi
         ctx.fillRect(0, 0, W, shot.bars);
         ctx.fillRect(0, H - shot.bars, W, shot.bars);
       }
+      if (shot.draft) drawDraft(shot.draft, t);
       for (const p of shot.panels ?? []) panel(p, t, clock);
       for (const cue of shot.text ?? []) words(cue, t, clock);
       const fin = shot.fadeIn ? Math.min(1, t / shot.fadeIn) : 1;

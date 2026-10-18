@@ -239,6 +239,12 @@ const cradle = (short) =>
       ];
 /** The bridge: the stars, dark, the cradle's chord dying away alone under them; the next tune begins with the light. */
 const BRIDGE = 4.4;
+/**
+ * The game's own Boon draft (its HUD's dialog, dealt as in play: a Common, a Rare and an Epic Blueprint, in
+ * seed 11 at eight minutes), the pointer coming to rest on the Epic, which rises.
+ */
+const DRAFT_RUN = { sector: S(11), tick: min(8) };
+const boonDraft = (dur, look) => ({ blank: true, stars: true, dur, vignette: 0.4, ...look, draft: { ...DRAFT_RUN, hover: [2, dur * 0.62] }, text: [] });
 const LS = bar(126); // Last Stand: a march, G minor
 /** A shot with a word or two, large, in place of its own words. */
 const withWord = (shot, text, from) => ({ ...shot, text: word(shot.dur, text, from) });
@@ -307,9 +313,9 @@ const c = [
   darkSector(BRIDGE, ['BUT THE STARS', 'WERE [!DARK].'], cinema),
   kindle(TA * 2, ['{LIGHT} THEM AGAIN,', 'WORLD BY WORLD.'], cinema),
   sixBanners(TA * 2, ['SIX {HOUSES} RISE.'], cinema),
-  picture('boons', TA * 2, ['BEND FATE', 'WITH {BOONS}.'], cinema),
+  boonDraft(TA * 3, cinema),
   battle('goldOrange', TA * 2, ['EVERY HOUSE', 'WANTS {THE CROWN}.'], cinema, { punch: true }),
-  ...montage(TA, ['tealBlue', 'violetBlue']),
+  ...montage(TA, ['tealBlue']),
   { ...starfall(TA * 2, null, cinema), hard: true },
   { ...battle('redGoldViolet', TA * 2, null, cinema, { punch: true }), hard: true },
   { ...hearthFalls('violetOnBlue', TA * 2, ['ONLY ONE', 'WILL BE {CROWNED}.'], cinema), hard: true },
@@ -427,9 +433,9 @@ const sa = [
   pBattle('goldOrange', HG * 2, ['HEGEMARCH']),
   pDark(HG * 2, ['THE SECTOR', 'IS [!DARK]']),
   pKindle(HG * 2, ['{LIGHT} IT', 'AGAIN']),
-  pPicture('boons', HG * 2, ['NEW {BOONS}', 'EVERY RUN']),
+  { blank: true, stars: true, dur: HG * 4, vignette: 0.3, draft: { ...DRAFT_RUN, hover: [2, HG * 2.9], pan: [HG * 1.2, HG * 3.1], zoom: 2 },
+    text: [{ at: 0.25, until: HG * 4 - 0.15, style: 'lore', lines: ['NEW {BOONS}', 'EVERY RUN'], y: 0.12 }] },
   pBanners(HG * 2, ['SIX {HOUSES}']),
-  { ...pBattle('redGoldViolet', HG * 2, ['[!WAR]']), hard: true },
   { ...pErupt(HG * 2, ['STARS', '[!ERUPT]']), hard: true },
   { ...pHearth(HG * 2, ['ONE {CROWN}']), hard: true },
   pEnd(5, FREE),
