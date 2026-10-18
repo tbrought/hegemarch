@@ -518,12 +518,6 @@ const hCast = (id, m, dur, lines, slow = 0.4, dy = 30) => {
   return hup(id, { sector: hsec(id), from: c.tick - Math.round(0.9 * slow * 20), dur, speed: [slow, Math.min(1, slow * 2.5)], loud: 1, duck: 0.9,
     cam: [{ t: 0, x: c.x, y: c.y, zoom: 0.6, dy }, { t: 1, x: c.x, y: c.y, zoom: 0.48, dy }] }, lines);
 };
-/** Its home world as its light first spreads (a second before the first world it kindles). */
-const hHome = (id, dur, lines) => {
-  const home = hscan(id).houses[0].hearth;
-  return hup(id, { sector: hsec(id), from: near(id, 'kindle', 0).tick - sec(1), dur, speed: 1, loud: 0.5,
-    cam: [{ t: 0, node: home, zoom: 0.45, dy: 30 }, { t: 1, node: home, zoom: 0.3, dy: 30 }] }, lines);
-};
 /** Its biggest fleet out on the starlanes at about `m` minutes, followed. */
 const hVoyage = (id, m, dur, lines, speed = 1.5) => hup(id, { sector: hsec(id), from: near(id, 'voyage', m).tick, dur, speed, loud: 0.6,
   cam: [{ t: 0, follow: 0, zoom: 0.36, dy: 30 }, { t: 1, follow: 0, zoom: 0.3, dy: 30 }] }, lines);
@@ -533,18 +527,45 @@ const hBattle = (id, m, node, dur, lines, zoom = 0.34) => hup(id, { sector: hsec
 /** The house's realm from above, its colour spreading over the first minutes. */
 const hRealm = (id, dur, lines) => hup(id, { sector: hsec(id), from: sec(10), dur, speed: [12, 60], sounds: false,
   cam: [{ t: 0, zoom: 'fit', fit: 1.6 }, { t: 1, zoom: 'fit', fit: 1.75 }] }, lines);
-/** Its name in its colour, its title, its banner, and what it is. */
+/**
+ * Each house's description, whole, as the game gives it on the choice of house (data/heirs.ts): broken for an
+ * upright card, its phrase in the house's colour. Checked against the game's own words below, so that the card
+ * always says what the game does.
+ */
+const DESC = {
+  vael: ['A MARTIAL HOUSE', 'THAT BELIEVES', '{THE DARK IS WON}', '{IN FIRE}.', 'THEIR WARSHIPS', 'HIT HARDER AND', 'COST LESS.'],
+  wayfarer: ['NOMAD FLEETS', 'WHO {NEVER}', '{STOPPED MOVING}.', 'FAST ON THE', 'STARLANES AND', 'QUICK TO', 'KINDLE.'],
+  concord: ['PATIENT', 'STEWARDS WHO', 'REMEMBER', '{THE OLD LIGHT}.', 'STEADY, STURDY', 'AND RICH.'],
+  lyceum: ['SCHOLARS JOINED', 'IN {ONE MIND}.', 'QUICK TO LEARN', 'AND QUICK TO', 'SWARM, BUT', 'THEIR HULLS', 'ARE THIN.'],
+  choir: ['ZEALOTS OF', '{A FLAME THAT}', '{NEVER WENT OUT}.', 'THEY CONVERT', 'WHAT OTHERS', 'DESTROY, AND', 'THEY NEVER RUN.'],
+  ashen: ['SURVIVORS WHO', 'WALKED OUT OF', '{THE FIRE} THAT', 'ENDED THE', 'OLD AGE.', 'THEY GAMBLE', 'EVERYTHING', 'ON FATE.'],
+};
+{
+  const game = fs.readFileSync('src/game/data/heirs.ts', 'utf8');
+  for (const [id, lines] of Object.entries(DESC)) {
+    const said = game.match(new RegExp(`id: '${id}',[\\s\\S]*?desc: '([^']*)'`))?.[1];
+    const card = lines.join(' ').replace(/[{}]/g, '');
+    if (said?.toUpperCase() !== card) throw new Error(`${id}: the card says "${card}", the game "${said}"`);
+  }
+}
+/**
+ * Its name in its colour, its title and its banner; then what it is, in the game's words, typed out letter by
+ * letter, its phrase rippling in the house's colour once it is there.
+ */
 const hName = (id, dur) => {
-  const [name, title, wide, color] = HOUSES[id];
-  // (Upright, a long name goes on two lines, and Lyceum's line is said shorter.)
+  const [name, title, , color] = HOUSES[id];
+  // (Upright, a long name goes on two lines.)
   const names = id === 'choir' ? ['CHOIR OF THE', 'FIRST FLAME'] : name.length > 15 ? name.split(' ') : [name];
-  const line = id === 'lyceum' ? 'QUICK TO LEARN AND SWARM.' : wide;
+  const two = names.length > 1;
+  const desc = DESC[id];
+  const top = two ? 166 : 158;
+  const tall = desc.length * 16 + (desc.length - 1) * 10;
   return { blank: true, stars: true, dur, vignette: 0.3,
-    panels: [{ at: 0.7, until: dur + 1, kind: 'banners', heirs: [id], names: false, x: 20, y: 196, w: 230, h: 48, scale: 2 }],
+    panels: [{ at: 0.6, until: dur + 1, kind: 'banners', heirs: [id], names: false, x: 20, y: two ? 100 : 92, w: 230, h: 48, scale: 2 }],
     text: [
-      { at: 0.2, until: dur - 0.1, style: 'lore', lines: names, y: names.length > 1 ? 0.27 : 0.3, color, type: false },
-      { at: 0.5, until: dur - 0.1, style: 'caption', lines: [title], y: 0.365, color: '#fff4e0' },
-      { at: 1.0, until: dur - 0.1, style: 'caption', lines: [line], y: 0.555 },
+      { at: 0.2, until: dur - 0.1, style: 'lore', lines: names, y: 0.1, color, type: false },
+      { at: 0.45, until: dur - 0.1, style: 'caption', lines: [title], y: two ? 0.178 : 0.155, color: '#fff4e0' },
+      { at: 1.1, until: dur - 0.1, style: 'lore', lines: desc, y: (top + tall / 2) / 480, accent: color, type: true, cps: 26 },
     ] };
 };
 /** The real draft of the house's run, its cards dealt and panned as they come, one taken. */
@@ -565,9 +586,8 @@ const hEnd = (id, next) => ({ blank: true, stars: true, dur: 5, vignette: 0.4,
 // 1. The Vael Imperium: To Arms.
 const hv = [
   hCast('vael', 8.78, TA * 3, null),
-  hName('vael', TA * 3),
-  hHome('vael', TA * 2, ['FROM {VAELOR}']),
-  hVoyage('vael', 7.42, TA * 2, ['SWORN TO {WAR}']),
+  hName('vael', TA * 4),
+  hVoyage('vael', 7.42, TA * 3, ['SWORN TO {WAR}']),
   hBattle('vael', 8.5, 26, TA * 2, ['+15% {DAMAGE}']),
   { ...hBattle('vael', 12.42, 18, TA * 2, ['{CHEAPER} SHIPS', '[!LESS LORE]'], 0.3), hard: true },
   hCast('vael', 12.63, TA * 3, ['THE {TYRANT}', 'MISSILE BARRAGE'], 0.6),
@@ -577,32 +597,29 @@ const hv = [
 // 2. The Wayfarer Clans: Starlanes, in three.
 const hw = [
   hCast('wayfarer', 30.26, SL * 2, null),
-  hName('wayfarer', SL * 2),
-  hHome('wayfarer', SL * 2, ['FROM {DRIFTHOLM}']),
+  hName('wayfarer', SL * 3.5),
   hVoyage('wayfarer', 28.08, SL * 2, ['NOMAD', '{FLEETS}']),
   hVoyage('wayfarer', 29.25, SL * 2, ['STARLANES', '{30%} FASTER'], 2.5),
   hRealm('wayfarer', SL * 2, ['KINDLING', '{35%} CHEAPER']),
-  hCast('wayfarer', 30.68, SL * 2, ['THE {WANDERER}', 'NANITE CLOUD'], 0.6),
+  hCast('wayfarer', 30.68, SL * 2.5, ['THE {WANDERER}', 'NANITE CLOUD'], 0.6),
   hMotto('wayfarer', SL * 2, ['NEVER', '{STILL}']),
   hEnd('wayfarer', 'concord'),
 ];
 // 3. The Solar Concord: The Crowning.
 const hc = [
   hBattle('concord', 39.5, 25, CR * 2, null, 0.3),
-  hName('concord', CR * 2),
-  hHome('concord', CR * 2, ['FROM {AURELIA}']),
+  hName('concord', CR * 3),
   hVoyage('concord', 20.33, CR * 2, ['KEEPERS OF', 'THE OLD {LIGHT}']),
   hRealm('concord', CR * 2, ['+10% {EMBERS}']),
   { ...hBattle('concord', 70.67, 25, CR * 2, ['{STURDIER} WORLDS'], 0.3), dip: true },
-  hCast('concord', 22.99, CR * 2, ['THE {SOVEREIGN}', 'AEGIS FIELD'], 0.6, -60),
+  hCast('concord', 22.99, CR * 3, ['THE {SOVEREIGN}', 'AEGIS FIELD'], 0.6, -60),
   hMotto('concord', CR * 2, ['WE KEEP', 'THE {LIGHT}']),
   hEnd('concord', 'lyceum'),
 ];
 // 4. The Lyceum Collective: Breakers.
 const hl = [
   hCast('lyceum', 10.55, BK * 3, null),
-  hName('lyceum', BK * 3),
-  hHome('lyceum', BK * 2, ['FROM {LYCEA}']),
+  hName('lyceum', BK * 5),
   hVoyage('lyceum', 11.08, BK * 2, ['ONE {MIND}']),
   hBattle('lyceum', 12, 31, BK * 2, ['+25% {LORE}', 'MORE BOONS']),
   { ...hBattle('lyceum', 18.33, 24, BK * 2, ['CHEAP', '{STRIKERS}'], 0.3), hard: true },
@@ -613,25 +630,23 @@ const hl = [
 // 5. The Choir of the First Flame: Embers.
 const hf = [
   hCast('choir', 18.45, EM * 1.5, null),
-  hName('choir', EM * 1.5),
-  hHome('choir', EM * 1.5, ['FROM {CANTICLE}']),
+  hName('choir', EM * 2.5),
   hVoyage('choir', 10.42, EM * 1.5, ['THE FIRST', '{FLAME}']),
   hBattle('choir', 9, 24, EM * 1.5, ['EVERY LOSS', 'FEEDS {ZEAL}']),
   { ...hBattle('choir', 18.25, 37, EM * 1.5, ['THEY NEVER {RUN}'], 0.3), hard: true },
   hCast('choir', 15.06, EM * 1.5, ['THE {CANTOR}', 'CONVERSION'], 0.6),
-  hMotto('choir', EM * 1.5, ['WHAT', 'OTHERS', 'DESTROY,', 'WE {CONVERT}']),
+  hMotto('choir', EM * 2, ['WHAT', 'OTHERS', 'DESTROY,', 'WE {CONVERT}']),
   hEnd('choir', 'ashen'),
 ];
 // 6. The Ashen Remnant: Last Stand; its draft of four.
 const ha = [
   hCast('ashen', 22.48, LS * 2, null),
-  hName('ashen', LS * 3),
-  hHome('ashen', LS * 2, ['FROM {CINDER}']),
+  hName('ashen', LS * 4),
   hVoyage('ashen', 21.75, LS * 2, ['OUT OF', 'THE {FIRE}']),
   hDraft('ashen', LS * 4, ['{FOUR} BOONS', 'TO CHOOSE'], [3, LS * 4 * 0.72]),
   { ...hBattle('ashen', 26.92, 2, LS * 2, ['+2 {REROLLS}', '[!FEWER EMBERS]'], 0.3), dip: true },
   hCast('ashen', 14.57, LS * 3, ['{EMBER THRONE}', 'EMBER LANCE'], 0.6),
-  hMotto('ashen', LS * 2, ['FATE', 'FAVOURS', 'THE {BURNED}']),
+  hMotto('ashen', LS * 3, ['FATE', 'FAVOURS', 'THE {BURNED}']),
   hEnd('ashen', null),
 ];
 const war = (vol) => [{ bars: 2, voices: 'bd', vol: vol - 0.16 }, { bars: 6, voices: 'abd', vol: vol - 0.08 }, { bars: 12, voices: 'abd', vol }];
