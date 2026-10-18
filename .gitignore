@@ -12,4 +12,5 @@ promo/trailers/*-stills/
 promo/trailers/*.wav
 promo/shorts/*.mp4
 promo/houses/*.mp4
+promo/abilities/
 worker/.wrangler/

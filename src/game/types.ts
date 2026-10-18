@@ -459,7 +459,8 @@ export interface Note {
 export type Fx =
   | { k: 'beam'; x1: number; y1: number; x2: number; y2: number; color: string; w: number; node: number }
   | { k: 'shot'; x: number; y: number; color: string; node: number; kind: ProjKind }
-  | { k: 'hit'; x: number; y: number; shield: boolean; r: number; ang: number; node: number; color: string }
+  /** (`aegis`: the ship hit is under an Aegis Field: its sparks are gold.) */
+  | { k: 'hit'; x: number; y: number; shield: boolean; r: number; ang: number; node: number; color: string; aegis?: boolean }
   | { k: 'boom'; x: number; y: number; size: number; color: string; node: number }
   | { k: 'jumpOut'; x: number; y: number; a: number; node: number; color: string }
   | { k: 'jumpIn'; x: number; y: number; a: number; node: number; color: string }
@@ -473,7 +474,16 @@ export type Fx =
   /** Ages: the change of a new age spreads from a Hearth: a ring that grows to `r` in `dur` seconds. */
   | { k: 'wave'; x: number; y: number; r: number; dur: number; color: string; node: number }
   | { k: 'text'; x: number; y: number; text: string; color: string; node: number }
-  | { k: 'ability'; x: number; y: number; r: number; color: string; node: number; id: string };
+  /**
+   * A ship casts an ability (1.26): who (`by`, in its house's colour `house`), what it touched (`on`: the
+   * ships, allies or enemies by the ability), what it says over it (`says`), and a lance's mark (`to`).
+   */
+  | {
+      k: 'ability'; x: number; y: number; r: number; color: string; node: number; id: string;
+      by: number; size: number; house: string; on: number[]; says?: string; to?: { id: number; x: number; y: number; dmg: number };
+    }
+  /** A ship goes over to another house (Conversion): from its old colour to its new, called by `by` (or -1). */
+  | { k: 'convert'; id: number; x: number; y: number; r: number; from: string; to: string; by: number; node: number };
 
 export interface GameConfig {
   seed: number;

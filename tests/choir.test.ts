@@ -137,7 +137,9 @@ describe('Conversion', () => {
     expect(c.hp).toBeLessThan(205);
     expect(b.sh).toBe(b.maxSh);
     expect(g.notes[g.notes.length - 1].text).toMatch(/^Converted at .+: 2 Strikers\. They are yours now\.$/);
-    expect(g.fx.some((f) => f.k === 'text' && f.text === 'CONVERTED 2')).toBe(true);
+    expect(g.fx.some((f) => f.k === 'ability' && f.says === 'CONVERTED 2')).toBe(true);
+    // Each seen going over, from its old house's colour to the Choir's, called by the Cantor.
+    expect(g.fx.filter((f) => f.k === 'convert' && f.by === ark.id && f.to === p.color && f.from === rival.color).length).toBe(2);
     // The ability has been used: it is not ready again at once.
     expect(ark.abil[0].cd).toBeGreaterThan(30);
     // And they fight for their new house: the ship left behind is their enemy.

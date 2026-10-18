@@ -106,7 +106,7 @@ export function damageUnit(g: Game, t: Unit, amount: number, type: DmgType, byFa
   }
   if (g.fxEnabled && (absorbed > 0 || hull > 0)) {
     const ang = src ? datan2(src.y - t.y, src.x - t.x) : 0;
-    g.fx.push({ k: 'hit', x: t.x, y: t.y, shield: absorbed > 0 && t.sh > 0, r: def.radius, ang, node: t.node, color: g.factions[t.owner].color });
+    g.fx.push({ k: 'hit', x: t.x, y: t.y, shield: absorbed > 0 && t.sh > 0, r: def.radius, ang, node: t.node, color: g.factions[t.owner].color, aegis: g.hasBuff(t, 'aegis') });
   }
   if (t.hp <= 0) g.killUnit(t, byFaction, src);
 }
@@ -160,6 +160,7 @@ export function convertUnits(g: Game, list: Unit[], to: number, by: Unit | null)
     if (!l) from.set(u.owner, (l = []));
     l.push(u);
     ids.add(u.id);
+    const was = g.factions[u.owner].color;
     u.owner = to;
     u.order = 'idle';
     u.orderTarget = -1;
@@ -184,7 +185,8 @@ export function convertUnits(g: Game, list: Unit[], to: number, by: Unit | null)
     u.hp = Math.max(u.hp, u.maxHp * CONVERT_MEND);
     u.sh = u.maxSh;
     if (by) g.addXp(by, UNITS[u.type].xpValue);
-    if (g.fxEnabled) g.fx.push({ k: 'upgrade', x: u.x, y: u.y, r: UNITS[u.type].radius + 8, color: gainer.color, node: u.node });
+    // (Seen going over: its colour wiped from the old to the new, called by the ship that turned it.)
+    if (g.fxEnabled) g.fx.push({ k: 'convert', id: u.id, x: u.x, y: u.y, r: UNITS[u.type].radius, from: was, to: gainer.color, by: by ? by.id : -1, node: u.node });
   }
   if (ids.size === 0) return;
   for (let i = g.projectiles.length - 1; i >= 0; i--) {
@@ -212,7 +214,7 @@ export function convertUnits(g: Game, list: Unit[], to: number, by: Unit | null)
     if (loser.isPlayer) g.notify(was, `Gone over to ${gainer.name} at ${place}: ${say(l)}.`, 'bad', node >= 0 ? node : undefined);
   }
   if (gainer.isPlayer) g.notify(to, `Converted at ${place}: ${say(all)}. They are yours now.`, 'good', node >= 0 ? node : undefined);
-  if (by && g.fxEnabled) g.fx.push({ k: 'text', x: by.x, y: by.y - 24, text: `CONVERTED ${ids.size}`, color: gainer.color, node: by.node });
+  // (How many went over is said over the ship that called them, with its cast: "CONVERTED 2", abilityLooks.ts.)
 }
 
 /**

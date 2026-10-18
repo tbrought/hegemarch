@@ -3,12 +3,13 @@
  * randomness here uses Math.random, never the simulation RNG.
  */
 import type { Fx } from '../game/types';
+import { castLook, convertLook } from './abilityLooks';
 import type { Camera } from './Camera';
 import { textCenter, textOutline, textWidth } from './font';
 import { PAL, light, shade } from './palette';
 import { line, ring, type Ctx } from './pixel';
 
-interface Spark {
+export interface Spark {
   x: number;
   y: number;
   vx: number;
@@ -31,6 +32,55 @@ interface Ring {
   /** Radius in world units (true) or screen pixels (false). */
   world: boolean;
   dotted: boolean;
+  /** Pixels wide (1): an ability's reach runs out two wide. */
+  w?: number;
+}
+
+/**
+ * A mark on one ship, drawn with it (render/abilityLooks.ts, 1.26): lit by the ability it casts, ticked by one
+ * that touches it, its colour wiped over to the house that turned it, crackling, trailing, scorched. Below
+ * zero `t` it has not begun (a tick waits for the reach to come to it).
+ */
+export interface Mark {
+  kind: 'lit' | 'tick' | 'wipe' | 'notes' | 'crackle' | 'trail' | 'scorch';
+  t: number;
+  dur: number;
+  c: string;
+  /** A wipe's old colour. */
+  from?: string;
+}
+
+/** A mote of a Nanite Cloud, on its way from the ship that cast it to a ship it mends. */
+export interface Mote {
+  x: number;
+  y: number;
+  to: number;
+  t: number;
+  dur: number;
+  c: string;
+  /** How far it bows off the straight way, and to which side. */
+  bend: number;
+}
+
+/** A thread of a Conversion, from the ship that calls to the ship that goes over. */
+export interface Thread {
+  by: number;
+  x: number;
+  y: number;
+  to: number;
+  t: number;
+  dur: number;
+  c: string;
+}
+
+/** An Ember Lance: a beam held from the ship to its mark, cooling. */
+export interface Lance {
+  x1: number;
+  y1: number;
+  x2: number;
+  y2: number;
+  t: number;
+  dur: number;
 }
 
 interface Beam {
@@ -54,6 +104,12 @@ interface Floater {
   c: string;
   /** In the large font with an outline, and it stays where it is: what a Starfall took, over its star. */
   big?: boolean;
+  /** Screen pixels over its place it begins at. */
+  lift?: number;
+  /** What a ship's ability says over it: words, so left out of a picture without words (`plain`). */
+  label?: boolean;
+  /** A number in the large font, outlined, rising a little: the damage of an Ember Lance. */
+  num?: boolean;
 }
 
 interface Flash {
@@ -86,6 +142,11 @@ export class Effects {
   floaters: Floater[] = [];
   flashes: Flash[] = [];
   waves: Wave[] = [];
+  /** Marks on ships, by the ship's id (render/abilityLooks.ts). */
+  marks = new Map<number, Mark[]>();
+  motes: Mote[] = [];
+  threads: Thread[] = [];
+  lances: Lance[] = [];
   /** Screen shake amount in pixels. It wears off in real time, in `Renderer.render`, not with the game. */
   shake = 0;
 
@@ -96,10 +157,29 @@ export class Effects {
     this.floaters.length = 0;
     this.flashes.length = 0;
     this.waves.length = 0;
+    this.marks.clear();
+    this.motes.length = 0;
+    this.threads.length = 0;
+    this.lances.length = 0;
     this.shake = 0;
   }
 
-  private burst(x: number, y: number, n: number, speed: number, life: number, cols: string[], big = false) {
+  /** Put a mark on a ship. */
+  mark(id: number, m: Mark) {
+    const l = this.marks.get(id);
+    if (l) l.push(m);
+    else this.marks.set(id, [m]);
+  }
+
+  /** Words that rise over a place: in the small font, or a number in the large (`num`). */
+  say(x: number, y: number, text: string, c: string, o: { lift?: number; dur?: number; label?: boolean; num?: boolean } = {}) {
+    // (Words a ship says while others it said are still up go over them, not on them: an Ark that casts
+    // four abilities as it comes into a fight says the four, one over another.)
+    const over = o.label && !o.num ? this.floaters.filter((f) => f.label && !f.num && f.t < 1.1 && Math.abs(f.x - x) < 60 && Math.abs(f.y - y) < 60).length : 0;
+    this.floaters.push({ x, y, t: 0, dur: o.dur ?? 1.6, text, c, lift: (o.lift ?? 0) + over * 8, label: o.label, num: o.num });
+  }
+
+  burst(x: number, y: number, n: number, speed: number, life: number, cols: string[], big = false) {
     for (let i = 0; i < n && this.sparks.length < MAX_SPARKS; i++) {
       const a = Math.random() * Math.PI * 2;
       const v = speed * (0.3 + Math.random() * 0.7);
@@ -126,14 +206,15 @@ export class Effects {
           break;
         case 'hit':
           if (!near(f.x, f.y, 100)) break;
+          // (A ship under an Aegis Field turns its hits aside in gold: its shell is seen as it is struck.)
           if (f.shield) {
-            if (Math.random() < 0.35) {
+            if (Math.random() < (f.aegis ? 0.6 : 0.35)) {
               const ox = Math.cos(f.ang) * f.r;
               const oy = Math.sin(f.ang) * f.r;
-              this.rings.push({ x: f.x + ox * 0.3, y: f.y + oy * 0.3, r0: 1, r1: 3, t: 0, dur: 0.18, c: PAL.sky, world: false, dotted: true });
+              this.rings.push({ x: f.x + ox * 0.3, y: f.y + oy * 0.3, r0: 1, r1: f.aegis ? 4 : 3, t: 0, dur: 0.18, c: f.aegis ? PAL.gold : PAL.sky, world: false, dotted: true });
             }
           } else {
-            this.burst(f.x + Math.cos(f.ang) * f.r * 0.6, f.y + Math.sin(f.ang) * f.r * 0.6, 2, 80, 0.3, [PAL.gold, PAL.ember]);
+            this.burst(f.x + Math.cos(f.ang) * f.r * 0.6, f.y + Math.sin(f.ang) * f.r * 0.6, 2, 80, 0.3, f.aegis ? [PAL.gold, PAL.bone] : [PAL.gold, PAL.ember]);
           }
           break;
         case 'boom': {
@@ -197,8 +278,11 @@ export class Effects {
         }
         case 'ability':
           if (!near(f.x, f.y, f.r)) break;
-          this.rings.push({ x: f.x, y: f.y, r0: 10, r1: f.r, t: 0, dur: 0.6, c: f.color, world: true, dotted: true });
-          this.burst(f.x, f.y, 10, 90, 0.5, [f.color, light(f.color)]);
+          castLook(this, f);
+          break;
+        case 'convert':
+          if (!near(f.x, f.y, 300)) break;
+          convertLook(this, f);
           break;
       }
     }
@@ -206,6 +290,8 @@ export class Effects {
 
   /** Kindle / capture bursts need the node position: the renderer registers it. */
   nodePos: (node: number) => { x: number; y: number; r: number } | null = () => null;
+  /** Where a ship is now, its size and its heading (abilities' motes and threads follow it): the renderer registers it. */
+  unitPos: (id: number) => { x: number; y: number; r: number; a: number } | null = () => null;
 
   private kindleBurst(node: number, color: string) {
     const p = this.nodePos(node);
@@ -240,9 +326,18 @@ export class Effects {
     this.floaters = this.floaters.filter((f) => (f.t += dt) < f.dur);
     this.flashes = this.flashes.filter((f) => (f.t += dt) < f.dur);
     this.waves = this.waves.filter((v) => (v.t += dt) < v.dur);
+    for (const [id, l] of this.marks) {
+      const left = l.filter((m) => (m.t += dt) < m.dur);
+      if (left.length) this.marks.set(id, left);
+      else this.marks.delete(id);
+    }
+    this.motes = this.motes.filter((m) => (m.t += dt) < m.dur);
+    this.threads = this.threads.filter((m) => (m.t += dt) < m.dur);
+    this.lances = this.lances.filter((m) => (m.t += dt) < m.dur);
   }
 
-  draw(g: Ctx, cam: Camera, ox: number, oy: number) {
+  /** `plain`: a picture without words (the trailers'): what ships' abilities say is left out. */
+  draw(g: Ctx, cam: Camera, ox: number, oy: number, plain = false) {
     const z = cam.zoom;
     const sx = (x: number) => Math.round((x - cam.x) * z + cam.w / 2 + ox);
     const sy = (y: number) => Math.round((y - cam.y) * z + cam.h / 2 + oy);
@@ -273,7 +368,50 @@ export class Effects {
       const k = r.t / r.dur;
       const rad = (r.r0 + (r.r1 - r.r0) * k) * (r.world ? z : 1);
       if (rad > 600) continue;
-      ring(g, sx(r.x), sy(r.y), Math.max(1, rad), k < 0.25 ? PAL.bone : r.c, r.dotted || k > 0.7 ? 2 : 1);
+      const c = k < 0.25 ? PAL.bone : r.c;
+      ring(g, sx(r.x), sy(r.y), Math.max(1, rad), c, r.dotted || k > 0.7 ? 2 : 1);
+      // (Wider: the rings inside it, its colour going to its shade toward the back.)
+      for (let i = 1; i < (r.w ?? 1) && rad - i >= 1; i++) ring(g, sx(r.x), sy(r.y), rad - i, k < 0.25 ? r.c : shade(r.c), k > 0.7 ? 2 : 1);
+    }
+    // An Ember Lance: a core that cools from bone through gold to ember, its edges ember to wine.
+    for (const l of this.lances) {
+      const k = l.t / l.dur;
+      const x1 = sx(l.x1);
+      const y1 = sy(l.y1);
+      const x2 = sx(l.x2);
+      const y2 = sy(l.y2);
+      const flat = Math.abs(x2 - x1) >= Math.abs(y2 - y1);
+      const [ex, ey] = flat ? [0, 1] : [1, 0];
+      const edge = k < 0.5 ? PAL.ember : PAL.wine;
+      line(g, x1 - ex, y1 - ey, x2 - ex, y2 - ey, edge);
+      line(g, x1 + ex * 2, y1 + ey * 2, x2 + ex * 2, y2 + ey * 2, edge);
+      const core = k < 0.3 ? PAL.bone : k < 0.6 ? PAL.gold : PAL.ember;
+      line(g, x1, y1, x2, y2, core);
+      line(g, x1 + ex, y1 + ey, x2 + ex, y2 + ey, core);
+    }
+    // Conversion's threads: dashes running from the ship that calls to the ship it turns.
+    for (const t of this.threads) {
+      const from = this.unitPos(t.by) ?? t;
+      const to = this.unitPos(t.to);
+      if (!to) continue;
+      const k = t.t / t.dur;
+      line(g, sx(from.x), sy(from.y), sx(to.x), sy(to.y), k < 0.7 ? t.c : shade(t.c), 3, -Math.floor(t.t * 40));
+    }
+    // A Nanite Cloud's motes, bowing on their way from the ship that cast it to the ships it mends.
+    for (const m of this.motes) {
+      if (m.t < 0) continue;
+      const to = this.unitPos(m.to);
+      if (!to) continue;
+      const k = m.t / m.dur;
+      const e = k * k * (3 - 2 * k);
+      const dx = to.x - m.x;
+      const dy = to.y - m.y;
+      const bow = Math.sin(e * Math.PI) * m.bend;
+      const x = sx(m.x + dx * e - dy * bow);
+      const y = sy(m.y + dy * e + dx * bow);
+      // (Its colour and mist in turn: it shows on ships of its own colour, the Wayfarers' teal.)
+      g.fillStyle = Math.floor(m.t * 20) % 2 ? PAL.mist : m.c;
+      g.fillRect(x, y, z > 0.35 ? 2 : 1, z > 0.35 ? 2 : 1);
     }
     for (const v of this.waves) {
       // (Drawn only while it is small enough on screen to be worth its pixels; the units' own flashes carry on.)
@@ -291,13 +429,21 @@ export class Effects {
       else g.fillRect(x, y, 1, 1);
     }
     for (const f of this.floaters) {
-      if (f.t < 0) continue;
+      if (f.t < 0 || (plain && f.label)) continue;
       const k = f.t / f.dur;
-      if (f.big) {
+      if (f.num) {
+        const x = sx(f.x) - Math.round(textWidth(f.text) / 2);
+        const y = sy(f.y) - (f.lift ?? 0) - Math.round(Math.min(1, f.t * 2) * 8);
+        if (k < 0.8 || Math.floor(f.t * 8) % 2 === 0) textOutline(g, f.text, x, y, f.t < 0.3 ? PAL.bone : f.c, PAL.void);
+      } else if (f.big) {
         const x = sx(f.x) - Math.round(textWidth(f.text) / 2);
         const y = sy(f.y) - Math.max(16, Math.round(70 * z)) - Math.round(Math.min(1, f.t * 2) * 6);
         if (k < 0.85 || Math.floor(f.t * 8) % 2 === 0) textOutline(g, f.text, x, y, f.t < 0.5 ? PAL.gold : f.c, PAL.void);
-      } else textCenter(g, f.text, sx(f.x), sy(f.y) - Math.round(k * 10), k < 0.7 ? f.c : PAL.dusk, 'tiny');
+      } else if (f.label) {
+        // (Outlined, so that it reads over a battle; it rises a little and then holds.)
+        const y = sy(f.y) - (f.lift ?? 0) - Math.round(Math.min(1, k * 3) * 6);
+        textOutline(g, f.text, sx(f.x) - Math.round(textWidth(f.text, 'tiny') / 2), y, k < 0.75 ? f.c : shade(f.c), PAL.void, 'tiny');
+      } else textCenter(g, f.text, sx(f.x), sy(f.y) - (f.lift ?? 0) - Math.round(k * 10), k < 0.7 ? f.c : PAL.dusk, 'tiny');
     }
   }
 }

@@ -215,7 +215,11 @@ for (const run of chosen) {
     console.log(`same ${run.name.padEnd(18)} ${String(got.length).padStart(4)} fingerprints  (${secs}s)`);
   } else {
     differ++;
-    const what = (want[i] ?? got[i] ?? '').startsWith('fx:') ? 'the effects asked for differ (the states are the same)' : (want[i] ?? got[i] ?? '').startsWith('end:') ? `the end differs: ${want[i]} then, ${got[i]} now` : `the state differs from fingerprint ${i} on (about minute ${((i * EVERY) / 60).toFixed(1)}): --only=${run.name} --at=${i} dumps it`;
+    // (A fingerprint is the state and, after its ':', how many effects were asked for: the same state with
+    // more or fewer effects is the effects differing, not the state.)
+    const stateOf = (x: string | undefined) => (x ?? '').slice(0, (x ?? '').lastIndexOf(':'));
+    const sameState = !(want[i] ?? '').startsWith('fx:') && !(want[i] ?? '').startsWith('end:') && stateOf(want[i]) === stateOf(got[i]);
+    const what = (want[i] ?? got[i] ?? '').startsWith('fx:') || sameState ? 'the effects asked for differ (the states are the same)' : (want[i] ?? got[i] ?? '').startsWith('end:') ? `the end differs: ${want[i]} then, ${got[i]} now` : `the state differs from fingerprint ${i} on (about minute ${((i * EVERY) / 60).toFixed(1)}): --only=${run.name} --at=${i} dumps it`;
     console.log(`DIFF ${run.name}: ${what}`);
   }
 }

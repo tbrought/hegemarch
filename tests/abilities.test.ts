@@ -18,8 +18,9 @@ describe('Gravity Snare', () => {
     let said = '';
     for (let i = 0; i < 60 && !said; i++) {
       g.step();
-      const t = g.fx.find((f) => f.k === 'text' && /^SNARED/.test(f.text));
-      if (t && t.k === 'text') said = t.text;
+      // (What a cast says rises over the ship that cast it: render/abilityLooks.ts.)
+      const t = g.fx.find((f) => f.k === 'ability' && f.id === 'snare');
+      if (t && t.k === 'ability') said = t.says ?? '';
     }
     expect(said).toBe('SNARED 2');
     expect(near.dead || near.snare > 10).toBe(true);

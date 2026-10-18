@@ -2,6 +2,22 @@ import type { Fx } from '../game/types';
 import type { Camera } from '../render/Camera';
 import type { Sfx, SoundId } from './Sfx';
 
+/** Each ability's sound (1.26): a test holds every ability to one. The Hollow's pulse keeps the old cast. */
+export const CAST_SOUND: Record<string, SoundId> = {
+  aegis: 'cast-aegis',
+  barrage: 'cast-barrage',
+  nanite: 'cast-nanite',
+  strikewing: 'cast-strikewing',
+  emp: 'cast-emp',
+  conversion: 'cast-conversion',
+  phaselance: 'cast-lance',
+  overdrive: 'cast-overdrive',
+  rally: 'cast-rally',
+  snare: 'cast-snare',
+  voidpulse: 'ability',
+  repairdrones: 'cast-repair',
+};
+
 /**
  * Play the sounds of this frame's battle effects: quieter the farther they are from the middle of
  * the view and the farther the camera is zoomed out, and panned left or right.
@@ -53,7 +69,7 @@ export function playBattleSounds(fx: Fx[], nodes: { x: number; y: number }[], ca
         y = nodes[f.node].y;
         break;
       case 'ability':
-        id = 'ability';
+        id = CAST_SOUND[f.id] ?? 'ability';
         base = 0.5;
         x = f.x;
         y = f.y;

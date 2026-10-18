@@ -3,6 +3,7 @@ import { UNITS } from '../game/data/units';
 import { ECON } from '../game/data/worlds';
 import { burning, STARFALL_FUSE } from '../game/starfall';
 import type { GNode, Unit } from '../game/types';
+import { drawLasting, drawMarksOver, drawMarksUnder, drawMissile, drawTrail, mendingLeft, type Drawn } from './abilityLooks';
 import { Camera } from './Camera';
 import { Effects } from './Effects';
 import { fit, text, textCenter, textOutline, textWidth } from './font';
@@ -114,6 +115,10 @@ export class Renderer {
       const n = this.game?.nodes[id];
       return n ? { x: n.x, y: n.y, r: n.r } : null;
     };
+    this.fx.unitPos = (id) => {
+      const u = this.game?.units.get(id);
+      return u && !u.dead ? { x: u.x, y: u.y, r: UNITS[u.type].radius, a: u.a } : null;
+    };
   }
 
   // ---------------------------------------------------------------------
@@ -170,7 +175,7 @@ export class Renderer {
     }
     this.drawUnits(ctx, g, alpha, view, vis);
     this.drawProjectiles(ctx, g, alpha, vis);
-    this.fx.draw(ctx, this.cam, this.ox, this.oy);
+    this.fx.draw(ctx, this.cam, this.ox, this.oy, !!view.plain);
     // The drag-select box: its dotted fill goes under the world names so they stay readable.
     const b = view.box;
     const box = b && { x: Math.round(Math.min(b.x0, b.x1)), y: Math.round(Math.min(b.y0, b.y1)), w: Math.round(Math.abs(b.x1 - b.x0)), h: Math.round(Math.abs(b.y1 - b.y0)) };
@@ -607,6 +612,8 @@ export class Renderer {
         }
         if (u.type === 'fighter') {
           if (!sprites) continue;
+          // (A Strike Wing's Fighters go out on trails: abilityLooks.ts.)
+          for (const m of this.fx.marks.get(u.id) ?? []) if (m.kind === 'trail') drawTrail(ctx, x, y, u.a, m.c, m.t / m.dur);
           ctx.fillStyle = color;
           ctx.fillRect(x, y, 1, 1);
           ctx.fillStyle = light(color);
@@ -645,6 +652,11 @@ export class Renderer {
           ctx.drawImage(s, sx, sy - 1);
           ctx.drawImage(s, sx, sy + 1);
         }
+        // What an ability has done to it, and what it has left on it (abilityLooks.ts, 1.26).
+        const marks = this.fx.marks.get(u.id);
+        const { w: sw, h: shh } = spriteSize(u.type, u.era);
+        const drawn: Drawn = { u, x, y, dir, era: u.era, color, w: sw, h: shh, time: this.time, flick };
+        if (marks) drawMarksUnder(ctx, drawn, marks);
         {
           const sh = silhouette(u.type, PAL.void, dir, u.era);
           ctx.drawImage(sh, x - (sh.width >> 1) + 1, y - (sh.height >> 1) + 1);
@@ -659,11 +671,9 @@ export class Renderer {
           ctx.fillStyle = PAL.sky;
           ctx.fillRect(x, y - 4, 1, 1);
         }
-        // Held by a Gravity Snare (it cannot jump): ringed in violet, so the hold can be seen.
-        if (u.snare > 0) {
-          const { w, h } = spriteSize(u.type, u.era);
-          ring(ctx, x, y, Math.ceil(Math.max(w, h) / 2) + 2, flick ? PAL.violet : PAL.pink, 2);
-        }
+        if (marks) drawMarksOver(ctx, drawn, marks);
+        // Held by a Gravity Snare, under an Aegis Field, mending, rallied, in Overdrive: for as long as it lasts.
+        drawLasting(ctx, drawn);
         // Health bars for damaged or selected ships.
         const hpf = u.hp / Math.max(1, u.maxHp);
         const shf = u.maxSh > 0 ? u.sh / u.maxSh : 0;
@@ -674,8 +684,15 @@ export class Renderer {
           const by = y - Math.ceil(Math.max(w, h) / 2) - 3;
           rect(ctx, bx, by, bw, 1, PAL.night);
           rect(ctx, bx, by, Math.max(1, Math.round(bw * hpf)), 1, hpf > 0.5 ? PAL.teal : hpf > 0.25 ? PAL.gold : PAL.red);
-          // (No sliver for a shield that is as good as gone: it recharges a trickle even under fire.)
-          if (u.maxSh > 0 && Math.round(bw * shf) > 0) rect(ctx, bx, by - 1, Math.round(bw * shf), 1, PAL.sky);
+          // (What is still being mended, blinking past the hull it has: a Nanite Cloud's, Repair Drones'.)
+          const mend = mendingLeft(u);
+          if (mend > 0) {
+            const from = Math.max(1, Math.round(bw * hpf));
+            const to = Math.round(bw * Math.min(1, (u.hp + mend) / Math.max(1, u.maxHp)));
+            if (to > from) rect(ctx, bx + from, by, to - from, 1, flick ? PAL.teal : PAL.sea);
+          }
+          // (No sliver for a shield that is as good as gone: it recharges a trickle even under fire. Gold under an Aegis Field.)
+          if (u.maxSh > 0 && Math.round(bw * shf) > 0) rect(ctx, bx, by - 1, Math.round(bw * shf), 1, u.buffs.some((b) => b.id === 'aegis') ? PAL.gold : PAL.sky);
         }
         if (u.level > 1 && z >= 0.15 && (u.type === 'ark' || u.type === 'dreadnought')) {
           text(ctx, String(u.level), x + 6, y + 3, PAL.gold, 'tiny');
@@ -762,10 +779,7 @@ export class Renderer {
           break;
         }
         case 'missile':
-          ctx.fillStyle = PAL.bone;
-          ctx.fillRect(x, y, 1, 1);
-          ctx.fillStyle = PAL.ember;
-          ctx.fillRect(x - Math.sign(p.x - p.px), y - Math.sign(p.y - p.py), 1, 1);
+          drawMissile(ctx, p, x, y, z > 0.35);
           break;
         default:
           ctx.fillStyle = light(c);
@@ -820,6 +834,32 @@ export class Renderer {
       if (near && n.kind === 'planet' && vis(n.id)) {
         const sub = owner >= 0 ? `${'I'.repeat(n.level)}${isHearth(n) ? ' HEARTH' : n.role ? ' ' + n.role.toUpperCase() : ''}` : this.ground ? 'WILD LAND' : `${n.size} WORLD`;
         textOutline(ctx, sub, x - Math.round(textWidth(sub, 'tiny') / 2), y + 6, owner >= 0 ? shade(c) === PAL.indigo ? PAL.dusk : light(shade(c)) : PAL.slate, PAL.void, 'tiny');
+      }
+    }
+    this.drawZeal(ctx, g, vis);
+  }
+
+  /**
+   * The Choir's Zeal where it is building (1.26): "ZEAL +15%" under the place, in the house's colour, for as
+   * long as its ships there have it (the losses that raised it each say so where they happen).
+   */
+  private drawZeal(ctx: Ctx, g: Game, vis: (i: number) => boolean) {
+    for (const n of g.nodes) {
+      if (!vis(n.id) || !g.buckets[n.id].length) continue;
+      let line = 0;
+      for (const f of g.factions) {
+        const step = f.mods.flags.zeal ?? 0;
+        if (step <= 0) continue;
+        let most = 0;
+        for (const u of g.buckets[n.id]) if (u.owner === f.id && !u.dead) for (const b of u.buffs) if (b.id === 'zeal' && b.t > 0) most = Math.max(most, b.v);
+        if (most <= 0) continue;
+        const x = this.sx(n.x);
+        const r = this.nodeR(n);
+        const y = this.sy(n.y) + r + (r > 6 ? 5 : 3) + (n.kind === 'planet' ? 13 : 0) + line * 7;
+        if (x < -60 || x > this.cam.w + 60 || y < -10 || y > this.cam.h + 10) continue;
+        const said = `ZEAL +${Math.round(most * step * 100)}%`;
+        textOutline(ctx, said, x - Math.round(textWidth(said, 'tiny') / 2), y, f.color, PAL.void, 'tiny');
+        line++;
       }
     }
   }

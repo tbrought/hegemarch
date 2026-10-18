@@ -1027,6 +1027,51 @@ Measured with `npm run simulate` and `npm run balance:passive`. Speeds are ½×,
 
 ## 6. Presentation
 
+- **An ability is seen and heard** (1.26, `render/abilityLooks.ts`). Until 1.26 every ability was one
+  dotted ring a pixel wide, racing out to its reach in 0.6 s, and one sound; six pairs of them shared a
+  colour (a Missile Barrage and an Ember Lance both ember), and an Aegis Field, a Nanite Cloud, an
+  Overdrive and a Rally Cry left nothing on the ships they touched for the whole of their 6 to 10 seconds.
+  The rules worked; the screen did not say so (the Gravity Snare's lesson, 1.3: it worked, and nothing
+  showed it). Now a cast says three things, and each ability has a shape and a sound of its own:
+  - **Who.** A ring closes on the ship that cast it, as on a world kindled, and its outline lights in the
+    ability's colour (`castLook`, the mark `lit`).
+  - **On whom.** Its reach runs out two pixels wide in 0.9 s (`REACH_TIME`) and ticks each ship it touches
+    as it comes to it (the mark `tick`); the cast names the ships (`Fx` 'ability' `on`, from `tryCast`).
+  - **What.** What it says rises over the ship in its house's colour (`AbilityDef.says`): its name, or
+    what it did, "SNARED 6", "CONVERTED 2", "SHIELDED 13". Words a ship says while others it said are still
+    up go over them (an Ark that casts four as it comes into a fight says the four). A picture without words
+    (the trailers') leaves them out.
+  - **Its shape.** Missile Barrage: the twelve fan out of the ship, each bowing to its own side before it
+    turns on its mark, a bone head and a trail that cools gold, ember, wine (`drawMissile`: only where it is
+    drawn moves). Nanite Cloud: motes pour out to every ship it mends. Strike Wing: a launch ring, and the
+    six spray out of the ship in a fan along the ways they are launched, each on its trail (no ring: a
+    ring round a ship is a Gravity Snare's, a ship held; until it was changed, in the first look at 1.26, the
+    launch ring was the light of violet, pink, and read as a Snare). EMP Burst: the ships it drains crackle as the burst comes to them. Conversion:
+    a thread runs from the ship that calls to each ship it turns; as it arrives, the ship's colour is wiped
+    from its old house's to its new one's under a scan line, a ring closes on it and notes rise off it (`Fx`
+    'convert', `convertLook`; it was a ring closing and the colour swapped at once). Ember Lance: a beam held
+    from the ship to its mark, a core cooling bone, gold, ember, the mark scorched in ember (never white)
+    and "-900" over it. The Hollow's Void Pulse runs out three pixels wide and says nothing (it is cast
+    every few seconds).
+  - **What lasts, for as long as it lasts** (`LASTING`, `AbilityDef.leaves`). Aegis Field: a gold bracket
+    at each corner of every ship it shields, their shield bars gold, and their hits spark gold (`Fx` 'hit'
+    `aegis`). Mending (a Nanite Cloud, Repair Drones): three motes circle the ship, teal and mist (mist, so
+    that they show on the Wayfarers' teal), and its hull bar blinks with what is still to be mended
+    (`mendingLeft`). Overdrive: its guns spark pink at its nose. Rally Cry: a gold chevron over it. Gravity
+    Snare: its violet ring, as before. The Choir's Zeal: "ZEAL +15%" under the place, in the house's colour,
+    while its ships there have it (`Renderer.drawZeal`; each loss that raised it says so where it happens).
+  - **A sound of its own** (`CAST_SOUND`, `Sfx` 'cast-...'): the Barrage twelve quick launches, the Aegis
+    a bright chord rising into place, the Nanite Cloud a trill that climbs, the Strike Wing six blips
+    rising, the EMP a crackle and a fall, the Conversion three voices that swell (the Choir's chord), the
+    Lance a charge, the shot and a low blow, Overdrive an engine winding up, the Rally Cry a horn's fifth,
+    the Snare a pull that falls and slows, Repair Drones the trill of mending, lower. Each starts from
+    silence (`test:audio`).
+  - Rival houses' casts are drawn the same, in their colours: what is cast against the player is seen.
+  - Nothing of it is read by the simulation: a run comes out the same with its effects drawn as without
+    (a test), and the golden traces did not move. `tests/abilityLooks.test.ts` holds every ability to a
+    sound of its own, its words, a mark for what it leaves, and each house's own to its shape;
+    `npm run record:abilities` films each in the game (`.shots/cast-<id>.mp4`).
+
 - **A rarer thing kindles; nothing flashes** (1.23.2, `arcFrame`, `arcRound` and `sparkOut` in
   `ui/modals/pixelFx.ts`). An Epic or a Legendary Boon card once all there, a ship's window as it rises
   a level, the Ambition's star on the omens card and the BOON button when a Boon is ready are marked

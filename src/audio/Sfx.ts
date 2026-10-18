@@ -7,7 +7,10 @@ import type { Settings } from '../meta/profile';
 export type SoundId =
   | 'ui' | 'select' | 'order' | 'error' | 'laser' | 'bolt' | 'flak' | 'shell' | 'lance' | 'missile' | 'boom' | 'bigboom'
   | 'jump' | 'kindle' | 'capture' | 'alert' | 'good' | 'boon' | 'victory' | 'defeat' | 'ability' | 'build' | 'tick' | 'armed' | 'nova'
-  | 'deal' | 'rare' | 'epic' | 'legendary' | 'pact' | 'levelup';
+  | 'deal' | 'rare' | 'epic' | 'legendary' | 'pact' | 'levelup'
+  // An ability cast, each its own (1.26: audio/battleSounds.ts CAST_SOUND); 'ability' is the Hollow's pulse.
+  | 'cast-aegis' | 'cast-barrage' | 'cast-nanite' | 'cast-strikewing' | 'cast-emp' | 'cast-conversion' | 'cast-lance'
+  | 'cast-overdrive' | 'cast-rally' | 'cast-snare' | 'cast-repair';
 
 type Wave = 'p12' | 'p25' | 'p50' | 'tri';
 
@@ -340,6 +343,63 @@ export class Sfx {
       case 'ability':
         this.tone(dest, 'p25', 400, 1600, t, 0.15, v * 0.4);
         this.noiseBurst(dest, t, 0.2, v * 0.25, 1.5, { type: 'highpass', f: 2000 });
+        break;
+      // The abilities, each its own: what the eye sees in its shape, the ear hears in its sound.
+      case 'cast-aegis':
+        // A bright chord, rising into place: C, E, G, and the C over them.
+        [72, 76, 79, 84].forEach((n, i) => this.tone(dest, 'p25', midi(n), midi(n), t + i * 0.035, 0.42 - i * 0.04, v * 0.22, 0.01));
+        this.tone(dest, 'tri', midi(48), midi(48), t, 0.4, v * 0.35, 0.01);
+        break;
+      case 'cast-barrage':
+        // Twelve launches, quick as they go.
+        for (let i = 0; i < 12; i++) this.tone(dest, 'p12', 1300 - i * 25, 650, t + i * 0.028, 0.035, v * 0.26);
+        this.noiseBurst(dest, t, 0.34, v * 0.18, 1.2, { type: 'bandpass', f: 2200 });
+        break;
+      case 'cast-nanite':
+        // A trill that climbs: the cloud going out.
+        for (let i = 0; i < 9; i++) this.tone(dest, 'p12', midi(81 + (i % 2) * 2 + Math.floor(i / 3)), midi(81 + (i % 2) * 2 + Math.floor(i / 3)), t + i * 0.032, 0.03, v * 0.2);
+        break;
+      case 'cast-strikewing':
+        // Six blips, one for each Fighter, rising.
+        for (let i = 0; i < 6; i++) this.tone(dest, 'p25', midi(67 + i * 2), midi(71 + i * 2), t + i * 0.055, 0.045, v * 0.28);
+        break;
+      case 'cast-emp':
+        // A crackle, and a fall.
+        this.noiseBurst(dest, t, 0.22, v * 0.35, 2.2, { type: 'bandpass', f: 3200 });
+        this.tone(dest, 'p12', 1700, 260, t, 0.24, v * 0.3);
+        break;
+      case 'cast-conversion':
+        // The Choir's chord: three voices that swell, F, A and C, the low F under them.
+        [65, 69, 72].forEach((n, i) => this.tone(dest, 'p50', midi(n), midi(n), t + i * 0.04, 0.75, v * 0.14, 0.12));
+        this.tone(dest, 'tri', midi(53), midi(53), t, 0.8, v * 0.3, 0.1);
+        break;
+      case 'cast-lance':
+        // A charge that climbs, the shot, and the blow landing low.
+        this.tone(dest, 'p25', 220, 1900, t, 0.11, v * 0.35);
+        this.tone(dest, 'p12', 1900, 900, t + 0.11, 0.09, v * 0.3);
+        this.tone(dest, 'tri', 110, 38, t + 0.12, 0.3, v * 0.7);
+        this.noiseBurst(dest, t + 0.12, 0.2, v * 0.35, 0.5, { type: 'lowpass', f: 1200 });
+        break;
+      case 'cast-overdrive':
+        // An engine winding up, and two quick shots.
+        this.tone(dest, 'p25', 200, 900, t, 0.16, v * 0.3);
+        this.tone(dest, 'p12', 1400, 1400, t + 0.17, 0.025, v * 0.25);
+        this.tone(dest, 'p12', 1400, 1400, t + 0.21, 0.025, v * 0.25);
+        break;
+      case 'cast-rally':
+        // A horn call: a fifth, up.
+        this.tone(dest, 'p50', midi(60), midi(60), t, 0.12, v * 0.24, 0.01);
+        this.tone(dest, 'p50', midi(67), midi(67), t + 0.12, 0.22, v * 0.24, 0.01);
+        this.tone(dest, 'tri', midi(48), midi(48), t, 0.34, v * 0.3, 0.01);
+        break;
+      case 'cast-snare':
+        // A pull, falling and slowing.
+        this.tone(dest, 'tri', 520, 110, t, 0.45, v * 0.5);
+        this.tone(dest, 'p12', 260, 140, t, 0.4, v * 0.16);
+        break;
+      case 'cast-repair':
+        // The trill of mending, lower and shorter: a ship's own drones.
+        for (let i = 0; i < 5; i++) this.tone(dest, 'p12', midi(74 + (i % 2) * 2), midi(74 + (i % 2) * 2), t + i * 0.035, 0.03, v * 0.18);
         break;
       case 'build':
         this.tone(dest, 'tri', midi(67), midi(67), t, 0.06, v * 0.5);

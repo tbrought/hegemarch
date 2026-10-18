@@ -97,6 +97,12 @@ it applies (`f.mods.flags.name`). `modstats.ts` turns modifiers into the lines t
 If it answers a problem a new player may not have met yet, put it in the key that opens it in
 `game/data/boonKeys.ts` (a test checks that every Boon is in the starting deck or in one key).
 
+**An ability.** Add it to `ABILITIES` in `game/data/abilities.ts`, with what it says over the ship
+that casts it (`says`) and, if it lasts, what it leaves (`leaves`); what it does to `tryCast` in
+`game/systems/abilities.ts`, returning the ships it touched; its shape to `castLook` in
+`render/abilityLooks.ts` (and a mark to `LASTING` for what it leaves); its sound to `CAST_SOUND` in
+`audio/battleSounds.ts` and `Sfx`. A test holds every ability to all of them.
+
 **An event.** Add an entry to `EVENTS` in `game/data/events.ts`: a title, a text, and choices. Each
 choice has a `run` that changes the game and returns the sentence the player reads. `cond` and `why`
 say when a choice is unavailable and what to tell the player.
