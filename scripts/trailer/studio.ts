@@ -129,6 +129,8 @@ export interface CamKey {
   /** Off the place, in screen pixels at the game's size (to leave room for words). */
   dx?: number;
   dy?: number;
+  /** With the biggest fleet on the move when the shot begins, wherever it goes (its middle). */
+  follow?: boolean;
 }
 
 /** Words over a shot. */
@@ -177,6 +179,8 @@ export interface Panel {
   /** Names under banners and icons (the default), and their icons' color. */
   names?: boolean;
   color?: string;
+  /** A picture with no box round it (full size, on the night). */
+  bare?: boolean;
   /** Banners and icons come one after another, this many seconds apart. */
   stagger?: number;
 }
@@ -210,6 +214,8 @@ export interface Shot {
   /** The world behind is darkened this much (0..1), for what is over it to read. */
   dim?: number;
   panels?: Panel[];
+  /** A vignette in dither, this strong (0..1): the corners go to night, pixel by pixel. */
+  vignette?: number;
 }
 
 const stage = document.getElementById('stage')!;
@@ -265,6 +271,36 @@ const FADE = 0.5;
 const fadeOf = (t: number, at: number, until: number, comeIn = true) =>
   Math.max(0, Math.min(comeIn ? (t - at) / FADE : 1, (until - t) / FADE, 1));
 
+/** How far each pixel is from the middle of the picture (1 at the corners of the ellipse that holds it). */
+const FAR = new Float32Array(W * H).map((_, i) => {
+  const x = (i % W) / W - 0.5;
+  const y = Math.floor(i / W) / H - 0.5;
+  return Math.sqrt(x * x * 2 + y * y * 2);
+});
+/**
+ * The night over the picture, in dither: at the corners (a vignette, `v`), and in a band at the foot of it
+ * where words are (`band`: from that height, 0..1, down), so that they read over anything.
+ */
+function dusk(v: number, band: number) {
+  if (!v && !band) return;
+  const img = frameCtx.getImageData(0, 0, W, H);
+  const d = img.data;
+  for (let y = 0; y < H; y++) {
+    const by = band ? Math.max(0, Math.min(1, (y / H - band) / (1 - band) * 1.6)) * 0.7 : 0;
+    for (let x = 0; x < W; x++) {
+      const i = y * W + x;
+      const vv = v ? Math.max(0, Math.min(1, (FAR[i] - 0.62) / 0.5)) * v : 0;
+      const level = Math.max(vv, by);
+      if (level > 0 && (bayer(x, y) + 0.5) / 16 < level) {
+        d[i * 4] = 11;
+        d[i * 4 + 1] = 10;
+        d[i * 4 + 2] = 26;
+      }
+    }
+  }
+  frameCtx.putImageData(img, 0, 0);
+}
+
 /** Draw into a layer of its own and lay it over the frame, `level` of it (0..1) there, pixel by pixel. */
 function laid(level: number, draw: () => void) {
   if (level <= 0) return;
@@ -284,12 +320,36 @@ function laid(level: number, draw: () => void) {
   frameCtx.drawImage(layer, 0, 0);
 }
 
+/** The fleet a shot rides with: its ships, and where its middle was last seen (smoothed: a ship leaping does not jolt it). */
+let fleet: { ids: number[]; x: number; y: number } | null = null;
+function pickFleet(g: Game) {
+  const groups = new Map<string, number[]>();
+  for (const u of g.unitList) {
+    if (u.dead || !u.lane || u.type === 'seed') continue;
+    const k = `${u.owner}:${u.dest}`;
+    groups.set(k, [...(groups.get(k) ?? []), u.id]);
+  }
+  const ids = [...groups.values()].sort((a, b) => b.length - a.length)[0] ?? [];
+  fleet = { ids, x: NaN, y: NaN };
+  followFleet(g, 1);
+}
+function followFleet(g: Game, ease = 0.12) {
+  if (!fleet) return;
+  const us = fleet.ids.map((id) => g.units.get(id)).filter((u) => u && !u.dead);
+  if (!us.length) return;
+  const x = us.reduce((s, u) => s + u!.x, 0) / us.length;
+  const y = us.reduce((s, u) => s + u!.y, 0) / us.length;
+  fleet.x = Number.isNaN(fleet.x) ? x : fleet.x + (x - fleet.x) * ease;
+  fleet.y = Number.isNaN(fleet.y) ? y : fleet.y + (y - fleet.y) * ease;
+}
+
 function camAt(g: Game, keys: CamKey[], k: number): { x: number; y: number; zoom: number } {
   const cam = renderer.cam;
   const at = (key: CamKey) => {
     const fit = key.zoom === 'fit';
     const zoom = fit ? cam.minZoom * (key.fit ?? 1) : (key.zoom as number);
     const n = key.node !== undefined ? g.nodes[key.node] : null;
+    if (key.follow && fleet && !Number.isNaN(fleet.x)) return { x: fleet.x - (key.dx ?? 0) / zoom, y: fleet.y - (key.dy ?? 0) / zoom, zoom };
     const x = fit && key.x === undefined && !n ? (g.bounds.minX + g.bounds.maxX) / 2 : (n?.x ?? key.x ?? 0);
     const y = fit && key.y === undefined && !n ? (g.bounds.minY + g.bounds.maxY) / 2 : (n?.y ?? key.y ?? 0);
     return { x: x - (key.dx ?? 0) / zoom, y: y - (key.dy ?? 0) / zoom, zoom };
@@ -419,10 +479,29 @@ function wordsNow(cue: TextCue, t: number, how: 'story' | 'type' | 'now', clock:
   const gap = style === 'caption' ? 6 : style === 'lore' ? 10 : 12;
   const color = cue.color ?? (style === 'title' ? PAL.gold : style === 'big' ? PAL.bone : style === 'lore' ? PAL.bone : PAL.mist);
   if (style === 'logo') {
+    // The flame kindles, as a world does: a ring runs out from it, bone, gold, ember; then the name comes,
+    // catching ember and gold as a line of a story does; then the lines under it, one after the other.
+    const since = t - cue.at;
     const cy = Math.round(H * (cue.y ?? 0.46));
     drawFlame(W / 2 - 32, cy - 72, 4);
-    line('HEGEMARCH', W / 2, cy + 6, 32, PAL.gold, true);
-    cue.lines.forEach((l, i) => line(l, W / 2, cy + 52 + i * 14, 8, i === 0 ? PAL.bone : PAL.mist));
+    if (since < 0.7) {
+      const k = since / 0.7;
+      const r = 20 + k * 70;
+      ctx.fillStyle = k < 0.3 ? PAL.bone : k < 0.6 ? PAL.gold : PAL.ember;
+      for (let a = 0; a < 360; a += 2) {
+        if (k > 0.6 && Math.floor(a / 6) % 2) continue;
+        ctx.fillRect(Math.round(W / 2 + Math.cos((a * Math.PI) / 180) * r), Math.round(cy - 40 + Math.sin((a * Math.PI) / 180) * r * 0.9), 2, 2);
+      }
+    }
+    if (since >= 0.35) {
+      const age = since - 0.35;
+      if (age < STORY_GLOW) richLine('HEGEMARCH', W / 2, cy + 6, 32, PAL.gold, age < STORY_GLOW / 2 ? PAL.ember : PAL.gold, clock);
+      else line('HEGEMARCH', W / 2, cy + 6, 32, PAL.gold, true);
+    }
+    cue.lines.forEach((l, i) => {
+      const age = since - 0.9 - i * 0.3;
+      if (age >= 0) richLine(l, W / 2, cy + 52 + i * 14, 8, i === 0 ? PAL.bone : PAL.mist, age < STORY_GLOW / 2 ? PAL.ember : age < STORY_GLOW ? PAL.gold : null, clock);
+    });
     return;
   }
   const cx = Math.round(W * (cue.x ?? 0.5));
@@ -517,7 +596,7 @@ function panel(p: Panel, t: number, clock: number) {
         return el;
       }, (p.w / scale) * 3, (p.h / scale) * 3);
       drawModeArt(props, clock);
-      boxed(p.x, p.y, p.w, p.h);
+      if (!p.bare) boxed(p.x, p.y, p.w, p.h);
       ctx.drawImage(c, p.x, p.y, c.width * scale, c.height * scale);
       return;
     }
@@ -584,6 +663,8 @@ export async function shoot(shots: Shot[], everyNth = 1, pick?: number[]): Promi
   for (const shot of shots) {
     const frames = Math.round(shot.dur * FPS);
     const g = shot.blank || !shot.sector ? null : gameAt(shot.sector, shot.from);
+    fleet = null;
+    if (g && shot.cam?.some((c) => c.follow)) pickFleet(g);
     const heard = {
       ctx: {},
       play: (id: SoundId, vol = 0.5, pan = 0) => sounds.push([clock, id, Math.min(1, vol * (shot.loud ?? 1)), pan]),
@@ -601,6 +682,7 @@ export async function shoot(shots: Shot[], everyNth = 1, pick?: number[]): Promi
           g.step();
           acc -= TICK;
         }
+        followFleet(g);
         const c = camAt(g, shot.cam ?? [{ t: 0, zoom: 'fit' }], k);
         const cam = renderer.cam;
         cam.x = cam.tx = c.x;
@@ -608,7 +690,9 @@ export async function shoot(shots: Shot[], everyNth = 1, pick?: number[]): Promi
         cam.zoom = cam.tzoom = c.zoom;
         const fx = sp > 3 ? g.fx.filter((x) => x.k === 'capture') : g.fx;
         if (shot.sounds ?? sp < 3) playBattleSounds(fx, g.nodes, cam, heard, () => true);
-        renderer.fx.ingest(fx, () => true, (x, y, pad) => cam.sees(x, y, pad), cam.zoom);
+        // (Without its labels, the picture alone: no words float up over it, a star's toll or a world scorched.)
+        const shown = shot.labels ? fx : fx.filter((x) => x.k !== 'text').map((x) => (x.k === 'nova' ? { ...x, toll: undefined } : x));
+        renderer.fx.ingest(shown, () => true, (x, y, pad) => cam.sees(x, y, pad), cam.zoom);
         g.fx.length = 0;
         renderer.fx.update(1 / FPS);
         renderer.render(g, Math.min(1, acc / TICK), 1 / FPS, { ...view, plain: !shot.labels } as typeof view, !shot.labels);
@@ -643,14 +727,18 @@ export async function shoot(shots: Shot[], everyNth = 1, pick?: number[]): Promi
         }
         ctx.putImageData(img, 0, 0);
       }
+      // (The vignette, and the band under words at the foot of the picture.)
+      const low = (shot.text ?? []).some((c) => t >= c.at && t < c.until && (c.y ?? 0.5) >= 0.68 && c.style !== 'logo');
+      dusk(shot.vignette ?? 0, g && low ? 0.62 : 0);
       if (shot.bars) {
         ctx.fillStyle = '#000000';
         ctx.fillRect(0, 0, W, shot.bars);
         ctx.fillRect(0, H - shot.bars, W, shot.bars);
       }
       for (const p of shot.panels ?? []) panel(p, t, clock);
-      if (f === frames - 1) prev = ctx.getImageData(0, 0, W, H);
       for (const cue of shot.text ?? []) words(cue, t, clock);
+      // (The last frame, words and all, is what the next shot comes in over: what stays to the cut dissolves.)
+      if (f === frames - 1) prev = ctx.getImageData(0, 0, W, H);
       // (`pick`: only these frames are sent, for a look at the trailer without the whole of it.)
       if (pick ? pick.includes(frameNo) : frameNo % everyNth === 0) await window.sendFrame(out.toDataURL('image/png'));
       frameNo++;
@@ -681,6 +769,13 @@ export interface MusicCue {
   close?: boolean;
   /** Seconds its last chord rings (default: the game's, six steps and at least 1.6 s): to the next tune, or to the end. */
   ring?: number;
+  /**
+   * The tune arranged bar by bar: so many bars with these of its voices (a arpeggio, b bass, l lead, e its
+   * echo, d drums, h the light half of the drums; '' for a bar of silence). `until` is then where the bars
+   * end. The tune's own parts and melody run on under it, bar after bar. `vol`: how loud those bars are
+   * (of the tune's `vol`), for a build that swells as it fills.
+   */
+  arrangement?: { bars: number; voices: string; vol?: number }[];
 }
 
 /** The music under each shot: from, to, how far it steps back (Shot.duck). */
@@ -748,11 +843,23 @@ export async function sound(dur: number, music: MusicCue[], sounds: SoundCue[], 
     const vol = m.vol ?? 1;
     const fade = m.fade ?? 1.5;
     const stepDur = 60 / tr.bpm / 2;
+    // (Arranged, each run of bars at its own level, stepping to it on its first beat.)
+    let level = vol * (m.arrangement?.[0]?.vol ?? 1);
     bus.gain.setValueAtTime(0, 0);
     bus.gain.setValueAtTime(0, m.at);
-    bus.gain.linearRampToValueAtTime(vol, m.at + 0.02);
+    bus.gain.linearRampToValueAtTime(level, m.at + 0.02);
+    let from = m.at;
+    for (const a of m.arrangement ?? []) {
+      const next = vol * (a.vol ?? 1);
+      if (from > m.at && next !== level) {
+        bus.gain.setValueAtTime(level, from);
+        bus.gain.linearRampToValueAtTime(next, from + 0.03);
+      }
+      level = next;
+      from += a.bars * tr.steps * stepDur;
+    }
     if (!m.close) {
-      bus.gain.setValueAtTime(vol, Math.max(m.at + 0.02, m.until - fade));
+      bus.gain.setValueAtTime(level, Math.max(m.at + 0.02, m.until - fade));
       bus.gain.linearRampToValueAtTime(0, m.until);
     }
     const player = new Music(sfx) as unknown as { bus: GainNode; schedule: (...a: unknown[]) => void; close: (...a: unknown[]) => number };
@@ -761,23 +868,47 @@ export async function sound(dur: number, music: MusicCue[], sounds: SoundCue[], 
     let step = 0;
     // (Steps counted, not added up: a tune keeps its time to the sample over a minute.)
     const steps = Math.round((m.until - m.at) / stepDur);
+    // The voices of each step: the arrangement's, bar by bar, or the tune's own.
+    const voicesAt: (string | null)[] = [];
+    for (const a of m.arrangement ?? []) for (let k = 0; k < a.bars * tr.steps; k++) voicesAt.push(a.voices);
     for (let k = 0; k < steps; k++) {
       const [id, voices] = tr.form[seg];
       const p = tr.parts[id];
-      player.schedule(tr, p, voices, step, m.at + k * stepDur, stepDur);
+      const v = m.arrangement ? (voicesAt[k] ?? '') : voices;
+      if (v) player.schedule(tr, p, v, step, m.at + k * stepDur, stepDur);
       if (++step < p.chords.length * tr.steps) continue;
       step = 0;
       seg = (seg + 1) % tr.form.length;
     }
     if (m.close) {
-      if (step !== 0) throw new Error(`${m.track} is closed in the middle of a part (step ${step})`);
+      if (step !== 0 && !m.arrangement) throw new Error(`${m.track} is closed in the middle of a part (step ${step})`);
       // (A battle's tune does not ring home in the game, where the next one follows at once: here it does.)
       player.close({ ...tr, mood: 'title' }, m.at + steps * stepDur, m.ring ? m.ring / 6 : stepDur);
+    }
+  }
+  // A riser before a drop, made with the game's own pulse: a sweep up, louder as it goes, cut at the drop.
+  for (const [t0, id, vol, len] of sounds) {
+    if ((id as string) !== 'riser') continue;
+    for (const [mult, share] of [[1, 1], [0.5, 0.6]] as const) {
+      const o = c.createOscillator();
+      o.setPeriodicWave(sfx.wave('p12')!);
+      o.frequency.setValueAtTime(110 * mult, t0);
+      o.frequency.exponentialRampToValueAtTime(1760 * mult, t0 + len);
+      const gn = c.createGain();
+      gn.gain.value = 0;
+      gn.gain.setValueAtTime(0.0001, t0);
+      gn.gain.exponentialRampToValueAtTime(vol * share * 0.25, t0 + len * 0.95);
+      gn.gain.linearRampToValueAtTime(0, t0 + len);
+      o.connect(gn);
+      gn.connect(sfx.sfxGain!);
+      o.start(t0);
+      o.stop(t0 + len + 0.01);
     }
   }
   // Each sound at its moment: the render stops there, the sound is played, and it goes on.
   const at = new Map<number, SoundCue[]>();
   for (const s of sounds) {
+    if ((s[1] as string) === 'riser') continue;
     if (s[0] >= dur) continue;
     const q = Math.floor((s[0] * rate) / 128) * 128;
     if (q <= 0) continue;

@@ -9,4 +9,5 @@ coverage/
 .verify/
 promo/trailers/**/*.mp4
 promo/trailers/*-stills/
+promo/trailers/*.wav
 worker/.wrangler/
