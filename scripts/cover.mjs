@@ -1,16 +1,17 @@
 // A cover for the game's page on a store or a catalog (IGDB, for Twitch: portrait, 3:4, at least 600x800,
 // the logo over the game's art and no other words): a real moment of a real sector, played by the game's
 // own houses and drawn by its own renderer at its own pixel size, with the flame and the name over it.
-// Writes promo/cover-<name>.png (1200x1600) for each cover below. (The game's own words on the map, a
-// star's burning time or a Starfall's fuse, are left out of the frame taken.)
+// Writes promo/cover-<name>.png (1200x1600) for each cover below; and promo/thumb-<name>.png (1280x720), a
+// video's thumbnail (YouTube's size), the same way. (The game's own words on the map, a star's burning time
+// or a Starfall's fuse, are left out of the frame taken.)
 //   npx vite --port 5173 --strictPort (the dev server), then node scripts/cover.mjs [name,name]
 import fs from 'node:fs';
 import { DEV_URL, openBrowser } from './lib/browser.mjs';
 
-const W = 1200;
-const H = 1600;
 const min = (m) => Math.round(m * 60 * 20);
-const sector = (seed) => ({ seed, size: 'medium', difficulty: 2, heir: 'concord', perks: {}, unlockLegendary: true, unlockPacts: true, autoplay: true });
+const sector = (seed, extra = {}) => ({ seed, size: 'medium', difficulty: 2, heir: 'concord', perks: {}, unlockLegendary: true, unlockPacts: true, autoplay: true, ...extra });
+// A thumbnail: wide, at the game's small pixels (two of the screen's to one), the name over its upper third.
+const THUMB = { w: 1280, h: 720, px: 'small', kind: 'thumb', logo: 0.36 };
 
 // The moments (scripts/trailer/make.mjs scan found them): where the camera is, and where the name sits (0..1, top to bottom).
 const COVERS = {
@@ -20,10 +21,16 @@ const COVERS = {
   starfall: { config: sector(23), tick: 2843 * 20 + 30, node: 24, zoom: 0.24, dy: 0.12, logo: 0.2, frames: 40 },
   // A dark world kindled: the house's color floods it, with the ring of its kindling.
   kindle: { config: sector(90), tick: 603 + 9, node: 34, zoom: 0.72, dy: 0.1, logo: 0.2, frames: 40 },
+  // Thumbnails. Three houses at war over one world: the Vael's red, the Concord's gold, the Lyceum's violet.
+  battle: { ...THUMB, config: sector(90), tick: min(18.2), node: 26, zoom: 0.5, dx: -0.08, dy: 0.2, frames: 40 },
+  // A star erupting, its fire on its rings.
+  eruption: { ...THUMB, config: sector(23), tick: 2843 * 20 + 30, node: 24, zoom: 0.3, dy: 0.18, frames: 40 },
+  // The cradle in its later ages, every land lit by its tribes: where the story of a run of Ages begins.
+  cradle: { ...THUMB, config: sector(12, { mode: 'ages', stage: 'cradle' }), tick: min(14.5), fit: 1.25, frames: 40, logo: 0.3 },
 };
 
 const only = process.argv[2]?.split(',');
-const { browser, page, errors } = await openBrowser({ viewport: { width: W, height: H }, context: { deviceScaleFactor: 1 } });
+const { browser, page, errors } = await openBrowser({ viewport: { width: 1280, height: 1600 }, context: { deviceScaleFactor: 1 } });
 await page.goto(DEV_URL);
 await page.waitForTimeout(1500);
 const flame = fs.readFileSync('site/favicon.svg', 'utf8');
@@ -31,6 +38,9 @@ fs.mkdirSync('promo', { recursive: true });
 
 for (const [name, c] of Object.entries(COVERS)) {
   if (only && !only.includes(name)) continue;
+  const W = c.w ?? 1200;
+  const H = c.h ?? 1600;
+  await page.setViewportSize({ width: W, height: H });
   await page.evaluate(async ({ c, flame, W, H }) => {
     document.querySelector('#cover')?.remove();
     const box = document.createElement('div');
@@ -46,7 +56,7 @@ for (const [name, c] of Object.entries(COVERS)) {
     const { Screen } = await import('/src/render/Screen.ts');
     const { PAL } = await import('/src/game/data/heirs.ts');
     const screen = new Screen(box.querySelector('.world'), box);
-    screen.setPixelSize('large');
+    screen.setPixelSize(c.px ?? 'large');
     const r = new Renderer(screen);
     const g = Game.create(c.config);
     g.fxEnabled = false;
@@ -62,7 +72,7 @@ for (const [name, c] of Object.entries(COVERS)) {
       }
       const n = g.nodes[c.node];
       cam.zoom = cam.tzoom = c.zoom;
-      cam.x = cam.tx = n.x;
+      cam.x = cam.tx = n.x - ((c.dx ?? 0) * screen.W) / c.zoom;
       // (The world a little below the middle: the name is over the top of the picture.)
       cam.y = cam.ty = n.y - (c.dy * screen.H) / c.zoom;
     };
@@ -128,7 +138,7 @@ for (const [name, c] of Object.entries(COVERS)) {
     g2.fillStyle = PAL.gold;
     g2.fillText(text, left, top);
   }, { c, flame, W, H });
-  const out = `promo/cover-${name}.png`;
+  const out = `promo/${c.kind ?? 'cover'}-${name}.png`;
   await page.screenshot({ path: out, clip: { x: 0, y: 0, width: W, height: H } });
   console.log(out);
 }
