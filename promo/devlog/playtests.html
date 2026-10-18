@@ -1,0 +1,169 @@
+<title>Playtest Devlog</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400&family=Pixelify+Sans:wght@500;700&family=IBM+Plex+Mono:wght@500&display=swap">
+<style>
+  /* Layout: a bar with the copy buttons, then the post itself in one reading column, as itch.io will show it. */
+  :root {
+    --void: #0b0a1a;
+    --night: #1b1838;
+    --rule: #2f2a5c;
+    --ink: #fff4e0;
+    --soft: #c8cbe6;
+    --dim: #8e93c8;
+    --gold: #ffd23f;
+    --ember: #ff8a1f;
+    --display: 'Pixelify Sans', 'Trebuchet MS', system-ui, sans-serif;
+    --body: 'Atkinson Hyperlegible', 'Segoe UI', system-ui, sans-serif;
+    --mono: 'IBM Plex Mono', ui-monospace, 'Consolas', monospace;
+    color-scheme: dark;
+  }
+  @media (prefers-color-scheme: light) {
+    :root:not([data-theme="dark"]) {
+      --void: #f7f5fb; --night: #ffffff; --rule: #ddd8ee; --ink: #1b1838; --soft: #3a3566; --dim: #6a6694;
+      --gold: #8a5d00; --ember: #a8480a; color-scheme: light;
+    }
+  }
+  :root[data-theme="light"] {
+    --void: #f7f5fb; --night: #ffffff; --rule: #ddd8ee; --ink: #1b1838; --soft: #3a3566; --dim: #6a6694;
+    --gold: #8a5d00; --ember: #a8480a; color-scheme: light;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--void);
+    color: var(--soft);
+    font: 18px/1.65 var(--body);
+    padding-left: max(16px, env(safe-area-inset-left, 0px));
+    padding-right: max(16px, env(safe-area-inset-right, 0px));
+    padding-block: 28px 72px;
+  }
+  .wrap { max-width: 720px; margin: 0 auto; display: grid; gap: 28px; }
+  .bar { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 14px; padding: 14px 16px; background: var(--night); border: 1px solid var(--rule); border-radius: 6px; }
+  .bar p { margin: 0; flex: 1 1 260px; min-width: 0; font-size: 15px; color: var(--dim); }
+  .bar .label { display: block; font: 700 12px/1.4 var(--body); letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink); }
+  .buttons { display: flex; flex-wrap: wrap; gap: 8px; }
+  button {
+    font: 700 14px/1 var(--body); letter-spacing: 0.02em; cursor: pointer; padding: 10px 14px; border-radius: 4px;
+    border: 1px solid var(--gold); background: transparent; color: var(--gold);
+  }
+  button.primary { background: var(--gold); color: var(--void); }
+  button:focus-visible { outline: 2px solid var(--ember); outline-offset: 2px; }
+  .status { font: 500 13px/1.4 var(--mono); color: var(--ember); min-height: 1.4em; margin: 0; }
+  article { min-width: 0; }
+  article h1 { margin: 0 0 6px; font: 700 clamp(30px, 6vw, 42px)/1.1 var(--display); color: var(--gold); text-wrap: balance; }
+  article .sub { margin: 0 0 26px; color: var(--dim); font-size: 16px; }
+  article h2 { margin: 34px 0 10px; font: 700 clamp(22px, 4vw, 27px)/1.2 var(--display); color: var(--ink); text-wrap: balance; }
+  article p { margin: 0 0 14px; }
+  article ul { margin: 0 0 14px; padding-left: 1.2em; display: grid; gap: 8px; }
+  article blockquote { margin: 0 0 14px; padding: 4px 0 4px 16px; border-left: 3px solid var(--ember); color: var(--ink); font-style: italic; }
+  article strong { color: var(--ink); }
+  article a { color: var(--gold); }
+  article hr { border: 0; border-top: 1px solid var(--rule); margin: 30px 0; }
+  @media (max-width: 480px) { body { font-size: 17px; } }
+</style>
+
+<div class="wrap">
+  <div class="bar">
+    <p><span class="label">Devlog for itch.io</span>Copy the post, then paste it into a new devlog on your itch.io page. The headings, lists and quotes come with it.</p>
+    <div class="buttons">
+      <button class="primary" id="copy-rich" type="button">Copy post</button>
+      <button id="copy-plain" type="button">Copy as plain text</button>
+    </div>
+    <p class="status" id="status" role="status" aria-live="polite"></p>
+  </div>
+
+  <article id="post">
+    <h1>What our playtesters taught us</h1>
+    <p class="sub">Version 1.3 to 1.24, built mostly from your notes</p>
+
+    <p>Hegemarch is a real-time space strategy roguelite you play in your browser: you light a dark sector one world at a time, draft Boons, and fight rival houses for the crown. Over the last week and a half, people played it and told me what went wrong. Nearly every update from 1.3 to 1.24 came from their notes. Here is what they found, what changed, and the lessons I'm keeping.</p>
+
+    <h2>If you can't see it, it didn't happen</h2>
+    <p>The most common note wasn't "this is broken." It was "I didn't know that happened." Often the rule worked; the screen just didn't show it.</p>
+    <ul>
+      <li>Ships died without a word. Every loss now gets a line in the log: <em>Lost at Cinder to Ancient Sentinels: 2 Scouts</em>.</li>
+      <li>A shield bar never quite emptied, so a broken shield looked like it was holding. Now an empty shield looks empty, and <strong>SHIELDS DOWN</strong> appears over the world.</li>
+      <li>Gravity Snare worked, but nothing showed it. Snared ships now get a violet ring, with "SNARED 6" over your Ark.</li>
+      <li>One tester watched his Dreadnoughts melt while crushing a Striker swarm and blamed friendly fire. It was a rival's Martyr Cores Boon: every Striker he destroyed exploded. Now the blasts are labelled, the first one is announced, and the Rivals tab shows which houses have it.</li>
+      <li>Rival countdowns to victory were all red, which is the Vael Imperium's colour. A tester playing Vael read the Solar Concord's countdown as his own. Countdowns now take the colour of the house they belong to.</li>
+    </ul>
+
+    <h2>Don't make players pay for thinking</h2>
+    <p>For a few versions, pausing only let you look around, to keep the feel of a real-time game. One tester paused and unpaused around every single order instead, and said it plainly: don't make the controls serve the feel. You can give orders while paused again.</p>
+    <p>The same idea on a smaller scale: twice in one evening, a tester's click landed on an event that had popped up a split second earlier, and picked an option he never read. Dialogs that open by themselves now ignore clicks for their first second.</p>
+
+    <h2>A fight has to be able to stick</h2>
+    <p>The first tester gave up on chasing raiders:</p>
+    <blockquote>Chasing fleets back and forth? Nope.</blockquote>
+    <p>Any ship could jump out of any fight in 3.5 seconds. Now Hearths, Bastions and Starbases project an anti-warp field that holds enemy ships 6 seconds longer, and a ship's drive charges at half speed while it's under fire.</p>
+    <p>The Bastion took several tries. A tester asked why he would ever build one, since rushing the enemy's home world was the only tactic that worked. First the field grew with the Bastion's level, and one big Bastion did everything. Then fields linked between nearby strongholds, and the next tester built a Bastion, saw its field cover only its own world, and asked if it was a bug. That rule looked fine on paper and failed in play. Now a Bastion's field reaches every place one jump away, and its neighbouring worlds take 20 to 40% less damage while it stands.</p>
+    <p>That one became my test for every new rule: <strong>you should be able to guess it from the map, it should leave you a real choice, and it should show its effect the moment you act.</strong></p>
+
+    <h2>Answer the question after it's asked</h2>
+    <blockquote>The game offers me a wide variety of Boons early on before I've encountered the problems that the Boons are intended to solve.</blockquote>
+    <p>I measured it. Boon choices came at about minutes 0, 2, 4, 6 and 9, but a house first destroyed an enemy ship around minute 5 and first had a world attacked around minute 15. Defensive Boons were offered three to five choices before anyone needed them.</p>
+    <p>Now a new player starts with the 21 Boons whose use is clear from the first minute. The rest are discovered by playing: your first battle, a full hangar, a world under attack and other moments each unlock Boons for good, and the next choice includes one of them.</p>
+    <p>First runs got the same treatment. The three ways to win used to sit side by side like cards, so people thought they had to pick one; now they're a list with OR between them. The First Night tutorial deals its first Boons by hand, so nothing early asks for knowledge you don't have yet.</p>
+
+    <h2>The AI should play fair</h2>
+    <p>From a tester on Brutal:</p>
+    <blockquote>It's not the faster decision making, it's that they know things that they don't have any eyes on.</blockquote>
+    <p>He was right. Rival houses could read where your fleets were ordered to go, and they knew the true strength of every place they had explored. Since 1.24 they play in the fog of war: they know what they can see, remember what they saw last, and trust it less as it gets old. You can now feint, slip past, and lure a house into a fleet it never spotted. Brutal also used to describe itself as just "Merciless." Every difficulty now says exactly what it gives the rivals.</p>
+    <p>The AI got smarter in other ways too. Defenders no longer bounce between two worlds (one changed course sixty times in two and a half minutes). And armies no longer wait one system away while their capital falls: in forty test games, 42 of the 57 houses that lost their home world still had a fleet nearby. Now, once a home world's shields go down, every ship comes back to defend it.</p>
+
+    <h2>If the game promises a number, you should feel it</h2>
+    <p>One tester bought every rank of Fortunate Stars, which is meant to raise your odds of rarer Boons, and never saw anything better than a Rare. I measured that too, and he was right: three ranks moved an Epic from 20% of offers to 29%. Now each of its five ranks clearly counts, up to an Epic in half of all offers. The Hall of Heirs shows the odds, and an automated test keeps those numbers honest. Legendary Lineage now guarantees a Legendary by your fifth Boon choice.</p>
+    <p>Forges had the same problem: building ships 25% faster was barely noticeable. A Forge on the right kind of world now builds ships 15% cheaper, and the build buttons show the price.</p>
+
+    <h2>Comfort is part of the design</h2>
+    <p>One tester raised a hand to shield his eyes when an Epic Boon was dealt. Every white flash is gone now; rare cards light up with a ring of fire, the way a world does when you kindle it. Story text that arrived word by word felt slow, so it now comes in a line at a time. And the Ember counter flickered white at certain incomes; now it only flashes when a lump of Embers actually arrives.</p>
+
+    <h2>Some of the best ideas came from players</h2>
+    <p>A tester asked for a bomb that makes a star go nova, with two minutes for enemies to defuse it. That became the <strong>Starfall</strong>: arm it at a star, every house is warned, and two minutes later everything in that system dies unless someone destroys it first. The first version was an oval the size of an Ark. Testers asked for it to be big and obvious, so it's now a star in a cage, twice the size of an Ark, its heart beating red as the fuse runs down.</p>
+    <p>The tester who discovered Martyr Cores suggested its blasts should also damage the enemy world where they happen. That went in, and now where you choose to fight a swarm matters.</p>
+
+    <h2>Measure before deciding</h2>
+    <p>Behind most of these changes is one habit: before and after each change, the game plays itself forty times with AI houses only, and I check that the change does what I think it does. That's how I found seed ships stuck waiting for each other for 54% of their lives (now they never are), and how I know a fix didn't quietly make every game twice as long.</p>
+
+    <hr>
+
+    <h2>Thank you</h2>
+    <p>To everyone who played, wrote notes, and sent screenshots: this update is as much yours as mine. Please keep it coming, in the comments on this post or wherever you found the game.</p>
+    <p>New here? Hegemarch is free in your browser at <a href="https://hegemarch.com">hegemarch.com</a>. There's a new Daily sector every day, the same for everyone, and the fastest crown takes the throne.</p>
+  </article>
+</div>
+
+<script>
+  const post = document.getElementById('post');
+  const status = document.getElementById('status');
+  const say = (text) => { status.textContent = text; };
+  // (Where the clipboard is refused, the post is selected, ready for Ctrl+C or Cmd+C.)
+  const selectPost = () => {
+    const range = document.createRange();
+    range.selectNodeContents(post);
+    const sel = window.getSelection();
+    sel.removeAllRanges();
+    sel.addRange(range);
+    say('The post is selected. Press Ctrl+C (Cmd+C on a Mac) to copy it.');
+  };
+  document.getElementById('copy-rich').addEventListener('click', () => {
+    try {
+      const item = new ClipboardItem({
+        'text/html': new Blob([post.innerHTML], { type: 'text/html' }),
+        'text/plain': new Blob([post.innerText], { type: 'text/plain' }),
+      });
+      navigator.clipboard.write([item]).then(() => say('Copied. Paste it into your devlog on itch.io.'), selectPost);
+    } catch {
+      selectPost();
+    }
+  });
+  document.getElementById('copy-plain').addEventListener('click', () => {
+    try {
+      navigator.clipboard.writeText(post.innerText).then(() => say('Copied as plain text.'), selectPost);
+    } catch {
+      selectPost();
+    }
+  });
+</script>
