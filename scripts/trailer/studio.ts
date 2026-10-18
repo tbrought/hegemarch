@@ -250,10 +250,11 @@ export interface Shot {
    * The game's own Boon draft: a run of `sector` at `tick`, a Boon waiting, its dialog dealt and drawn by
    * the game's own HUD at the game's own size (480x270), sounds and all. `hover`: from that second, the
    * pointer rests on that card (0, 1, 2), which rises and grows as in play. Upright, the dialog is wider
-   * than the picture: the picture pans across it from `pan[0]` to `pan[1]` seconds into the shot. `zoom`:
+   * than the picture: the picture pans across it from `pan[0]` to `pan[1]` seconds into the shot, or (`'deal'`)
+   * with the deal, from the first card beaming in to the last one shown, each card in view as it comes. `zoom`:
    * its pixels this many times the size of the world's (2: a close-up, a card about the picture's width).
    */
-  draft?: { sector: SectorSpec; tick: number; hover?: [number, number]; pan?: [number, number]; zoom?: number };
+  draft?: { sector: SectorSpec; tick: number; hover?: [number, number]; pan?: [number, number] | 'deal'; zoom?: number };
 }
 
 const stage = document.getElementById('stage')!;
@@ -496,8 +497,10 @@ function drawDraft(d: NonNullable<Shot['draft']>, t: number) {
   const left = (Math.min(...xs.map((x) => x[0])) - 8) * z;
   const right = (Math.max(...xs.map((x) => x[1])) + 8) * z;
   let x = Math.round((W - 480 * z) / 2);
-  if (W < right - left && d.pan) {
-    const k = smooth(Math.max(0, Math.min(1, (t - d.pan[0]) / (d.pan[1] - d.pan[0]))));
+  const plan = hud.modals.dealPlan;
+  const pan = d.pan === 'deal' ? (plan ? [Math.min(...plan.cards.map((c) => c.beamAt)) + 0.15, plan.doneAt] : null) : d.pan;
+  if (W < right - left && pan) {
+    const k = smooth(Math.max(0, Math.min(1, (t - pan[0]) / (pan[1] - pan[0]))));
     x = Math.round(-(left + (right - left - W) * k));
   }
   ctx.imageSmoothingEnabled = false;
