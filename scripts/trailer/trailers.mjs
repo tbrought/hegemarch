@@ -360,6 +360,125 @@ export const TRAILERS = {
   ], at(d, last(d))),
 };
 
+// ------------------------------------------------------------------------------------------------
+// Shorts: upright (270x480, made 1080x1920), to be narrated over. Their tunes are beds (no melody: the voice
+// is the melody), their sound quieter (-20 LUFS: the voice goes on top), their words a keyword or two in the
+// upper third (YouTube's own words and buttons cover the foot of a Short and its right-hand side).
+// ------------------------------------------------------------------------------------------------
+const PW = 270;
+/** A keyword or two at the top of an upright shot, over a band of night that comes in with it. */
+const cap = (dur, lines, y = 0.22) => (lines ? [{ at: 0.25, until: dur - 0.12, style: 'lore', lines, y }] : []);
+const up = (shot, lines) => ({ ...shot, text: cap(shot.dur, lines), bars: 0, vignette: 0.35 });
+/** Upright shots: the same moments as the trailers', framed for a narrow picture. */
+const pBattle = (which, dur, lines, punch = true) => {
+  const [seed, m, node, dx] = BATTLES[which];
+  const cam = punch
+    ? [{ t: 0, node, zoom: 0.24, dx: dx * 0.5, dy: 30 }, { t: 0.25, node, zoom: 0.34, dx: dx * 0.5, dy: 30 }, { t: 1, node, zoom: 0.38, dx: dx * 0.5, dy: 30 }]
+    : [{ t: 0, node, zoom: 0.32, dx: dx * 0.5, dy: 30 }, { t: 1, node, zoom: 0.36, dx: dx * 0.5, dy: 30 }];
+  return up({ sector: S(seed), from: min(m) - 20, dur, speed: 1, loud: 1, duck: 0.9, cam }, lines);
+};
+const pDark = (dur, lines) => up({ sector: S(90), from: 0, dur, speed: 0.4, sounds: false,
+  cam: [{ t: 0, node: 33, zoom: 0.16, dy: 20 }, { t: 1, node: 33, zoom: 0.19, dy: 20 }] }, lines);
+const pKindle = (dur, lines) => up({ sector: S(90), from: 603 - sec(0.9), dur, speed: 1, loud: 0.5,
+  cam: [{ t: 0, node: 34, zoom: 0.6, dy: 20 }, { t: 2.2 / dur, node: 34, zoom: 0.6, dy: 20 }, { t: 1, node: 34, zoom: 0.26, dy: 20 }] }, lines);
+const pHearth = (dur, lines) => {
+  const fall = scan('47').moments.find((m) => m.kind === 'hearth' && m.node === 24).tick;
+  return up({ sector: S(47), from: fall - sec(dur * 0.55), dur, speed: 1, loud: 1,
+    cam: [{ t: 0, node: 24, zoom: 0.34, dy: 30 }, { t: 1, node: 24, zoom: 0.4, dy: 30 }] }, lines);
+};
+/** The star of seed 23 at 2844.1 s: erupting `at` seconds into the shot. */
+const NOVA = 2844.1;
+const pErupt = (dur, lines, at = 0.8) => up({ sector: S(23), from: sec(NOVA - at), dur, speed: 1,
+  cam: [{ t: 0, node: 24, zoom: 0.3, dy: 30 }, { t: 0.45, node: 24, zoom: 0.26, dy: 30 }, { t: 1, node: 24, zoom: 0.17, dy: 30 }] }, lines);
+const pPicture = (kind, dur, lines) => ({ blank: true, stars: true, dur, vignette: 0.3,
+  panels: [{ at: 0.1, until: dur + 1, kind: 'art', art: kind, x: 15, y: 170, w: 240, h: 120, scale: 3, bare: true }], text: cap(dur, lines) });
+const pBanners = (dur, lines) => ({ blank: true, stars: true, dur, vignette: 0.3,
+  panels: [{ at: 0.6, until: dur + 1, kind: 'banners', heirs: ALL, cols: 1, x: 20, y: 150, w: 230, h: 236, scale: 1, stagger: 0.3 }], text: cap(dur, lines, 0.2) });
+const pClimb = (dur, lines) => ({ blank: true, stars: true, dur, vignette: 0.3,
+  panels: [{ at: 0.2, until: dur + 1, kind: 'art', art: 'ages', x: 15, y: 190, w: 240, h: 64, scale: 2, bare: true }],
+  text: [...cap(dur, lines), { at: 1.2, until: dur - 0.12, style: 'caption', lines: ['STONE · BRONZE · IRON', 'POWDER · MACHINE · SPACE'], y: 0.62, type: true, cps: 30 }] });
+const pDawn = (dur, lines) => up({ sector: CRADLE, from: 0, dur, speed: 1, sounds: false,
+  cam: [{ t: 0, zoom: 'fit', fit: 1.5 }, { t: 1, zoom: 'fit', fit: 1.9 }] }, lines);
+const pFirstFire = (dur, lines) => up({ sector: CRADLE, from: sec(20), dur, speed: 1.3, loud: 0.5,
+  cam: [{ t: 0, node: 10, zoom: 'fit', fit: 2.2 }, { t: 1, node: 10, zoom: 'fit', fit: 3.4 }] }, lines);
+const pRise = (dur, lines) => up({ sector: CRADLE, from: sec(15), dur, speed: [10, 300], sounds: false,
+  cam: [{ t: 0, zoom: 'fit', fit: 1.7 }, { t: 1, zoom: 'fit', fit: 1.85 }] }, lines);
+const pWar = (dur, lines) => up({ sector: S(3, { ages: true }), from: min(17.5) - 20, dur, speed: 1, loud: 1,
+  cam: [{ t: 0, node: 1, zoom: 0.46, dy: 30 }, { t: 1, node: 1, zoom: 0.52, dy: 30 }] }, lines);
+const pLaunch = (dur, lines) => {
+  const at = scan('ages-12').moments.find((m) => m.kind === 'launch').tick;
+  const lift = Math.min(2.4, dur * 0.45);
+  return up({ sector: CRADLE, from: at - sec(lift), dur, speed: 1, sounds: false, ark: { node: 0, color: '#b05cff', lift },
+    cam: [{ t: 0, node: 0, zoom: 'fit', fit: 3.2, dy: 60 }, { t: 1, node: 0, zoom: 'fit', fit: 2.8, dy: 60 }] }, lines);
+};
+const pNight = (dur, lines) => ({ blank: true, stars: true, dur, vignette: 0.3, text: [{ at: 0.3, until: dur - 0.12, style: 'big', lines, y: 0.4 }] });
+const pEnd = (dur, lines) => ({ blank: true, stars: true, dur, vignette: 0.4, text: [{ at: 0.1, until: dur, style: 'logo', lines, y: 0.42 }] });
+const FREE = ['PLAY FREE IN YOUR BROWSER', 'HEGEMARCH.COM'];
+/** A Short: its shots (dips to and from the night, cuts between shots of the war), its bed, its flame. */
+const short = (shots, music) => {
+  const s = cuts(shots);
+  s[0].fadeIn = 0.6;
+  return { format: 'portrait', lufs: -20, shots: s, music, sounds: [[at(s, s.length - 1) + 0.1, 'kindle', 0.4, 0]], sfxVol: 0.8 };
+};
+const bed = (track, shots, fromBar, arrangement) => ({ track, at: 0, until: at(shots, shots.length - 1), part: 0, fromBar, close: true, ring: RING, arrangement });
+
+// 1. What is Hegemarch? The game in forty seconds.
+const sa = [
+  pBattle('goldOrange', HG * 2, ['HEGEMARCH']),
+  pDark(HG * 2, ['THE SECTOR', 'IS [!DARK]']),
+  pKindle(HG * 2, ['{LIGHT} IT', 'AGAIN']),
+  pPicture('boons', HG * 2, ['NEW {BOONS}', 'EVERY RUN']),
+  pBanners(HG * 2, ['SIX {HOUSES}']),
+  { ...pBattle('redGoldViolet', HG * 2, ['[!WAR]']), hard: true },
+  { ...pErupt(HG * 2, ['STARS', '[!ERUPT]']), hard: true },
+  { ...pHearth(HG * 2, ['ONE {CROWN}']), hard: true },
+  pEnd(5, FREE),
+];
+// 2. From the Stone Age to the stars: an Ages run, from one world's first fire to the crown.
+const sb = [
+  pDawn(FF * 2, ['ONE {WORLD}']),
+  pFirstFire(FF * 2, ['FIRST {FIRES}']),
+  pRise(FF * 2, ['TRIBES', '[GROW]']),
+  pClimb(FF * 2, ['SIX {AGES}']),
+  pWar(FF * 2, ['[!WAR] FOR', 'THE CRADLE']),
+  pLaunch(FF * 2, ['AN {ARK}']),
+  pKindle(FF * 2, ['THE {STARS}']),
+  { ...pBattle('tealViolet', FF * 2, ['THE {CROWN}']), hard: true },
+  pEnd(5, FREE),
+];
+// 3. The Daily throne: one sector a day, the same for everyone; the fastest crown takes the throne.
+const sc = [
+  pPicture('daily', ET * 2, ['EVERY {DAY}']),
+  pDark(ET * 2, ['ONE {SECTOR}']),
+  pKindle(ET * 2, ['THE SAME', 'FOR ALL']),
+  { ...pBattle('tealBlue', ET * 2, ['SAME', 'RIVALS']), dip: true },
+  { ...pHearth(ET * 2, ['FASTEST', '{CROWN}']), hard: true },
+  pNight(ET * 2, ['TAKES THE', '{THRONE}']),
+  pEnd(5, ['DAILY RUN · FREE', 'HEGEMARCH.COM']),
+];
+// 4. The Starfall: a war going badly; a Starfall armed at a star; its two minutes; the star erupts.
+const ARMED = NOVA - 120;
+const sd = [
+  pBattle('goldOrange', TA * 2, ['LOSING', 'THE WAR?']),
+  { ...up({ sector: S(23), from: sec(ARMED - 0.6), dur: TA * 2, speed: 1, cam: [{ t: 0, node: 24, zoom: 0.36, dy: 75 }, { t: 1, node: 24, zoom: 0.4, dy: 75 }] },
+    ['ARM A', '{STARFALL}']), dip: true },
+  { ...up({ sector: S(23), from: sec(ARMED + 2), dur: TA * 4, speed: [4, 40], cam: [{ t: 0, node: 24, zoom: 0.4, dy: 75 }, { t: 1, node: 24, zoom: 0.3, dy: 75 }] },
+    ['TWO', 'MINUTES...']), hard: true },
+  { ...pErupt(TA * 2, null, 0.5), hard: true },
+  { ...up({ sector: S(23), from: sec(NOVA + 3), dur: TA * 2, speed: 1, cam: [{ t: 0, node: 24, zoom: 0.17, dy: 30 }, { t: 1, node: 24, zoom: 0.12, dy: 30 }] },
+    ['NO', 'SURVIVORS']), hard: true },
+  { ...pHearth(TA * 2, ['TURN', 'THE WAR']), dip: true },
+  { ...pBattle('redGoldViolet', TA * 2, null), hard: true },
+  pEnd(5, FREE),
+];
+void PW;
+Object.assign(TRAILERS, {
+  'short-pitch': short(sa, [bed('Hegemarch', sa, 0, [{ bars: 2, voices: 'b', vol: 0.5 }, { bars: 2, voices: 'ab', vol: 0.6 }, { bars: 12, voices: 'abd', vol: 0.75 }])]),
+  'short-ages': short(sb, [bed('First Fires', sb, 0, [{ bars: 4, voices: 'bh', vol: 0.5 }, { bars: 4, voices: 'abh', vol: 0.6 }, { bars: 8, voices: 'abd', vol: 0.72 }])]),
+  'short-daily': short(sc, [bed('The Empty Throne', sc, 0, [{ bars: 2, voices: 'b', vol: 0.55 }, { bars: 2, voices: 'ab', vol: 0.62 }, { bars: 8, voices: 'abd', vol: 0.72 }])]),
+  'short-starfall': short(sd, [bed('To Arms', sd, 0, [{ bars: 2, voices: 'bd', vol: 0.6 }, { bars: 6, voices: 'abd', vol: 0.68 }, { bars: 8, voices: 'abd', vol: 0.78 }])]),
+});
+
 // The music is checked as it is heard: each tune runs whole bars of its shots; it begins on its home chord; its
 // melody comes in at the head of a part (bar 1 of 8, where its phrase begins); and it comes home only at the end
 // of a phrase (bar 4 or 8).

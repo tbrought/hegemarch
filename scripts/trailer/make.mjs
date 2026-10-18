@@ -16,10 +16,13 @@ const FFMPEG = process.env.FFMPEG ?? 'ffmpeg';
 const [mode, arg] = process.argv.slice(2);
 fs.mkdirSync(OUT, { recursive: true });
 
-const { browser, page, errors } = await openBrowser({ viewport: { width: 1920, height: 1080 }, context: { deviceScaleFactor: 1 } });
+// (A Short is upright: 1080x1920, its studio opened so.)
+const PORTRAIT = TRAILERS[arg]?.format === 'portrait';
+const [VW, VH] = PORTRAIT ? [1080, 1920] : [1920, 1080];
+const { browser, page, errors } = await openBrowser({ viewport: { width: VW, height: VH }, context: { deviceScaleFactor: 1 } });
 let onFrame = async () => {};
 await page.exposeFunction('sendFrame', (png) => onFrame(Buffer.from(png.slice(png.indexOf(',') + 1), 'base64')));
-await page.goto(new URL('scripts/trailer/studio.html', DEV_URL).href);
+await page.goto(new URL(`scripts/trailer/studio.html${PORTRAIT ? '?portrait' : ''}`, DEV_URL).href);
 await page.waitForFunction(() => window.studioReady === true, null, { timeout: 60000 });
 
 function ffmpeg(args) {
@@ -125,8 +128,8 @@ if (mode === 'audit') {
       });
     });
     // (And the last second and a half fades out, whatever is still sounding: a trailer ends in silence, not cut off.)
-    const norm = `volume=${(-14 - Number(measured.input_i)).toFixed(2)}dB,alimiter=limit=0.84:attack=5:release=60:level=false,afade=t=out:st=${(dur - 1.5).toFixed(2)}:d=1.5`;
-    const mux = ffmpeg(['-i', frames, '-i', wavPath, '-vf', 'scale=1920:1080:flags=neighbor', '-c:v', 'libx264', '-preset', 'slow', '-crf', '14', '-tune', 'animation',
+    const norm = `volume=${((trailer.lufs ?? -14) - Number(measured.input_i)).toFixed(2)}dB,alimiter=limit=0.84:attack=5:release=60:level=false,afade=t=out:st=${(dur - 1.5).toFixed(2)}:d=1.5`;
+    const mux = ffmpeg(['-i', frames, '-i', wavPath, '-vf', `scale=${VW}:${VH}:flags=neighbor`, '-c:v', 'libx264', '-preset', 'slow', '-crf', '14', '-tune', 'animation',
       '-pix_fmt', 'yuv420p', '-r', '30', '-af', norm, '-ar', '48000', '-c:a', 'aac', '-b:a', '256k', '-movflags', '+faststart', '-shortest', mp4]);
     mux.stdin.end();
     await mux.done;

@@ -5,7 +5,8 @@
  * sounds of the fighting on screen.
  *
  * Everything is drawn at the game's own size (480x270, as on a 1080p screen) and made four times larger,
- * pixel for pixel, when the video is made: the words are pixels of the same size as the worlds'.
+ * pixel for pixel, when the video is made: the words are pixels of the same size as the worlds'. Upright,
+ * for a Short (studio.html?portrait), the same pixels stand the other way: 270x480, made 1080x1920.
  */
 import { playBattleSounds } from '../../src/audio/battleSounds';
 import { Music, TRACKS } from '../../src/audio/Music';
@@ -28,8 +29,10 @@ import { SPACE } from '../../src/game/data/eras';
 import { starWindow } from '../../src/ui/subjects';
 
 export const FPS = 30;
-export const W = 480;
-export const H = 270;
+/** Upright, for a Short (9:16): the page is opened as studio.html?portrait. */
+export const PORTRAIT = new URLSearchParams(location.search).has('portrait');
+export const W = PORTRAIT ? 270 : 480;
+export const H = PORTRAIT ? 480 : 270;
 
 export interface SectorSpec {
   seed: number;
@@ -246,6 +249,24 @@ const stage = document.getElementById('stage')!;
 const worldCanvas = document.getElementById('world') as HTMLCanvasElement;
 const screen = new Screen(worldCanvas, stage);
 screen.setPixelSize('auto');
+// (Upright, the game is drawn at 270x480, four of the screen's pixels to one of its: its Screen is told so,
+// whatever its own sizes would make of the page.)
+if (PORTRAIT) {
+  stage.style.width = `${W * 4}px`;
+  stage.style.height = `${H * 4}px`;
+  const fixed = screen as unknown as { W: number; H: number; scale: number; g: CanvasRenderingContext2D; listeners: (() => void)[]; resize: () => void };
+  fixed.resize = () => {
+    worldCanvas.width = W;
+    worldCanvas.height = H;
+    fixed.W = W;
+    fixed.H = H;
+    fixed.scale = 4;
+    fixed.g = worldCanvas.getContext('2d')!;
+    fixed.g.imageSmoothingEnabled = false;
+    for (const fn of fixed.listeners) fn();
+  };
+  fixed.resize();
+}
 const renderer = new Renderer(screen);
 const out = document.createElement('canvas');
 out.width = W;
@@ -307,12 +328,13 @@ const FAR = new Float32Array(W * H).map((_, i) => {
  * (0..1) is how far it has come in, with the words. Both darken smoothly, every pixel a little (night in
  * dither, over a bright land, reads as black specks eating into it).
  */
-function dusk(v: number, band: number) {
-  if (!v && !band) return;
+function dusk(v: number, band: number, top = 0) {
+  if (!v && !band && !top) return;
   const img = frameCtx.getImageData(0, 0, W, H);
   const d = img.data;
   for (let y = 0; y < H; y++) {
-    const by = band ? Math.max(0, Math.min(1, (y / H - 0.6) / 0.1)) * 0.94 * band : 0;
+    const by = Math.max(band ? Math.max(0, Math.min(1, (y / H - 0.6) / 0.1)) * 0.94 * band : 0,
+      top ? Math.max(0, Math.min(1, (0.4 - y / H) / 0.1)) * 0.9 * top : 0);
     for (let x = 0; x < W; x++) {
       const i = y * W + x;
       const vv = v ? Math.max(0, Math.min(1, (FAR[i] - 0.62) / 0.5)) * v : 0;
@@ -566,6 +588,7 @@ function wordsNow(cue: TextCue, t: number, how: 'story' | 'type' | 'now', clock:
     // catching ember and gold as a line of a story does; then the lines under it, one after the other.
     const since = t - cue.at;
     const cy = Math.round(H * (cue.y ?? 0.46));
+    const big = W < 400 ? 24 : 32;
     drawFlame(W / 2 - 32, cy - 72, 4);
     if (since < 0.7) {
       const k = since / 0.7;
@@ -578,12 +601,12 @@ function wordsNow(cue: TextCue, t: number, how: 'story' | 'type' | 'now', clock:
     }
     if (since >= 0.35) {
       const age = since - 0.35;
-      if (age < STORY_GLOW) richLine('HEGEMARCH', W / 2, cy + 6, 32, PAL.gold, age < STORY_GLOW / 2 ? PAL.ember : PAL.gold, clock);
-      else line('HEGEMARCH', W / 2, cy + 6, 32, PAL.gold, true);
+      if (age < STORY_GLOW) richLine('HEGEMARCH', W / 2, cy + 6, big, PAL.gold, age < STORY_GLOW / 2 ? PAL.ember : PAL.gold, clock);
+      else line('HEGEMARCH', W / 2, cy + 6, big, PAL.gold, true);
     }
     cue.lines.forEach((l, i) => {
       const age = since - 0.9 - i * 0.3;
-      if (age >= 0) richLine(l, W / 2, cy + 52 + i * 14, 8, i === 0 ? PAL.bone : PAL.mist, age < STORY_GLOW / 2 ? PAL.ember : age < STORY_GLOW ? PAL.gold : null, clock);
+      if (age >= 0) richLine(l, W / 2, cy + big + 20 + i * 14, 8, i === 0 ? PAL.bone : PAL.mist, age < STORY_GLOW / 2 ? PAL.ember : age < STORY_GLOW ? PAL.gold : null, clock);
     });
     return;
   }
@@ -814,8 +837,10 @@ export async function shoot(shots: Shot[], everyNth = 1, pick?: number[]): Promi
       }
       // (The vignette, and the band under words at the foot of the picture.)
       // (The band comes in with the words over it, and goes with them.)
-      const low = Math.max(0, ...(shot.text ?? []).filter((c) => (c.y ?? 0.5) >= 0.68 && c.style !== 'logo').map((c) => (t >= c.at && t < c.until ? fadeOf(t, c.at, c.until, !c.held) : 0)));
-      dusk(shot.vignette ?? 0, g ? low : 0);
+      const shown = (c: TextCue) => (t >= c.at && t < c.until ? fadeOf(t, c.at, c.until, !c.held) : 0);
+      const low = Math.max(0, ...(shot.text ?? []).filter((c) => (c.y ?? 0.5) >= 0.68 && c.style !== 'logo').map(shown));
+      const high = Math.max(0, ...(shot.text ?? []).filter((c) => (c.y ?? 0.5) <= 0.32 && c.style !== 'logo').map(shown));
+      dusk(shot.vignette ?? 0, g ? low : 0, g ? high : 0);
       if (shot.bars) {
         ctx.fillStyle = '#000000';
         ctx.fillRect(0, 0, W, shot.bars);
