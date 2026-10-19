@@ -128,7 +128,8 @@ export function showHall(app: App) {
     : '<div class="dim">No records yet: the first run of each kind sets them, and every run after is measured against them.</div>';
   app.put('hall', `<div class="screen${app.crt()}"><div class="page">
       <h1>HALL OF HEIRS</h1>
-      <div class="lead">Every heir who falls leaves a legacy for the next. Every run earns Legacy, win or lose; what you buy with it here is yours in every run after. <span class="gl" data-gl="legacy">Legacy</span>: <span class="legacy-badge">◆${p.legacy}</span> <span class="dim">(${p.totalLegacy} earned in all)</span></div>
+      <div class="lead"><b>Every heir who falls leaves a legacy for the next.</b> Every run earns <span class="gl" data-gl="legacy">Legacy</span>, <em>win or lose</em>, and what you buy with it here is yours in every run after.</div>
+      <div class="hall-purse"><span class="k">YOUR LEGACY</span><span class="purse">◆${p.legacy}</span><span class="dim">${p.totalLegacy} earned in all</span></div>
       <h2>HOUSES</h2><div class="heirs">${heirs}</div>
       <h2 class="h-with">INHERITANCE${refund}</h2><div class="perks">${perks}</div>
       <h2>FORBIDDEN KNOWLEDGE</h2><div class="perks">${unlocks}</div>

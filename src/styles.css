@@ -584,6 +584,49 @@ h2.h-with {
   line-height: 1.4;
 }
 
+/* A lead's words, as the website has them: what it names bright, and the one phrase to take away in gold
+   over a pixel band of it. */
+.lead b {
+  font-weight: 700;
+  color: var(--bone);
+}
+
+.lead em {
+  font-style: normal;
+  font-weight: 700;
+  color: var(--gold);
+  background: linear-gradient(to top, color-mix(in srgb, var(--gold) 30%, transparent) 0 5px, transparent 5px);
+  -webkit-box-decoration-break: clone;
+  box-decoration-break: clone;
+}
+
+/* The player's Legacy at the head of the Hall of Heirs: the purse it has on the title screen. */
+.hall-purse {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 14px;
+  margin: 0 0 18px;
+}
+
+.hall-purse .k {
+  font-family: var(--display);
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  color: var(--dusk);
+}
+
+.hall-purse .purse {
+  margin: 0;
+  padding: 8px 10px 7px;
+  font-family: var(--display);
+  font-size: 13px;
+}
+
+.hall-purse .dim {
+  font-size: 16px;
+}
+
 .dim {
   color: var(--dusk);
 }
@@ -1073,12 +1116,6 @@ select optgroup {
 
 .heir.house.owned .heir-art {
   box-shadow: 0 0 0 var(--px) var(--hc);
-}
-
-.legacy-badge {
-  font-family: var(--display);
-  font-size: 13px;
-  color: var(--gold);
 }
 
 table.history,

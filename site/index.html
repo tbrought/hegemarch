@@ -663,6 +663,28 @@
         max-width: 64ch;
         color: var(--mist);
       }
+      /* What a section is about, said in its words: the things it names bright, the one phrase to take away in the
+         chosen house's color over a pixel band of it (the page's color, as the rule under the heading is), and
+         Legacy in its gold, as the game has it. */
+      .band-head .sub b {
+        font-weight: 700;
+        color: var(--bone);
+      }
+      .band-head .sub em {
+        font-style: normal;
+        font-weight: 700;
+        color: var(--house);
+        background: linear-gradient(to top, color-mix(in srgb, var(--house) 30%, transparent) 0 6px, transparent 6px);
+        -webkit-box-decoration-break: clone;
+        box-decoration-break: clone;
+        transition:
+          color 0.4s,
+          background 0.4s;
+      }
+      .band-head .sub .legacy {
+        font-weight: 700;
+        color: var(--gold);
+      }
       /* The world at the head of each section: grey until the section is reached (drawn by site.js). */
       .node {
         display: none;
@@ -1640,8 +1662,8 @@
           <canvas class="node" aria-hidden="true"></canvas>
           <h2>ONE RUN, START TO CROWN</h2>
           <p class="sub lead">
-            An 8-bit real-time space strategy roguelite. Every run is a new sector, with new rivals and new Boons; a medium one takes about 35 to 50
-            minutes. What you saw above is the game itself.
+            An <b>8-bit real-time space strategy roguelite</b>. Every run is <em>a new sector, with new rivals and new Boons</em>; a medium one
+            takes about <b>35 to 50 minutes</b>. What you saw above is the game itself.
           </p>
         </header>
         <div class="band-body">
@@ -1675,9 +1697,9 @@
           <canvas class="node" aria-hidden="true"></canvas>
           <h2>THE DAILY THRONE</h2>
           <p class="sub">
-            Every day there is one sector for every player, played by the same rules. The fastest crown of the day makes its player that day's
-            Hegemarch, and their letters stay on this page. Each run is played again before it goes up: a time here is one the game itself
-            found.
+            Every day there is <em>one sector for every player</em>, played by the same rules. The fastest crown of the day makes its player
+            <b>that day's Hegemarch</b>, and their letters stay on this page. Each run is played again before it goes up: a time here is one the
+            game itself found.
           </p>
         </header>
         <div class="band-body board">
@@ -1716,8 +1738,8 @@
           <canvas class="node" aria-hidden="true"></canvas>
           <h2>SIX HOUSES, ONE CROWN</h2>
           <p class="sub">
-            Three houses are yours from the first run. Three more are earned with Legacy, which every run pays, won or lost. Choose one here
-            and the page takes its color.
+            <b>Three houses</b> are yours from the first run. <b>Three more</b> are earned with <span class="legacy">◆ Legacy</span>, which every run
+            pays, won or lost. <em>Choose one here and the page takes its color.</em>
           </p>
         </header>
         <div class="band-body">
@@ -1730,7 +1752,9 @@
         <header class="band-head">
           <canvas class="node" aria-hidden="true"></canvas>
           <h2>THREE SHIPS, ONE TRIANGLE</h2>
-          <p class="sub">Every fleet starts from three designs. Each beats one and loses to another, so what you build should answer what you see.</p>
+          <p class="sub">
+            Every fleet starts from <b>three designs</b>. <em>Each beats one and loses to another</em>, so what you build should answer what you see.
+          </p>
         </header>
         <div class="band-body" id="fleet">
           <div class="fleet">
@@ -1746,7 +1770,7 @@
         <header class="band-head">
           <canvas class="node" aria-hidden="true"></canvas>
           <h2>EVERY RUN IS A NEW DRAFT</h2>
-          <p class="sub">This is the game's own draft, dealt by its own rules for the house you chose. Try it.</p>
+          <p class="sub">This is <em>the game's own draft</em>, dealt by its own rules for the house you chose. <b>Try it.</b></p>
         </header>
         <div class="band-body">
           <div class="draft" id="draft"></div>
@@ -1757,7 +1781,7 @@
         <header class="band-head">
           <canvas class="node" aria-hidden="true"></canvas>
           <h2>MORE THAN ONE ROAD TO THE CROWN</h2>
-          <p class="sub">Every run offers Conquest and two other Destinies, drawn for that sector. Your rivals are chasing them too.</p>
+          <p class="sub">Every run offers <b>Conquest</b> and <b>two other Destinies</b>, drawn for that sector. <em>Your rivals are chasing them too.</em></p>
         </header>
         <div class="band-body">
           <ul class="tiles destinies" id="destiny-list"></ul>
@@ -1769,8 +1793,8 @@
           <canvas class="node" aria-hidden="true"></canvas>
           <h2>OR BEGIN IN THE STONE AGE</h2>
           <p class="sub">
-            An Ages run is the long game. Every house begins as a tribe on one cradle world, climbs five ages, builds its Ark, and carries what
-            it has won to the stars, where the crown is decided.
+            An Ages run is <b>the long game</b>. Every house begins as <em>a tribe on one cradle world</em>, climbs five ages, builds its Ark, and
+            carries what it has won to the stars, where the crown is decided.
           </p>
         </header>
         <div class="band-body">
