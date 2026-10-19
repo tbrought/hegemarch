@@ -518,7 +518,11 @@ const near = (id, kind, m, node) => {
   if (!list.length) throw new Error(`${id}: no ${kind}${node === undefined ? '' : ` at ${node}`}`);
   return list.sort((a, b) => Math.abs(a.tick - min(m)) - Math.abs(b.tick - min(m)))[0];
 };
-/** A keyword or two at the top, its {phrases} in the house's colour. */
+/**
+ * A keyword or two at the top, its {phrases} in the house's colour. A card that weighs a gain against a cost marks
+ * them as the game does, [a gain] in teal and [!a cost] in red, not in the house's colour: Vael's is that red, and
+ * its gain read as a second cost.
+ */
 const hup = (id, shot, lines) => ({ ...shot, bars: 0, vignette: 0.35, text: lines ? [{ at: 0.25, until: shot.dur - 0.12, style: 'lore', lines, y: 0.22, accent: hue(id) }] : [] });
 /**
  * Its Ark casting its House Power at about `m` minutes: slowed as it does, then coming up to speed. The camera on
@@ -606,7 +610,7 @@ const hv = [
   hName('vael', TA * 4),
   hVoyage('vael', 42.17, TA * 3, ['SWORN TO {WAR}']),
   hBattle('vael', 53.0, 26, TA * 2, ['+15% {DAMAGE}']),
-  { ...hBattle('vael', 59.5, 34, TA * 2, ['{CHEAPER} SHIPS', '[!LESS LORE]'], 0.3), hard: true },
+  { ...hBattle('vael', 59.5, 34, TA * 2, ['[CHEAPER] SHIPS', '[!LESS LORE]'], 0.3), hard: true },
   hCast('vael', 46.73, TA * 3, ['THE {TYRANT}', 'CALL TO ARMS'], 0.6),
   hMotto('vael', TA * 3, ['THE DARK', 'IS WON', 'IN {FIRE}']),
   hEnd('vael', 'wayfarer'),
@@ -662,7 +666,7 @@ const ha = [
   hName('ashen', LS * 4),
   hVoyage('ashen', 32.58, LS * 2, ['OUT OF', 'THE {FIRE}']),
   hDraft('ashen', LS * 4, ['{FOUR} BOONS', 'TO CHOOSE'], [3, LS * 4 * 0.72]),
-  { ...hBattle('ashen', 29.92, 14, LS * 2, ['+2 {REROLLS}', '[!FEWER EMBERS]'], 0.3), dip: true },
+  { ...hBattle('ashen', 29.92, 14, LS * 2, ['[+2 REROLLS]', '[!FEWER EMBERS]'], 0.3), dip: true },
   hCast('ashen', 21.71, LS * 3, ['{EMBER THRONE}', 'FATE\'S WAGER'], 0.6),
   hMotto('ashen', LS * 3, ['FATE', 'FAVOURS', 'THE {BURNED}']),
   hEnd('ashen', null),
