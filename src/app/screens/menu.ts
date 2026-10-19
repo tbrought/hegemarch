@@ -52,7 +52,7 @@ export function showMenu(app: App) {
   const offers = hallOffers(app);
   app.ui.innerHTML = `<div class="screen menu${app.crt()}">
       <div class="logo">HEGEMARCH</div>
-      <div class="tagline">The last Hegemarch fell, and the sector went dark. Light it again, world by world, and take the crown.</div>
+      <div class="tagline">The last Hegemarch fell, and the sector went dark. <em>Light it again</em>, world by world, and <b>take the crown</b>.</div>
       ${NO_MOUSE ? '<div class="px-box notice">Hegemarch is played with a mouse and keyboard. On a phone or tablet you can look, but not play it well: open it on a computer.</div>' : ''}
       ${app.menuNotice ? `<div class="px-box notice">${esc(app.menuNotice)}</div>` : ''}
       <div class="home${hero ? '' : ' solo'}">
@@ -85,7 +85,7 @@ export function showMenu(app: App) {
           <button class="small" data-sa="settings">SETTINGS</button>
         </div>
       </div>
-      <div class="menu-foot">Runs ${p.runs} · Crowned ${p.wins}${p.bestTime !== null ? ` · Fastest crown ${fmtTime(p.bestTime)}` : ''}<br>
+      <div class="menu-foot">Runs <b>${p.runs}</b> · Crowned <b>${p.wins}</b>${p.bestTime !== null ? ` · Fastest crown <b>${fmtTime(p.bestTime)}</b>` : ''}<br>
       Real-time strategy · a new sector, new rivals and new Boons every run · v${GAME_VERSION}</div>
     </div>`;
 }

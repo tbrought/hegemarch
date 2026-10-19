@@ -214,7 +214,7 @@ body {
 .tagline {
   font-family: var(--body);
   font-size: 20px;
-  color: var(--dusk);
+  color: var(--mist);
   text-align: center;
   margin-top: -2px;
 }
@@ -551,6 +551,12 @@ body {
   line-height: 1.5;
 }
 
+/* (The player's figures a tone above the words around them.) */
+.menu-foot b {
+  font-weight: inherit;
+  color: var(--dusk);
+}
+
 h1 {
   font-family: var(--display);
   font-size: 22px;
@@ -584,20 +590,18 @@ h2.h-with {
   line-height: 1.4;
 }
 
-/* A lead's words, as the website has them: what it names bright, and the one phrase to take away in gold
-   over a pixel band of it. */
-.lead b {
-  font-weight: 700;
+/* A lead's words in two tones, as the website and the game's tooltips have them: what it names bright, and the
+   one phrase to take away in gold. Color alone: a pixel face made bold, or underlined, is harder to read. */
+.lead b,
+.tagline b {
+  font-weight: inherit;
   color: var(--bone);
 }
 
-.lead em {
+.lead em,
+.tagline em {
   font-style: normal;
-  font-weight: 700;
   color: var(--gold);
-  background: linear-gradient(to top, color-mix(in srgb, var(--gold) 30%, transparent) 0 5px, transparent 5px);
-  -webkit-box-decoration-break: clone;
-  box-decoration-break: clone;
 }
 
 /* The player's Legacy at the head of the Hall of Heirs: the purse it has on the title screen. */

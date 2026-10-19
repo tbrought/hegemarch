@@ -663,26 +663,20 @@
         max-width: 64ch;
         color: var(--mist);
       }
-      /* What a section is about, said in its words: the things it names bright, the one phrase to take away in the
-         chosen house's color over a pixel band of it (the page's color, as the rule under the heading is), and
-         Legacy in its gold, as the game has it. */
-      .band-head .sub b {
-        font-weight: 700;
+      /* The page's words, said in two tones (the tagline, each section's lead, the steps, the notes), as the game's
+         tooltips say theirs: the things they name bright, the one phrase to take away in the chosen house's color
+         (the page's color, as the rule under each heading is), and Legacy in its gold. Color alone: a pixel face
+         made bold, or underlined, is harder to read. */
+      :is(.tagline, .band-head .sub, .tile p, .note) b {
+        font-weight: inherit;
         color: var(--bone);
       }
-      .band-head .sub em {
+      :is(.tagline, .band-head .sub, .tile p, .note) em {
         font-style: normal;
-        font-weight: 700;
         color: var(--house);
-        background: linear-gradient(to top, color-mix(in srgb, var(--house) 30%, transparent) 0 6px, transparent 6px);
-        -webkit-box-decoration-break: clone;
-        box-decoration-break: clone;
-        transition:
-          color 0.4s,
-          background 0.4s;
+        transition: color 0.4s;
       }
       .band-head .sub .legacy {
-        font-weight: 700;
         color: var(--gold);
       }
       /* The world at the head of each section: grey until the section is reached (drawn by site.js). */
@@ -1627,7 +1621,7 @@
       <button type="button" class="sound" aria-pressed="false" hidden><svg viewBox="0 0 9 9" shape-rendering="crispEdges" aria-hidden="true"><path d="M0 3h2v3H0zM2 2h1v5H2zM3 1h1v7H3z"/><path d="M5 3h1v1H5zM7 3h1v1H7zM6 4h1v1H6zM5 5h1v1H5zM7 5h1v1H7z"/></svg><span>SOUND OFF</span></button>
       <div class="hero-top">
         <h1 class="logo">HEGEMARCH</h1>
-        <p class="tagline">The last Hegemarch fell, and the sector went dark. <br />Light it again, world by world, and take the crown.</p>
+        <p class="tagline">The last Hegemarch fell, and the sector went dark. <br /><em>Light it again</em>, world by world, and <b>take the crown</b>.</p>
       </div>
       <p class="crown" hidden></p>
       <div class="hero-bottom">
@@ -1671,22 +1665,22 @@
             <li class="tile">
               <canvas class="pic" data-subjects="seed,kindle" aria-hidden="true"></canvas>
               <h3>KINDLE</h3>
-              <p>Send a seed ship to a dark world. It floods with your color and starts to pay you Embers.</p>
+              <p>Send a <b>seed ship</b> to a dark world. It floods with your color and starts to pay you <b>Embers</b>.</p>
             </li>
             <li class="tile">
               <canvas class="pic" data-subjects="forge,striker" aria-hidden="true"></canvas>
               <h3>BUILD</h3>
-              <p>Forges turn Embers into warships. Send them down the starlanes, and pause whenever you want to think.</p>
+              <p><b>Forges</b> turn Embers into warships. Send them down the starlanes, and <b>pause whenever you want</b> to think.</p>
             </li>
             <li class="tile">
               <canvas class="pic" data-subjects="lore,boon" aria-hidden="true"></canvas>
               <h3>DRAFT</h3>
-              <p>Lore fills as you play. Each time it does, choose one Boon of three, and the run bends your way.</p>
+              <p><b>Lore</b> fills as you play. Each time it does, choose <b>one Boon of three</b>, and the run bends your way.</p>
             </li>
             <li class="tile">
               <canvas class="pic" data-subjects="hearth,ark" aria-hidden="true"></canvas>
               <h3>CROWN</h3>
-              <p>Fulfil a Destiny before a rival house does, and you are the next Hegemarch.</p>
+              <p>Fulfil a <b>Destiny</b> before a rival house does, and you are <b>the next Hegemarch</b>.</p>
             </li>
           </ol>
         </div>
@@ -1728,7 +1722,7 @@
           </div>
           <p class="note">
             The board keeps the letters a run is posted under, its house, its time and the orders it was played with, and nothing else: no
-            account, no email address, no cookies. Your best times stay in this browser.
+            account, no email address, no cookies. <b>Your best times stay in this browser.</b>
           </p>
         </div>
       </section>
@@ -1822,8 +1816,9 @@
             crown makes its player that day's <a href="#board">Hegemarch</a>. The next one opens in <span data-daily-clock>a few hours</span>.
           </p>
           <p class="note">
-            Best on a computer with a mouse and keyboard. The First Night guides your first run step by step. The download is a single file:
-            unzip it and open <b>hegemarch.html</b> in any modern browser, even offline. Your progress is saved in the browser you play in.
+            Best on a computer with <b>a mouse and keyboard</b>. <b>The First Night</b> guides your first run step by step. The download is
+            <b>a single file</b>: unzip it and open <b>hegemarch.html</b> in any modern browser, <em>even offline</em>. Your progress is saved in
+            the browser you play in.
           </p>
         </div>
       </section>
