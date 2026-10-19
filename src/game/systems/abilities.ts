@@ -55,7 +55,8 @@ export function abilitiesTick(g: Game, dt: number) {
       }
       if (u.stun > 0) continue;
       const def = ABILITY_BY_ID[a.id];
-      if (!def) continue;
+      // (A House Power is cast by its house's order: commands/power.ts.)
+      if (!def || def.power) continue;
       const cast = tryCast(g, u, def);
       if (cast) {
         a.cd = def.cd;
@@ -69,6 +70,24 @@ export function abilitiesTick(g: Game, dt: number) {
       } else a.cd = 0.5;
     }
   }
+}
+
+/**
+ * Conversion (the Choir's House Power): the enemy ships in reach of the Ark that would go over, the weakest
+ * first, as many as it can turn: those nearest to breaking are the first to listen.
+ */
+export function conversionTargets(g: Game, u: Unit): Unit[] {
+  let left = CONVERT_HULL + CONVERT_HULL_PER_LEVEL * (u.level - 1);
+  const es = enemiesInRange(g, u, ABILITY_BY_ID.conversion.range)
+    .filter((e) => convertible(g, e) && UNITS[e.type].hull <= left)
+    .sort((a, b) => a.hp - b.hp || a.id - b.id);
+  const turned: Unit[] = [];
+  for (const e of es) {
+    if (UNITS[e.type].hull > left) continue;
+    left -= UNITS[e.type].hull;
+    turned.push(e);
+  }
+  return turned;
 }
 
 /** What a cast touched (the ships: allies or enemies, by the ability) and a lance's mark: for the eye only. */
@@ -134,22 +153,6 @@ function tryCast(g: Game, u: Unit, def: AbilityDef): Cast | null {
         if (ac === 'light' || ac === 'strike') e.stun = Math.max(e.stun, 3);
       }
       return { on: ids(es) };
-    }
-    case 'conversion': {
-      // The weakest first, as many as the Ark can turn: those nearest to breaking are the first to listen.
-      let left = CONVERT_HULL + CONVERT_HULL_PER_LEVEL * (u.level - 1);
-      const es = enemiesInRange(g, u, def.range)
-        .filter((e) => convertible(g, e) && UNITS[e.type].hull <= left)
-        .sort((a, b) => a.hp - b.hp || a.id - b.id);
-      const turned: Unit[] = [];
-      for (const e of es) {
-        if (UNITS[e.type].hull > left) continue;
-        left -= UNITS[e.type].hull;
-        turned.push(e);
-      }
-      if (turned.length === 0) return null;
-      g.convertUnits(turned, u.owner, u);
-      return { on: ids(turned) };
     }
     case 'phaselance': {
       const es = enemiesInRange(g, u, def.range).filter((e) => UNITS[e.type].role !== 'fighter');

@@ -12,6 +12,7 @@
  * - Lasting marks (`LASTING`, `drawLasting`): what an ability leaves, for as long as it is there.
  * - The Barrage's missiles (`drawMissile`): a fan out of the ship, and trails that cool.
  */
+import { ABILITY_BY_ID, WAGER_TIME } from '../game/data/abilities';
 import type { Fx, Projectile, Unit } from '../game/types';
 import type { Effects, Mark } from './Effects';
 import { light, PAL, shade } from './palette';
@@ -32,8 +33,10 @@ export function castLook(fx: Effects, f: Cast) {
   fx.burst(f.x, f.y, 10, 90, 0.5, [f.color, light(f.color)]);
   // On whom: the reach runs out, two pixels wide (the Hollow's pulse three), ticking each ship it comes to.
   // (A Strike Wing touches nothing: no reach, and no ring at all round the ship but the one that lights it,
-  // so that it is never taken for a Gravity Snare's, the ring of a ship that is held.)
-  if (f.id !== 'strikewing') {
+  // so that it is never taken for a Gravity Snare's, the ring of a ship that is held. A House Power that
+  // reaches places, not ships in reach, has its own shape for them below.)
+  const reach = f.id !== 'strikewing' && (!ABILITY_BY_ID[f.id]?.power || f.id === 'conversion' || f.id === 'wager');
+  if (reach) {
     fx.rings.push({ x: f.x, y: f.y, r0: f.size, r1: f.r, t: 0, dur: REACH_TIME, c: f.color, world: true, dotted: false, w: f.id === 'voidpulse' ? 3 : 2 });
     for (const id of f.on) {
       const p = id === f.by ? null : fx.unitPos(id);
@@ -90,7 +93,53 @@ export function castLook(fx: Effects, f: Cast) {
       // (The volley is in the missiles themselves: drawMissile.)
       fx.burst(f.x, f.y, 8, 120, 0.4, [PAL.bone, PAL.gold, PAL.ember]);
       break;
+    // The House Powers (1.27).
+    case 'dawn':
+      // Its light runs out from the Ark's world along the starlanes to each world it kindles (each world's own
+      // kindling is its 'capture').
+      for (const id of f.at ?? []) between(fx, f.node, id, { t: 0, dur: 0.6, hold: 0.9, c: f.color, wide: true });
+      break;
+    case 'callarms':
+      // From every Forge that answers, a line runs to the Ark's world, and the Forge rings as its ships set out.
+      for (const id of f.at ?? []) {
+        const n = fx.nodePos(id);
+        if (!n) continue;
+        if (id !== f.node) between(fx, id, f.node, { t: 0, dur: 0.7, hold: 0.7, c: f.color });
+        fx.rings.push({ x: n.x, y: n.y, r0: n.r, r1: n.r * 2.2, t: 0, dur: 0.6, c: f.color, world: true, dotted: false, w: 2 });
+      }
+      break;
+    case 'wayfinder':
+      // The new starlane drawn out, slowly, from the Ark's world to the far one, which rings as it is reached.
+      for (const id of f.at ?? []) {
+        const n = fx.nodePos(id);
+        if (!n) continue;
+        between(fx, f.node, id, { t: 0, dur: 1.1, hold: 1.2, c: f.color, wide: true });
+        fx.rings.push({ x: n.x, y: n.y, r0: n.r * 2.4, r1: n.r, t: -1.0, dur: 0.5, c: f.color, world: true, dotted: false, w: 2 });
+      }
+      break;
+    case 'mindtheft':
+      // A thread from the Ark to the Ark it reads, and what it read rising off it.
+      for (const id of f.on) {
+        fx.threads.push({ by: f.by, x: f.x, y: f.y, to: id, t: 0, dur: 1.2, c: f.color });
+        fx.mark(id, { kind: 'notes', t: -0.3, dur: 1.0, c: f.color });
+      }
+      break;
+    case 'wager':
+      // The coin, thrown up over the world and turning until it lands: its face is how it lands.
+      fx.coins.push({ x: f.x, y: f.y, t: 0, dur: WAGER_TIME, heads: !!f.heads, c: f.color });
+      break;
   }
+}
+
+/** A power's light from one place to another, from the edge of the one to the edge of the other, as a starlane is drawn. */
+function between(fx: Effects, a: number, b: number, o: { t: number; dur: number; hold: number; c: string; wide?: boolean }) {
+  const A = fx.nodePos(a);
+  const B = fx.nodePos(b);
+  if (!A || !B) return;
+  const d = Math.hypot(B.x - A.x, B.y - A.y) || 1;
+  const ux = (B.x - A.x) / d;
+  const uy = (B.y - A.y) / d;
+  fx.streaks.push({ x1: A.x + ux * A.r, y1: A.y + uy * A.r, x2: B.x - ux * B.r, y2: B.y - uy * B.r, ...o });
 }
 
 /**

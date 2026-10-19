@@ -6,6 +6,7 @@
  */
 
 import { SAVE_VERSION } from './constants';
+import { ABILITY_BY_ID } from './data/abilities';
 import { CARD_BY_ID } from './data/cards';
 import { SPACE } from './data/eras';
 import { heirIdNow, HEIR_BY_ID } from './data/heirs';
@@ -125,6 +126,9 @@ export function loadGame(g: Game, data: SaveData): void {
     f.cards = f.cards.filter((id) => CARD_BY_ID[id]);
     f.asleepUntil ??= 0;
     f.graceUntil ??= 0;
+    // (Before 1.27 a house had no power to cast, and the Choir's Ark cast Conversion by itself: its power now.)
+    f.powerCd ??= 0;
+    f.arkAbil = f.arkAbil.filter((id) => !ABILITY_BY_ID[id]?.power);
     if (f.ai) {
       f.ai.grudge ??= -1;
       f.ai.grudgeAt ??= -999;
@@ -136,6 +140,7 @@ export function loadGame(g: Game, data: SaveData): void {
     if (u.ox === null) u.ox = NaN;
     if (u.oy === null) u.oy = NaN;
     u.era ??= SPACE;
+    if (u.abil.some((a) => ABILITY_BY_ID[a.id]?.power)) u.abil = u.abil.filter((a) => !ABILITY_BY_ID[a.id]?.power);
     g.units.set(u.id, u);
   }
   g.projectiles = data.projectiles;

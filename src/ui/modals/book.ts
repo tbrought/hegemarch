@@ -19,7 +19,7 @@ export const BOOK_W = 420;
 export const BOOK_H = 250;
 
 /** Tips in the order a run usually meets them. */
-const TIP_ORDER = ['role', 'fleet', 'boonReady', 'raid', 'anomalySeen', 'anomaly', 'blueprint', 'hangar', 'arkLevel', 'lostWorld', 'converted', 'crisis', 'starfall'];
+const TIP_ORDER = ['role', 'fleet', 'boonReady', 'raid', 'anomalySeen', 'anomaly', 'blueprint', 'hangar', 'power', 'arkLevel', 'lostWorld', 'converted', 'crisis', 'starfall'];
 
 /** Tips of the cradle of an Ages run (listed first there, last elsewhere). */
 const AGES_TIPS = ['ageReady', 'ageNew', 'ageSiege', 'ageRival', 'ageGone', 'ageArk'];
@@ -235,6 +235,8 @@ function helpText(modals: Modals): { text: string; color: string; star?: boolean
             'Q W E R T Y: with a Forge (or your Hearth) selected, build its ships, in the order of its buttons. Shift: five.',
             'Tab: go to your next Forge, the idle ones first (Shift+Tab: back). The number beside the Forge at the top counts the idle ones.',
             'B: Boons. U: status. L: comms log. F: select all warships. K: kindle the selected world. S: stop. R: retreat.',
+            'D: your House Power. Press it to aim (the map shows what it will do), and again to cast; Esc puts it away. A Wayfinder waits ' +
+                'for a click on a world.',
             'E: send the selected Scouts exploring. With no Scout selected, E picks your idle Scouts first: press it again to send them.',
             'Shift-click a ship button: queue five. Shift-click ships: add to the selection. Double-click a ship: select all of its kind nearby.',
             'Ctrl+1 to 9: save the selected ships as a group. 1 to 9: select that group again. Esc: cancel, or open the menu.',

@@ -8,6 +8,7 @@ import { makeAIState } from './ai/ai';
 import { AI_INCOME, AI_START_EMBERS, AI_START_GUARDIANS, CRISIS_AWAKEN, CRISIS_OFFSET, PIRATE_FIRST_RAID } from './constants';
 import { AMBITIONS } from './data/ambitions';
 import { SPACE } from './data/eras';
+import { POWER_FIRST } from './data/abilities';
 import { ANOMALY_EVENTS, OFFER_EVENTS } from './data/events';
 import { CRISIS_COLOR, GUARDIAN_COLOR, HEIRS, HEIR_BY_ID, PIRATE_COLOR } from './data/heirs';
 import { RELICS } from './data/relics';
@@ -245,7 +246,7 @@ function makeFaction(g: Game, id: number, kind: FactionKind, name: string, color
       shipsBuilt: 0, shipsLost: 0, kills: 0, worldsKindled: 0, worldsCaptured: 0, worldsLost: 0, maxWorlds: 0,
       damageDealt: 0, embersEarned: 0, rivalsEliminated: 0, strongholdDestroyed: false, arkLost: false, maxRelics: 0, eventsResolved: 0,
     },
-    ai: null, ark: -1, arkLevel: 1, arkXp: 0, arkAbil: [], incomeMul: 1, holdTimer: 0, treasuryTimer: 0, relicTimer: 0, gate: null,
+    ai: null, ark: -1, arkLevel: 1, arkXp: 0, arkAbil: [], powerCd: POWER_FIRST, incomeMul: 1, holdTimer: 0, treasuryTimer: 0, relicTimer: 0, gate: null,
     boomT: 0, echoT: 0, interestT: 0, stormT: 0, bpPity: 0, eliminatedAt: -1, warned: {}, score: 0,
     era: SPACE, advance: null, launchedAt: -1, asleepUntil: 0, graceUntil: 0,
   };

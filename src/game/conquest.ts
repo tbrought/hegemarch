@@ -68,8 +68,8 @@ export function damagePlanet(g: Game, n: GNode, amount: number, type: DmgType, b
   }
 }
 
-/** A seed ship finished its work: the world joins the house. */
-export function kindleWorld(g: Game, n: GNode, fid: number) {
+/** A seed ship finished its work (or a Dawn came): the world joins the house. `quiet`: its house is told otherwise (Dawn tells of all its worlds at once). */
+export function kindleWorld(g: Game, n: GNode, fid: number, quiet = false) {
   const f = g.factions[fid];
   n.owner = fid;
   n.capitalOf = -1;
@@ -88,7 +88,7 @@ export function kindleWorld(g: Game, n: GNode, fid: number) {
   f.explored[n.id] = 1;
   recomputeHangar(g, f);
   if (g.fxEnabled) g.fx.push({ k: 'capture', node: n.id, color: f.color });
-  g.notify(fid, `${n.name} is kindled! It will glow brighter over the next minute and a half.`, 'good', n.id);
+  if (!quiet) g.notify(fid, `${n.name} is kindled! It will glow brighter over the next minute and a half.`, 'good', n.id);
 }
 
 export function planetDefeated(g: Game, n: GNode, byFaction: number) {

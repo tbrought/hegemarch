@@ -4,6 +4,7 @@ import { UNITS } from '../game/data/units';
 import type { QueueCheck, Unit, UnitType, WorldRole } from '../game/types';
 import { PAL } from '../render/palette';
 import { WHY } from '../game/commands/checks';
+import { POWER_WHY } from '../game/commands/power';
 
 /** Seconds the way of an order is drawn bright (then it stays, dim, while the ships are selected). */
 export const ROUTE_FLASH = 1.6;
@@ -192,6 +193,56 @@ export class Actions {
   cancel(nodeId: number, queue: 'ship' | 'build', index: number) {
     if (!this.ready()) return;
     if (this.g.cmdCancel(this.pid, nodeId, queue, index)) this.s.sfx.play('ui', 0.4);
+  }
+
+  /**
+   * The House Power (1.27), from D or its button: the first time it is aimed (the map shows what it would do,
+   * and the banner says it), the second time cast; or the reason it cannot be, said. A Wayfinder that is aimed
+   * waits for a world: the world under the pointer, if there is one.
+   */
+  power(): boolean {
+    if (!this.ready()) return false;
+    const view = this.s.view;
+    const why = this.g.checkPower(this.pid);
+    if (!view.powerAim) {
+      if (why && why !== POWER_WHY.aim) {
+        this.fail(why);
+        return false;
+      }
+      view.powerAim = true;
+      view.orderMode = false;
+      this.s.sfx.play('ui', 0.45);
+      return true;
+    }
+    if (why === POWER_WHY.aim) {
+      if (view.hoverNode >= 0) return this.powerAt(view.hoverNode);
+      this.fail('Click a world for the new starlane');
+      return false;
+    }
+    return this.castPower(-1);
+  }
+
+  /** The aimed power, at a world (a Wayfinder's starlane): cast, or the reason it cannot be there said (it stays aimed). */
+  powerAt(nodeId: number): boolean {
+    if (!this.ready() || !this.s.view.powerAim) return false;
+    return this.castPower(nodeId);
+  }
+
+  /** Put the aimed power away. */
+  cancelPower() {
+    this.s.view.powerAim = false;
+  }
+
+  private castPower(target: number): boolean {
+    const why = this.g.checkPower(this.pid, target);
+    if (why) {
+      this.fail(why);
+      return false;
+    }
+    // (What it does is seen and heard from the cast itself, and the log says it.)
+    this.g.cmdPower(this.pid, target);
+    this.s.view.powerAim = false;
+    return true;
   }
 
   stop() {

@@ -23,6 +23,7 @@ import { drawFlyers, drawTray } from './hud/tray';
 import { drawAttackArrows, drawBadges, drawIndicators, drawLog, drawMinimap } from './hud/overlays';
 import { newsColor } from './news';
 import { drawCard } from './hud/card';
+import { drawPower, keepAim } from './hud/power';
 
 /**
  * The HUD: everything drawn over the map while a run is played, on the game's own canvas. It is drawn
@@ -65,6 +66,8 @@ export class Hud {
   /** Card rectangle from the last frame (input uses it to keep clicks off the map). */
   cardRect = { x: 0, y: 0, w: 0, h: 0 };
   minimapRect = { x: 0, y: 0, w: 0, h: 0 };
+  /** The House Power's button (hud/power.ts), over the minimap: none drawn, all zeros. */
+  powerRect = { x: 0, y: 0, w: 0, h: 0 };
   /** Right edge and bottom of the comms log lines drawn this frame (0 when none). */
   logRight = 0;
   logBottom = 0;
@@ -142,6 +145,7 @@ export class Hud {
     const s = this.s;
     const g = this.g;
     s.pruneSelection();
+    keepAim(this);
     if (s.toast) {
       s.toast.t -= dt;
       if (s.toast.t <= 0) s.toast = null;
@@ -305,6 +309,8 @@ export class Hud {
     if (R.map) drawLog(this);
     drawCard(this);
     if (R.map) drawMinimap(this);
+    if (R.fleet) drawPower(this);
+    else this.powerRect = { x: 0, y: 0, w: 0, h: 0 };
     drawTopBar(this, R);
     drawBanner(this);
     if (R.destinies) this.g.cradle ? drawAges(this) : drawDestinies(this);

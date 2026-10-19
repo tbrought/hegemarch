@@ -103,6 +103,13 @@ that casts it (`says`) and, if it lasts, what it leaves (`leaves`); what it does
 `render/abilityLooks.ts` (and a mark to `LASTING` for what it leaves); its sound to `CAST_SOUND` in
 `audio/battleSounds.ts` and `Sfx`. A test holds every ability to all of them.
 
+**A House Power** (1.27). A power is an ability with `power: true` (`game/data/abilities.ts`) that a house
+names as its own (`HeirDef.power`). Its Ark casts it only at its house's order, `cmdPower(fid, target)`
+(`game/commands/power.ts`): add what it acts on and why it cannot be cast to `checkPower`, what it does to
+`castPower`, when a rival house casts it to `housePower` in `ai/ai.ts`, the preview of it aimed to
+`Renderer.drawPowerAim`, its words aimed to `aimLine` (`ui/hud/power.ts`), and its look and sound as for an
+ability. The cooldown is the house's (`Faction.powerCd`), so a rebuilt Ark does not bring it back sooner.
+
 **An event.** Add an entry to `EVENTS` in `game/data/events.ts`: a title, a text, and choices. Each
 choice has a `run` that changes the game and returns the sentence the player reads. `cond` and `why`
 say when a choice is unavailable and what to tell the player.

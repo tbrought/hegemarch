@@ -21,6 +21,7 @@ import { rollEmbers } from './emberCount';
 import { fleetLabel } from './overlays';
 import type { Hud } from '../Hud';
 import { boonReady, watchBoons } from './touches';
+import { aimLine } from './power';
 
 /** The widest of the ten digits (the game's font is not monospaced: a 1 is narrower than an 8). */
 export let widest = '';
@@ -225,6 +226,9 @@ export function objective(hud: Hud): { text: string; color: string; badge?: stri
   const tut = hud.tutorial.banner();
   if (tut) return tut;
   if (s.toast) return { text: s.toast.text, color: s.toast.color };
+  // (The House Power aimed: what it would do, and how to cast it or put it away.)
+  const aim = aimLine(hud);
+  if (aim) return aim;
   const p = g.player;
   if (g.prompts.some((x) => x.result === undefined)) return { text: 'Something needs your decision. Click the ! on the right.', color: PAL.violet };
   if (p.pendingDrafts > 0) return { text: 'A Boon is ready: press B to choose it.', color: PAL.gold };

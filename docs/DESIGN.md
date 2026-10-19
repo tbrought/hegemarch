@@ -217,7 +217,8 @@ hull); mirror fights take 50–125 seconds. Breakers are the way to take worlds 
 planets). Blueprint ships: **Carrier** (fighter wings, rebuilt in the hangar), **Lancer** (very long
 range, anti-heavy), **Dreadnought** (capital ship that levels up, max 2, and no hangar room: it is the
 house's flagship, not a slot in its fleet), **Starbase** (one fortress
-per world). The **Ark** levels up from damage and kills and learns an ability at levels 3, 5 and 7.
+per world). The **Ark** casts its house's **House Power** (below) at the house's order, levels up from damage
+and kills, and learns an ability at levels 3, 5 and 7: it starts with none (1.27).
 
 Ships only passing through a world do not stop to besiege it, and scouts never shoot worlds.
 
@@ -234,19 +235,19 @@ Six houses (`src/game/data/heirs.ts`). The player plays one; the others are deal
 
 | House | What it is | What it has |
 | --- | --- | --- |
-| **Solar Concord** | steady and rich | +10% Embers, sturdier worlds and shields. Ark: Aegis Field |
-| **Vael Imperium** | war | +15% damage, cheaper ships, less Lore. Ark: Missile Barrage |
-| **Wayfarer Clans** | speed | fast on the lanes and off them, cheap kindling, a second Scout. Ark: Nanite Cloud |
-| **Lyceum Collective** | learning, and the swarm | +25% Lore, cheap Strikers, more Fighters, thin hulls. Ark: Strike Wing |
-| **Choir of the First Flame** | faith: it converts | see below. Ark: Conversion |
-| **Ashen Remnant** | fate | a fourth Boon to choose from, rerolls, an Epic Boon to start, fewer Embers. Ark: Ember Lance |
+| **Solar Concord** | steady and rich | +10% Embers, sturdier worlds and shields. House Power: Dawn |
+| **Vael Imperium** | war | +15% damage, cheaper ships, less Lore. House Power: Call to Arms |
+| **Wayfarer Clans** | speed | fast on the lanes and off them, cheap kindling, a second Scout. House Power: Wayfinder |
+| **Lyceum Collective** | learning, and the swarm | +25% Lore, cheap Strikers, more Fighters, thin hulls. House Power: Mind Theft |
+| **Choir of the First Flame** | faith: it converts | see below. House Power: Conversion |
+| **Ashen Remnant** | fate | a fourth Boon to choose from, rerolls, an Epic Boon to start, fewer Embers. House Power: Fate's Wager |
 
 **The Choir of the First Flame** took the place of the Ironclad Dominion, the one house without a
 character of its own: its fortress was the Concord's sturdiness, more of it, and slow. The Choir is
 the house that takes and does not destroy.
-- **Conversion** (its Ark, and no other ship ever learns it): the weakest enemy ships in range change
-  sides, 1000 hull of them (two Strikers, or a Guardian) and 150 more for each level of the Ark, every
-  36 s. Never an Ark, a Dreadnought, a Carrier, a seed ship or anything of the Hollow; a Corsair can
+- **Conversion** (its House Power since 1.27, cast at its order; before, its Ark cast it by itself): the
+  weakest enemy ships in range change sides, 1000 hull of them (two Strikers, or a Guardian) and 150 more
+  for each level of the Ark, every 36 s at most. Never an Ark, a Dreadnought, a Carrier, a seed ship or anything of the Hollow; a Corsair can
   be talked round. A ship that goes over forgets its orders, is dazed for a moment, and is from then
   on a ship of its new house, whatever its kind (so the Choir can come by ships it has no Blueprint
   for). The weakest go over first, so each is patched up to half its hull, and it takes no room in
@@ -270,6 +271,64 @@ button, a line of a panel, the table of houses) it is **The Choir** (`HeirDef.sh
 `Game.shortName`). The **Lyceum Collective** was the Nyx Collective: Nyx is night, and the house is
 scholars. A profile or a run saved under the old names loads under the new ones (`heirIdNow`): what a
 player unlocked, won with and played stays theirs.
+
+### House Powers (1.27)
+Until 1.27 each house's Ark started with "its" ability, but five of the six (Aegis Field, Missile Barrage,
+Nanite Cloud, Strike Wing, Ember Lance) were in the pool every Ark learns from at levels 3, 5 and 7: in about
+nine first level-ups of ten another house's was among the three offered, and rival Arks took them too. Only
+the Choir's Conversion was its own, and it was the one that felt like the house: it breaks a rule of the
+game (an enemy ship changes sides). So every house now has one such move, its **House Power**
+(`HeirDef.power`, `AbilityDef.power`, `commands/power.ts`), and the five old abilities are anyone's.
+
+| House | Power | What it does | Every |
+| --- | --- | --- | --- |
+| Solar Concord | **Dawn** | every dark world one starlane from the Ark is kindled at once (not one that a guard or a warship holds) | 4 min |
+| Vael Imperium | **Call to Arms** | the 5 Forges nearest the Ark (the Hearth is one) each send it a Striker, a Guardian and a Breaker, for 2 minutes, in no room in the hangar | 4 min |
+| Wayfarer Clans | **Wayfinder** | a new starlane from the Ark's world to a charted world within 9000 (about one starlane between systems), for the rest of the run and for every house; never through another place, never into the Rift | 5 min |
+| Lyceum Collective | **Mind Theft** | the Ark learns the rarest Boon it can of a rival Ark at its world (no Pact, none of the cradle; the rival keeps it) | 5 min |
+| Choir of the First Flame | **Conversion** | as above | 36 s |
+| Ashen Remnant | **Fate's Wager** | a coin is thrown over the Ark's world and lands 1.6 s later: heads, every enemy warship there burns (never a capital ship or the Hollow); tails, the Ark | 3 min |
+
+- **Cast at the house's order, never by itself.** One order, `cmdPower(fid, target)`, for the player and
+  the rival houses, kept with a Daily's orders like any other. Its `checkPower` gives the reason it cannot
+  be cast, in the player's words ("Ready in 1:30", "Your Ark is between worlds", "No dark world one
+  starlane from your Ark"). The Ark must stand at a world, unstunned; the cooldown is the house's
+  (`Faction.powerCd`), so an Ark rebuilt does not bring it back sooner. It is first ready 90 s into a run
+  (and 90 s after a house arrives among the stars in an Ages run): the opening is the same for everyone.
+- **The level-up abilities fire by themselves, as before**; an Ark starts with none, and learns one at
+  levels 3, 5 and 7 from ten (the five that were houses', and EMP Burst, Overdrive, Rally Cry, Gravity
+  Snare, Repair Drones). A Dreadnought is built with one of the ten.
+- **On the screen** (`ui/hud/power.ts`): its button stands over the minimap, always (stable UI: greyed,
+  its tooltip saying why, when it cannot be cast), in the house's colour, its key on it, the time until
+  it is back filling along its foot. **D** (free in every state: the build keys are Q to Y) aims it: the
+  map shows what it would do (`Renderer.drawPowerAim`: Dawn's worlds ringed with its light running to
+  them; the Forges and the ways of a Call to Arms; every world a Wayfinder could reach, and the starlane
+  to the one under the pointer, red where it cannot go; the rival Ark a Mind Theft would read; the ships a
+  Conversion would turn, and those a Wager would burn, with the Ark it stakes), and the banner says it
+  ("DAWN: Alcor II and Alcor III are kindled at once."). D again, or a click on the button, casts it; a
+  Wayfinder waits for a click on a world. Escape, a right-click or a dialog opening puts it away. Aimed
+  first, never cast on one key: a Fate's Wager is the Ark's life, and a key pressed by mistake must not
+  throw it. The Ark's card names it, with its key; a tip says how the first time it is ready; How to
+  Play lists the key.
+- **Seen and heard as every ability is**, and more: light drawn out along the starlanes to Dawn's worlds,
+  from the Forges of a Call to Arms, a Wayfinder's starlane drawn out to its world (and drawn from then on
+  in its house's colour), a thread to the Ark a Mind Theft reads, Fate's Wager's coin turning over the
+  world until it lands and shows its face. Each has a sound of its own (a sunrise chord, war drums, a
+  road's glide, two voices falling, a coin's ticks).
+- **The rival houses cast theirs** (`housePower` in `ai/ai.ts`) when they would do what they are for:
+  Dawn, Mind Theft and Conversion whenever they can; a Call to Arms when the Ark is in a fight or the
+  army sets out; a Wayfinder's starlane when it brings the army two jumps or more nearer the world it means
+  to take; a Wager only when the fight at the Ark is being lost. A rival Concord at peace takes its Ark to
+  the place near by with the most dark worlds beside it that it knows of, and casts Dawn there
+  (`dawnTrip`): left with its army, its Ark sat at home, where every world was lit, and cast Dawn three
+  times in six games (now about thirteen in eight).
+- **What it changed**, on the same forty AI-only medium sectors (an hour at most): 35 decided against 28
+  before, the median game 40.4 minutes against 41.9, and the crowns spread more evenly among the houses
+  (Ashen 8, Choir 7, Vael 6, Wayfarers 5, Lyceum 4, Concord 3 of the games each was dealt into, against
+  4, 7, 8, 1, 2 and 6). The rival Concord is the least of them in this count, which is within what forty
+  games can tell apart; it is the one to watch.
+- A run saved before 1.27 loads with its power ready, and a Choir's Ark that cast Conversion by itself
+  no longer does (`loadGame`); an Ark keeps the old house ability it started with, which is a learned one now.
 
 ### Boons
 A draft offers 3 choices, plus one each from the Ashen Remnant, Quantum Archives and the Codex

@@ -19,6 +19,7 @@ export const TIPS: Record<string, string> = {
   blueprint: 'A Blueprint adds a new ship to your Forges for the rest of the run.',
   crisis: 'The Hollow are coming out of the Maw. They devour any world in their path, yours and your rivals’.',
   arkLevel: 'Your Ark gained a level and can learn an ability. Abilities fire by themselves in battle.',
+  power: 'Your House Power is ready: your house\u2019s own move, cast by your Ark. Press D to aim it, and the map shows what it will do; press D again (or click its button over the minimap) to cast it. It comes back after a few minutes.',
   hangar: 'Your hangar is nearly full. Hold more worlds, or raise them to higher levels, to make room for ships.',
   boonReady: 'Your Lore is full: press B, or the BOON button at the top, to choose a Boon.',
   fleet: `Ships gather in fleets. The badge beside a world (like ${IC.fleet}) counts your ships there: click it to select them, then click a world to send them.`,
@@ -99,6 +100,8 @@ export class Tips {
     const p = g.player;
     if (p.hangarCap > 0 && p.hangarUsed >= p.hangarCap - 2 && p.stats.shipsBuilt > 3) this.show('hangar');
     if (p.stats.shipsBuilt === 1 && !this.s.guided) this.show('fleet');
+    // The House Power, the first time it is ready (not while the First Night still guides the player).
+    if (g.tick % 20 === 0 && !g.cradle && p.powerCd === 0 && !g.powerReady(p.id) && Object.values(this.s.reveal()).every(Boolean)) this.show('power');
     if (g.cradle && g.tick % 20 === 0 && p.era < SPACE && !p.advance && p.lore >= ERAS[p.era].lore) this.show('ageReady');
     // Anomalies wait for a ship to be sent: say so once one is on the map (not in the first minute).
     if (g.time > 60 && g.tick % 20 === 0 && !this.s.profile.seenTips.includes('anomalySeen') && g.nodes.some((n) => n.anomaly && p.explored[n.id])) this.show('anomalySeen');

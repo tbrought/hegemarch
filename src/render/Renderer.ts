@@ -1,5 +1,7 @@
+import { burnable, dawnWorlds, levyWorlds, powerOf, rivalArk, wayTargets, wayWhy } from '../game/commands/power';
 import type { Game } from '../game/Game';
 import { UNITS } from '../game/data/units';
+import { conversionTargets } from '../game/systems/abilities';
 import { ECON } from '../game/data/worlds';
 import { burning, STARFALL_FUSE } from '../game/starfall';
 import type { GNode, Unit } from '../game/types';
@@ -28,6 +30,8 @@ export interface ViewState {
   reveal: boolean;
   /** Ships are selected and the next click on a world gives them an order. */
   orderMode: boolean;
+  /** The House Power is aimed (1.27): the map shows what it would do, and D again (or a click) casts it. */
+  powerAim?: boolean;
   /** A world to point out (tutorial). */
   highlightNode: number;
   /** Seconds the way of the last order is still drawn bright (Actions.ROUTE_FLASH). */
@@ -174,6 +178,7 @@ export class Renderer {
       this.drawNode(ctx, g, n, vis(n.id), ownerShown(n), view, dt);
     }
     this.drawUnits(ctx, g, alpha, view, vis);
+    if (!backdrop && view.powerAim) this.drawPowerAim(ctx, g, view);
     this.drawProjectiles(ctx, g, alpha, vis);
     this.fx.draw(ctx, this.cam, this.ox, this.oy, !!view.plain);
     // The drag-select box: its dotted fill goes under the world names so they stay readable.
@@ -292,9 +297,14 @@ export class Renderer {
       // (On the cradle's dark ground a path has to be brighter than a starlane on the void.)
       if (this.ground) c = seen ? PAL.dusk : PAL.slate;
       if (z < STRATEGIC_ZOOM && interstellar) c = seen ? PAL.dusk : PAL.slate;
+      // (A starlane cut by a Wayfinder, 1.27, is in the colour of the house that cut it: a road of its own.)
+      const cut = l.by !== undefined ? g.factions[l.by] : null;
+      if (cut) c = seen ? cut.color : shade(cut.color);
       if (busy.has(key)) {
         line(ctx, seg[0], seg[1], seg[2], seg[3], PAL.indigo, 1);
         line(ctx, seg[0], seg[1], seg[2], seg[3], shade(g.player.color), 4, -phase);
+      } else if (cut) {
+        line(ctx, seg[0], seg[1], seg[2], seg[3], c, 1);
       } else {
         line(ctx, seg[0], seg[1], seg[2], seg[3], c, interstellar ? 2 : 3);
       }
@@ -373,6 +383,75 @@ export class Renderer {
       const n = g.nodes[id];
       const r = this.nodeR(n) + 5;
       ring(ctx, this.sx(n.x), this.sy(n.y), r, bright ? PAL.teal : PAL.sea, bright ? 1 : 3);
+    }
+  }
+
+  /**
+   * The House Power aimed (1.27): what it would do, on the map, before it is cast. Dawn's worlds ringed in gold
+   * with its light running out to them; the Forges of a Call to Arms and the ways their ships would take;
+   * every world a Wayfinder could reach, and the starlane to the one under the pointer (red where it cannot
+   * go); the rival Ark a Mind Theft would read; the ships a Conversion would turn; the ships a Fate's Wager
+   * would burn, and the Ark it stakes.
+   */
+  private drawPowerAim(ctx: Ctx, g: Game, view: ViewState) {
+    const p = g.player;
+    const def = powerOf(p);
+    const ark = def && p.ark >= 0 ? g.units.get(p.ark) : undefined;
+    if (!def || !ark || ark.dead || ark.node < 0) return;
+    const phase = Math.floor(this.time * 8);
+    const A = g.nodes[ark.node];
+    const worldRing = (n: GNode, c: string, dots = 1) => ring(ctx, this.sx(n.x), this.sy(n.y), this.nodeR(n) + 6, c, dots);
+    const shipRing = (u: Unit, c: string) => {
+      const { w, h } = spriteSize(u.type, u.era);
+      ring(ctx, this.sx(u.x), this.sy(u.y), Math.max(4, Math.round(Math.max(w, h) / 2) + 3), c, 1);
+    };
+    const leg = (a: GNode, b: GNode, c: string, step: number) => {
+      const seg = this.laneSeg(a, b);
+      if (seg) line(ctx, seg[0], seg[1], seg[2], seg[3], c, step, -phase);
+    };
+    switch (def.id) {
+      case 'dawn':
+        for (const n of dawnWorlds(g, p, ark)) {
+          leg(A, n, def.color, 2);
+          worldRing(n, def.color, 2);
+        }
+        break;
+      case 'callarms':
+        for (const n of levyWorlds(g, p, ark)) {
+          worldRing(n, def.color, 2);
+          let at = n;
+          for (const id of g.pathTo(n.id, A.id)) {
+            leg(at, g.nodes[id], def.color, 3);
+            at = g.nodes[id];
+          }
+        }
+        worldRing(A, def.color);
+        break;
+      case 'wayfinder': {
+        for (const id of wayTargets(g, p, ark)) worldRing(g.nodes[id], shade(def.color), 3);
+        const h = view.hoverNode;
+        if (h >= 0 && h !== A.id) {
+          const ok = !wayWhy(g, p, ark, h);
+          leg(A, g.nodes[h], ok ? def.color : PAL.red, ok ? 1 : 2);
+          worldRing(g.nodes[h], ok ? def.color : PAL.red);
+        }
+        break;
+      }
+      case 'mindtheft': {
+        const r = rivalArk(g, p, ark);
+        if (r) {
+          shipRing(r, def.color);
+          line(ctx, this.sx(ark.x), this.sy(ark.y), this.sx(r.x), this.sy(r.y), def.color, 2, -phase);
+        }
+        break;
+      }
+      case 'conversion':
+        for (const u of conversionTargets(g, ark)) shipRing(u, def.color);
+        break;
+      case 'wager':
+        for (const u of burnable(g, p, ark.node)) shipRing(u, def.color);
+        shipRing(ark, PAL.red);
+        break;
     }
   }
 

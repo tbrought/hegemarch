@@ -4,6 +4,7 @@
  */
 
 import { FIRE_SPOOL, HOLD_FIELD, JUMP_CHARGE, UNDER_FIRE } from '../../game/constants';
+import { powerOf } from '../../game/commands/power';
 import { ABILITY_BY_ID } from '../../game/data/abilities';
 import { UNITS } from '../../game/data/units';
 import { burning, STARFALL_FUSE } from '../../game/starfall';
@@ -18,6 +19,7 @@ import { gloss, GLOSS_BY_ID, termsIn } from '../glossary';
 import { unitCount, unitDesc, unitName } from '../vocab';
 import { gap, header, line, para, type CardRow } from './rows';
 import type { Hud } from '../Hud';
+import { POWER_KEY } from './power';
 
 /** How long a drive charges with nothing holding it, for the words of a tip. */
 export const JUMP_CHARGE_TEXT = `${JUMP_CHARGE} s`;
@@ -67,6 +69,14 @@ export function fleetRows(hud: Hud, units: Unit[]): CardRow[] {
     const desc = unitDesc(u.type, u.era);
     rows.push(header(hud, unitName(u.type, u.era).toUpperCase() + (u.level > 1 ? ` · LEVEL ${u.level}` : ''), p.color, null, where));
     rows.push(para(hud, desc, PAL.mist, 200, { terms: termsIn(desc, { exclude: def.name }) }));
+    // The Ark casts the house's power (1.27): its name and its key, in the house's colour.
+    const power = u.type === 'ark' ? powerOf(p) : null;
+    if (power) {
+      rows.push(line(hud, `HOUSE POWER: ${power.name.toUpperCase()} (${POWER_KEY})`, p.color, 'tiny', {
+        tip: `{${power.name}}: ${power.desc}\n[${POWER_KEY}] aims it, [${POWER_KEY}] again casts it.`,
+        terms: gloss('power'),
+      }));
+    }
     if (u.abil.length) {
       rows.push(line(hud, 'ABILITIES: ' + u.abil.map((a) => ABILITY_BY_ID[a.id]?.name ?? a.id).join(', ').toUpperCase(), PAL.violet, 'tiny', {
         tip: u.abil.map((a) => `{${ABILITY_BY_ID[a.id]?.name ?? a.id}}: ${ABILITY_BY_ID[a.id]?.desc ?? ''}`).join('\n'),

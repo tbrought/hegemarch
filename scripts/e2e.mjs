@@ -157,10 +157,11 @@ try {
   const b2 = await banner();
   check('every house card has a banner showing its starting fleet', b1.n === 6 && b1.lit > 60 && /starts with the Ark/.test(b1.tip), `${b1.n} banners, ${b1.lit} lit pixels`);
   check('the banners move', b1.sum !== b2.sum);
-  const term = await page.$('.heir .gl[data-gl="ab-aegis"]');
+  // (A house's power, on its card: 1.27.)
+  const term = await page.$('.heir .gl[data-gl="ab-dawn"]');
   if (term) await term.hover();
   await wait(200);
-  check('menu terms explain themselves on hover', !!term && (await page.$eval('.gtip', (el) => !el.hidden && /Aegis Field/.test(el.textContent))));
+  check('menu terms explain themselves on hover', !!term && (await page.$eval('.gtip', (el) => !el.hidden && /Dawn/.test(el.textContent) && /kindled at once/.test(el.textContent))));
   await page.mouse.move(5, 5);
   await wait(100);
   check('the menu tooltip goes away', await page.$eval('.gtip', (el) => el.hidden));

@@ -1,6 +1,8 @@
 import type { Session } from '../app/Session';
 import { SPEEDS } from '../app/Session';
+import { powerOf } from '../game/commands/power';
 import { UNITS } from '../game/data/units';
+import type { Game } from '../game/Game';
 import { PAL } from '../render/palette';
 import type { Hud } from './Hud';
 import { BUILD_KEYS } from './keys';
@@ -22,6 +24,11 @@ export function takeKeys() {
 }
 
 /** Mouse and keyboard. UI regions get first pick; everything else goes to the map. */
+/** Does the player's House Power wait for a world to be chosen (a Wayfinder)? */
+function aimsAtWorld(g: Game): boolean {
+  return powerOf(g.player)?.aim === 'world';
+}
+
 export class Input {
   private keys = new Set<string>();
   private drag: { button: number; x: number; y: number; moved: boolean; box: boolean } | null = null;
@@ -124,8 +131,15 @@ export class Input {
     const r = this.s.renderer;
     const u = r.pickUnit(this.g, this.pointer.x, this.pointer.y, this.s.visible);
     if (u) v.hoverUnit = u.id;
-    const n = r.pickNode(this.g, this.pointer.x, this.pointer.y, this.s.explored, v.orderMode);
-    if (n && !u) v.hoverNode = n.id;
+    // (A Wayfinder aimed points at worlds alone: the world under the pointer, whatever ships stand at it.)
+    const aiming = !!v.powerAim && aimsAtWorld(this.g);
+    const n = r.pickNode(this.g, this.pointer.x, this.pointer.y, this.s.explored, v.orderMode || aiming);
+    if (n && (!u || aiming)) v.hoverNode = n.id;
+    if (aiming) {
+      v.hoverUnit = 0;
+      this.canvas.style.cursor = n ? 'crosshair' : 'default';
+      return;
+    }
     // (One of our own ships is picked by a click, even while an order waits for its destination.)
     const own = !!u && u.owner === this.g.playerId;
     this.canvas.style.cursor = v.orderMode && (n || u) && !own ? 'crosshair' : u || n ? 'pointer' : 'default';
@@ -157,6 +171,14 @@ export class Input {
     const g = this.g;
     const r = s.renderer;
     const v = s.view;
+    // The House Power aimed: a click on a world is where a Wayfinder's starlane goes; any other click puts the
+    // power away (it is cast with D again, or a click on its own button).
+    if (v.powerAim) {
+      const n = aimsAtWorld(g) ? r.pickNode(g, x, y, s.explored, true) : null;
+      if (n) this.hud.actions.powerAt(n.id);
+      else this.hud.actions.cancelPower();
+      return;
+    }
     const u = r.pickUnit(g, x, y, s.visible);
     // Order mode: the click is a destination.
     if (v.orderMode && s.ownSelected().length) {
@@ -209,6 +231,11 @@ export class Input {
     const s = this.s;
     const g = this.g;
     const r = s.renderer;
+    // (A right-click puts an aimed power away, as Escape does.)
+    if (s.view.powerAim) {
+      this.hud.actions.cancelPower();
+      return;
+    }
     const own = s.ownSelected();
     if (own.length) {
       const u = r.pickUnit(g, x, y, s.visible);
@@ -274,6 +301,7 @@ export class Input {
     if (code === 'Escape') {
       e.preventDefault();
       if (s.modal) this.hud.modals.close();
+      else if (s.view.powerAim) this.hud.actions.cancelPower();
       else if (s.view.orderMode) s.view.orderMode = false;
       else if (s.view.selected.size || s.view.selectedNode >= 0) s.clearSelection();
       else this.hud.modals.open({ kind: 'menu' });
@@ -390,6 +418,10 @@ export class Input {
         break;
       case 'KeyM':
         s.view.orderMode = s.mode === 'play' && s.ownSelected().length > 0 && !s.view.orderMode;
+        break;
+      case 'KeyD':
+        // The House Power: aimed, then cast (ui/hud/power.ts).
+        this.hud.actions.power();
         break;
     }
   }

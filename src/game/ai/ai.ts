@@ -6,6 +6,7 @@ import { isWarship, UNITS } from '../data/units';
 import { ASCENSION_BOONS, relicsRequired, treasuryTarget } from '../data/victories';
 import type { AIState, Faction, GNode, Rarity, Unit, UnitType, WorldRole, WorldSize } from '../types';
 import { WHY } from '../commands/checks';
+import { burnable, powerOf, wayTargets } from '../commands/power';
 import { burning, STARFALL_BURN } from '../starfall';
 import { isHearth } from '../worldStats';
 
@@ -82,6 +83,51 @@ export function aiTick(g: Game, f: Faction, dt: number) {
   economy(g, f, ctx);
   military(g, f, ctx);
   scouting(g, f, ctx);
+  housePower(g, f);
+}
+
+/**
+ * The house's power (1.27), cast by the same order and held to the same checks as the player's, when it
+ * would do what it is for: Dawn and Mind Theft whenever they can, a Conversion whenever ships would turn,
+ * a Call to Arms when the Ark is in a fight or the army sets out, a Wayfinder's starlane when it brings the
+ * army two jumps or more nearer the world it means to take, and Fate's Wager only when the fight at the Ark
+ * is being lost: then the coin is worth the Ark.
+ */
+function housePower(g: Game, f: Faction) {
+  const def = powerOf(f);
+  if (!def || g.powerReady(f.id)) return;
+  const ark = g.units.get(f.ark)!;
+  const ai = f.ai!;
+  switch (def.id) {
+    case 'dawn':
+    case 'mindtheft':
+    case 'conversion':
+      if (!g.checkPower(f.id)) g.cmdPower(f.id);
+      break;
+    case 'callarms':
+      if ((g.hostilePowerAt(ark.node, f.id) > 0 || ai.mode === 'attack') && !g.checkPower(f.id)) g.cmdPower(f.id);
+      break;
+    case 'wayfinder': {
+      if (ai.mode === 'build' || ai.target < 0 || ai.target === ark.node) break;
+      let best = -1;
+      let hops = g.hops(ark.node, ai.target) - 1;
+      for (const id of wayTargets(g, f, ark)) {
+        const h = 1 + g.hops(id, ai.target);
+        if (h < hops || (h === hops && best >= 0 && id < best)) {
+          best = id;
+          hops = h;
+        }
+      }
+      if (best >= 0) g.cmdPower(f.id, best);
+      break;
+    }
+    case 'wager': {
+      let ours = 0;
+      for (const u of g.buckets[ark.node]) if (u.owner === f.id && !u.dead && !u.lane) ours += g.unitPower(u);
+      if (g.hostilePowerAt(ark.node, f.id) > ours * 1.3 && burnable(g, f, ark.node).length >= 4) g.cmdPower(f.id);
+      break;
+    }
+  }
 }
 
 function aiDraft(g: Game, f: Faction): boolean {
@@ -611,6 +657,7 @@ function military(g: Game, f: Faction, ctx: Ctx) {
   defuse(g, f, all, assigned);
   defend(g, f, ctx, all, assigned);
   claimDerelicts(g, f, all, assigned);
+  dawnTrip(g, f, ctx, all, assigned);
   const army = all.filter((u) => !assigned.has(u.id));
   const armyPower = power(g, army);
   const minArmy = (12 + ctx.minutes * 1.5) * ERAS[f.era].power;
@@ -722,6 +769,41 @@ function claimDerelicts(g: Game, f: Faction, all: Unit[], assigned: Set<number>)
     g.cmdMove(f.id, free.map((u) => u.id), n.id);
     for (const u of free) assigned.add(u.id);
   }
+}
+
+/** How far a rival Concord takes its Ark to cast Dawn (as `pathLen` counts: two or three jumps in a system). */
+const DAWN_REACH = 6000;
+
+/**
+ * A rival Concord whose Dawn is ready, at peace, takes its Ark to the place near by with the most dark worlds
+ * one starlane from it (two at least) that it has charted and seen nothing guard, and nothing hostile at the
+ * place itself as far as it knows; there it casts Dawn (`housePower`), and the Ark goes back to the army.
+ * (Left with the army, its Ark sat at home, where every world was already lit: in six AI-only games it cast
+ * Dawn three times, and the Concord won 3 of 28 games against 6 before 1.27.)
+ */
+function dawnTrip(g: Game, f: Faction, ctx: Ctx, all: Unit[], assigned: Set<number>) {
+  if (powerOf(f)?.id !== 'dawn' || f.ai!.mode !== 'build' || ctx.threats.length || g.powerReady(f.id)) return;
+  const ark = all.find((u) => u.type === 'ark' && !assigned.has(u.id));
+  if (!ark || ark.lane || ark.node < 0) return;
+  const dark = (id: number) =>
+    g.neighbours(id).filter((w) => g.nodes[w].kind === 'planet' && g.nodes[w].owner < 0 && f.explored[w] && !g.seenGuarded(f, w)).length;
+  let best = -1;
+  let bs = 0;
+  for (const n of g.nodes) {
+    if (!f.explored[n.id] || strengthAt(g, f, n.id) > 0) continue;
+    const d = g.pathLen(ark.node, n.id);
+    if (!(d <= DAWN_REACH)) continue;
+    const k = dark(n.id);
+    if (k < 2) continue;
+    const s = k / (1 + d / 9000);
+    if (s > bs) {
+      bs = s;
+      best = n.id;
+    }
+  }
+  if (best < 0) return;
+  assigned.add(ark.id);
+  if (ark.node !== best && ark.dest !== best) g.cmdMove(f.id, [ark.id], best);
 }
 
 /**

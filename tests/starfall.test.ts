@@ -532,7 +532,9 @@ describe('rival houses and the Starfall', () => {
   });
 
   it('left to themselves, rival houses build one, bring it to an enemy\'s star with their fleet and arm it there', () => {
-    const g = mk({ seed: 1015, size: 'medium', autoplay: true });
+    // (A sector where it comes to that: since 1.27, with the houses' powers, the one this used, 1015, builds its
+    // Starfall at 27 minutes and has not armed it by 45; 1016, 1017 and 1019 arm theirs at 25 to 28.)
+    const g = mk({ seed: 1016, size: 'medium', autoplay: true });
     for (const f of g.empires()) g.addCard(f, 'bpStarfall');
     let armedBy = -1;
     let at = -1;

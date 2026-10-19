@@ -27,7 +27,7 @@ try {
   await wait(1200);
   await ev(() => localStorage.setItem('hegemarch.profile.v1', JSON.stringify({
     tutorialDone: true, runs: 3, settings: { autoPause: false, tips: true },
-    seenTips: ['role', 'raid', 'anomaly', 'anomalySeen', 'fleet', 'hangar', 'boonReady', 'blueprint', 'arkLevel', 'lostWorld', 'crisis', 'converted'],
+    seenTips: ['role', 'raid', 'anomaly', 'anomalySeen', 'fleet', 'hangar', 'boonReady', 'blueprint', 'arkLevel', 'lostWorld', 'crisis', 'converted', 'power'],
   })));
   await page.reload();
   await wait(2000);

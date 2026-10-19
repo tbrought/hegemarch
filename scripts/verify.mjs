@@ -58,6 +58,8 @@ const steps = [
   ['board ui', 'node scripts/board-ui.mjs', true],
   ['starfall', 'node scripts/starfall.mjs', true],
   ['stopped', 'node scripts/stopped.mjs', true],
+  // (The House Powers: their button, D to aim and cast, the aim put away, a Wayfinder's world: 1.27.)
+  ['powers', 'node scripts/powers.mjs', true],
   ['reveals', 'node scripts/reveals.mjs', true],
   ['frame', 'node scripts/frame.mjs', true],
   // (A battle's music in tune and never clipping, and every sound starting from silence: 1.25.1.)

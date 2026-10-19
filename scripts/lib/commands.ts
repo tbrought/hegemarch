@@ -4,6 +4,7 @@
  * `g.cmd*` commands the player's UI and the rival houses use.
  */
 import type { Game } from '../../src/game/Game';
+import { wayTargets } from '../../src/game/commands/power';
 import { ABILITIES } from '../../src/game/data/abilities';
 import { CARDS } from '../../src/game/data/cards';
 import { UNITS } from '../../src/game/data/units';
@@ -171,10 +172,23 @@ export function randomCommand(g: Game, r: RNG, log: string[], onlyPlayer = false
       else g.cmdQueueGate(fid, n);
       break;
     }
-    case 18:
-      what = 'rebuild ark';
-      g.cmdRebuildArk(fid);
+    case 18: {
+      if (r.chance(0.5)) {
+        what = 'rebuild ark';
+        g.cmdRebuildArk(fid);
+        break;
+      }
+      // The house's power (1.27): now and then at a world (a Wayfinder's, one it could reach, some of the
+      // time), and sometimes when it cannot be. (Made ready outright, some of the time, so that every power is
+      // reached; not for a player who only gives orders.)
+      const ark = f.ark >= 0 ? g.units.get(f.ark) : undefined;
+      const ways = ark && !ark.dead && !ark.lane && ark.node >= 0 && f.kind === 'empire' ? wayTargets(g, f, ark) : [];
+      const t = ways.length && r.chance(0.7) ? r.pick(ways) : r.chance(0.5) ? anyNode() : -1;
+      if (r.chance(0.6) && !onlyPlayer) f.powerCd = 0;
+      what = `power at ${t}`;
+      g.cmdPower(fid, t);
       break;
+    }
     case 19: {
       const n = ownNode();
       what = `cancel at ${n}`;

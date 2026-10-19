@@ -22,6 +22,7 @@ import * as boons from './boons';
 import * as choices from './commands/choices';
 import * as climb from './commands/climb';
 import * as orders from './commands/orders';
+import * as power from './commands/power';
 import * as production from './commands/production';
 import * as conquest from './conquest';
 import { TICK } from './constants';
@@ -60,6 +61,7 @@ import type {
   Rarity, Unit, UnitMod, UnitType, VictoryId, WeaponDef, WorldRole,
 } from './types';
 import * as unitLife from './unitLife';
+import { dist } from './util';
 import * as worldStats from './worldStats';
 
 export type { SaveData } from './save';
@@ -341,7 +343,26 @@ export class Game {
   starfallOf(fid: number): Unit | null { return starfall.starfallOf(this, fid); }
   starfallCost(f: Faction): number { return starfall.starfallCost(this, f); }
 
-  /** The places one starlane away (worked out once from the map, which does not change). */
+  /**
+   * A new starlane (a Wayfinder's, 1.27): there for the rest of the run, for every house. The list of lanes
+   * is a new one (what is worked out from it, as `neighbours`, knows it by that), and the ways through the
+   * sector are worked out again.
+   */
+  addLane(a: number, b: number, by: number) {
+    const A = this.nodes[a];
+    const B = this.nodes[b];
+    this.lanes = [...this.lanes, { a, b, len: dist(A.x, A.y, B.x, B.y), by }];
+    A.lanes.push(b);
+    B.lanes.push(a);
+    const p = computePaths(this.nodes, this.lanes);
+    this.pathDist = p.dist;
+    this.pathNext = p.next;
+    this.pathHops = p.hops;
+    // (A Bastion's field reaches along its starlanes: worked out again, this tick.)
+    this.fieldEpoch++;
+  }
+
+  /** The places one starlane away (worked out from the map, again when a Wayfinder cuts a new starlane). */
   neighbours(id: number): number[] {
     if (!this.nextTo || this.nextToOf !== this.lanes) {
       this.nextTo = this.nodes.map(() => []);
@@ -395,7 +416,7 @@ export class Game {
 
   // ---- Worlds change hands, houses fall, a winner is named (conquest.ts) ----
   damagePlanet(n: GNode, amount: number, type: DmgType, byFaction: number, spare = false) { return conquest.damagePlanet(this, n, amount, type, byFaction, spare); }
-  kindleWorld(n: GNode, fid: number) { return conquest.kindleWorld(this, n, fid); }
+  kindleWorld(n: GNode, fid: number, quiet = false) { return conquest.kindleWorld(this, n, fid, quiet); }
   planetDefeated(n: GNode, byFaction: number) { return conquest.planetDefeated(this, n, byFaction); }
   eliminate(fid: number, byFaction: number) { return conquest.eliminate(this, fid, byFaction); }
   declareWinner(fid: number, victory: VictoryId | 'defeat', reason: string) { return conquest.declareWinner(this, fid, victory, reason); }
@@ -472,6 +493,11 @@ export class Game {
   cmdChooseAbility(fid: number, unitId: number, abilityId: string): boolean { return choices.cmdChooseAbility(this, fid, unitId, abilityId); }
   cmdResolvePrompt(promptId: number, choice: number): string | null { return choices.cmdResolvePrompt(this, promptId, choice); }
   dismissPrompt(promptId: number) { return choices.dismissPrompt(this, promptId); }
+
+  // ---- Commands: the House Powers (commands/power.ts) ----
+  powerReady(fid: number): QueueCheck { return power.powerReady(this, fid); }
+  checkPower(fid: number, target = -1): QueueCheck { return power.checkPower(this, fid, target); }
+  cmdPower(fid: number, target = -1): boolean { return power.cmdPower(this, fid, target); }
 
   // =====================================================================
   // Commands (shared by the player's UI and the AI)
@@ -578,6 +604,7 @@ export class Game {
     economyTick(this, dt);
     productionTick(this, dt);
     abilitiesTick(this, dt);
+    power.powersTick(this, dt);
     combatTick(this, dt);
     projectileTick(this, dt);
     movementTick(this, dt);
@@ -631,7 +658,7 @@ export const ORDER_NAMES = [
   'cmdChooseCard', 'cmdReroll', 'cmdSkipDraft', 'cmdGoal', 'cmdChooseAbility', 'cmdResolvePrompt', 'dismissPrompt', 'ensureOffer',
   'cmdMove', 'cmdAttack', 'cmdKindle', 'cmdSendSeed', 'cmdStop', 'cmdRetreat', 'cmdExplore', 'cmdSetRally', 'cmdArm', 'cmdQueueShip',
   'cmdUpgrade', 'cmdSetRole', 'cmdQueueStarbase', 'cmdQueueGate', 'cmdQueueStarfall', 'cmdBuyBay', 'cmdRebuildArk', 'cmdCancel',
-  'cmdAdvance', 'cmdCancelAdvance',
+  'cmdAdvance', 'cmdCancelAdvance', 'cmdPower',
 ] as const;
 
 /** An argument as it is kept: nothing and a function as null, a list as a copy. */

@@ -12,6 +12,7 @@
  *    cradle pay in Embers and a few more ships at the start.
  */
 import { Game } from './Game';
+import { POWER_FIRST } from './data/abilities';
 import { ERAS, LAST_CRADLE_ERA } from './data/eras';
 import { hashString } from './rng';
 import type { Faction, GameConfig, UnitType } from './types';
@@ -124,6 +125,8 @@ export function ascend(cradle: Game): Game | null {
     // Asleep until it arrives; and for a while after that its rivals leave it alone.
     f.asleepUntil = i === 0 ? arrival : Math.max(0, arrival - lead[i - 1]);
     f.graceUntil = f.asleepUntil + GRACE[d];
+    // (Its power is first ready a while after it arrives, as at the start of a classic run.)
+    f.powerCd = f.asleepUntil + POWER_FIRST;
     if (f.ai) f.ai.firstAttackAt += f.asleepUntil;
     if (f.asleepUntil > 0) for (const u of g.unitsOf(f.id)) if (u.order === 'explore') u.order = 'idle';
   });

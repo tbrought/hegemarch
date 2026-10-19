@@ -140,7 +140,7 @@ const onsets = await page.evaluate(async () => {
   mute.connect(c.destination);
   const out = {};
   // (And every ability's own, 1.26: they are heard in a battle too.)
-  for (const id of ['laser', 'bolt', 'flak', 'shell', 'lance', 'missile', 'boom', 'bigboom', 'cast-aegis', 'cast-barrage', 'cast-nanite', 'cast-strikewing', 'cast-emp', 'cast-conversion', 'cast-lance', 'cast-overdrive', 'cast-rally', 'cast-snare', 'cast-repair']) {
+  for (const id of ['laser', 'bolt', 'flak', 'shell', 'lance', 'missile', 'boom', 'bigboom', 'cast-aegis', 'cast-barrage', 'cast-nanite', 'cast-strikewing', 'cast-emp', 'cast-conversion', 'cast-lance', 'cast-overdrive', 'cast-rally', 'cast-snare', 'cast-repair', 'cast-dawn', 'cast-callarms', 'cast-wayfinder', 'cast-mindtheft', 'cast-wager']) {
     chunks.length = 0;
     for (let i = 0; i < 8; i++) {
       await new Promise((r) => setTimeout(r, 1200 + Math.random() * 40));

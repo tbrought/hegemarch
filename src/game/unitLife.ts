@@ -44,14 +44,12 @@ export function spawnUnit(g: Game, type: UnitType,
   if (type === 'ark') {
     u.level = f.arkLevel;
     u.xp = f.arkXp;
-    const heir = HEIR_BY_ID[f.heir];
-    const abil = f.arkAbil.length ? f.arkAbil : [heir?.signature ?? 'barrage'];
-    u.abil = abil.map((id) => ({ id, cd: 4 }));
+    // (What it learned at levels 3, 5 and 7, and nothing more: its house's power is the house's, not one of these.)
+    u.abil = f.arkAbil.map((id) => ({ id, cd: 4 }));
     f.ark = u.id;
     g.oweAbilities(u);
   } else if (type === 'dreadnought') {
-    const pool = LEARNABLE_ABILITIES.filter((a) => a.id !== HEIR_BY_ID[f.heir]?.signature);
-    u.abil = [{ id: g.rng.pick(pool).id, cd: 4 }];
+    u.abil = [{ id: g.rng.pick(LEARNABLE_ABILITIES).id, cd: 4 }];
   } else if (type === 'leviathan') {
     u.abil = [{ id: 'barrage', cd: 8 }];
   }
@@ -455,11 +453,11 @@ function offerAbility(g: Game, u: Unit): boolean {
 /**
  * An Ark that is rebuilt comes back at the level its house has reached. If it gained levels while
  * there was no Ark to gain them (a Boon taken with the Ark destroyed), the abilities of those levels
- * were never offered: they are now. An Ark knows its house's signature ability and one more for each
- * of the levels in `ABILITY_LEVELS` it has reached.
+ * were never offered: they are now. An Ark knows one ability for each of the levels in `ABILITY_LEVELS` it
+ * has reached (its house's power is not one of them: 1.27).
  */
 export function oweAbilities(g: Game, u: Unit) {
-  const due = 1 + ABILITY_LEVELS.filter((l) => l <= u.level).length;
+  const due = ABILITY_LEVELS.filter((l) => l <= u.level).length;
   for (let i = 0; i < 4 && u.abil.length + u.pendingAbil.length < due; i++) if (!offerAbility(g, u)) break;
 }
 

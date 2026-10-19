@@ -12,7 +12,8 @@ export interface HeirDef {
   bonuses: string[];
   mods: (m: Mods) => void;
   arkName: string;
-  signature: string;
+  /** Its House Power (data/abilities.ts, 1.27): what its Ark casts at the house's order, and no other house's can. */
+  power: string;
   hearth: string;
   start: { scouts: number; strikers: number; guardians: number; breakers: number; epicCard: boolean };
   cost: number;
@@ -54,14 +55,14 @@ export const HEIRS: HeirDef[] = [
     title: 'Keepers of the Golden Hearth',
     color: PAL.gold,
     desc: 'Patient stewards who remember the old light. Steady, sturdy and rich.',
-    bonuses: ['[+10% Embers]', '[+15% world hull and shields]', '[+10% ship shields]', 'Ark: {Aegis Field}'],
+    bonuses: ['[+10% Embers]', '[+15% world hull and shields]', '[+10% ship shields]', 'House Power: {Dawn}'],
     mods: (m) => {
       m.embers += 0.1;
       m.worldHp += 0.15;
       m.shield += 0.1;
     },
     arkName: 'Sovereign',
-    signature: 'aegis',
+    power: 'dawn',
     hearth: 'Aurelia',
     start: { scouts: 1, strikers: 1, guardians: 2, breakers: 0, epicCard: false },
     cost: 0,
@@ -73,14 +74,14 @@ export const HEIRS: HeirDef[] = [
     title: 'The Blood-Sworn House',
     color: PAL.red,
     desc: 'A martial house that believes the dark is won in fire. Their warships hit harder and cost less.',
-    bonuses: ['[+15% weapon damage]', 'Ships cost [10% less]', '[!15% less Lore]', 'Ark: {Missile Barrage}'],
+    bonuses: ['[+15% weapon damage]', 'Ships cost [10% less]', '[!15% less Lore]', 'House Power: {Call to Arms}'],
     mods: (m) => {
       m.dmg += 0.15;
       m.shipCost -= 0.1;
       m.lore -= 0.15;
     },
     arkName: 'Tyrant',
-    signature: 'barrage',
+    power: 'callarms',
     hearth: 'Vaelor',
     start: { scouts: 1, strikers: 2, guardians: 1, breakers: 1, epicCard: false },
     cost: 0,
@@ -92,14 +93,14 @@ export const HEIRS: HeirDef[] = [
     title: 'The Wandering House',
     color: PAL.teal,
     desc: 'Nomad fleets who never stopped moving. Fast on the starlanes and quick to kindle.',
-    bonuses: ['Ride starlanes [30% faster]', 'Ships move [15% faster]', 'Kindling costs [35% less]', '[An extra Scout]', 'Ark: {Nanite Cloud}'],
+    bonuses: ['Ride starlanes [30% faster]', 'Ships move [15% faster]', 'Kindling costs [35% less]', '[An extra Scout]', 'House Power: {Wayfinder}'],
     mods: (m) => {
       m.laneSpeed += 0.3;
       m.speed += 0.15;
       m.kindleCost -= 0.35;
     },
     arkName: 'Wanderer',
-    signature: 'nanite',
+    power: 'wayfinder',
     hearth: 'Driftholm',
     start: { scouts: 2, strikers: 1, guardians: 1, breakers: 0, epicCard: false },
     cost: 0,
@@ -111,7 +112,7 @@ export const HEIRS: HeirDef[] = [
     title: 'The Hive-Minded House',
     color: PAL.violet,
     desc: 'Scholars joined in one mind. Quick to learn and quick to swarm, but their hulls are thin.',
-    bonuses: ['[+25% Lore]', 'Strikers cost [25% less]', 'Carriers launch [2 more Fighters]', '[!10% less ship hull]', 'Ark: {Strike Wing}'],
+    bonuses: ['[+25% Lore]', 'Strikers cost [25% less]', 'Carriers launch [2 more Fighters]', '[!10% less ship hull]', 'House Power: {Mind Theft}'],
     mods: (m) => {
       m.lore += 0.25;
       addU(m, 'striker', 'cost', -0.25);
@@ -119,7 +120,7 @@ export const HEIRS: HeirDef[] = [
       m.hull -= 0.1;
     },
     arkName: 'Overmind',
-    signature: 'strikewing',
+    power: 'mindtheft',
     hearth: 'Lycea',
     start: { scouts: 1, strikers: 3, guardians: 0, breakers: 0, epicCard: false },
     cost: 120,
@@ -135,14 +136,14 @@ export const HEIRS: HeirDef[] = [
     title: 'The Faithful House',
     color: PAL.sky,
     desc: 'Zealots of a flame that never went out. They convert what others destroy, and they never run.',
-    bonuses: ['Captured worlds [keep their level and Glow]', '{Zeal}: [+5% damage] at a world for each ship lost there (up to 25%)', '[!Drives take 25% longer to charge]', 'Ark: {Conversion}'],
+    bonuses: ['Captured worlds [keep their level and Glow]', '{Zeal}: [+5% damage] at a world for each ship lost there (up to 25%)', '[!Drives take 25% longer to charge]', 'House Power: {Conversion}'],
     mods: (m) => {
       m.flags.convert = 1;
       m.flags.zeal = ZEAL_STEP;
       m.jumpCharge += 0.25;
     },
     arkName: 'Cantor',
-    signature: 'conversion',
+    power: 'conversion',
     hearth: 'Canticle',
     start: { scouts: 1, strikers: 1, guardians: 1, breakers: 1, epicCard: false },
     cost: 160,
@@ -154,13 +155,13 @@ export const HEIRS: HeirDef[] = [
     title: 'The Last of the Old Light',
     color: PAL.ember,
     desc: 'Survivors who walked out of the fire that ended the old age. They gamble everything on fate.',
-    bonuses: ['Boon choices offer [one more option]', '[+2 rerolls]', 'Start with [a random Epic Boon]', '[!15% fewer Embers]', 'Ark: {Ember Lance}'],
+    bonuses: ['Boon choices offer [one more option]', '[+2 rerolls]', 'Start with [a random Epic Boon]', '[!15% fewer Embers]', "House Power: {Fate's Wager}"],
     mods: (m) => {
       m.draft += 1;
       m.embers -= 0.15;
     },
     arkName: 'Ember Throne',
-    signature: 'phaselance',
+    power: 'wager',
     hearth: 'Cinder',
     start: { scouts: 1, strikers: 1, guardians: 1, breakers: 1, epicCard: true },
     cost: 250,

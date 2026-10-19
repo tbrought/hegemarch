@@ -59,21 +59,21 @@ describe('an Ark never loses an ability it has earned', () => {
     expect(p.arkLevel).toBe(3);
     const again = g.spawnUnit('ark', p.id, p.capital);
     expect(again.level).toBe(3);
-    // It knows its house's own ability, and is owed the one of level 3.
-    expect(again.abil.length).toBe(1);
+    // It is owed the ability of level 3 (its house's power is the house's, not one of these: 1.27).
+    expect(again.abil.length).toBe(0);
     expect(again.pendingAbil.length).toBe(1);
     // An Ark that is owed nothing is offered nothing.
     const g2 = mk();
     const ark2 = g2.units.get(g2.player.ark)!;
     g2.grantLevels(ark2, 4);
     const known = ark2.abil.length + ark2.pendingAbil.length;
-    expect(known).toBe(3);
+    expect(known).toBe(2);
     g2.cmdChooseAbility(g2.playerId, ark2.id, ark2.pendingAbil[0][0]);
     g2.cmdChooseAbility(g2.playerId, ark2.id, ark2.pendingAbil[0][0]);
     g2.killUnit(ark2, -1);
     const back = g2.spawnUnit('ark', g2.playerId, g2.player.capital);
     expect(back.level).toBe(5);
-    expect(back.abil.length).toBe(3);
+    expect(back.abil.length).toBe(2);
     expect(back.pendingAbil.length).toBe(0);
   });
 
@@ -83,7 +83,7 @@ describe('an Ark never loses an ability it has earned', () => {
     g.killUnit(g.units.get(rival.ark)!, -1);
     rival.arkLevel = 5;
     const ark = g.spawnUnit('ark', rival.id, rival.capital);
-    expect(ark.abil.length).toBe(3);
+    expect(ark.abil.length).toBe(2);
     expect(ark.pendingAbil.length).toBe(0);
   });
 

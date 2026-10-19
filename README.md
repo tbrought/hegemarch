@@ -97,8 +97,15 @@ terms do the same.
   with its ring on the map, and the one that loses does your next KINDLE for free. Only warships and
   guards stop a kindling; another house's seed ship or Scout does not.
 - **Ships**: Strikers beat Breakers, Breakers beat Guardians and worlds, Guardians beat Strikers.
-  Your **Ark** levels up and learns abilities: it powers up on screen, then offers three to choose from. Each ability
-  has its own look and sound, says what it did over the ship that cast it, and marks what it leaves on ships for as long as it lasts.
+- **Every house has a House Power**, its own and no other's, cast by its Ark when you order it: **D** aims it (the map
+  shows what it would do), **D** again casts it, and it comes back after a few minutes. Dawn (Solar Concord) kindles every
+  dark world beside the Ark at once; Call to Arms (Vael Imperium) brings warships from the nearest Forges; Wayfinder
+  (Wayfarer Clans) cuts a new starlane for the rest of the run; Mind Theft (Lyceum Collective) learns a rival Ark's
+  rarest Boon; Conversion (Choir of the First Flame) turns the weakest enemy ships; Fate's Wager (Ashen Remnant)
+  throws a coin: heads, every enemy warship at the world burns; tails, the Ark does.
+  Your **Ark** levels up and learns abilities: it powers up on screen, then offers three to choose from, and they fire
+  by themselves in battle. Each ability has its own look and sound, says what it did over the ship that cast it, and
+  marks what it leaves on ships for as long as it lasts.
 - **Scouts** wait for your order. Select one and press EXPLORE (or **E**), and it charts the dark
   world after world by itself. An **anomaly** (a violet swirl) waits until you send a ship to stop
   there; then you choose what to do, on a page that opens with a picture of it and its story coming
@@ -147,6 +154,7 @@ terms do the same.
 | B · U · H · L | Boons (the draft when one is waiting) · status · help · comms log |
 | Shift-click a ship button | Queue five of that ship |
 | F · K · E · S · R · C | All warships · kindle selected world · send selected Scouts exploring (with none selected: pick your idle Scouts) · stop · retreat · look at your Hearth |
+| D | Your House Power: aim it (the map shows what it would do), then D again (or click its button) to cast. Esc or right-click puts it away |
 | Ctrl+1–9 / 1–9 · Esc | Control groups · cancel, or open the menu |
 
 ## Ages runs
@@ -240,6 +248,7 @@ npm run test:fit           # every decision and outcome, level-up, omens pair an
 npm run test:reveals       # keys and clicks while things come in; heralds and goals meeting dialogs and tip cards
 npm run test:discovery     # a new player discovering Boons: the starting deck, a key turning, the next choice, a new run
 npm run test:calm          # a player who asks for less motion: every new moment comes and goes, no kindling ring
+npm run test:powers        # the House Power: its button, D to aim and cast, put away, a Wayfinder's world clicked
 npm run test:frame         # the game in a frame (artifact, itch.io): a click in it always takes the keyboard back
 npm run test:uifuzz        # minutes of random clicks, drags, keys and resizes through menus and runs
 npm run test:perf          # big battle frame-rate check

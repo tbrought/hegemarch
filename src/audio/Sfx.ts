@@ -10,7 +10,8 @@ export type SoundId =
   | 'deal' | 'rare' | 'epic' | 'legendary' | 'pact' | 'levelup'
   // An ability cast, each its own (1.26: audio/battleSounds.ts CAST_SOUND); 'ability' is the Hollow's pulse.
   | 'cast-aegis' | 'cast-barrage' | 'cast-nanite' | 'cast-strikewing' | 'cast-emp' | 'cast-conversion' | 'cast-lance'
-  | 'cast-overdrive' | 'cast-rally' | 'cast-snare' | 'cast-repair';
+  | 'cast-overdrive' | 'cast-rally' | 'cast-snare' | 'cast-repair'
+  | 'cast-dawn' | 'cast-callarms' | 'cast-wayfinder' | 'cast-mindtheft' | 'cast-wager';
 
 type Wave = 'p12' | 'p25' | 'p50' | 'tri';
 
@@ -400,6 +401,38 @@ export class Sfx {
       case 'cast-repair':
         // The trill of mending, lower and shorter: a ship's own drones.
         for (let i = 0; i < 5; i++) this.tone(dest, 'p12', midi(74 + (i % 2) * 2), midi(74 + (i % 2) * 2), t + i * 0.035, 0.03, v * 0.18);
+        break;
+      // The House Powers (1.27): bigger than an ability, each its house's own.
+      case 'cast-dawn':
+        // A sunrise: the major chord climbing slowly into the light, D, F#, A, D, F#, over a low D.
+        [62, 66, 69, 74, 78].forEach((n, i) => this.tone(dest, 'p25', midi(n), midi(n), t + i * 0.09, 0.7 - i * 0.07, v * 0.18, 0.04));
+        this.tone(dest, 'tri', midi(50), midi(50), t, 0.9, v * 0.32, 0.08);
+        break;
+      case 'cast-callarms':
+        // War drums, three, and the levy's call over them.
+        for (let i = 0; i < 3; i++) {
+          this.tone(dest, 'tri', 120, 46, t + i * 0.14, 0.16, v * 0.6);
+          this.noiseBurst(dest, t + i * 0.14, 0.08, v * 0.22, 0.6, { type: 'lowpass', f: 900 });
+        }
+        [55, 62, 67].forEach((n, i) => this.tone(dest, 'p50', midi(n), midi(n), t + 0.42 + i * 0.02, 0.4, v * 0.16, 0.02));
+        break;
+      case 'cast-wayfinder':
+        // A road opening: one long glide out, and a shimmer at its end.
+        this.tone(dest, 'p12', 260, 1240, t, 0.55, v * 0.24, 0.02);
+        for (let i = 0; i < 4; i++) this.tone(dest, 'p25', midi(88 + (i % 2) * 3), midi(88 + (i % 2) * 3), t + 0.5 + i * 0.04, 0.035, v * 0.14);
+        break;
+      case 'cast-mindtheft':
+        // A mind read: two voices a hair apart, falling together, and a whisper.
+        this.tone(dest, 'p50', 880, 440, t, 0.6, v * 0.14, 0.05);
+        this.tone(dest, 'p50', 892, 446, t, 0.6, v * 0.14, 0.05);
+        this.noiseBurst(dest, t + 0.05, 0.45, v * 0.1, 0.8, { type: 'highpass', f: 4000 });
+        break;
+      case 'cast-wager':
+        // The coin, thrown and turning: ticks that come quicker, then slower, as it rises and falls.
+        for (let i = 0; i < 10; i++) {
+          const at = t + 1.5 * (i / 9) ** 1.4;
+          this.tone(dest, 'p12', 2400 - i * 60, 2400 - i * 60, at, 0.02, v * 0.18);
+        }
         break;
       case 'build':
         this.tone(dest, 'tri', midi(67), midi(67), t, 0.06, v * 0.5);

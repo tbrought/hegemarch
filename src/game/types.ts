@@ -98,6 +98,8 @@ export interface Lane {
   a: number;
   b: number;
   len: number;
+  /** Cut by this house's Wayfinder (1.27): there for the rest of the run, open to every house. Not there on the sector's own. */
+  by?: number;
 }
 
 export interface Unit {
@@ -384,7 +386,12 @@ export interface Faction {
   ark: number;
   arkLevel: number;
   arkXp: number;
+  /** What its Ark has learned (levels 3, 5 and 7): kept for the Ark built after it. Never its House Power. */
   arkAbil: string[];
+  /** Seconds until its House Power (1.27, `HeirDef.power`) can be cast again: 0 when it is ready. */
+  powerCd: number;
+  /** Its Fate's Wager in the air: over which world, when the coin lands, and how (drawn as it was thrown). Not there otherwise. */
+  wager?: { node: number; at: number; heads: boolean };
   incomeMul: number;
   holdTimer: number;
   treasuryTimer: number;
@@ -481,6 +488,8 @@ export type Fx =
   | {
       k: 'ability'; x: number; y: number; r: number; color: string; node: number; id: string;
       by: number; size: number; house: string; on: number[]; says?: string; to?: { id: number; x: number; y: number; dmg: number };
+      /** A House Power (1.27): the places it reached (Dawn's worlds, the Forges of a Call to Arms, a new starlane's far end); a Fate's Wager's coin. */
+      at?: number[]; heads?: boolean;
     }
   /** A ship goes over to another house (Conversion): from its old colour to its new, called by `by` (or -1). */
   | { k: 'convert'; id: number; x: number; y: number; r: number; from: string; to: string; by: number; node: number };

@@ -1,8 +1,8 @@
 /**
  * The houses that changed in October 2026: the Nyx Collective became the Lyceum Collective, and the
  * Choir of the First Flame took the place of the Ironclad Dominion. The Choir's rules: its Ark turns
- * ships (Conversion), a world it takes is not sacked, a ship it loses is a martyr to the rest (Zeal),
- * and it does not run.
+ * ships (Conversion, its House Power since 1.27: cast at its order), a world it takes is not sacked, a
+ * ship it loses is a martyr to the rest (Zeal), and it does not run.
  */
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { Game } from '../src/game/Game';
@@ -26,17 +26,18 @@ const arkOf = (g: Game, fid: number) => g.unitList.find((u) => u.owner === fid &
 function beside(g: Game, at: Unit, owner: number, types: UnitType[]): Unit[] {
   return types.map((t, i) => g.spawnUnit(t, owner, at.node, { x: at.x + 60 + i * 12, y: at.y + 40 }));
 }
-/** The Ark's Conversion, now: one tick of the game with the ability ready. */
-function cast(g: Game, ark: Unit) {
-  ark.abil.find((a) => a.id === 'conversion')!.cd = 0;
-  g.step();
+/** The Ark's Conversion, now: its house orders it, with the power ready. */
+function cast(g: Game, ark: Unit): boolean {
+  g.factions[ark.owner].powerCd = 0;
+  return g.cmdPower(ark.owner);
 }
 
 describe('the houses', () => {
-  it('are six, each with an Ark ability that exists; two of them have new names', () => {
+  it('are six, each with a House Power of its own; two of them have new names', () => {
     expect(HEIRS.length).toBe(6);
     expect(new Set(HEIRS.map((h) => h.id)).size).toBe(6);
-    for (const h of HEIRS) expect(ABILITY_BY_ID[h.signature], h.name).toBeTruthy();
+    for (const h of HEIRS) expect(ABILITY_BY_ID[h.power]?.power, h.name).toBe(true);
+    expect(new Set(HEIRS.map((h) => h.power)).size).toBe(6);
     expect(HEIRS.map((h) => h.name)).toEqual(['Solar Concord', 'Vael Imperium', 'Wayfarer Clans', 'Lyceum Collective', 'Choir of the First Flame', 'Ashen Remnant']);
     expect(HEIRS.some((h) => /Nyx|Ironclad/.test(`${h.name} ${h.hearth} ${h.desc}`))).toBe(false);
     // (A sector is dealt the houses in the order they stand in, so a seed deals what it always dealt.)
@@ -92,9 +93,10 @@ describe('the houses', () => {
 });
 
 describe('Conversion', () => {
-  it('is the Choir\'s alone: its Ark has it from the start, and no other ship ever learns it', () => {
+  it('is the Choir\'s House Power: cast at its order, never by itself, and no other ship ever learns it', () => {
     const g = mk();
-    expect(arkOf(g, g.playerId).abil.map((a) => a.id)).toEqual(['conversion']);
+    expect(HEIR_BY_ID.choir.power).toBe('conversion');
+    expect(arkOf(g, g.playerId).abil).toEqual([]);
     expect(LEARNABLE_ABILITIES.some((a) => a.id === 'conversion')).toBe(false);
     expect(LEARNABLE_ABILITIES.some((a) => a.id === 'emp')).toBe(true);
     expect(GLOSS_BY_ID['ab-conversion']).toBeTruthy();
@@ -140,8 +142,8 @@ describe('Conversion', () => {
     expect(g.fx.some((f) => f.k === 'ability' && f.says === 'CONVERTED 2')).toBe(true);
     // Each seen going over, from its old house's colour to the Choir's, called by the Cantor.
     expect(g.fx.filter((f) => f.k === 'convert' && f.by === ark.id && f.to === p.color && f.from === rival.color).length).toBe(2);
-    // The ability has been used: it is not ready again at once.
-    expect(ark.abil[0].cd).toBeGreaterThan(30);
+    // The power has been used: it is not ready again at once.
+    expect(p.powerCd).toBeGreaterThan(30);
     // And they fight for their new house: the ship left behind is their enemy.
     run(g, 6);
     expect(a.dead || a.hp < 300).toBe(true);
@@ -151,10 +153,11 @@ describe('Conversion', () => {
     const g = mk();
     const ark = arkOf(g, g.playerId);
     const [breaker] = beside(g, ark, rivalOf(g).id, ['breaker']);
-    cast(g, ark);
+    expect(cast(g, ark)).toBe(false);
     expect(breaker.owner).toBe(rivalOf(g).id);
-    // (Nothing to turn: the ability waits, it is not spent.)
-    expect(ark.abil[0].cd).toBeLessThan(1);
+    // (Nothing to turn: the power waits, it is not spent; and its button says why.)
+    expect(g.player.powerCd).toBe(0);
+    expect(g.checkPower(g.playerId)).toMatch(/No enemy ship in reach/);
     ark.level = 2;
     expect(CONVERT_HULL + CONVERT_HULL_PER_LEVEL).toBeGreaterThanOrEqual(UNITS.breaker.hull);
     cast(g, ark);

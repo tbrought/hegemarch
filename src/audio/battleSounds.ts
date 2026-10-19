@@ -16,6 +16,12 @@ export const CAST_SOUND: Record<string, SoundId> = {
   snare: 'cast-snare',
   voidpulse: 'ability',
   repairdrones: 'cast-repair',
+  // The House Powers (1.27).
+  dawn: 'cast-dawn',
+  callarms: 'cast-callarms',
+  wayfinder: 'cast-wayfinder',
+  mindtheft: 'cast-mindtheft',
+  wager: 'cast-wager',
 };
 
 /**

@@ -83,6 +83,37 @@ export interface Lance {
   dur: number;
 }
 
+/**
+ * A House Power's light (1.27): a line drawn out from one place to another over `dur` seconds (its head
+ * bright), held for `hold` more, cooling to its shade: Dawn's light out to its worlds, a Call to Arms from the
+ * Forges to the Ark, a Wayfinder's starlane being cut.
+ */
+export interface Streak {
+  x1: number;
+  y1: number;
+  x2: number;
+  y2: number;
+  t: number;
+  dur: number;
+  hold: number;
+  c: string;
+  /** Two pixels wide. */
+  wide?: boolean;
+}
+
+/** Fate's Wager's coin: thrown up over the Ark's world, turning, until it lands (`dur`) and shows its face. */
+export interface Coin {
+  x: number;
+  y: number;
+  t: number;
+  dur: number;
+  heads: boolean;
+  c: string;
+}
+
+/** Seconds a landed coin shows its face. */
+const COIN_SHOW = 1.4;
+
 interface Beam {
   x1: number;
   y1: number;
@@ -147,6 +178,8 @@ export class Effects {
   motes: Mote[] = [];
   threads: Thread[] = [];
   lances: Lance[] = [];
+  streaks: Streak[] = [];
+  coins: Coin[] = [];
   /** Screen shake amount in pixels. It wears off in real time, in `Renderer.render`, not with the game. */
   shake = 0;
 
@@ -161,6 +194,8 @@ export class Effects {
     this.motes.length = 0;
     this.threads.length = 0;
     this.lances.length = 0;
+    this.streaks.length = 0;
+    this.coins.length = 0;
     this.shake = 0;
   }
 
@@ -334,6 +369,8 @@ export class Effects {
     this.motes = this.motes.filter((m) => (m.t += dt) < m.dur);
     this.threads = this.threads.filter((m) => (m.t += dt) < m.dur);
     this.lances = this.lances.filter((m) => (m.t += dt) < m.dur);
+    this.streaks = this.streaks.filter((m) => (m.t += dt) < m.dur + m.hold);
+    this.coins = this.coins.filter((m) => (m.t += dt) < m.dur + COIN_SHOW);
   }
 
   /** `plain`: a picture without words (the trailers'): what ships' abilities say is left out. */
@@ -388,6 +425,50 @@ export class Effects {
       const core = k < 0.3 ? PAL.bone : k < 0.6 ? PAL.gold : PAL.ember;
       line(g, x1, y1, x2, y2, core);
       line(g, x1 + ex, y1 + ey, x2 + ex, y2 + ey, core);
+    }
+    // A power's light: drawn out from one place to the other, its head bright, then held, cooling.
+    for (const s of this.streaks) {
+      if (s.t < 0) continue;
+      const k = Math.min(1, s.t / s.dur);
+      const e = 1 - (1 - k) * (1 - k);
+      const x1 = sx(s.x1);
+      const y1 = sy(s.y1);
+      const x2 = sx(s.x1 + (s.x2 - s.x1) * e);
+      const y2 = sy(s.y1 + (s.y2 - s.y1) * e);
+      if (Math.abs(x1 - x2) + Math.abs(y1 - y2) > 2400) continue;
+      const cool = s.t > s.dur + s.hold * 0.5;
+      const c = cool ? shade(s.c) : s.c;
+      line(g, x1, y1, x2, y2, c, cool ? 2 : 1);
+      if (s.wide) line(g, x1 + 1, y1, x2 + 1, y2, c, cool ? 2 : 1);
+      if (k < 1) {
+        g.fillStyle = light(s.c);
+        g.fillRect(x2 - 1, y2 - 1, 3, 3);
+      }
+    }
+    // Fate's Wager: the coin, turning as it goes up and comes down over the world; landed, its face.
+    for (const c of this.coins) {
+      const k = Math.min(1, c.t / c.dur);
+      const r = 6;
+      const cx = sx(c.x);
+      const cy = sy(c.y) - 26 - Math.round(Math.sin(k * Math.PI) * 18);
+      const landed = c.t >= c.dur;
+      // (Turning: as wide as the coin is to the eye, on its edge a line.)
+      const wide = landed ? r : Math.max(1, Math.round(Math.abs(Math.cos(c.t * 13)) * r));
+      const face = landed ? (c.heads ? c.c : PAL.red) : Math.cos(c.t * 13) > 0 ? PAL.gold : PAL.ember;
+      for (let dy = -r; dy <= r; dy++) {
+        const w = Math.round(Math.sqrt(r * r - dy * dy) * (wide / r));
+        g.fillStyle = Math.abs(dy) === r || w <= 1 ? shade(face) : face;
+        g.fillRect(cx - w, cy + dy, w * 2 + 1, 1);
+      }
+      if (landed) {
+        // Heads: a sun at its heart; tails: a cross.
+        g.fillStyle = PAL.void;
+        if (c.heads) g.fillRect(cx - 1, cy - 1, 3, 3);
+        else for (let i = -3; i <= 3; i++) {
+          g.fillRect(cx + i, cy + i, 1, 1);
+          g.fillRect(cx + i, cy - i, 1, 1);
+        }
+      }
     }
     // Conversion's threads: dashes running from the ship that calls to the ship it turns.
     for (const t of this.threads) {

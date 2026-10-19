@@ -2,7 +2,7 @@ import { ECON, PLANETS, sizeForRadius } from './data/worlds';
 import { ANOMALY_NAMES, LAND_NAMES, RELIC_SITE_NAMES, STAR_COLORS, STAR_NAMES } from './data/names';
 import { RNG } from './rng';
 import type { GNode, Lane, MapSize, NodeKind, PlanetType } from './types';
-import { dist, roman } from './util';
+import { dist, roman, segDist } from './util';
 import { datan2, dcos, dhypot, dsin } from './dmath';
 
 export interface SystemInfo {
@@ -87,15 +87,6 @@ function rngEdges(pts: { x: number; y: number }[]): [number, number][] {
     }
   }
   return out;
-}
-
-/** How far a point is from the stretch between two others. */
-function segDist(px: number, py: number, ax: number, ay: number, bx: number, by: number): number {
-  const dx = bx - ax;
-  const dy = by - ay;
-  const len2 = dx * dx + dy * dy;
-  const t = len2 > 0 ? Math.max(0, Math.min(1, ((px - ax) * dx + (py - ay) * dy) / len2)) : 0;
-  return dist(px, py, ax + dx * t, ay + dy * t);
 }
 
 /** Do the stretches a-b and c-d cross? */

@@ -5,6 +5,15 @@ export const dist = (x1: number, y1: number, x2: number, y2: number) => dhypot(x
 
 export const TAU = Math.PI * 2;
 
+/** How far a point is from the stretch between two others. */
+export function segDist(px: number, py: number, ax: number, ay: number, bx: number, by: number): number {
+  const dx = bx - ax;
+  const dy = by - ay;
+  const len2 = dx * dx + dy * dy;
+  const t = len2 > 0 ? Math.max(0, Math.min(1, ((px - ax) * dx + (py - ay) * dy) / len2)) : 0;
+  return dist(px, py, ax + dx * t, ay + dy * t);
+}
+
 /** Shortest signed difference between two angles. */
 export function angleDiff(a: number, b: number): number {
   let d = (b - a) % TAU;
