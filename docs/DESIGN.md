@@ -1290,6 +1290,16 @@ Measured with `npm run simulate` and `npm run balance:passive`. Speeds are ½×,
 - **Palette**: Ember-16 (void, night, indigo, slate, dusk, mist, bone, gold, ember, red, wine, sea,
   teal, sky, violet, pink). Houses: Concord gold, Vael red, Wayfarer teal, Lyceum violet, Choir sky,
   Ashen ember. Corsairs mist, ancient guardians dusk, the Hollow pink.
+- **House colours are for pictures, never for words** (1.27). Six houses take every bright colour the
+  palette has, and three of them are also what words mean: teal a gain, red a cost or danger, gold a
+  keyword. So a house shows in its ships, worlds, rings, banners, Ark art and frames, and a block of its
+  colour before its name on a card (`header`'s `house`), while its name and anything said about it are
+  bone. Red words are then always a cost or a danger, teal words a gain. (Vael's card said "15% less
+  Lore" in the red of its own name; its Call to Arms banner looked like a refusal; an attack on a Vael
+  world blinked a red ring against a red ring, now dotted; a Wayfarer seed ship kindling a world read in
+  teal like good news, now an ember warning.) Strategy games with many faction colours do the same:
+  factions in flags and the map, green and red only in the words. Lists of names alone (the rivals, the
+  news, the Daily board, the throne) keep their houses' colours: a name with nothing to mean beside it.
 - **Worlds**: per-world lat/long noise textures mapped onto spheres lit from the upper left and
   quantized to the terrain ramp with a 4×4 Bayer matrix. Dark worlds use the cold ramp; kindling
   dissolves dark into color in Bayer order. Sprites are cached per pixel radius.

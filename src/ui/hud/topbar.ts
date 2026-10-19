@@ -299,6 +299,8 @@ export function drawBanner(hud: Hud) {
   const h = n * 10 + 5 + (subs.length ? subs.length * 7 + 2 : 0);
   const x = Math.round(hud.W / 2 - w / 2);
   const y = 17;
+  // (A warning, in red or ember, is framed in its colour. So no banner is ever in a house's colour: Vael's is that
+  // red, the Remnant's that ember. An aimed House Power's banner is gold, ui/hud/power.ts.)
   box(g, x, y, w, h, PAL.void, o.color === PAL.red || o.color === PAL.ember ? o.color : PAL.slate);
   // (The words the banner explains when pointed at are marked.)
   const terms = termsIn(o.text, { max: 2 });

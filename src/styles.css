@@ -795,11 +795,13 @@ button.small {
   box-shadow: 0 0 0 var(--px) var(--hc);
 }
 
+/* (A house's name in bone, not in its colour: a card of effects writes a gain in teal and a cost in red, and Vael's
+   colour is that red, the Wayfarers' that teal. The house shows in its banner and frame.) */
 .heir .hn {
   font-family: var(--display);
   font-size: 12px;
   line-height: 1.35;
-  color: var(--hc);
+  color: var(--bone);
   margin-bottom: 6px;
   display: flex;
   align-items: center;

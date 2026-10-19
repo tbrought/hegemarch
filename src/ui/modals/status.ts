@@ -105,7 +105,8 @@ function rivalsTab(modals: Modals, g: Ctx, cx: number, cy: number, cw: number) {
     if (heir) {
       modals.ui.hint('st-rival-' + f.id, cx, ly - 10, cw, 19, {
         tipTitle: f.isPlayer ? `${f.name} (you)` : f.name,
-        tipColor: f.color,
+        // (The title in bone: the tooltip lists the house's gains and costs, in teal and red.)
+        tipColor: PAL.bone,
         tip: [`${heir.title}. ${heir.desc}`, heir.bonuses.join(' · '), ...warn, `Boons: ${boons.length ? boons.join(', ') : 'none yet'}.`].join('\n'),
       });
     }
@@ -207,12 +208,14 @@ function boonsTab(modals: Modals, g: Ctx, x: number, y: number, w: number, h: nu
   const tw = Math.min(150, Math.max(112, Math.floor(w * 0.36)));
   const lw = w - tw - 9;
   const items: { h: number; draw: (ly: number) => void; terms?: ReturnType<typeof termsIn> }[] = [];
-  const head = (label: string, iconName: string, color: string, right = '') =>
+  // (`ink`: the words' colour, where it is not the icon's: a house's heading has its icon in the house's colour and
+  // its name in bone, for the effects under it write a cost in red and a gain in teal.)
+  const head = (label: string, iconName: string, color: string, right = '', ink = color) =>
     items.push({
       h: 12,
       draw: (ly) => {
         icon(g, iconName, x, ly + 1, color);
-        text(g, label, x + 8, ly + 1, color, 'tiny');
+        text(g, label, x + 8, ly + 1, ink, 'tiny');
         if (right) text(g, right, x + lw - textWidth(right, 'tiny'), ly + 1, PAL.slate, 'tiny');
         rect(g, x, ly + 8, lw, 1, PAL.indigo);
       },
@@ -265,7 +268,7 @@ function boonsTab(modals: Modals, g: Ctx, x: number, y: number, w: number, h: nu
   }
   const heir = HEIR_BY_ID[p.heir];
   if (heir) {
-    head(heir.name.toUpperCase(), 'hearth', heir.color);
+    head(heir.name.toUpperCase(), 'hearth', heir.color, '', PAL.bone);
     for (const b of heir.bonuses) bullet(b);
     items.push({ h: 4, draw: () => {} });
   }

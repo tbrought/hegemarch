@@ -50,7 +50,9 @@ export class Houses {
       card.setAttribute('aria-pressed', String(on));
     }
     this.detail.style.setProperty('--hc', h.color);
-    // (Its House Power, 1.27, is what the house is played for: named apart from the bonuses, with what it does.)
+    // (Its House Power, 1.27, is what the house is played for: named apart from the bonuses, with what it does; its
+    // name a keyword, in gold, as the game's own house cards give it. The house's colour is for its name and its
+    // frame only: Vael's is the red of a drawback, and the line of a drawback stands just above.)
     const power = ABILITY_BY_ID[h.power];
     this.detail.innerHTML = `<canvas class="ark-art" aria-hidden="true"></canvas>
       <div class="hd-text">
@@ -59,7 +61,7 @@ export class Houses {
         <p class="hd-title">${esc(h.title)}</p>
         <p class="hd-desc">${esc(h.desc)}</p>
         <ul class="hd-bonuses">${h.bonuses.filter((b) => !b.startsWith('House Power')).map((b) => `<li>${richHtml(b)}</li>`).join('')}</ul>
-        <p class="hd-power"><span class="hp-name">House Power: ${esc(power.name)}.</span> ${richHtml(power.desc)}</p>
+        <p class="hd-power">House Power: <span class="rt-kw">${esc(power.name)}</span>. ${richHtml(power.desc)}</p>
         <p class="hd-fleet">Starts with ${esc(startingFleet(h))}.</p>
       </div>`;
     // The house's Ark, turning in its own patch of sky.

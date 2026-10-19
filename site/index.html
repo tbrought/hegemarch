@@ -901,13 +901,15 @@
       .hd-tag b {
         color: var(--gold);
       }
+      /* (The house's name in bone, not its colour: a gain is teal and a cost red below it, and Vael's colour is that
+         red, the Wayfarers' that teal. The house shows in its Ark, its frame and its card above.) */
       .hd-text h3 {
         margin-top: 8px;
         font-family: var(--display);
         font-weight: normal;
         font-size: 17px;
         line-height: 1.4;
-        color: var(--hc);
+        color: var(--bone);
       }
       .hd-title {
         color: var(--dusk);
@@ -936,15 +938,13 @@
         top: 0.5em;
         width: 6px;
         height: 6px;
-        background: var(--hc);
+        /* (Not the house's colour: Vael's red is a drawback's, and its drawback is on the list.) */
+        background: var(--dusk);
       }
       .hd-power {
         margin-top: 12px;
         color: var(--bone);
         max-width: 60ch;
-      }
-      .hd-power .hp-name {
-        color: var(--hc);
       }
       .hd-fleet {
         margin-top: 12px;

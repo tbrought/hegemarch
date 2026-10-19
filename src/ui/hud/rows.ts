@@ -9,6 +9,7 @@ import { fit, text, textWidth, wrap } from '../../render/font';
 import { drawSettlement } from '../../render/ground';
 
 import { PAL } from '../../render/palette';
+import { rect } from '../../render/pixel';
 
 import { drawRich, hasMarkup, richLines } from '../../render/rich';
 
@@ -26,7 +27,13 @@ export interface CardRow {
   draw: (x: number, y: number, w: number) => void;
 }
 
-export function header(hud: Hud, name: string, color: string, n: GNode | null, right?: string, rightColor?: string, rightTip?: TipOpts): CardRow {
+/**
+ * A card's first row: its name (with the world's picture, for a world). `house`: whose it is, as a block of that
+ * house's colour before the name, which is then in bone: a card's words are never in a house's colour, for its
+ * lines below write danger and costs in red and gains in teal, and Vael's colour is that red, the Wayfarers'
+ * that teal.
+ */
+export function header(hud: Hud, name: string, color: string, n: GNode | null, right?: string, rightColor?: string, rightTip?: TipOpts, house?: string): CardRow {
   const g = hud.s.screen.g;
   return {
     h: 13,
@@ -39,6 +46,10 @@ export function header(hud: Hud, name: string, color: string, n: GNode | null, r
           drawSettlement(g, n, x + 5, y + 6, 5, { era: f ? f.era : -1, color: f ? f.color : PAL.slate, level: 1, hearth: isHearth(n), lit: lit ? 1 : 0, t: hud.ui.time });
         } else g.drawImage(worldSprite(n, 5, lit), x, y);
         tx += 14;
+      }
+      if (house) {
+        rect(g, tx, y + 2, 3, 7, house);
+        tx += 7;
       }
       const rw = right ? textWidth(right, 'tiny') + 4 : 0;
       text(g, fit(name, w - (tx - x) - rw, 'main'), tx, y + 2, color);

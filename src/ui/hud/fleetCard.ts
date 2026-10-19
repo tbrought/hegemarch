@@ -67,12 +67,13 @@ export function fleetRows(hud: Hud, units: Unit[]): CardRow[] {
     const u = units[0];
     const def = UNITS[u.type];
     const desc = unitDesc(u.type, u.era);
-    rows.push(header(hud, unitName(u.type, u.era).toUpperCase() + (u.level > 1 ? ` · LEVEL ${u.level}` : ''), p.color, null, where));
+    rows.push(header(hud, unitName(u.type, u.era).toUpperCase() + (u.level > 1 ? ` · LEVEL ${u.level}` : ''), PAL.bone, null, where, undefined, undefined, p.color));
     rows.push(para(hud, desc, PAL.mist, 200, { terms: termsIn(desc, { exclude: def.name }) }));
     // The Ark casts the house's power (1.27): its name and its key, in the house's colour.
     const power = u.type === 'ark' ? powerOf(p) : null;
     if (power) {
-      rows.push(line(hud, `HOUSE POWER: ${power.name.toUpperCase()} (${POWER_KEY})`, p.color, 'tiny', {
+      // (In bone, not the house's colour: its tooltip is effect text, where red is a cost and teal a gain.)
+      rows.push(line(hud, `HOUSE POWER: ${power.name.toUpperCase()} (${POWER_KEY})`, PAL.bone, 'tiny', {
         tip: `{${power.name}}: ${power.desc}\n[${POWER_KEY}] aims it, [${POWER_KEY}] again casts it.`,
         terms: gloss('power'),
       }));
@@ -84,7 +85,7 @@ export function fleetRows(hud: Hud, units: Unit[]): CardRow[] {
       }));
     }
   } else {
-    rows.push(header(hud, `YOUR FLEET · ${units.length} SHIPS`, p.color, null, where));
+    rows.push(header(hud, `YOUR FLEET · ${units.length} SHIPS`, PAL.bone, null, where, undefined, undefined, p.color));
   }
   // (A ship charging its drive stands where it is, and a long charge looked like a ship that would not
   // go: the card says how long, and what holds it.)
@@ -255,7 +256,7 @@ export function enemyRows(hud: Hud, units: Unit[]): CardRow[] {
   const game = hud.g;
   const f = game.factions[units[0].owner];
   const rows: CardRow[] = [];
-  rows.push(header(hud, game.shortName(f).toUpperCase(), f.color, null, `${units.length} ${units.length === 1 ? 'SHIP' : 'SHIPS'}`));
+  rows.push(header(hud, game.shortName(f).toUpperCase(), PAL.bone, null, `${units.length} ${units.length === 1 ? 'SHIP' : 'SHIPS'}`, undefined, undefined, f.color));
   rows.push(para(hud, fleetSummary(units) + '.', PAL.mist, 200));
   if (units.length === 1) rows.push(para(hud, unitDesc(units[0].type, units[0].era), PAL.dusk, 200, { terms: termsIn(unitDesc(units[0].type, units[0].era), { exclude: UNITS[units[0].type].name }) }));
   rows.push(line(hud, 'SELECT YOUR FLEET, THEN RIGHT-CLICK THEM TO ATTACK', PAL.dusk));

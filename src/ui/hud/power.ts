@@ -39,8 +39,9 @@ export function drawPower(hud: Hud) {
   const aiming = !!hud.s.view.powerAim;
   const { x, y, w, h } = place(hud);
   const hot = hud.ui.isHot('power');
-  // Ready: its house's colour; aimed: gold; not ready: greyed, as a button that cannot be pressed is.
-  const border = aiming ? PAL.gold : ready ? p.color : hot ? PAL.slate : PAL.indigo;
+  // Ready: lit; aimed: gold; not ready: greyed, as a button that cannot be pressed is. (Nothing in the house's
+  // colour, border or name: words are never in a house's colour, for Vael's is the red of danger and of a cost.)
+  const border = aiming ? PAL.gold : ready ? PAL.mist : hot ? PAL.slate : PAL.indigo;
   box(g, x, y, w, h, aiming ? PAL.wine : hot ? PAL.indigo : PAL.night, border);
   // The key, in a box of its own at the left.
   box(g, x + 2, y + 2, 11, h - 4, PAL.void, ready ? border : PAL.indigo);
@@ -54,7 +55,7 @@ export function drawPower(hud: Hud) {
   // (A long name, CALL TO ARMS or FATE'S WAGER, in the small letters where the large would run into its state.)
   const room = w - 16 - (sw ? sw + 7 : 4);
   const font = textWidth(name, 'main') <= room ? 'main' : 'tiny';
-  text(g, fit(name, room, font), x + 16, y + (font === 'main' ? 4 : 5), ready ? (aiming ? PAL.gold : p.color) : PAL.slate, font);
+  text(g, fit(name, room, font), x + 16, y + (font === 'main' ? 4 : 5), ready ? (aiming ? PAL.gold : PAL.bone) : PAL.slate, font);
   if (state) text(g, state, x + w - 4 - sw, y + 5, aiming || ready ? PAL.gold : PAL.dusk, 'tiny');
   // The time until it is back, filling along its foot.
   if (!ready && counting) {
@@ -70,6 +71,13 @@ export function drawPower(hud: Hud) {
   hud.ui.hit('power', x, y, w, h, () => hud.actions.power(), tip, () => hud.actions.cancelPower(), { terms: gloss('ab-' + def.id, 'power') });
   hud.powerRect = { x, y, w, h };
 }
+
+/**
+ * The colour of the banner while a power is aimed: gold, as its button is, for every house. Not the power's own
+ * (that is for its rings and lines on the map): the banner reads a red or ember line as a warning, and Vael's
+ * Call to Arms is red, the Remnant's Wager ember.
+ */
+const AIMED = PAL.gold;
 
 /** The words of the banner while the power is aimed: what it would do now, and how to cast it or put it away. */
 export function aimLine(hud: Hud): { text: string; color: string; sub: string } | null {
@@ -89,34 +97,34 @@ export function aimLine(hud: Hud): { text: string; color: string; sub: string } 
       // (The guards that would burn, as many as the player can see.)
       const k = worlds.reduce((sum, n) => sum + (p.visible[n.id] ? dawnGuards(g, n).length : 0), 0);
       const burn = k ? `, and ${k} ${k === 1 ? 'guard burns' : 'guards burn'}` : '';
-      return { text: `${head}: ${list(ws)} ${ws.length === 1 ? 'is' : 'are'} kindled at once${burn}.`, color: def.color, sub: cast };
+      return { text: `${head}: ${list(ws)} ${ws.length === 1 ? 'is' : 'are'} kindled at once${burn}.`, color: AIMED, sub: cast };
     }
     case 'callarms': {
       const n = levyWorlds(g, p, ark).length;
-      return { text: `${head}: ${n} ${n === 1 ? 'Forge sends' : 'Forges send'} your Ark ${n * LEVY_SHIPS.length} warships.`, color: def.color, sub: cast };
+      return { text: `${head}: ${n} ${n === 1 ? 'Forge sends' : 'Forges send'} your Ark ${n * LEVY_SHIPS.length} warships.`, color: AIMED, sub: cast };
     }
     case 'wayfinder': {
       const n = s.view.hoverNode;
       const sub = 'CLICK A WORLD · ESC TO PUT IT AWAY';
       if (n >= 0 && n !== ark.node) {
         const why = wayWhy(g, p, ark, n);
-        return { text: why ? `${head}: ${why}.` : `${head}: a new starlane to ${g.nodes[n].name}.`, color: why ? PAL.red : def.color, sub };
+        return { text: why ? `${head}: ${why}.` : `${head}: a new starlane to ${g.nodes[n].name}.`, color: why ? PAL.red : AIMED, sub };
       }
       const k = wayTargets(g, p, ark).length;
-      return { text: `${head}: click a world for a new starlane (${k} within reach).`, color: def.color, sub };
+      return { text: `${head}: click a world for a new starlane (${k} within reach).`, color: AIMED, sub };
     }
     case 'mindtheft': {
       const r = rivalArk(g, p, ark);
       const who = r ? possessive(g.factions[r.owner].name) : 'a rival';
-      return { text: `${head}: your Ark reads ${who} Ark, and learns the rarest of its Boons that it can.`, color: def.color, sub: cast };
+      return { text: `${head}: your Ark reads ${who} Ark, and learns the rarest of its Boons that it can.`, color: AIMED, sub: cast };
     }
     case 'conversion': {
       const n = conversionTargets(g, ark).length;
-      return { text: `${head}: ${n} enemy ${n === 1 ? 'ship goes' : 'ships go'} over to your house.`, color: def.color, sub: cast };
+      return { text: `${head}: ${n} enemy ${n === 1 ? 'ship goes' : 'ships go'} over to your house.`, color: AIMED, sub: cast };
     }
     case 'wager': {
       const n = burnable(g, p, ark.node).length;
-      return { text: `${head}: heads, ${n} enemy ${n === 1 ? 'warship burns' : 'warships burn'}. Tails, your Ark does.`, color: def.color, sub: cast };
+      return { text: `${head}: heads, ${n} enemy ${n === 1 ? 'warship burns' : 'warships burn'}. Tails, your Ark does.`, color: AIMED, sub: cast };
     }
   }
   return null;

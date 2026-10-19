@@ -88,8 +88,8 @@ export function nodeRows(hud: Hud, n: GNode): CardRow[] {
   if (owner === p.id) return ownWorldRows(hud, n, innerW);
   if (owner >= 0) {
     const f = game.factions[owner];
-    rows.push(header(hud, n.name.toUpperCase(), f.color, n, isHearth(n) ? 'HEARTH' : `LEVEL ${roman(n.level)}`, f.color,
-      isHearth(n) ? { terms: gloss('hearth', 'fealty') } : { tip: `Level ${roman(n.level)} of III.`, terms: gloss('level') }));
+    rows.push(header(hud, n.name.toUpperCase(), PAL.bone, n, isHearth(n) ? 'HEARTH' : `LEVEL ${roman(n.level)}`, PAL.dusk,
+      isHearth(n) ? { terms: gloss('hearth', 'fealty') } : { tip: `Level ${roman(n.level)} of III.`, terms: gloss('level') }, f.color));
     rows.push(line(hud, `${game.shortName(f).toUpperCase()} · ${n.size} WORLD${n.role ? ' · ' + n.role.toUpperCase() : ''}`, PAL.dusk, 'tiny', roleTip(hud, n)));
     if (visible) rows.push(hpRow(hud, n));
     const walls = isHearth(n) && f.kind === 'empire' ? game.wallsOf(n) : 1;
@@ -152,7 +152,8 @@ export function nodeRows(hud: Hud, n: GNode): CardRow[] {
     for (const u of game.buckets[n.id]) {
       if (u.dead || u.type !== 'seed' || u.owner === p.id || u.order !== 'kindle' || u.orderTarget !== n.id) continue;
       const f = game.factions[u.owner];
-      rows.push(line(hud, u.kindle > 0 ? `BEING KINDLED BY ${game.shortName(f).toUpperCase()}: ${pct(u.kindle / ECON.kindleTime)}` : `A SEED SHIP OF ${game.shortName(f).toUpperCase()} WAITS HERE`, f.color, 'tiny', {
+      // (In ember, a warning, as it is one: not in the house's colour, which as teal would read as good news.)
+      rows.push(line(hud, u.kindle > 0 ? `BEING KINDLED BY ${game.shortName(f).toUpperCase()}: ${pct(u.kindle / ECON.kindleTime)}` : `A SEED SHIP OF ${game.shortName(f).toUpperCase()} WAITS HERE`, PAL.ember, 'tiny', {
         tip: `A seed ship of ${f.name} is kindling ${n.name}. The first seed ship to finish has the world; the other is called off, and its next KINDLE is free. ` +
             `Only warships stop a kindling: a seed ship or a Scout stops nothing.`,
         terms: gloss('seed', 'kindle'),
@@ -229,8 +230,8 @@ function titleRows(hud: Hud, n: GNode): CardRow[] {
   const p = game.player;
   const hearth = n.capitalOf === p.id;
   const rows: CardRow[] = [];
-  rows.push(header(hud, n.name.toUpperCase(), p.color, n, hearth ? `HEARTH · ${roman(n.level)}` : `LEVEL ${roman(n.level)}`, PAL.gold,
-    hearth ? { tip: `Your Hearth, level ${roman(n.level)}.`, terms: gloss('hearth', 'lastStand') } : { tip: `Level ${roman(n.level)} of III.`, terms: gloss('level') }));
+  rows.push(header(hud, n.name.toUpperCase(), PAL.bone, n, hearth ? `HEARTH · ${roman(n.level)}` : `LEVEL ${roman(n.level)}`, PAL.gold,
+    hearth ? { tip: `Your Hearth, level ${roman(n.level)}.`, terms: gloss('hearth', 'lastStand') } : { tip: `Level ${roman(n.level)} of III.`, terms: gloss('level') }, p.color));
   const aff = game.affinityOf(n);
   let info = hearth ? 'YOUR HEARTH: IT DOES EVERY ROLE' : (`${n.size} WORLD · ${(n.role ?? 'mine').toUpperCase()}` +
       `${aff && n.role === aff ? ' (A NATURAL FIT)' : aff ? ` · GOOD AS A ${aff.toUpperCase()}` : ''}`);

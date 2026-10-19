@@ -574,7 +574,9 @@ export class Renderer {
       if (visible && n.glow < 1 && n.owner === owner) this.arcRing(ctx, x, y, rr, n.glow, f.color, shade(f.color));
       else ring(ctx, x, y, rr, visible ? f.color : shade(f.color));
       if (isHearth(n) && r >= 3) icon(ctx, 'conquest', x - 2, y - r - (r > 6 ? 12 : 9), f.color, true);
-      if (visible && n.lastHit < 1.5 && Math.floor(t * 6) % 2 === 0) ring(ctx, x, y, rr + 2, PAL.red, 1);
+      // Under fire: a dotted red ring, blinking, just outside its house's ring. (Dotted, not solid: a Vael world's
+      // ring is that red already, and a second solid ring beside it read as a thicker ring, not as an attack.)
+      if (visible && n.lastHit < 1.5 && Math.floor(t * 6) % 2 === 0) ring(ctx, x, y, rr + 2, PAL.red, 2);
       // Protected by a Bastion next door: a ring of the field's violet close about it, which flares
       // white for a moment when it takes a hit for the world. (Blinking, for a world that would be.)
       if (visible && r >= 3 && g.guardsOf(n).length) ring(ctx, x, y, rr + 4, n.lastHit < 0.25 ? PAL.bone : PAL.violet, 1);
