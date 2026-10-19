@@ -2,7 +2,9 @@
    same with no connection, and nothing is asked of another site. Both are under the SIL Open Font
    License 1.1 (src/fonts/OFL-*.txt):
    Pixelify Sans, Copyright 2021 The Pixelify Sans Project Authors (https://github.com/eifetx/Pixelify-Sans).
-   Press Start 2P, Copyright 2012 The Press Start 2P Project Authors (cody@zone38.net), with Reserved Font Name "Press Start 2P". */
+   Press Start 2P, Copyright 2012 The Press Start 2P Project Authors (cody@zone38.net), with Reserved Font Name "Press Start 2P".
+   The game's own Pixelify Sans has its 5 redrawn (1.26.1: its own read as an S), and the Legacy mark, ◆, is
+   drawn for each face on its pixel grid (neither has one): scripts/fonts.py makes both. */
 @font-face {
   font-family: 'Pixelify Sans';
   font-style: normal;
@@ -17,6 +19,18 @@
   font-weight: 400;
   font-display: swap;
   src: url('./fonts/press-start-2p.woff2') format('woff2');
+}
+
+@font-face {
+  font-family: 'Legacy Mark Display';
+  src: url('./fonts/legacy-mark-display.woff2') format('woff2');
+  unicode-range: U+25C6;
+}
+
+@font-face {
+  font-family: 'Legacy Mark Body';
+  src: url('./fonts/legacy-mark-body.woff2') format('woff2');
+  unicode-range: U+25C6;
 }
 
 /* Hegemarch: DOM menus in the Ember-16 palette. The game itself is a pixel canvas. */
@@ -38,8 +52,8 @@
   --sky: #3fa7ff;
   --violet: #b05cff;
   --pink: #ff6fb5;
-  --display: 'Press Start 2P', 'Courier New', monospace;
-  --body: 'Pixelify Sans', 'Trebuchet MS', system-ui, sans-serif;
+  --display: 'Press Start 2P', 'Legacy Mark Display', 'Courier New', monospace;
+  --body: 'Pixelify Sans', 'Legacy Mark Body', 'Trebuchet MS', system-ui, sans-serif;
   --px: 3px;
 }
 
@@ -423,13 +437,29 @@ body {
   gap: 10px;
 }
 
-/* A light on the Hall of Heirs when the player's Legacy would buy something there. */
-.pip {
+/* The player's Legacy on the Hall of Heirs, in a purse of its own: framed in gold whatever it holds, and a
+   light on its corner when it would buy something there. */
+.home-links .hall-link {
+  padding-right: 4px;
+}
+
+.purse {
+  position: relative;
   display: inline-block;
+  margin: -5px 0 -4px 12px;
+  padding: 5px 7px 4px;
+  color: var(--gold);
+  background: var(--void);
+  box-shadow: inset 0 0 0 2px var(--gold);
+}
+
+.purse.lit::after {
+  content: '';
+  position: absolute;
+  top: -3px;
+  right: -3px;
   width: 6px;
   height: 6px;
-  margin-left: 10px;
-  vertical-align: 1px;
   background: var(--gold);
   animation: pip 1s steps(1) infinite;
 }
@@ -2019,7 +2049,7 @@ kbd {
     transform: none;
   }
 
-  .pip {
+  .purse.lit::after {
     animation: none;
   }
 

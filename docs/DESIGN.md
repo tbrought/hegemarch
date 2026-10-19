@@ -1220,7 +1220,13 @@ Measured with `npm run simulate` and `npm run balance:passive`. Speeds are ½×,
   a 3×5 caps font for the map. The menus are set in Pixelify Sans and Press Start 2P, and the game
   carries its own copies (`src/fonts`, under the Open Font License): they are inside the one file a
   player downloads, so it looks the same with no connection, and the website serves them itself, so
-  neither asks anything of another site.
+  neither asks anything of another site. Two touches are the game's own (1.26.1, made by
+  `scripts/fonts.py`): Pixelify Sans's 5 is redrawn with a flat top and a square corner (its own had
+  the S's hooked top, and "Crowned 5" read "Crowned S"), and the Legacy mark, ◆, is drawn on each
+  face's pixel grid as a font of one glyph that each stack names after its face (neither face has one,
+  so a system font's stood in: small and low, like a dot, and a line with one in it stood taller than
+  the rest). On the title screen the player's Legacy sits in a purse on the Hall of Heirs button,
+  framed in gold whatever it holds, with a light on its corner when it would buy something there.
 - **Build keys** (as the top row of keys is in Age of Empires): with one of the player's worlds that
   builds selected (a Forge, or the Hearth), **Q W E R T Y** are the ship buttons of its panel, in
   their order, each with its letter in the corner; Shift with one queues five. With ships selected,

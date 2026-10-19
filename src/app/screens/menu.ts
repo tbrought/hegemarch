@@ -80,7 +80,7 @@ export function showMenu(app: App) {
           </button>
         </div>
         <div class="home-links">
-          <button class="small" data-sa="hall" data-tip="Spend Legacy, earned by every run, on new houses, perks and unlocks.${offers ? ` [You can afford ${offers} of them now.]` : ''}">HALL OF HEIRS · <span class="gold">◆${p.legacy}${offers ? ' TO SPEND' : ''}</span>${offers ? '<span class="pip" aria-hidden="true"></span>' : ''}</button>
+          <button class="small hall-link" data-sa="hall" data-tip="Spend Legacy, earned by every run, on new houses, perks and unlocks.${offers ? ` [You can afford ${offers} of them now.]` : ''}">HALL OF HEIRS<span class="purse${offers ? ' lit' : ''}">◆${p.legacy}</span></button>
           <button class="small" data-sa="howto">HOW TO PLAY</button>
           <button class="small" data-sa="settings">SETTINGS</button>
         </div>
