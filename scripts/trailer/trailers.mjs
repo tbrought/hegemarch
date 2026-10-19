@@ -493,8 +493,7 @@ Object.assign(TRAILERS, {
 // leads, its Ark among the others' (scan-<seed>-<house>.json: HEIR=<house> node scripts/trailer/make.mjs scan
 // <seed>). (Until 1.27 each opened on its Ark's "signature" ability, which any Ark could learn: the sectors were
 // chosen again for their powers. The Lyceum's is the one of thirty where its Ark read the most rivals in the
-// biggest fights; the Remnant's, where its coin came up heads with the most around it. The Concord's opens on its
-// Hearth holding instead: by the fourth minute every dark world left has a guard, so a Dawn lights two at most.)
+// biggest fights; the Remnant's, where its coin came up heads with the most around it.)
 // ------------------------------------------------------------------------------------------------
 const SL = (60 / 84 / 2) * 6; // Starlanes: in three, A minor
 const CR = bar(104); // The Crowning: C major
@@ -603,12 +602,12 @@ const hEnd = (id, next) => ({ blank: true, stars: true, dur: 5, vignette: 0.4,
 
 // 1. The Vael Imperium: To Arms.
 const hv = [
-  hCast('vael', 12.27, TA * 3, null),
+  hCast('vael', 12.25, TA * 3, null),
   hName('vael', TA * 4),
-  hVoyage('vael', 42.42, TA * 3, ['SWORN TO {WAR}']),
-  hBattle('vael', 43.42, 46, TA * 2, ['+15% {DAMAGE}']),
-  { ...hBattle('vael', 33.17, 41, TA * 2, ['{CHEAPER} SHIPS', '[!LESS LORE]'], 0.3), hard: true },
-  hCast('vael', 45.96, TA * 3, ['THE {TYRANT}', 'CALL TO ARMS'], 0.6),
+  hVoyage('vael', 42.17, TA * 3, ['SWORN TO {WAR}']),
+  hBattle('vael', 53.0, 26, TA * 2, ['+15% {DAMAGE}']),
+  { ...hBattle('vael', 59.5, 34, TA * 2, ['{CHEAPER} SHIPS', '[!LESS LORE]'], 0.3), hard: true },
+  hCast('vael', 46.73, TA * 3, ['THE {TYRANT}', 'CALL TO ARMS'], 0.6),
   hMotto('vael', TA * 3, ['THE DARK', 'IS WON', 'IN {FIRE}']),
   hEnd('vael', 'wayfarer'),
 ];
@@ -625,12 +624,12 @@ const hw = [
 ];
 // 3. The Solar Concord: The Crowning.
 const hc = [
-  hBattle('concord', 45.08, 25, CR * 2, null, 0.3),
+  hCast('concord', 2.07, CR * 2, null),
   hName('concord', CR * 3),
-  hVoyage('concord', 43.83, CR * 2, ['KEEPERS OF', 'THE OLD {LIGHT}']),
+  hVoyage('concord', 57.25, CR * 2, ['KEEPERS OF', 'THE OLD {LIGHT}']),
   hRealm('concord', CR * 2, ['+10% {EMBERS}']),
-  { ...hBattle('concord', 60.75, 25, CR * 2, ['{STURDIER} WORLDS'], 0.3), dip: true },
-  hCast('concord', 1.72, CR * 3, ['THE {SOVEREIGN}', 'BRINGS DAWN'], 0.6),
+  { ...hBattle('concord', 27.67, 2, CR * 2, ['{STURDIER} WORLDS'], 0.3), dip: true },
+  hCast('concord', 7.51, CR * 3, ['THE {SOVEREIGN}', 'BRINGS DAWN'], 0.6),
   hMotto('concord', CR * 2, ['WE KEEP', 'THE {LIGHT}']),
   hEnd('concord', 'lyceum'),
 ];
@@ -647,24 +646,24 @@ const hl = [
 ];
 // 5. The Choir of the First Flame: Embers.
 const hf = [
-  hCast('choir', 20.89, EM * 1.5, null),
+  hCast('choir', 31.85, EM * 1.5, null),
   hName('choir', EM * 2.5),
-  hVoyage('choir', 37.25, EM * 1.5, ['THE FIRST', '{FLAME}']),
-  hBattle('choir', 43.25, 36, EM * 1.5, ['EVERY LOSS', 'FEEDS {ZEAL}']),
-  { ...hBattle('choir', 35.75, 30, EM * 1.5, ['THEY NEVER {RUN}'], 0.3), hard: true },
-  hCast('choir', 53.98, EM * 1.5, ['THE {CANTOR}', 'CONVERSION'], 0.6),
+  hVoyage('choir', 58.0, EM * 1.5, ['THE FIRST', '{FLAME}']),
+  hBattle('choir', 55.75, 0, EM * 1.5, ['EVERY LOSS', 'FEEDS {ZEAL}']),
+  { ...hBattle('choir', 53.42, 24, EM * 1.5, ['THEY NEVER {RUN}'], 0.3), hard: true },
+  hCast('choir', 46.89, EM * 1.5, ['THE {CANTOR}', 'CONVERSION'], 0.6),
   hMotto('choir', EM * 2, ['WHAT', 'OTHERS', 'DESTROY,', 'WE {CONVERT}']),
   hEnd('choir', 'ashen'),
 ];
 // 6. The Ashen Remnant: Last Stand; its draft of four.
 const ha = [
   // (Its coin already in the air: the opener is short, and what it is for is the fleet that burns.)
-  hCast('ashen', 29.26, LS * 2, null, 0.4, 30, 0.9),
+  hCast('ashen', 33.04, LS * 2, null, 0.4, 30, 0.9),
   hName('ashen', LS * 4),
-  hVoyage('ashen', 35.58, LS * 2, ['OUT OF', 'THE {FIRE}']),
+  hVoyage('ashen', 32.58, LS * 2, ['OUT OF', 'THE {FIRE}']),
   hDraft('ashen', LS * 4, ['{FOUR} BOONS', 'TO CHOOSE'], [3, LS * 4 * 0.72]),
-  { ...hBattle('ashen', 24.58, 4, LS * 2, ['+2 {REROLLS}', '[!FEWER EMBERS]'], 0.3), dip: true },
-  hCast('ashen', 51.42, LS * 3, ['{EMBER THRONE}', 'FATE\'S WAGER'], 0.6),
+  { ...hBattle('ashen', 29.92, 14, LS * 2, ['+2 {REROLLS}', '[!FEWER EMBERS]'], 0.3), dip: true },
+  hCast('ashen', 21.71, LS * 3, ['{EMBER THRONE}', 'FATE\'S WAGER'], 0.6),
   hMotto('ashen', LS * 3, ['FATE', 'FAVOURS', 'THE {BURNED}']),
   hEnd('ashen', null),
 ];

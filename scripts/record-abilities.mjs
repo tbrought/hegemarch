@@ -26,10 +26,10 @@ const SCENES = [
   { id: 'snare', heir: 'lyceum', allies: [['striker', 2]], enemies: [['striker', 5, 180], ['guardian', 3, 420]], zoom: 0.45 },
   { id: 'rally', heir: 'concord', allies: [['striker', 5], ['guardian', 2]], enemies: [['striker', 5, 240]], zoom: 0.6 },
   { id: 'repairdrones', heir: 'ashen', arkHurt: true, allies: [['striker', 2]], enemies: [['striker', 2, 260]], zoom: 0.6 },
-  // The House Powers (1.27): Dawn from the star of the home system, among its dark worlds; a Call to Arms with two
+  // The House Powers (1.27): Dawn from the star of the home system, among its dark worlds (guards at one); a Call to Arms with two
   // Forges beside the Hearth; a Wayfinder's starlane to the farthest world it can reach; a Mind Theft from a rival
   // Ark beside it; Fate's Wager over a rival fleet, heads (and once tails).
-  { id: 'dawn', heir: 'concord', power: true, at: 'star', allies: [], enemies: [], zoom: 0.11 },
+  { id: 'dawn', heir: 'concord', power: true, at: 'star', guards: 3, allies: [], enemies: [], zoom: 0.11 },
   { id: 'callarms', heir: 'vael', power: true, at: 'star', forges: 2, allies: [], enemies: [], zoom: 0.11 },
   { id: 'wayfinder', heir: 'wayfarer', power: true, allies: [], enemies: [], zoom: 0.05 },
   { id: 'mindtheft', heir: 'lyceum', power: true, rivalArk: true, allies: [['striker', 2]], enemies: [], zoom: 0.5 },
@@ -72,6 +72,17 @@ for (const sc of SCENES.filter((x) => !only || only.includes(x.id))) {
       for (const n of g.nodes.filter((x) => x.kind === 'planet' && x.owner < 0 && x.system === home.system).slice(0, sc.forges ?? 0)) {
         g.kindleWorld(n, p.id, true);
         n.role = 'forge';
+      }
+      // (Guards at a dark world beside the Ark, seen, for a Dawn to burn.)
+      if (sc.guards) {
+        const w = g.neighbours(ark.node).map((id) => g.nodes[id]).find((n) => n.kind === 'planet' && n.owner < 0);
+        for (let i = 0; i < sc.guards; i++) {
+          const a = (i / sc.guards) * Math.PI * 2;
+          g.spawnUnit('militia', g.guardianId, w.id, { x: w.x + Math.cos(a) * (w.r + 110), y: w.y + Math.sin(a) * (w.r + 110) });
+        }
+        p.visible[w.id] = 1;
+        p.explored[w.id] = 1;
+        g.rebuildBuckets();
       }
       if (sc.id === 'wayfinder') g.exploreAll(p);
       if (sc.rivalArk) {
