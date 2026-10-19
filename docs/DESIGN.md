@@ -328,7 +328,11 @@ game (an enemy ship changes sides). So every house now has one such move, its **
   (Ashen 7, Choir 7, Vael 6, Wayfarers 5, Lyceum 4, Concord 3 of the games each was dealt into, against
   4, 7, 8, 1, 2 and 6). **The rival Concord is the weakest**: it lost the Aegis Field it started with, and
   Dawn in a rival's hands lights few worlds (it kindles its neighbours with seed ships first). Within what
-  forty games can tell apart, but the one to watch.
+  forty games can tell apart, but the one to watch. Why Dawn lights so few: by the fourth minute or so every
+  dark world left in a sector has a guard, and Dawn passes over a guarded world, so after the opening no place
+  has two dark worlds to light until a fleet clears their guards. In twenty-seven Concord-led sectors a Dawn
+  never lit more than two (the Shorts' scans, 1.27). For any house, Dawn is an opening move and a follow-up
+  to clearing a system, not a reach into the dark.
 - A run saved before 1.27 loads with its power ready, and a Choir's Ark that cast Conversion by itself
   no longer does (`loadGame`); an Ark keeps the old house ability it started with, which is a learned one now.
 

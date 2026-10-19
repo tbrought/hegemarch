@@ -3,6 +3,7 @@
  * flying), and a panel about the chosen one. Choosing a house gives the whole page its color.
  */
 import { drawHouseBanners, startingFleet } from '../app/houseArt';
+import { ABILITY_BY_ID } from '../game/data/abilities';
 import { HEIRS, HEIR_BY_ID } from '../game/data/heirs';
 import { richHtml } from '../render/rich';
 import { drawSubjects, starWindow, subjectsSize, type Look } from '../ui/subjects';
@@ -49,13 +50,16 @@ export class Houses {
       card.setAttribute('aria-pressed', String(on));
     }
     this.detail.style.setProperty('--hc', h.color);
+    // (Its House Power, 1.27, is what the house is played for: named apart from the bonuses, with what it does.)
+    const power = ABILITY_BY_ID[h.power];
     this.detail.innerHTML = `<canvas class="ark-art" aria-hidden="true"></canvas>
       <div class="hd-text">
         <p class="hd-tag">${h.cost ? `Earned with <b>◆${h.cost}</b> Legacy. Every run, won or lost, pays some.` : 'Yours from the first run.'}</p>
         <h3>${esc(h.name)}</h3>
         <p class="hd-title">${esc(h.title)}</p>
         <p class="hd-desc">${esc(h.desc)}</p>
-        <ul class="hd-bonuses">${h.bonuses.map((b) => `<li>${richHtml(b)}</li>`).join('')}</ul>
+        <ul class="hd-bonuses">${h.bonuses.filter((b) => !b.startsWith('House Power')).map((b) => `<li>${richHtml(b)}</li>`).join('')}</ul>
+        <p class="hd-power"><span class="hp-name">House Power: ${esc(power.name)}.</span> ${richHtml(power.desc)}</p>
         <p class="hd-fleet">Starts with ${esc(startingFleet(h))}.</p>
       </div>`;
     // The house's Ark, turning in its own patch of sky.

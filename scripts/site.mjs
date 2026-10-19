@@ -228,8 +228,11 @@ try {
     bonuses: document.querySelectorAll('.hd-bonuses li').length,
     fleet: document.querySelector('.hd-fleet').textContent,
     gain: document.querySelectorAll('.hd-bonuses .rt-gain').length,
+    power: document.querySelector('.hd-power')?.textContent ?? '',
   }));
-  check('choosing a house shows it and colors the page', vael.name === 'Vael Imperium' && vael.sel === 'vael' && vael.color === '#e0402f' && vael.bonuses === 4 && vael.gain >= 2 && /Ark Tyrant/.test(vael.fleet), JSON.stringify(vael));
+  check('choosing a house shows it and colors the page', vael.name === 'Vael Imperium' && vael.sel === 'vael' && vael.color === '#e0402f' && vael.bonuses === 3 && vael.gain >= 2 && /Ark Tyrant/.test(vael.fleet), JSON.stringify(vael));
+  // (Its House Power apart from the bonuses, with what it does: 1.27.)
+  check('its House Power is named, with what it does', /^House Power: Call to Arms\. The 5 Forges nearest the Ark/.test(vael.power), vael.power);
   await wait(5600);
   check('a choice ends the tour', (await page.textContent('#house-detail h3')) === 'Vael Imperium');
   const ark = await look(page, '.ark-art');

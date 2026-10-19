@@ -69,7 +69,7 @@ export const ABILITIES: AbilityDef[] = [
   { id: 'callarms', name: 'Call to Arms', desc: `The ${LEVY_WORLDS} Forges nearest the Ark (your Hearth is one) each send it [a Striker, a Guardian and a Breaker] at once. They serve for [${LEVY_TIME / 60} minutes] and take no room in your hangar.`, cd: 240, range: 9999, color: '#e0402f', power: true, says: 'CALL TO ARMS · {n}' },
   { id: 'wayfinder', name: 'Wayfinder', desc: 'Cuts [a new starlane] from the Ark\'s world to a world within reach (about one starlane between systems). It stays for the rest of the run, and [any house] can use it.', cd: 300, range: WAYFINDER_REACH, color: '#2fd5a6', power: true, aim: 'world', says: 'WAYFINDER' },
   { id: 'mindtheft', name: 'Mind Theft', desc: 'The Ark reads a rival Ark at its world and learns [one of its Boons], the rarest it can, for the rest of the run. The rival keeps it too.', cd: 300, range: 9999, color: '#b05cff', power: true, says: 'MIND THEFT' },
-  { id: 'wager', name: 'Fate\'s Wager', desc: 'A coin is thrown over the Ark\'s world. Heads: [every enemy warship there turns to ash] (never an Ark, a Dreadnought or the Hollow). Tails: [your Ark burns].', cd: 180, range: 9999, color: '#ff8a1f', power: true, says: 'FATE\'S WAGER' },
+  { id: 'wager', name: 'Fate\'s Wager', desc: 'A coin is thrown over the Ark\'s world. Heads: [every enemy warship there turns to ash] (never an Ark, a Dreadnought or the Hollow). Tails: [!your Ark burns].', cd: 180, range: 9999, color: '#ff8a1f', power: true, says: 'FATE\'S WAGER' },
 ];
 
 /** What a ship that rises a level may learn (and a Dreadnought is built with): none of a house's powers. */
