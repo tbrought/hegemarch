@@ -27,9 +27,9 @@ const toPage = (ix, iy) =>
   }, [ix, iy]);
 const uiRect = (id) => ev((rid) => window.__app.hud?.ui.rectOf(rid) ?? null, id);
 // A dialog that has just opened by itself takes no click and no key for a moment (Modals.guarded): wait
-// it out, as a player would.
+// it out, as a player would. (Its reveal runs on frame time: a machine under load takes longer to show it.)
 const unheld = async () => {
-  for (let i = 0; i < 60 && (await ev(() => window.__app.hud?.modals.guarded() || window.__app.hud?.ui.holding() || window.__app.hud?.modals.revealing())); i++) await wait(100);
+  for (let i = 0; i < 150 && (await ev(() => window.__app.hud?.modals.guarded() || window.__app.hud?.ui.holding() || window.__app.hud?.modals.revealing())); i++) await wait(100);
 };
 const clickUi = async (id, button = 'left') => {
   let r = await uiRect(id);

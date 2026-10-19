@@ -276,7 +276,7 @@ try {
     s.paused = false;
     while (a.hud.tips.current) a.hud.tips.dismiss();
     // (Every other tip counts as read, so that none comes up behind this one and holds the game again.)
-    s.profile.seenTips = ['role', 'raid', 'anomaly', 'anomalySeen', 'crisis', 'arkLevel', 'hangar', 'boonReady', 'fleet', 'lostWorld'];
+    s.profile.seenTips = ['role', 'raid', 'anomaly', 'anomalySeen', 'crisis', 'arkLevel', 'hangar', 'boonReady', 'fleet', 'lostWorld', 'power'];
     a.hud.tips.queue.length = 0;
     a.hud.tips.showFirst('blueprint');
   });

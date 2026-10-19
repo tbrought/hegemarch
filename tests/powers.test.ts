@@ -306,15 +306,40 @@ describe('powers and the rest of the game', () => {
     expect(arkOf(again, again.player).abil.map((a) => a.id)).toEqual(['emp']);
   });
 
-  it('a rival house casts its power when it would do what it is for', () => {
+  it('a rival house casts its power when it would do what it is for: a rival Concord, Dawn on two dark worlds or more', () => {
     const g = mk({ heir: 'vael', aiHeirs: ['concord', 'wayfarer', 'lyceum'] });
     const concord = g.empires().find((f) => f.heir === 'concord')!;
+    const ark = arkOf(g, concord);
+    // (At the star of its home system: its dark worlds are one starlane from it.)
+    const star = g.nodes[g.systems[g.nodes[concord.capital].system].star];
+    Object.assign(ark, { node: star.id, x: star.x + star.r + 60, y: star.y });
+    g.rebuildBuckets();
     concord.powerCd = 0;
-    const dark = dawnWorlds(g, concord, arkOf(g, concord)).length;
-    expect(dark).toBeGreaterThan(0);
+    const dark = dawnWorlds(g, concord, ark).length;
+    expect(dark).toBeGreaterThan(1);
     const worlds = g.worldsOf(concord.id).length;
     run(g, 15);
     expect(concord.powerCd).toBeGreaterThan(0);
     expect(g.worldsOf(concord.id).length).toBeGreaterThanOrEqual(worlds + dark);
+  });
+
+  it('a rival Concord does not spend Dawn on one world while a place near by has two: its Ark goes there', () => {
+    const g = mk({ heir: 'vael', aiHeirs: ['concord', 'wayfarer', 'lyceum'] });
+    const concord = g.empires().find((f) => f.heir === 'concord')!;
+    const ark = arkOf(g, concord);
+    const home = g.nodes[concord.capital];
+    const star = g.nodes[g.systems[home.system].star];
+    for (let i = 0; i < g.nodes.length; i++) concord.explored[i] = 1;
+    // One dark world beside the Hearth, more at the star.
+    const beside = g.neighbours(home.id).filter((id) => g.nodes[id].kind === 'planet' && g.nodes[id].owner < 0);
+    for (const id of beside.slice(1)) g.kindleWorld(g.nodes[id], concord.id, true);
+    concord.powerCd = 0;
+    const one = dawnWorlds(g, concord, ark).length;
+    const there = g.neighbours(star.id).filter((id) => g.nodes[id].kind === 'planet' && g.nodes[id].owner < 0).length;
+    if (one !== 1 || there < 2 || ark.node !== home.id) return; // (the sector is not shaped for it)
+    concord.ai!.nextThink = 0;
+    run(g, 1);
+    expect(concord.powerCd).toBe(0);
+    expect(ark.dest === star.id || ark.path.length > 0 || ark.node !== home.id).toBe(true);
   });
 });

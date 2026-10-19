@@ -6,7 +6,7 @@ import { isWarship, UNITS } from '../data/units';
 import { ASCENSION_BOONS, relicsRequired, treasuryTarget } from '../data/victories';
 import type { AIState, Faction, GNode, Rarity, Unit, UnitType, WorldRole, WorldSize } from '../types';
 import { WHY } from '../commands/checks';
-import { burnable, powerOf, wayTargets } from '../commands/power';
+import { burnable, dawnWorlds, powerOf, wayTargets } from '../commands/power';
 import { burning, STARFALL_BURN } from '../starfall';
 import { isHearth } from '../worldStats';
 
@@ -88,7 +88,8 @@ export function aiTick(g: Game, f: Faction, dt: number) {
 
 /**
  * The house's power (1.27), cast by the same order and held to the same checks as the player's, when it
- * would do what it is for: Dawn and Mind Theft whenever they can, a Conversion whenever ships would turn,
+ * would do what it is for: Dawn on two dark worlds or more (on one only where no place near by has two: its
+ * Ark goes to the place that has, `dawnTrip`), Mind Theft whenever it can, a Conversion whenever ships would turn,
  * a Call to Arms when the Ark is in a fight or the army sets out, a Wayfinder's starlane when it brings the
  * army two jumps or more nearer the world it means to take, and Fate's Wager only when the fight at the Ark
  * is being lost: then the coin is worth the Ark.
@@ -99,7 +100,11 @@ function housePower(g: Game, f: Faction) {
   const ark = g.units.get(f.ark)!;
   const ai = f.ai!;
   switch (def.id) {
-    case 'dawn':
+    case 'dawn': {
+      const n = dawnWorlds(g, f, ark).length;
+      if (n >= 2 || (n === 1 && dawnPlace(g, f, ark) < 0)) g.cmdPower(f.id);
+      break;
+    }
     case 'mindtheft':
     case 'conversion':
       if (!g.checkPower(f.id)) g.cmdPower(f.id);
@@ -771,8 +776,8 @@ function claimDerelicts(g: Game, f: Faction, all: Unit[], assigned: Set<number>)
   }
 }
 
-/** How far a rival Concord takes its Ark to cast Dawn (as `pathLen` counts: two or three jumps in a system). */
-const DAWN_REACH = 6000;
+/** How far a rival Concord takes its Ark to cast Dawn (as `pathLen` counts: across its system, or one starlane to the next). */
+const DAWN_REACH = 12000;
 
 /**
  * A rival Concord whose Dawn is ready, at peace, takes its Ark to the place near by with the most dark worlds
@@ -785,6 +790,17 @@ function dawnTrip(g: Game, f: Faction, ctx: Ctx, all: Unit[], assigned: Set<numb
   if (powerOf(f)?.id !== 'dawn' || f.ai!.mode !== 'build' || ctx.threats.length || g.powerReady(f.id)) return;
   const ark = all.find((u) => u.type === 'ark' && !assigned.has(u.id));
   if (!ark || ark.lane || ark.node < 0) return;
+  const best = dawnPlace(g, f, ark);
+  if (best < 0) return;
+  assigned.add(ark.id);
+  if (ark.node !== best && ark.dest !== best) g.cmdMove(f.id, [ark.id], best);
+}
+
+/**
+ * The place near the Ark (`DAWN_REACH`) with the most dark worlds one starlane from it, two at least, as far as
+ * the house knows (charted, nothing seen to guard them, nothing hostile known at the place): -1 if none.
+ */
+function dawnPlace(g: Game, f: Faction, ark: Unit): number {
   const dark = (id: number) =>
     g.neighbours(id).filter((w) => g.nodes[w].kind === 'planet' && g.nodes[w].owner < 0 && f.explored[w] && !g.seenGuarded(f, w)).length;
   let best = -1;
@@ -801,9 +817,7 @@ function dawnTrip(g: Game, f: Faction, ctx: Ctx, all: Unit[], assigned: Set<numb
       best = n.id;
     }
   }
-  if (best < 0) return;
-  assigned.add(ark.id);
-  if (ark.node !== best && ark.dest !== best) g.cmdMove(f.id, [ark.id], best);
+  return best;
 }
 
 /**

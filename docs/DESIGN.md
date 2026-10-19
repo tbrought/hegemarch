@@ -316,17 +316,19 @@ game (an enemy ship changes sides). So every house now has one such move, its **
   world until it lands and shows its face. Each has a sound of its own (a sunrise chord, war drums, a
   road's glide, two voices falling, a coin's ticks).
 - **The rival houses cast theirs** (`housePower` in `ai/ai.ts`) when they would do what they are for:
-  Dawn, Mind Theft and Conversion whenever they can; a Call to Arms when the Ark is in a fight or the
-  army sets out; a Wayfinder's starlane when it brings the army two jumps or more nearer the world it means
-  to take; a Wager only when the fight at the Ark is being lost. A rival Concord at peace takes its Ark to
-  the place near by with the most dark worlds beside it that it knows of, and casts Dawn there
-  (`dawnTrip`): left with its army, its Ark sat at home, where every world was lit, and cast Dawn three
-  times in six games (now about thirteen in eight).
-- **What it changed**, on the same forty AI-only medium sectors (an hour at most): 35 decided against 28
-  before, the median game 40.4 minutes against 41.9, and the crowns spread more evenly among the houses
-  (Ashen 8, Choir 7, Vael 6, Wayfarers 5, Lyceum 4, Concord 3 of the games each was dealt into, against
-  4, 7, 8, 1, 2 and 6). The rival Concord is the least of them in this count, which is within what forty
-  games can tell apart; it is the one to watch.
+  Mind Theft and Conversion whenever they can; Dawn on two dark worlds or more (on one only where no place
+  near by has two); a Call to Arms when the Ark is in a fight or the army sets out; a Wayfinder's starlane
+  when it brings the army two jumps or more nearer the world it means to take; a Wager only when the fight
+  at the Ark is being lost. A rival Concord at peace takes its Ark to the place within 12000 with the most
+  dark worlds beside it that it knows of, and casts Dawn there (`dawnTrip`, `dawnPlace`): left with its
+  army, its Ark sat at home, where every world was lit, and cast Dawn three times in six games; cast as
+  soon as one world was dark beside it, a Dawn lit 1.3 worlds.
+- **What it changed**, on the same forty AI-only medium sectors (an hour at most): 32 decided against 28
+  before, the median game 41.4 minutes against 41.9, and the crowns spread more evenly among the houses
+  (Ashen 7, Choir 7, Vael 6, Wayfarers 5, Lyceum 4, Concord 3 of the games each was dealt into, against
+  4, 7, 8, 1, 2 and 6). **The rival Concord is the weakest**: it lost the Aegis Field it started with, and
+  Dawn in a rival's hands lights few worlds (it kindles its neighbours with seed ships first). Within what
+  forty games can tell apart, but the one to watch.
 - A run saved before 1.27 loads with its power ready, and a Choir's Ark that cast Conversion by itself
   no longer does (`loadGame`); an Ark keeps the old house ability it started with, which is a learned one now.
 

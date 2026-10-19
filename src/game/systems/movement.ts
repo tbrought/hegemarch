@@ -204,6 +204,21 @@ function steer(g: Game, u: Unit, def: UnitDef, dt: number) {
       dvx = (-dy / d) * s * spd * 0.42 + (dx / d) * radial;
       dvy = (dx / d) * s * spd * 0.42 + (dy / d) * radial;
     }
+    // A fight stays in its world's well: two lone ships that circled each other the same way slid off together
+    // across the void for good (the fuzzer found a pair 4000 out, 1.27). Past half again the well, a ship is
+    // drawn back toward the world, the farther the harder.
+    if (u.node >= 0) {
+      const n = g.nodes[u.node];
+      const ox = n.x - u.x;
+      const oy = n.y - u.y;
+      const od = dhypot(ox, oy) || 1;
+      const out = od - n.well * 1.5;
+      if (out > 0) {
+        const k = Math.min(1, out / n.well) * spd;
+        dvx += (ox / od) * k;
+        dvy += (oy / od) * k;
+      }
+    }
     faceA = datan2(dy, dx);
   } else {
     const dx = u.ax - u.x;
