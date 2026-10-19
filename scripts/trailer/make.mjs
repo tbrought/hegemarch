@@ -9,11 +9,13 @@ import { spawn } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
 import { DEV_URL, openBrowser } from '../lib/browser.mjs';
-import { TRAILERS } from './trailers.mjs';
 
 const OUT = 'promo/trailers';
 const FFMPEG = process.env.FFMPEG ?? 'ffmpeg';
 const [mode, arg] = process.argv.slice(2);
+// (A scan reads no trailer: the trailers are written from the scans, and a scan made again for a game whose
+// rules have changed must not wait on shots that point at what its old scan held.)
+const { TRAILERS } = mode === 'scan' ? { TRAILERS: {} } : await import('./trailers.mjs');
 fs.mkdirSync(OUT, { recursive: true });
 
 // (A Short is upright: 1080x1920, its studio opened so.)

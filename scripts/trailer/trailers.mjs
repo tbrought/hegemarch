@@ -488,21 +488,33 @@ Object.assign(TRAILERS, {
 
 // ------------------------------------------------------------------------------------------------
 // The Six Houses: a lore series of Shorts, a house a week, to be narrated over (promo/houses/scripts.html).
-// Each the same shape: its Ark's signature, slowed, with no words; its name; where it comes from; how it
-// plays; its Ark; its motto; and next week's house. Every shot is of a sector that house leads, its Ark
-// among the others' (scan-<seed>-<house>.json: HEIR=<house> node scripts/trailer/make.mjs scan <seed>).
+// Each the same shape: its Ark casting its House Power (1.27), slowed, with no words; its name; where it comes
+// from; how it plays; its power, named; its motto; and next week's house. Every shot is of a sector that house
+// leads, its Ark among the others' (scan-<seed>-<house>.json: HEIR=<house> node scripts/trailer/make.mjs scan
+// <seed>). (Until 1.27 each opened on its Ark's "signature" ability, which any Ark could learn: the sectors were
+// chosen again for their powers. The Lyceum's is the one of thirty where its Ark read the most rivals in the
+// biggest fights; the Remnant's, where its coin came up heads with the most around it. The Concord's opens on its
+// Hearth holding instead: by the fourth minute every dark world left has a guard, so a Dawn lights two at most.)
 // ------------------------------------------------------------------------------------------------
 const SL = (60 / 84 / 2) * 6; // Starlanes: in three, A minor
 const CR = bar(104); // The Crowning: C major
 const EM = bar(80); // Embers: F major
-const HOUSE_SEED = { vael: 90, wayfarer: 11, concord: 23, lyceum: 47, choir: 8, ashen: 5 };
-const SIGNATURE = { vael: 'barrage', wayfarer: 'nanite', concord: 'aegis', lyceum: 'strikewing', choir: 'conversion', ashen: 'phaselance' };
+const HOUSE_SEED = { vael: 90, wayfarer: 14, concord: 23, lyceum: 14, choir: 8, ashen: 15 };
+const POWER = { vael: 'callarms', wayfarer: 'wayfinder', concord: 'dawn', lyceum: 'mindtheft', choir: 'conversion', ashen: 'wager' };
+{
+  // (Checked against the game: each house's power as data/heirs.ts gives it.)
+  const game = fs.readFileSync('src/game/data/heirs.ts', 'utf8');
+  for (const [id, power] of Object.entries(POWER)) {
+    const said = game.match(new RegExp(`id: '${id}',[\\s\\S]*?power: '([^']*)'`))?.[1];
+    if (said !== power) throw new Error(`${id}: the Short casts ${power}, the game ${said}`);
+  }
+}
 const hsec = (id) => S(HOUSE_SEED[id], { heir: id });
 const hscan = (id) => scan(`${HOUSE_SEED[id]}-${id}`);
 const hue = (id) => HOUSES[id][3];
-/** The house's moment of a kind nearest `m` minutes (a battle: one it fights in, at `node`). */
+/** The house's moment of a kind nearest `m` minutes (a battle: one it fights in, at `node`; a Wager, one that came up heads). */
 const near = (id, kind, m, node) => {
-  const mine = (x) => (kind === 'battle' ? x.sides?.includes(0) && !x.sides.includes(-1) : x.who === 0) && (kind !== 'ability' || (x.ark && x.ability === SIGNATURE[id]));
+  const mine = (x) => (kind === 'battle' ? x.sides?.includes(0) && !x.sides.includes(-1) : x.who === 0) && (kind !== 'ability' || (x.ark && x.ability === POWER[id] && x.heads !== false));
   const list = hscan(id).moments.filter((x) => x.kind === kind && mine(x) && (node === undefined || x.node === node));
   if (!list.length) throw new Error(`${id}: no ${kind}${node === undefined ? '' : ` at ${node}`}`);
   return list.sort((a, b) => Math.abs(a.tick - min(m)) - Math.abs(b.tick - min(m)))[0];
@@ -510,13 +522,19 @@ const near = (id, kind, m, node) => {
 /** A keyword or two at the top, its {phrases} in the house's colour. */
 const hup = (id, shot, lines) => ({ ...shot, bars: 0, vignette: 0.35, text: lines ? [{ at: 0.25, until: shot.dur - 0.12, style: 'lore', lines, y: 0.22, accent: hue(id) }] : [] });
 /**
- * Its Ark casting its signature at about `m` minutes: slowed as it does, then coming up to speed; the camera on
- * the Ark (`dy` pixels under the middle: less, where its fleet is below it and would fall under YouTube's buttons).
+ * Its Ark casting its House Power at about `m` minutes: slowed as it does, then coming up to speed. The camera on
+ * the Ark (`dy` pixels under the middle: less, where its fleet is below it and would fall under YouTube's
+ * buttons); for a power that reaches far (Dawn's worlds, a Wayfinder's starlane), on all that it reached; for a
+ * Call to Arms, far enough out to see the Forges' light run in to the Ark. `after` seconds after the cast to
+ * begin, for a power that lands later than it is cast (a Wager's coin, in the air for 1.6 seconds).
  */
-const hCast = (id, m, dur, lines, slow = 0.4, dy = 30) => {
+const hCast = (id, m, dur, lines, slow = 0.4, dy = 30, after = 0) => {
   const c = near(id, 'ability', m);
-  return hup(id, { sector: hsec(id), from: c.tick - Math.round(0.9 * slow * 20), dur, speed: [slow, Math.min(1, slow * 2.5)], loud: 1, duck: 0.9,
-    cam: [{ t: 0, x: c.x, y: c.y, zoom: 0.6, dy }, { t: 1, x: c.x, y: c.y, zoom: 0.48, dy }] }, lines);
+  const wide = c.span && (POWER[id] === 'dawn' || POWER[id] === 'wayfinder');
+  const z = wide ? Math.max(0.02, Math.min(0.4, 105 / Math.max(1, c.span.r))) : POWER[id] === 'callarms' ? 0.12 : 0.6;
+  const at = wide ? { x: c.span.x, y: c.span.y } : { x: c.x, y: c.y };
+  return hup(id, { sector: hsec(id), from: c.tick - Math.round(0.9 * slow * 20) + Math.round(after * 20), dur, speed: [slow, Math.min(1, slow * 2.5)], loud: 1, duck: 0.9,
+    cam: [{ t: 0, ...at, zoom: z, dy }, { t: 1, ...at, zoom: z * 0.8, dy }] }, lines);
 };
 /** Its biggest fleet out on the starlanes at about `m` minutes, followed. */
 const hVoyage = (id, m, dur, lines, speed = 1.5) => hup(id, { sector: hsec(id), from: near(id, 'voyage', m).tick, dur, speed, loud: 0.6,
@@ -585,67 +603,68 @@ const hEnd = (id, next) => ({ blank: true, stars: true, dur: 5, vignette: 0.4,
 
 // 1. The Vael Imperium: To Arms.
 const hv = [
-  hCast('vael', 8.78, TA * 3, null),
+  hCast('vael', 12.27, TA * 3, null),
   hName('vael', TA * 4),
-  hVoyage('vael', 7.42, TA * 3, ['SWORN TO {WAR}']),
-  hBattle('vael', 8.5, 26, TA * 2, ['+15% {DAMAGE}']),
-  { ...hBattle('vael', 12.42, 18, TA * 2, ['{CHEAPER} SHIPS', '[!LESS LORE]'], 0.3), hard: true },
-  hCast('vael', 12.63, TA * 3, ['THE {TYRANT}', 'MISSILE BARRAGE'], 0.6),
+  hVoyage('vael', 42.42, TA * 3, ['SWORN TO {WAR}']),
+  hBattle('vael', 43.42, 46, TA * 2, ['+15% {DAMAGE}']),
+  { ...hBattle('vael', 33.17, 41, TA * 2, ['{CHEAPER} SHIPS', '[!LESS LORE]'], 0.3), hard: true },
+  hCast('vael', 45.96, TA * 3, ['THE {TYRANT}', 'CALL TO ARMS'], 0.6),
   hMotto('vael', TA * 3, ['THE DARK', 'IS WON', 'IN {FIRE}']),
   hEnd('vael', 'wayfarer'),
 ];
 // 2. The Wayfarer Clans: Starlanes, in three.
 const hw = [
-  hCast('wayfarer', 30.26, SL * 2, null),
+  hCast('wayfarer', 24.41, SL * 2, null),
   hName('wayfarer', SL * 3.5),
-  hVoyage('wayfarer', 28.08, SL * 2, ['NOMAD', '{FLEETS}']),
-  hVoyage('wayfarer', 29.25, SL * 2, ['STARLANES', '{30%} FASTER'], 2.5),
+  hVoyage('wayfarer', 22.5, SL * 2, ['NOMAD', '{FLEETS}']),
+  hVoyage('wayfarer', 26.5, SL * 2, ['STARLANES', '{30%} FASTER'], 2.5),
   hRealm('wayfarer', SL * 2, ['KINDLING', '{35%} CHEAPER']),
-  hCast('wayfarer', 30.68, SL * 2.5, ['THE {WANDERER}', 'NANITE CLOUD'], 0.6),
+  hCast('wayfarer', 16.44, SL * 2.5, ['THE {WANDERER}', 'WAYFINDER'], 0.6),
   hMotto('wayfarer', SL * 2, ['NEVER', '{STILL}']),
   hEnd('wayfarer', 'concord'),
 ];
 // 3. The Solar Concord: The Crowning.
 const hc = [
-  hBattle('concord', 39.5, 25, CR * 2, null, 0.3),
+  hBattle('concord', 45.08, 25, CR * 2, null, 0.3),
   hName('concord', CR * 3),
-  hVoyage('concord', 20.33, CR * 2, ['KEEPERS OF', 'THE OLD {LIGHT}']),
+  hVoyage('concord', 43.83, CR * 2, ['KEEPERS OF', 'THE OLD {LIGHT}']),
   hRealm('concord', CR * 2, ['+10% {EMBERS}']),
-  { ...hBattle('concord', 70.67, 25, CR * 2, ['{STURDIER} WORLDS'], 0.3), dip: true },
-  hCast('concord', 22.99, CR * 3, ['THE {SOVEREIGN}', 'AEGIS FIELD'], 0.6, -60),
+  { ...hBattle('concord', 60.75, 25, CR * 2, ['{STURDIER} WORLDS'], 0.3), dip: true },
+  hCast('concord', 1.72, CR * 3, ['THE {SOVEREIGN}', 'BRINGS DAWN'], 0.6),
   hMotto('concord', CR * 2, ['WE KEEP', 'THE {LIGHT}']),
   hEnd('concord', 'lyceum'),
 ];
 // 4. The Lyceum Collective: Breakers.
 const hl = [
-  hCast('lyceum', 10.55, BK * 3, null),
+  hCast('lyceum', 26.61, BK * 3, null),
   hName('lyceum', BK * 5),
-  hVoyage('lyceum', 11.08, BK * 2, ['ONE {MIND}']),
-  hBattle('lyceum', 12, 31, BK * 2, ['+25% {LORE}', 'MORE BOONS']),
-  { ...hBattle('lyceum', 18.33, 24, BK * 2, ['CHEAP', '{STRIKERS}'], 0.3), hard: true },
-  hCast('lyceum', 12.85, BK * 3, ['THE {OVERMIND}', 'STRIKE WING'], 0.6),
+  hVoyage('lyceum', 48.08, BK * 2, ['ONE {MIND}']),
+  hBattle('lyceum', 49.42, 38, BK * 2, ['+25% {LORE}', 'MORE BOONS']),
+  { ...hBattle('lyceum', 38.92, 6, BK * 2, ['CHEAP', '{STRIKERS}'], 0.3), hard: true },
+  hCast('lyceum', 12.68, BK * 3, ['THE {OVERMIND}', 'MIND THEFT'], 0.6),
   hMotto('lyceum', BK * 3, ['MANY MINDS', 'ONE {SWARM}']),
   hEnd('lyceum', 'choir'),
 ];
 // 5. The Choir of the First Flame: Embers.
 const hf = [
-  hCast('choir', 18.45, EM * 1.5, null),
+  hCast('choir', 20.89, EM * 1.5, null),
   hName('choir', EM * 2.5),
-  hVoyage('choir', 10.42, EM * 1.5, ['THE FIRST', '{FLAME}']),
-  hBattle('choir', 9, 24, EM * 1.5, ['EVERY LOSS', 'FEEDS {ZEAL}']),
-  { ...hBattle('choir', 18.25, 37, EM * 1.5, ['THEY NEVER {RUN}'], 0.3), hard: true },
-  hCast('choir', 15.06, EM * 1.5, ['THE {CANTOR}', 'CONVERSION'], 0.6),
+  hVoyage('choir', 37.25, EM * 1.5, ['THE FIRST', '{FLAME}']),
+  hBattle('choir', 43.25, 36, EM * 1.5, ['EVERY LOSS', 'FEEDS {ZEAL}']),
+  { ...hBattle('choir', 35.75, 30, EM * 1.5, ['THEY NEVER {RUN}'], 0.3), hard: true },
+  hCast('choir', 53.98, EM * 1.5, ['THE {CANTOR}', 'CONVERSION'], 0.6),
   hMotto('choir', EM * 2, ['WHAT', 'OTHERS', 'DESTROY,', 'WE {CONVERT}']),
   hEnd('choir', 'ashen'),
 ];
 // 6. The Ashen Remnant: Last Stand; its draft of four.
 const ha = [
-  hCast('ashen', 22.48, LS * 2, null),
+  // (Its coin already in the air: the opener is short, and what it is for is the fleet that burns.)
+  hCast('ashen', 29.26, LS * 2, null, 0.4, 30, 0.9),
   hName('ashen', LS * 4),
-  hVoyage('ashen', 21.75, LS * 2, ['OUT OF', 'THE {FIRE}']),
+  hVoyage('ashen', 35.58, LS * 2, ['OUT OF', 'THE {FIRE}']),
   hDraft('ashen', LS * 4, ['{FOUR} BOONS', 'TO CHOOSE'], [3, LS * 4 * 0.72]),
-  { ...hBattle('ashen', 26.92, 2, LS * 2, ['+2 {REROLLS}', '[!FEWER EMBERS]'], 0.3), dip: true },
-  hCast('ashen', 14.57, LS * 3, ['{EMBER THRONE}', 'EMBER LANCE'], 0.6),
+  { ...hBattle('ashen', 24.58, 4, LS * 2, ['+2 {REROLLS}', '[!FEWER EMBERS]'], 0.3), dip: true },
+  hCast('ashen', 51.42, LS * 3, ['{EMBER THRONE}', 'FATE\'S WAGER'], 0.6),
   hMotto('ashen', LS * 3, ['FATE', 'FAVOURS', 'THE {BURNED}']),
   hEnd('ashen', null),
 ];

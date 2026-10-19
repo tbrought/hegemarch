@@ -10,8 +10,9 @@ import { endFilm, filmRun, lookAt, startFilm } from './lib/film.mjs';
 
 const HEIRS = ['concord', 'vael', 'wayfarer', 'lyceum', 'choir', 'ashen'];
 /**
- * Each scene: the house played, the ability (none: the house's own, which its Ark has from the start), the
- * player's ships placed round the Ark (hurt: at half their hull), the rival's (at that distance), the zoom.
+ * Each scene: the ability (given to the Ark for the scene) or the House Power (`power`: the house's own, cast with
+ * D), the house played, the player's ships placed round the Ark (hurt: at half their hull), the rival's (at that
+ * distance), the zoom.
  */
 const SCENES = [
   { id: 'barrage', heir: 'vael', allies: [['striker', 3]], enemies: [['striker', 6, 200], ['guardian', 2, 260]], zoom: 0.6 },

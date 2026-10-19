@@ -70,6 +70,13 @@ export interface Moment {
   x?: number;
   y?: number;
   ark?: boolean;
+  /**
+   * A House Power's (1.27) reach on the map: the middle and the half-width of what it touched (the Ark and the
+   * worlds it reached: Dawn's, the Forges of a Call to Arms, a Wayfinder's far end), for a shot that shows it all.
+   */
+  span?: { x: number; y: number; r: number; n: number };
+  /** A Fate's Wager: how its coin lands. */
+  heads?: boolean;
 }
 
 /** Play a sector through (its houses all the game's AI) and note what happened where: the shots there are. */
@@ -91,11 +98,21 @@ export function scan(s: SectorSpec, minutes: number) {
     for (const f of g.fx) {
       if (f.k === 'nova') moments.push({ kind: 'nova', tick: g.tick, node: f.node, score: 10, who: -1 });
       else if (f.k === 'ability' && f.node >= 0) {
-        // (Who cast it: the ship of that ability standing where it was cast.)
-        const by = g.buckets[f.node].find((u) => !u.dead && u.abil.some((a) => a.id === f.id) && Math.abs(u.x - f.x) < 1 && Math.abs(u.y - f.y) < 1);
+        // (Who cast it: the cast names its ship, 1.26; a House Power, 1.27, is no ability the ship has learned.)
+        const by = g.units.get(f.by);
         if (by) {
           const near = g.buckets[f.node].filter((o) => !o.dead && g.hostile(by.owner, o.owner) && Math.hypot(o.x - f.x, o.y - f.y) <= f.r).length;
-          moments.push({ kind: 'ability', tick: g.tick, node: f.node, score: near, who: by.owner, ability: f.id, x: Math.round(f.x), y: Math.round(f.y), ark: by.type === 'ark' });
+          const m: Moment = { kind: 'ability', tick: g.tick, node: f.node, score: near, who: by.owner, ability: f.id, x: Math.round(f.x), y: Math.round(f.y), ark: by.type === 'ark' };
+          if (f.at?.length) {
+            const pts = [{ x: f.x, y: f.y }, ...f.at.map((id) => g.nodes[id])];
+            const x0 = Math.min(...pts.map((p) => p.x));
+            const x1 = Math.max(...pts.map((p) => p.x));
+            const y0 = Math.min(...pts.map((p) => p.y));
+            const y1 = Math.max(...pts.map((p) => p.y));
+            m.span = { x: Math.round((x0 + x1) / 2), y: Math.round((y0 + y1) / 2), r: Math.round(Math.max(x1 - x0, y1 - y0) / 2), n: f.at.length };
+          }
+          if (f.heads !== undefined) m.heads = f.heads;
+          moments.push(m);
         }
       }
       else if ((f.k === 'shot' || f.k === 'beam' || f.k === 'boom') && f.node >= 0) {
