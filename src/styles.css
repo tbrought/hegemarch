@@ -879,6 +879,37 @@ button.small {
   margin-top: 6px;
 }
 
+/* A rule the run is played by (the Daily's): a small button's caps and border, that is not pressed. */
+.rule {
+  display: inline-block;
+  font-family: var(--display);
+  font-size: 10px;
+  letter-spacing: 0.04em;
+  padding: 8px 10px 7px;
+  margin: var(--px);
+  color: var(--bone);
+  background: var(--night);
+  box-shadow:
+    0 calc(var(--px) * -1) 0 0 var(--slate),
+    0 var(--px) 0 0 var(--slate),
+    calc(var(--px) * -1) 0 0 0 var(--slate),
+    var(--px) 0 0 0 var(--slate);
+}
+
+/* (Legacy among them, in its purse: the one gold thing there.) */
+.opt .purse {
+  margin: var(--px) var(--px) var(--px) 6px;
+  padding: 8px 10px 7px;
+  font-family: var(--display);
+  font-size: 10px;
+}
+
+/* A seed that is set for the player: in gold, as a setting that is lit, and not to be typed in. */
+input[type='text'].fixed {
+  color: var(--gold);
+  cursor: default;
+}
+
 input[type='text'] {
   font-family: var(--body);
   font-size: 17px;

@@ -691,8 +691,18 @@ const screen = (page) => ev(page, () => window.__app.screen);
 
   // Whoever follows the link: the setup, on that sector, with the result to beat.
   const friend = await open({}, '#' + share.link.split('#')[1]);
-  const ch = await ev(friend.page, () => ({ screen: window.__app.screen, hash: location.hash, banner: document.querySelector('.challenge')?.innerText.replace(/\s+/g, ' ') ?? '', opts: !!document.querySelector('.opts') }));
-  check(ch.screen === 'setup' && ch.hash === '' && /crowned by Conquest in \d+:\d\d/.test(ch.banner) && !ch.opts, `a challenge link opens the setup on that sector, with the result to beat (${ch.banner.slice(0, 90)})`);
+  const ch = await ev(friend.page, () => ({
+    screen: window.__app.screen,
+    hash: location.hash,
+    banner: document.querySelector('.challenge')?.innerText.replace(/\s+/g, ' ') ?? '',
+    // (The sector it names is the setup's own panel, set to it: since 1.26.1, as the Daily's is.)
+    lit: [...document.querySelectorAll('.opts button.active')].map((b) => b.textContent),
+    seed: document.querySelector('.opts input.fixed')?.value,
+    free: document.querySelectorAll('.opts button:not(.active):not(.disabled), #seed-input').length,
+  }));
+  check(ch.screen === 'setup' && ch.hash === '' && /crowned by Conquest in \d+:\d\d/.test(ch.banner), `a challenge link opens the setup on that sector, with the result to beat (${ch.banner.slice(0, 90)})`);
+  const named = `${share.config.size.toUpperCase()},${['EASY', 'NORMAL', 'HARD', 'BRUTAL'][share.config.difficulty]}`;
+  check(ch.lit.join() === named && ch.seed === String(share.config.seed) && ch.free === 0, `its sector set in the setup's panel, nothing there to change (${ch.lit.join()} · ${ch.seed} / ${named} · ${share.config.seed}; ${ch.free} free)`);
   await friend.page.click('[data-sa="launch"]');
   await friend.page.waitForFunction(() => window.__app?.screen === 'game', null, { timeout: 60000 });
   const same = await ev(friend.page, () => { const c = window.__app.session.game.config; return { seed: c.seed, size: c.size, difficulty: c.difficulty, challenge: !!c.challenge, guided: !!c.tutorial }; });

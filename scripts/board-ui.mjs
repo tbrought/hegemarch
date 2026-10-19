@@ -39,16 +39,34 @@ await page.waitForTimeout(800);
 
 /** A run of this mode, ended as it ends: crowned (or not), and its results shown. */
 async function ended(mode, won) {
+  let shownSeed = null;
   await ev(() => window.__app.showMenu());
   await page.waitForTimeout(200);
   await page.click(`.mode[data-sa="${mode}"]`);
   await page.waitForTimeout(200);
   if (mode === 'daily') {
     const lead = await page.textContent('.lead');
-    check('the Daily says its rules are the same for everyone, and that it has a board', /same rules/.test(lead) && /no perks from the Hall/.test(lead) && /board/.test(lead), lead);
+    check('the Daily says its rules are the same for everyone, and that it has a board', /same rules/.test(lead) && /board/.test(lead), lead);
+    // (Its settings are the setup's own panel, set: the day's lit, the rest greyed, today's seed, and its rules.)
+    shownSeed = await ev(() => {
+      const opts = document.querySelector('.opts');
+      return {
+        lit: [...opts.querySelectorAll('button.active')].map((b) => b.textContent),
+        greyed: opts.querySelectorAll('button.disabled').length,
+        seed: opts.querySelector('input.fixed')?.value,
+        rules: [...opts.querySelectorAll('.rule, .purse')].map((b) => b.textContent),
+      };
+    });
+    const set = shownSeed;
+    check("the Daily's settings are the setup's panel, set: MEDIUM and NORMAL lit, the rest greyed", set.lit.join() === 'MEDIUM,NORMAL' && set.greyed === 6, JSON.stringify(set));
+    check('its rules there, and its Legacy in its purse', set.rules.join() === 'EVERY BOON,NO PERKS,LEGACY ×1.25', JSON.stringify(set));
   }
   await page.click('[data-sa="launch"]');
   await page.waitForFunction(() => window.__app.screen === 'game', null, { timeout: 60000 });
+  if (mode === 'daily') {
+    const seed = await ev(() => window.__app.session.game.config.seed);
+    check('the seed the Daily shows is the one it is played on', String(seed) === shownSeed.seed, `${shownSeed.seed} / ${seed}`);
+  }
   await page.waitForTimeout(600);
   await ev((won) => {
     const app = window.__app;

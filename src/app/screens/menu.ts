@@ -75,7 +75,7 @@ export function showMenu(app: App) {
           <button class="mode daily" data-sa="daily" data-tip="The same sector for every player today, by the same rules: medium, Normal, with [Legacy ×1.25]. The fastest crowns go on today's board. The picture is the chart of today's sector.">
             <canvas class="mode-art" data-art="daily" aria-hidden="true"></canvas>
             <span class="mode-name">DAILY RUN${dailyDone ? ' ✓' : ''}</span>
-            <span class="mode-pitch">Today's sector, the same for every player. Legacy ×1.25.</span>
+            <span class="mode-pitch">Today's sector, the same for every player. <span class="gold">Legacy ×1.25</span>.</span>
             <span class="mode-meta" data-daily>${dailyLine(app)}</span>
           </button>
         </div>
