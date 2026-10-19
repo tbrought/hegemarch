@@ -59,21 +59,31 @@ try {
   await wait(150);
   let st = await state();
   check('D before it is ready says when it will be, and aims nothing', !st.aim && /^Ready in 1:\d\d$/.test(st.toast), JSON.stringify(st));
-  // (Ready, with the Ark at the star of its home system: its worlds are one starlane from it.)
-  await ev(() => {
+  // (Ready, with the Ark at the star of its home system: its worlds are one starlane from it. Two guards at
+  // one of them, which Dawn burns.)
+  const guards = await ev(() => {
     const g = window.__app.session.game;
     const p = g.player;
     const ark = g.units.get(p.ark);
     const star = g.nodes[g.systems[g.nodes[p.capital].system].star];
     Object.assign(ark, { node: star.id, x: star.x + star.r + 60, y: star.y, px: star.x + star.r + 60, py: star.y });
+    // (Seen, so that the banner counts its guards: a world of the home system may be out of sight at the start.)
+    const world = g.neighbours(star.id).map((id) => g.nodes[id]).find((n) => n.kind === 'planet' && n.owner < 0);
+    p.visible[world.id] = 1;
+    p.explored[world.id] = 1;
+    const ids = [];
+    for (let i = 0; i < 2; i++) ids.push(g.spawnUnit('militia', g.guardianId, world.id).id);
     g.rebuildBuckets();
     p.powerCd = 0;
     window.__app.session.toast = null;
+    return { ids, all: g.buckets[world.id].filter((u) => u.owner === g.guardianId).length };
   });
   await page.keyboard.press('KeyD');
   await wait(200);
   st = await state();
-  check('D aims it: the banner says what it would do', st.aim && /^DAWN: .+ kindled at once\.$/.test(st.banner), JSON.stringify(st));
+  // (As many guards as the player can see at all the worlds it would light: those two at least.)
+  const burns = Number(/^DAWN: .+ kindled at once, and (\d+) guards burn\.$/.exec(st.banner ?? '')?.[1] ?? 0);
+  check('D aims it: the banner says what it would do, and how many guards burn', st.aim && burns >= guards.all, JSON.stringify(st));
   await page.keyboard.press('Escape');
   await wait(150);
   check('Escape puts it away, and the menu does not open', !(await state()).aim && !(await ev(() => window.__app.session.modal)));
@@ -97,8 +107,9 @@ try {
   await clickUi('power');
   await wait(200);
   st = await state();
-  check('and casts it: worlds kindled, and it is not ready again for four minutes', !st.aim && st.worlds > before.worlds && st.cd > 230, `${before.worlds} → ${st.worlds}, ${st.cd}`);
-  check('the button says when it is back', /Ready in [34]:\d\d/.test(await tipOf('power')));
+  check('and casts it: worlds kindled, and it is not ready again for five minutes', !st.aim && st.worlds > before.worlds && st.cd > 290, `${before.worlds} → ${st.worlds}, ${st.cd}`);
+  check('the guards at a world it lit burned', await ev((ids) => ids.every((id) => !window.__app.session.game.units.get(id) || window.__app.session.game.units.get(id).dead), guards.ids));
+  check('the button says when it is back', /Ready in [45]:\d\d/.test(await tipOf('power')));
   // The Ark's card names it.
   await ev(() => {
     const s = window.__app.session;

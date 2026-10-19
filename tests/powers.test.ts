@@ -5,7 +5,7 @@
  * plays it again to the tick, and that the rival houses cast theirs too.
  */
 import { describe, expect, it, vi } from 'vitest';
-import { burnable, dawnWorlds, levyWorlds, POWER_WHY, wayTargets } from '../src/game/commands/power';
+import { burnable, dawnGuards, dawnWorlds, levyWorlds, POWER_WHY, wayTargets } from '../src/game/commands/power';
 import { Game } from '../src/game/Game';
 import { ABILITY_BY_ID, LEARNABLE_ABILITIES, LEVY_SHIPS, LEVY_TIME, LEVY_WORLDS, POWER_FIRST, POWERS, WAGER_TIME, WAYFINDER_REACH } from '../src/game/data/abilities';
 import { CARD_BY_ID, CARDS } from '../src/game/data/cards';
@@ -77,7 +77,7 @@ describe('a house and its power', () => {
 });
 
 describe('Dawn (Solar Concord)', () => {
-  it('kindles every dark world one starlane from the Ark at once, but none a guard or a warship holds', () => {
+  it('kindles every dark world one starlane from the Ark at once and burns its guards, but passes over one that a rival house\'s warships hold', () => {
     const g = as('concord');
     const p = g.player;
     ready(g, p);
@@ -85,21 +85,50 @@ describe('Dawn (Solar Concord)', () => {
     // (At the star of its home system: the worlds of the system are one starlane from it.)
     const star = g.nodes[g.systems[g.nodes[p.capital].system].star];
     Object.assign(ark, { node: star.id, x: star.x + star.r + 60, y: star.y });
-    g.rebuildBuckets();
     const around = g.neighbours(ark.node).map((id) => g.nodes[id]).filter((n) => n.kind === 'planet' && n.owner < 0);
-    expect(around.length).toBeGreaterThan(1);
-    // A guard on one of them: that one is held.
-    const held = around[0];
+    expect(around.length).toBeGreaterThan(2);
+    // A rival's warship on one of them: that one is held. Guards on another: that one is lit, and they burn.
+    const [held, guarded] = around;
     g.spawnUnit('striker', rivalOf(g).id, held.id);
+    for (let i = 0; i < 3; i++) g.spawnUnit('militia', g.guardianId, guarded.id);
+    g.rebuildBuckets();
+    const guards = dawnGuards(g, guarded);
+    expect(guards.length).toBeGreaterThanOrEqual(3);
+    // Until 1.27 a guard held a world against Dawn as a warship does: no longer.
+    expect(g.kindleBarred(guarded.id, p.id)).toBe(true);
     const lit = dawnWorlds(g, p, ark);
     expect(lit).not.toContain(held);
+    expect(lit).toContain(guarded);
     const worlds = g.worldsOf(p.id).length;
+    const kills = p.stats.kills;
     expect(g.cmdPower(p.id)).toBe(true);
     expect(g.worldsOf(p.id).length).toBe(worlds + lit.length);
     for (const n of lit) expect(n.owner).toBe(p.id);
     expect(held.owner).toBe(-1);
-    expect(g.notes[g.notes.length - 1].text).toMatch(/^Dawn: .+ kindled at once\.$/);
+    // Its guards burned, by the house's hand: none left at the world it lit.
+    for (const u of guards) expect(u.dead).toBe(true);
+    expect(dawnGuards(g, guarded)).toEqual([]);
+    expect(p.stats.kills).toBe(kills + guards.length);
+    expect(g.notes[g.notes.length - 1].text).toMatch(new RegExp(`^Dawn: .+ kindled at once, and ${guards.length} guards burn\\.$`));
     expect(g.fx.some((f) => f.k === 'ability' && f.id === 'dawn' && f.at?.length === lit.length && f.says === `DAWN · ${lit.length} KINDLED`)).toBe(true);
+    // And it comes back in five minutes.
+    expect(p.powerCd).toBe(300);
+  });
+
+  it('burns only guards: a rival house\'s ship at a world it lights (a seed ship, which holds nothing) is left alone', () => {
+    const g = as('concord');
+    const p = g.player;
+    ready(g, p);
+    const ark = arkOf(g, p);
+    const star = g.nodes[g.systems[g.nodes[p.capital].system].star];
+    Object.assign(ark, { node: star.id, x: star.x + star.r + 60, y: star.y });
+    const world = g.neighbours(ark.node).map((id) => g.nodes[id]).find((n) => n.kind === 'planet' && n.owner < 0)!;
+    const seed = g.spawnUnit('seed', rivalOf(g).id, world.id);
+    g.rebuildBuckets();
+    expect(dawnWorlds(g, p, ark)).toContain(world);
+    expect(g.cmdPower(p.id)).toBe(true);
+    expect(world.owner).toBe(p.id);
+    expect(seed.dead).toBe(false);
   });
 
   it('says why it cannot be cast with nothing dark beside the Ark', () => {
@@ -108,6 +137,19 @@ describe('Dawn (Solar Concord)', () => {
     ready(g, p);
     for (const id of g.neighbours(arkOf(g, p).node)) if (g.nodes[id].kind === 'planet' && g.nodes[id].owner < 0) g.kindleWorld(g.nodes[id], p.id, true);
     expect(g.checkPower(p.id)).toBe('No dark world one starlane from your Ark');
+  });
+
+  it('says so when a rival house\'s warships hold every dark world beside the Ark', () => {
+    const g = as('concord');
+    const p = g.player;
+    ready(g, p);
+    const ark = arkOf(g, p);
+    const star = g.nodes[g.systems[g.nodes[p.capital].system].star];
+    Object.assign(ark, { node: star.id, x: star.x + star.r + 60, y: star.y });
+    for (const id of g.neighbours(ark.node)) if (g.nodes[id].kind === 'planet' && g.nodes[id].owner < 0) g.spawnUnit('striker', rivalOf(g).id, id);
+    g.rebuildBuckets();
+    expect(g.checkPower(p.id)).toBe('Enemy warships hold every dark world one starlane from your Ark');
+    expect(g.cmdPower(p.id)).toBe(false);
   });
 });
 

@@ -282,7 +282,7 @@ game (an enemy ship changes sides). So every house now has one such move, its **
 
 | House | Power | What it does | Every |
 | --- | --- | --- | --- |
-| Solar Concord | **Dawn** | every dark world one starlane from the Ark is kindled at once (not one that a guard or a warship holds) | 4 min |
+| Solar Concord | **Dawn** | every dark world one starlane from the Ark is kindled at once, and its guards burn (not one where another house's warships, the Corsairs or the Hollow stand) | 5 min |
 | Vael Imperium | **Call to Arms** | the 5 Forges nearest the Ark (the Hearth is one) each send it a Striker, a Guardian and a Breaker, for 2 minutes, in no room in the hangar | 4 min |
 | Wayfarer Clans | **Wayfinder** | a new starlane from the Ark's world to a charted world within 9000 (about one starlane between systems), for the rest of the run and for every house; never through another place, never into the Rift | 5 min |
 | Lyceum Collective | **Mind Theft** | the Ark learns the rarest Boon it can of a rival Ark at its world (no Pact, none of the cradle; the rival keeps it) | 5 min |
@@ -326,13 +326,27 @@ game (an enemy ship changes sides). So every house now has one such move, its **
 - **What it changed**, on the same forty AI-only medium sectors (an hour at most): 32 decided against 28
   before, the median game 41.4 minutes against 41.9, and the crowns spread more evenly among the houses
   (Ashen 7, Choir 7, Vael 6, Wayfarers 5, Lyceum 4, Concord 3 of the games each was dealt into, against
-  4, 7, 8, 1, 2 and 6). **The rival Concord is the weakest**: it lost the Aegis Field it started with, and
-  Dawn in a rival's hands lights few worlds (it kindles its neighbours with seed ships first). Within what
-  forty games can tell apart, but the one to watch. Why Dawn lights so few: by the fourth minute or so every
-  dark world left in a sector has a guard, and Dawn passes over a guarded world, so after the opening no place
-  has two dark worlds to light until a fleet clears their guards. In twenty-seven Concord-led sectors a Dawn
-  never lit more than two (the Shorts' scans, 1.27). For any house, Dawn is an opening move and a follow-up
-  to clearing a system, not a reach into the dark.
+  4, 7, 8, 1, 2 and 6). The rival Concord was the weakest: it lost the Aegis Field it started with, and
+  Dawn in a rival's hands lit few worlds.
+- **Dawn burns guards** (before 1.27 went out). As first made, Dawn passed over a guarded world as a seed
+  ship must; but by the fourth minute or so every dark world left in a sector has a guard, so after the
+  opening no place had two dark worlds to light until a fleet cleared their guards. In twenty-seven
+  Concord-led sectors a Dawn never lit more than two. Now the guards at a world it lights burn (`dawnGuards`,
+  killed by the house: its kills, its Boons that pay for kills), and only a world where another house's
+  warships, the Corsairs or the Hollow stand is passed over; its time went from 4 minutes to 5. The aimed
+  map rings the guards that would burn, and the banner counts them. A rival Concord goes for guarded worlds
+  as well (`dawnPlace`). On 120 AI-only medium sectors (an hour at most) the rival Concord casts Dawn 3.5
+  times a game against 1.8 and lights 1.8 worlds with each against 1.3; it ends with 8.7 worlds against 4.5
+  and wins 18 of the 80 games it was dealt into against 10 (a fair share is about 15). The others: Choir
+  22 of 75, Vael 22 of 89, Ashen 12 of 85, Wayfarers 7 of 73, Lyceum 7 of 78; 88 decided, median 40.1
+  minutes. The Wayfarers and the Lyceum are the weakest rivals now (they were before Dawn changed too).
+- **The leash that keeps a fight in its world's well** (`steer` in `systems/movement.ts`: past half again
+  the well a fighting ship is drawn back; it holds 0.5 to 3% of the time ships spend fighting) moved the
+  rivals too: on the same 120 sectors without it the Choir won 16 of 75, with it 26 (with the old Dawn), the
+  rest within a few games. In the first forty sectors alone it was 7 against 14, in the other eighty 9
+  against 12: some of that is games falling out differently. What is left fits the Choir: Zeal counts the
+  ships lost at a world, and Conversion reaches only round the Ark, and both count for more when a fight
+  stays at its world.
 - A run saved before 1.27 loads with its power ready, and a Choir's Ark that cast Conversion by itself
   no longer does (`loadGame`); an Ark keeps the old house ability it started with, which is a learned one now.
 

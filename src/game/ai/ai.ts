@@ -781,8 +781,9 @@ const DAWN_REACH = 12000;
 
 /**
  * A rival Concord whose Dawn is ready, at peace, takes its Ark to the place near by with the most dark worlds
- * one starlane from it (two at least) that it has charted and seen nothing guard, and nothing hostile at the
- * place itself as far as it knows; there it casts Dawn (`housePower`), and the Ark goes back to the army.
+ * one starlane from it (two at least) that it has charted, guarded or not (Dawn burns their guards), and nothing
+ * hostile at the place itself as far as it knows; there it casts Dawn (`housePower`), and the Ark goes back to
+ * the army.
  * (Left with the army, its Ark sat at home, where every world was already lit: in six AI-only games it cast
  * Dawn three times, and the Concord won 3 of 28 games against 6 before 1.27.)
  */
@@ -798,11 +799,10 @@ function dawnTrip(g: Game, f: Faction, ctx: Ctx, all: Unit[], assigned: Set<numb
 
 /**
  * The place near the Ark (`DAWN_REACH`) with the most dark worlds one starlane from it, two at least, as far as
- * the house knows (charted, nothing seen to guard them, nothing hostile known at the place): -1 if none.
+ * the house knows (charted; nothing hostile known at the place itself): -1 if none.
  */
 function dawnPlace(g: Game, f: Faction, ark: Unit): number {
-  const dark = (id: number) =>
-    g.neighbours(id).filter((w) => g.nodes[w].kind === 'planet' && g.nodes[w].owner < 0 && f.explored[w] && !g.seenGuarded(f, w)).length;
+  const dark = (id: number) => g.neighbours(id).filter((w) => g.nodes[w].kind === 'planet' && g.nodes[w].owner < 0 && f.explored[w]).length;
   let best = -1;
   let bs = 0;
   for (const n of g.nodes) {

@@ -5,7 +5,7 @@
  * (`aimLine`); D again, or a click, casts it. Escape or a right-click puts it away.
  */
 
-import { burnable, dawnWorlds, levyWorlds, POWER_WHY, powerClock, powerOf, rivalArk, wayTargets, wayWhy } from '../../game/commands/power';
+import { burnable, dawnGuards, dawnWorlds, levyWorlds, POWER_WHY, powerClock, powerOf, rivalArk, wayTargets, wayWhy } from '../../game/commands/power';
 import { ABILITY_BY_ID, LEVY_SHIPS, POWER_FIRST } from '../../game/data/abilities';
 import { conversionTargets } from '../../game/systems/abilities';
 import { possessive } from '../../game/util';
@@ -84,8 +84,12 @@ export function aimLine(hud: Hud): { text: string; color: string; sub: string } 
   const head = def.name.toUpperCase();
   switch (def.id) {
     case 'dawn': {
-      const ws = dawnWorlds(g, p, ark).map((n) => n.name);
-      return { text: `${head}: ${list(ws)} ${ws.length === 1 ? 'is' : 'are'} kindled at once.`, color: def.color, sub: cast };
+      const worlds = dawnWorlds(g, p, ark);
+      const ws = worlds.map((n) => n.name);
+      // (The guards that would burn, as many as the player can see.)
+      const k = worlds.reduce((sum, n) => sum + (p.visible[n.id] ? dawnGuards(g, n).length : 0), 0);
+      const burn = k ? `, and ${k} ${k === 1 ? 'guard burns' : 'guards burn'}` : '';
+      return { text: `${head}: ${list(ws)} ${ws.length === 1 ? 'is' : 'are'} kindled at once${burn}.`, color: def.color, sub: cast };
     }
     case 'callarms': {
       const n = levyWorlds(g, p, ark).length;

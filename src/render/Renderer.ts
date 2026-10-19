@@ -1,4 +1,4 @@
-import { burnable, dawnWorlds, levyWorlds, powerOf, rivalArk, wayTargets, wayWhy } from '../game/commands/power';
+import { burnable, dawnGuards, dawnWorlds, levyWorlds, powerOf, rivalArk, wayTargets, wayWhy } from '../game/commands/power';
 import type { Game } from '../game/Game';
 import { UNITS } from '../game/data/units';
 import { conversionTargets } from '../game/systems/abilities';
@@ -388,7 +388,7 @@ export class Renderer {
 
   /**
    * The House Power aimed (1.27): what it would do, on the map, before it is cast. Dawn's worlds ringed in gold
-   * with its light running out to them; the Forges of a Call to Arms and the ways their ships would take;
+   * with its light running out to them, and the guards there that would burn; the Forges of a Call to Arms and the ways their ships would take;
    * every world a Wayfinder could reach, and the starlane to the one under the pointer (red where it cannot
    * go); the rival Ark a Mind Theft would read; the ships a Conversion would turn; the ships a Fate's Wager
    * would burn, and the Ark it stakes.
@@ -414,6 +414,7 @@ export class Renderer {
         for (const n of dawnWorlds(g, p, ark)) {
           leg(A, n, def.color, 2);
           worldRing(n, def.color, 2);
+          if (p.visible[n.id]) for (const u of dawnGuards(g, n)) shipRing(u, def.color);
         }
         break;
       case 'callarms':

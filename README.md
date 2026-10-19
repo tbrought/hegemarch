@@ -99,7 +99,7 @@ terms do the same.
 - **Ships**: Strikers beat Breakers, Breakers beat Guardians and worlds, Guardians beat Strikers.
 - **Every house has a House Power**, its own and no other's, cast by its Ark when you order it: **D** aims it (the map
   shows what it would do), **D** again casts it, and it comes back after a few minutes. Dawn (Solar Concord) kindles every
-  dark world beside the Ark at once; Call to Arms (Vael Imperium) brings warships from the nearest Forges; Wayfinder
+  dark world beside the Ark at once and burns its guards; Call to Arms (Vael Imperium) brings warships from the nearest Forges; Wayfinder
   (Wayfarer Clans) cuts a new starlane for the rest of the run; Mind Theft (Lyceum Collective) learns a rival Ark's
   rarest Boon; Conversion (Choir of the First Flame) turns the weakest enemy ships; Fate's Wager (Ashen Remnant)
   throws a coin: heads, every enemy warship at the world burns; tails, the Ark does.

@@ -4,7 +4,8 @@
  * gives it from the power's button or with D (ui/Actions.ts), the rival houses from ai.ts, and a Daily
  * keeps it with its other orders. What each power does is here; how it is seen, render/abilityLooks.ts.
  *
- * - Dawn (Solar Concord): every dark world one starlane from the Ark is kindled at once.
+ * - Dawn (Solar Concord): every dark world one starlane from the Ark is kindled at once, and the guards there
+ *   burn; only a world that another house's warships (or the Corsairs, or the Hollow) hold is passed over.
  * - Call to Arms (Vael Imperium): the Forges nearest the Ark each send it three warships, for a while.
  * - Wayfinder (Wayfarer Clans): a new starlane from the Ark's world to a world within reach, for good.
  * - Mind Theft (Lyceum Collective): the Ark learns a Boon of a rival Ark at its world.
@@ -16,7 +17,7 @@
 import { ABILITY_BY_ID, LEVY_SHIPS, LEVY_TIME, LEVY_WORLDS, WAGER_TIME, WAYFINDER_REACH, castWords, type AbilityDef } from '../data/abilities';
 import { CARD_BY_ID } from '../data/cards';
 import { HEIR_BY_ID } from '../data/heirs';
-import { UNITS } from '../data/units';
+import { fights, UNITS } from '../data/units';
 import type { Game } from '../Game';
 import { conversionTargets } from '../systems/abilities';
 import type { Faction, GNode, QueueCheck, Rarity, Unit } from '../types';
@@ -75,7 +76,8 @@ export function checkPower(g: Game, fid: number, target = -1): QueueCheck {
   const ark = arkOf(g, f)!;
   switch (powerOf(f)!.id) {
     case 'dawn':
-      return dawnWorlds(g, f, ark).length ? null : 'No dark world one starlane from your Ark';
+      if (dawnWorlds(g, f, ark).length) return null;
+      return darkBeside(g, ark).length ? 'Enemy warships hold every dark world one starlane from your Ark' : 'No dark world one starlane from your Ark';
     case 'callarms':
       return levyWorlds(g, f, ark).length ? null : 'No Forge to send ships';
     case 'wayfinder':
@@ -133,8 +135,17 @@ function castPower(g: Game, f: Faction, def: AbilityDef, ark: Unit, target: numb
   switch (def.id) {
     case 'dawn': {
       const worlds = dawnWorlds(g, f, ark);
-      for (const n of worlds) g.kindleWorld(n, f.id, true);
-      g.notify(f.id, `Dawn: ${names(worlds)} ${worlds.length > 1 ? 'are' : 'is'} kindled at once.`, 'good', ark.node);
+      let burned = 0;
+      for (const n of worlds) {
+        // (Its guards first: the world is the house's when the light reaches it, and nothing stands in it.)
+        for (const u of dawnGuards(g, n)) {
+          g.killUnit(u, f.id);
+          burned++;
+        }
+        g.kindleWorld(n, f.id, true);
+      }
+      const guards = burned ? `, and ${burned} ${burned === 1 ? 'guard burns' : 'guards burn'}` : '';
+      g.notify(f.id, `Dawn: ${names(worlds)} ${worlds.length > 1 ? 'are' : 'is'} kindled at once${guards}.`, 'good', ark.node);
       return { on: [], at: worlds.map((n) => n.id), n: worlds.length };
     }
     case 'callarms': {
@@ -215,11 +226,25 @@ function land(g: Game, f: Faction) {
 
 // ---- What each power finds to do ----
 
-/** Dawn: the dark worlds one starlane from the Ark that nothing holds against the house. */
-export function dawnWorlds(g: Game, f: Faction, ark: Unit): GNode[] {
+/** The dark worlds one starlane from the Ark. */
+function darkBeside(g: Game, ark: Unit): GNode[] {
   return g.neighbours(ark.node)
     .map((id) => g.nodes[id])
-    .filter((n) => n.kind === 'planet' && n.owner < 0 && !g.kindleBarred(n.id, f.id));
+    .filter((n) => n.kind === 'planet' && n.owner < 0);
+}
+
+/**
+ * Dawn: the dark worlds one starlane from the Ark, but one that another house's warships (or the Corsairs, or
+ * the Hollow) hold. Guards do not hold a world against it: they burn (1.27; until then a guarded world was passed
+ * over too, and by the fourth minute of a game every dark world left had a guard, so a Dawn lit two at most).
+ */
+export function dawnWorlds(g: Game, f: Faction, ark: Unit): GNode[] {
+  return darkBeside(g, ark).filter((n) => !g.buckets[n.id].some((u) => !u.dead && u.owner !== g.guardianId && g.hostile(u.owner, f.id) && fights(u.type)));
+}
+
+/** The guards at a dark world, which a Dawn that lights it burns. */
+export function dawnGuards(g: Game, n: GNode): Unit[] {
+  return g.buckets[n.id].filter((u) => !u.dead && u.owner === g.guardianId);
 }
 
 /** Call to Arms: the worlds of the house that build ships (its Hearth and Forges), the nearest to the Ark first. */
