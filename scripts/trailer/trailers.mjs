@@ -697,6 +697,9 @@ Object.assign(TRAILERS, {
 Object.assign(TRAILERS, {
   'clip-sector': trailer([{ sector: S(90), from: sec(10), dur: 8, speed: [40, 500], sounds: false,
     cam: [{ t: 0, zoom: 'fit', fit: 1.02 }, { t: 1, zoom: 'fit', fit: 1.1 }] }], [], 0),
+  // (A battle up close, for a post about the art being drawn by code: the Concord, the Vael and the Ashen at Lyra II.)
+  'clip-battle': trailer([{ ...battle('goldRedOrange', 7, null), sounds: false,
+    cam: [{ t: 0, node: 7, zoom: 0.31, dx: 10, dy: -70 }, { t: 1, node: 7, zoom: 0.37, dx: 10, dy: -80 }] }], [], 0),
 });
 
 // The music is checked as it is heard: each tune runs whole bars of its shots; it begins on its home chord; its
