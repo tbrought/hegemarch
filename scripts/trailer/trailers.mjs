@@ -91,12 +91,14 @@ const kindle = (dur, lines, look) => ({ sector: S(90), from: 603 - sec(0.9), dur
  * The houses at war, in their own colors (the scan's battles with two houses or more there, and neither the
  * Hollow nor raiders): the camera on the world they fight over, a second before the fighting is fiercest.
  */
+// (Scanned again for 1.27, whose rival Concord casts Dawn and whose fights keep to their worlds' wells: every
+// sector after its first minute and a half played out otherwise.)
 const BATTLES = {
-  goldOrange: [23, 23.47, 34, -40, 0], // the Concord and the Ashen Remnant, their fleets met beside a world
-  redGoldViolet: [90, 18.12, 26, -20, 20], // the Vael, the Concord and the Lyceum, three fleets at one world
-  tealViolet: [11, 30.12, 34, 0, 0], // the Wayfarers' hearth, the Lyceum and the Concord at it
-  violetBlue: [47, 27.55, 45, 30, 0], // the Lyceum's swarm on the Choir
-  tealBlue: [8, 34.22, 30, -30, 0], // the Wayfarers and the Choir
+  goldOrange: [23, 27.67, 2, -30, 0], // the Concord and the Ashen Remnant at Wezen III, a world the Concord's Dawn lit
+  goldRedOrange: [90, 30.58, 7, -20, 20], // the Concord, the Vael and the Ashen, three fleets at Lyra II
+  tealGold: [11, 24.83, 34, 0, 0], // the Wayfarers at the Concord's Hearth
+  goldViolet: [47, 15.58, 25, 30, 0], // the Concord and the Lyceum at Achernar IV
+  tealBlue: [8, 45.17, 15, -30, 0], // the Wayfarers and the Choir at Nova Ardent I
 };
 const battle = (which, dur, lines, look, opts = {}) => {
   const [seed, m, node, dx, dy] = BATTLES[which];
@@ -110,16 +112,21 @@ const battle = (which, dur, lines, look, opts = {}) => {
     cam, text: opts.big ? word(dur, opts.big) : words(dur, lines) };
 };
 /** A house's hearth ringed by another's ships, and its fall (a little past the middle of the shot). */
-const HEARTHS = { violetOnBlue: [47, 24], tealRing: [11, 42] };
+const HEARTHS = { goldOnViolet: [47, 31], tealRing: [11, 42] };
 const hearthFalls = (which, dur, lines, look) => {
   const [seed, node] = HEARTHS[which];
   const fall = scan(String(seed)).moments.find((m) => m.kind === 'hearth' && m.node === node).tick;
   return { sector: S(seed), from: fall - sec(dur * 0.55), dur, speed: 1, dither: 0.4, loud: 1.1, duck: 0.88, ...look,
     cam: [{ t: 0, node, zoom: 0.3, dy: lines ? -30 : 0 }, { t: 1, node, zoom: 0.35, dy: lines ? -30 : 0 }], text: words(dur, lines) };
 };
+/**
+ * The star that erupts: Xanth, in seed 8, at 1930.85 s, over a fight of the Concord and the Wayfarers in its system
+ * (scan-8.json: its first nova). Armed two minutes before.
+ */
+const NOVA = { seed: 8, node: 23, at: 1930.85 };
 /** A star erupts in a battle (a second and a little before the cut), and the camera draws back from it. */
-const starfall = (dur, lines, look) => ({ sector: S(23), from: sec(2844.1 - (dur - 1.15)), dur, speed: 1, dither: 0.4, duck: 0.88, ...look,
-  cam: [{ t: 0, node: 24, zoom: 0.22 }, { t: (dur - 1.2) / dur, node: 24, zoom: 0.22 }, { t: 1, node: 24, zoom: 0.16 }], text: words(dur, lines) });
+const starfall = (dur, lines, look) => ({ sector: S(NOVA.seed), from: sec(NOVA.at - (dur - 1.15)), dur, speed: 1, dither: 0.4, duck: 0.88, ...look,
+  cam: [{ t: 0, node: NOVA.node, zoom: 0.22 }, { t: (dur - 1.2) / dur, node: NOVA.node, zoom: 0.22 }, { t: 1, node: NOVA.node, zoom: 0.16 }], text: words(dur, lines) });
 const ALL = ['concord', 'vael', 'wayfarer', 'lyceum', 'choir', 'ashen'];
 /**
  * The six houses' banners, coming one after another, with their names: two by three, each column wide enough
@@ -262,7 +269,7 @@ const tune = (track, shots, from, to, extra) => ({ track, ...span(shots, from, t
 //    player is told what to do; then the war again, cut on the beat of Breakers.
 // ------------------------------------------------------------------------------------------------
 const a = [
-  { ...battle('redGoldViolet', 3.2, null, cinema, { punch: true }), fadeIn: 0.4 },
+  { ...battle('goldRedOrange', 3.2, null, cinema, { punch: true }), fadeIn: 0.4 },
   { ...starfall(2.8, null, cinema), hard: true },
   { ...firstFire(FF * 2, ['EVERY EMPIRE BEGINS', 'WITH {A SINGLE FIRE}.'], cinema), dip: true },
   cradleRise(FF * 2, ['[GROW] YOUR TRIBE.'], cinema),
@@ -274,8 +281,8 @@ const a = [
   { ...kindle(BK * 2, ['{LIGHT} IT,', 'WORLD BY WORLD.'], cinema), dip: true },
   sixBanners(BK * 2, ['SIX {HOUSES} RISE.'], cinema),
   picture('boons', BK * 2, ['BEND FATE', 'WITH {BOONS}.'], cinema),
-  ...montage(BK, ['goldOrange', 'tealBlue', 'violetBlue', 'tealViolet']),
-  { ...hearthFalls('violetOnBlue', BK * 2, ['TAKE', '{THE CROWN}.'], cinema), hard: true },
+  ...montage(BK, ['goldOrange', 'tealBlue', 'goldViolet', 'tealGold']),
+  { ...hearthFalls('goldOnViolet', BK * 2, ['TAKE', '{THE CROWN}.'], cinema), hard: true },
   endCard(),
 ];
 
@@ -290,10 +297,10 @@ const b = [
   withWord(kindle(BK * 2, null, cinema), '{LIGHT} THE DARK.'),
   sixBanners(BK * 2, ['SIX {HOUSES}.'], cinema),
   picture('boons', BK * 2, ['BEND {FATE}.'], cinema),
-  ...montage(BK, ['goldOrange', 'tealBlue', 'violetBlue', 'tealViolet']),
+  ...montage(BK, ['goldOrange', 'tealBlue', 'goldViolet', 'tealGold']),
   { ...starfall(BK * 2, null, cinema), hard: true },
-  { ...battle('redGoldViolet', BK * 2, null, cinema, { punch: true }), hard: true },
-  { ...withWord(hearthFalls('violetOnBlue', BK * 2, ['.'], cinema), 'ONE {CROWN}.'), hard: true },
+  { ...battle('goldRedOrange', BK * 2, null, cinema, { punch: true }), hard: true },
+  { ...withWord(hearthFalls('goldOnViolet', BK * 2, ['.'], cinema), 'ONE {CROWN}.'), hard: true },
   endCard(),
 ];
 
@@ -317,8 +324,8 @@ const c = [
   battle('goldOrange', TA * 2, ['EVERY HOUSE', 'WANTS {THE CROWN}.'], cinema, { punch: true }),
   ...montage(TA, ['tealBlue']),
   { ...starfall(TA * 2, null, cinema), hard: true },
-  { ...battle('redGoldViolet', TA * 2, null, cinema, { punch: true }), hard: true },
-  { ...hearthFalls('violetOnBlue', TA * 2, ['ONLY ONE', 'WILL BE {CROWNED}.'], cinema), hard: true },
+  { ...battle('goldRedOrange', TA * 2, null, cinema, { punch: true }), hard: true },
+  { ...hearthFalls('goldOnViolet', TA * 2, ['ONLY ONE', 'WILL BE {CROWNED}.'], cinema), hard: true },
   endCard(),
 ];
 
@@ -334,10 +341,10 @@ const d = [
   kindle(LS * 2, ['THEY {LIGHT} THE DARK,'], cinema),
   picture('boons', LS * 2, ['BEND FATE', 'WITH {BOONS},'], cinema),
   battle('goldOrange', LS * 2, ['AND GO', 'TO [!WAR].'], cinema, { punch: true }),
-  ...montage(LS, ['tealBlue', 'violetBlue']),
+  ...montage(LS, ['tealBlue', 'goldViolet']),
   { ...starfall(LS * 2, null, cinema), hard: true },
-  ...montage(LS, ['tealViolet', 'redGoldViolet']),
-  { ...hearthFalls('violetOnBlue', LS * 2, ['ONLY ONE', 'WILL BE {CROWNED}.'], cinema), hard: true },
+  ...montage(LS, ['tealGold', 'goldRedOrange']),
+  { ...hearthFalls('goldOnViolet', LS * 2, ['ONLY ONE', 'WILL BE {CROWNED}.'], cinema), hard: true },
   endCard(),
 ];
 
@@ -388,14 +395,14 @@ const pDark = (dur, lines) => up({ sector: S(90), from: 0, dur, speed: 0.4, soun
 const pKindle = (dur, lines) => up({ sector: S(90), from: 603 - sec(0.9), dur, speed: 1, loud: 0.5,
   cam: [{ t: 0, node: 34, zoom: 0.6, dy: 20 }, { t: 2.2 / dur, node: 34, zoom: 0.6, dy: 20 }, { t: 1, node: 34, zoom: 0.26, dy: 20 }] }, lines);
 const pHearth = (dur, lines) => {
-  const fall = scan('47').moments.find((m) => m.kind === 'hearth' && m.node === 24).tick;
-  return up({ sector: S(47), from: fall - sec(dur * 0.55), dur, speed: 1, loud: 1,
-    cam: [{ t: 0, node: 24, zoom: 0.34, dy: 30 }, { t: 1, node: 24, zoom: 0.4, dy: 30 }] }, lines);
+  const [seed, node] = HEARTHS.goldOnViolet;
+  const fall = scan(String(seed)).moments.find((m) => m.kind === 'hearth' && m.node === node).tick;
+  return up({ sector: S(seed), from: fall - sec(dur * 0.55), dur, speed: 1, loud: 1,
+    cam: [{ t: 0, node, zoom: 0.34, dy: 30 }, { t: 1, node, zoom: 0.4, dy: 30 }] }, lines);
 };
-/** The star of seed 23 at 2844.1 s: erupting `at` seconds into the shot. */
-const NOVA = 2844.1;
-const pErupt = (dur, lines, at = 0.8) => up({ sector: S(23), from: sec(NOVA - at), dur, speed: 1,
-  cam: [{ t: 0, node: 24, zoom: 0.3, dy: 30 }, { t: 0.45, node: 24, zoom: 0.26, dy: 30 }, { t: 1, node: 24, zoom: 0.17, dy: 30 }] }, lines);
+/** The star (`NOVA`) erupting `at` seconds into the shot. */
+const pErupt = (dur, lines, at = 0.8) => up({ sector: S(NOVA.seed), from: sec(NOVA.at - at), dur, speed: 1,
+  cam: [{ t: 0, node: NOVA.node, zoom: 0.3, dy: 30 }, { t: 0.45, node: NOVA.node, zoom: 0.26, dy: 30 }, { t: 1, node: NOVA.node, zoom: 0.17, dy: 30 }] }, lines);
 const pPicture = (kind, dur, lines) => ({ blank: true, stars: true, dur, vignette: 0.3,
   panels: [{ at: 0.1, until: dur + 1, kind: 'art', art: kind, x: 15, y: 170, w: 240, h: 120, scale: 3, bare: true }], text: cap(dur, lines) });
 const pBanners = (dur, lines) => ({ blank: true, stars: true, dur, vignette: 0.3,
@@ -409,7 +416,7 @@ const pFirstFire = (dur, lines) => up({ sector: CRADLE, from: sec(20), dur, spee
   cam: [{ t: 0, node: 10, zoom: 'fit', fit: 2.2 }, { t: 1, node: 10, zoom: 'fit', fit: 3.4 }] }, lines);
 const pRise = (dur, lines) => up({ sector: CRADLE, from: sec(15), dur, speed: [10, 300], sounds: false,
   cam: [{ t: 0, zoom: 'fit', fit: 1.7 }, { t: 1, zoom: 'fit', fit: 1.85 }] }, lines);
-const pWar = (dur, lines) => up({ sector: S(3, { ages: true }), from: min(17.5) - 20, dur, speed: 1, loud: 1,
+const pWar = (dur, lines) => up({ sector: S(3, { ages: true }), from: min(16.33) - 20, dur, speed: 1, loud: 1,
   cam: [{ t: 0, node: 1, zoom: 0.46, dy: 30 }, { t: 1, node: 1, zoom: 0.52, dy: 30 }] }, lines);
 const pLaunch = (dur, lines) => {
   const at = scan('ages-12').moments.find((m) => m.kind === 'launch').tick;
@@ -436,7 +443,7 @@ const sa = [
   { blank: true, stars: true, dur: HG * 2, vignette: 0.3, draft: { ...DRAFT_RUN, hover: [2, 2.25], pan: 'deal', zoom: 2 },
     text: [{ at: 0.25, until: HG * 2 - 0.15, style: 'lore', lines: ['NEW {BOONS}', 'EVERY RUN'], y: 0.12 }] },
   pBanners(HG * 2, ['SIX {HOUSES}']),
-  { ...pBattle('redGoldViolet', HG * 2, ['[!WAR]']), hard: true },
+  { ...pBattle('goldRedOrange', HG * 2, ['[!WAR]']), hard: true },
   { ...pErupt(HG * 2, ['STARS', '[!ERUPT]']), hard: true },
   { ...pHearth(HG * 2, ['ONE {CROWN}']), hard: true },
   pEnd(5, FREE),
@@ -450,7 +457,7 @@ const sb = [
   pWar(FF * 2, ['[!WAR] FOR', 'THE CRADLE']),
   pLaunch(FF * 2, ['AN {ARK}']),
   pKindle(FF * 2, ['THE {STARS}']),
-  { ...pBattle('tealViolet', FF * 2, ['THE {CROWN}']), hard: true },
+  { ...pBattle('tealGold', FF * 2, ['THE {CROWN}']), hard: true },
   pEnd(5, FREE),
 ];
 // 3. The Daily throne: one sector a day, the same for everyone; the fastest crown takes the throne.
@@ -464,18 +471,18 @@ const sc = [
   pEnd(5, ['DAILY RUN · FREE', 'HEGEMARCH.COM']),
 ];
 // 4. The Starfall: a war going badly; a Starfall armed at a star; its two minutes; the star erupts.
-const ARMED = NOVA - 120;
+const ARMED = NOVA.at - 120;
 const sd = [
   pBattle('goldOrange', TA * 2, ['LOSING', 'THE WAR?']),
-  { ...up({ sector: S(23), from: sec(ARMED - 0.6), dur: TA * 2, speed: 1, cam: [{ t: 0, node: 24, zoom: 0.36, dy: 75 }, { t: 1, node: 24, zoom: 0.4, dy: 75 }] },
+  { ...up({ sector: S(NOVA.seed), from: sec(ARMED - 0.6), dur: TA * 2, speed: 1, cam: [{ t: 0, node: NOVA.node, zoom: 0.36, dy: 75 }, { t: 1, node: NOVA.node, zoom: 0.4, dy: 75 }] },
     ['ARM A', '{STARFALL}']), dip: true },
-  { ...up({ sector: S(23), from: sec(ARMED + 2), dur: TA * 4, speed: [4, 40], cam: [{ t: 0, node: 24, zoom: 0.4, dy: 75 }, { t: 1, node: 24, zoom: 0.3, dy: 75 }] },
+  { ...up({ sector: S(NOVA.seed), from: sec(ARMED + 2), dur: TA * 4, speed: [4, 40], cam: [{ t: 0, node: NOVA.node, zoom: 0.4, dy: 75 }, { t: 1, node: NOVA.node, zoom: 0.3, dy: 75 }] },
     ['TWO', 'MINUTES...']), hard: true },
   { ...pErupt(TA * 2, null, 0.5), hard: true },
-  { ...up({ sector: S(23), from: sec(NOVA + 3), dur: TA * 2, speed: 1, cam: [{ t: 0, node: 24, zoom: 0.17, dy: 30 }, { t: 1, node: 24, zoom: 0.12, dy: 30 }] },
+  { ...up({ sector: S(NOVA.seed), from: sec(NOVA.at + 3), dur: TA * 2, speed: 1, cam: [{ t: 0, node: NOVA.node, zoom: 0.17, dy: 30 }, { t: 1, node: NOVA.node, zoom: 0.12, dy: 30 }] },
     ['NO', 'SURVIVORS']), hard: true },
   { ...pHearth(TA * 2, ['TURN', 'THE WAR']), dip: true },
-  { ...pBattle('redGoldViolet', TA * 2, null), hard: true },
+  { ...pBattle('goldRedOrange', TA * 2, null), hard: true },
   pEnd(5, FREE),
 ];
 void PW;
