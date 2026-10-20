@@ -17,14 +17,19 @@ const THUMB = { w: 1280, h: 720, px: 'small', kind: 'thumb', logo: 0.36 };
 const COVERS = {
   // A swarm of the Lyceum Collective storming the Hearth of the Vael Imperium: the last battle of a sector.
   siege: { config: sector(90), tick: min(58.78), node: 46, zoom: 0.36, dy: 0.12, logo: 0.2, frames: 75 },
-  // A star erupting: a Starfall, the fire on its rings, the worlds round it.
-  starfall: { config: sector(23), tick: 2843 * 20 + 30, node: 24, zoom: 0.24, dy: 0.12, logo: 0.2, frames: 40 },
+  // A star erupting: a Starfall, the fire on its rings, the worlds round it. (Xanth, in seed 8: since 1.27 the star
+  // of seed 23 that these were first made from no longer erupts. NOVA in trailer/trailers.mjs is the same one.)
+  starfall: { config: sector(8), tick: 38617 + 8, node: 23, zoom: 0.24, dy: 0.12, logo: 0.2, frames: 40 },
   // A dark world kindled: the house's color floods it, with the ring of its kindling.
   kindle: { config: sector(90), tick: 603 + 9, node: 34, zoom: 0.72, dy: 0.1, logo: 0.2, frames: 40 },
   // Thumbnails. Three houses at war over one world: the Vael's red, the Concord's gold, the Lyceum's violet.
   battle: { ...THUMB, config: sector(90), tick: min(18.2), node: 26, zoom: 0.5, dx: -0.08, dy: 0.2, frames: 40 },
   // A star erupting, its fire on its rings.
-  eruption: { ...THUMB, config: sector(23), tick: 2843 * 20 + 30, node: 24, zoom: 0.3, dy: 0.18, frames: 40 },
+  eruption: { ...THUMB, config: sector(8), tick: 38617 + 8, node: 23, zoom: 0.3, dy: 0.18, frames: 40 },
+  // A Short's thumbnail (YouTube's upright 9:16), for the pitch Short: the same star erupting, the name over it and
+  // a line of what it is, clear of the foot of the picture, where YouTube lays a Short's title over it.
+  'short-pitch': { w: 1080, h: 1920, px: 'large', kind: 'thumb', config: sector(8), tick: 38617 + 8, node: 23, zoom: 0.46, dy: 0.08, logo: 0.22, frames: 40,
+    tagline: 'FREE IN YOUR BROWSER' },
   // The cradle in its later ages, every land lit by its tribes: where the story of a run of Ages begins.
   cradle: { ...THUMB, config: sector(12, { mode: 'ages', stage: 'cradle' }), tick: min(14.5), fit: 1.25, frames: 40, logo: 0.3 },
 };
@@ -137,6 +142,16 @@ for (const [name, c] of Object.entries(COVERS)) {
     g2.fillText(text, left + 2, top + 2);
     g2.fillStyle = PAL.gold;
     g2.fillText(text, left, top);
+    // (A line of what it is, under the name, in bone on its own outline of night.)
+    if (c.tagline) {
+      g2.font = '16px "Press Start 2P"';
+      const tl = Math.round(w / 2 - g2.measureText(c.tagline).width / 2);
+      const tt = top + 46;
+      g2.fillStyle = PAL.void;
+      for (const [dx, dy] of [[-3, 0], [3, 0], [0, -3], [0, 3], [-3, -3], [3, -3], [-3, 3], [3, 3]]) g2.fillText(c.tagline, tl + dx, tt + dy);
+      g2.fillStyle = PAL.bone;
+      g2.fillText(c.tagline, tl, tt);
+    }
   }, { c, flame, W, H });
   const out = `promo/${c.kind ?? 'cover'}-${name}.png`;
   await page.screenshot({ path: out, clip: { x: 0, y: 0, width: W, height: H } });
