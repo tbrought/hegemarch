@@ -690,6 +690,15 @@ Object.assign(TRAILERS, {
   'house-ashen': short(ha, [bed('Last Stand', ha, 0, war(0.76))]),
 });
 
+// ------------------------------------------------------------------------------------------------
+// Clips for a post (made into GIFs): no words, no music. The sector from above, its houses' colours spreading
+// from the first kindlings to the middle of its war: about 24 minutes of seed 90 in eight seconds.
+// ------------------------------------------------------------------------------------------------
+Object.assign(TRAILERS, {
+  'clip-sector': trailer([{ sector: S(90), from: sec(10), dur: 8, speed: [40, 500], sounds: false,
+    cam: [{ t: 0, zoom: 'fit', fit: 1.02 }, { t: 1, zoom: 'fit', fit: 1.1 }] }], [], 0),
+});
+
 // The music is checked as it is heard: each tune runs whole bars of its shots; it begins on its home chord; its
 // melody comes in at the head of a part (bar 1 of 8, where its phrase begins); and it comes home only at the end
 // of a phrase (bar 4 or 8).
