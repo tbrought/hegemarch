@@ -67,7 +67,8 @@ export function nightDone(modals: Modals, g: Ctx) {
   const w = Math.min(W - 16, 290);
   const inner = w - 20;
   const paras: [string, string][] = [
-    ['That was the whole guide. You can kindle worlds, build ships, choose Boons, fight off raiders and send out Scouts.', PAL.mist],
+    ['That was the whole guide. You can kindle worlds, build ships, choose Boons, fight off raiders, send out Scouts, set rally points and ' +
+        'take guarded worlds. Keep a fleet near your Hearth: if it falls, the run is over.', PAL.mist],
     ['Go back to the menu to start a run of your own, or keep playing this one. It is saved either way: CONTINUE on the menu picks it up.', PAL.mist],
     ['A small box on the right names a goal to try next: roles, levels, a fleet, your first capture. Tips still pop up the first time something ' +
         'new happens, and the game waits while you read them.', PAL.dusk],

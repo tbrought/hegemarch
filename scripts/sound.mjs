@@ -291,6 +291,32 @@ const state = (page) =>
   await browser.close();
 }
 
+// ---- Music now and then (the default), or in battle only: Settings ----
+{
+  const { browser, page } = await open('no-user-gesture-required');
+  await page.click('[data-sa="settings"]');
+  await page.waitForTimeout(250);
+  const active = () => page.evaluate(() => [...document.querySelectorAll('[data-sa^="pace:"]')].filter((b) => b.classList.contains('active')).map((b) => b.dataset.sa).join());
+  check((await active()) === 'pace:sometimes' && (await page.evaluate(() => window.__app.music.pace)) === 'sometimes', `the calm music plays now and then by default (${await active()})`);
+  await page.click('[data-sa="pace:battles"]');
+  await page.waitForTimeout(200);
+  check((await active()) === 'pace:battles' && (await page.evaluate(() => window.__app.music.pace === 'battles' && JSON.parse(localStorage.getItem('hegemarch.profile.v1')).settings.musicPace === 'battles')), 'BATTLES ONLY is kept');
+  await page.click('[data-sa="menu"]');
+  await page.click('[data-sa="setup"]');
+  await page.waitForTimeout(300);
+  await page.click('[data-sa="launch"]');
+  await page.waitForFunction(() => window.__app.screen === 'game', null, { timeout: 60000 });
+  await page.waitForTimeout(600);
+  check((await page.evaluate(() => window.__app.music.playing)) === null, 'with BATTLES ONLY a quiet night is quiet');
+  await page.evaluate(() => (window.__app.warHeat = 20));
+  await page.waitForTimeout(300);
+  check((await page.evaluate(() => window.__app.music.playing)) === 'war', 'and a battle has its music at once');
+  await page.evaluate(() => (window.__app.warHeat = 0));
+  await page.waitForTimeout(300);
+  check((await page.evaluate(() => window.__app.music.playing)) === null, 'which stops when the fighting does');
+  await browser.close();
+}
+
 if (errors.length) console.log('errors:', errors);
 console.log(failed || errors.length ? `FAILED (${failed} checks, ${errors.length} errors)` : 'all sound checks passed');
 process.exit(failed || errors.length ? 1 : 0);

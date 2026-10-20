@@ -147,7 +147,9 @@ try {
     const ok = g.nodes.filter((n) => !g.checkPower(p.id, n.id)).sort((a, b) => g.hops(ark.node, b.id) - g.hops(ark.node, a.id));
     const t = ok[0];
     const A = g.nodes[ark.node];
-    app.session.focusNode(ark.node, Math.min(0.12, (0.4 * 270) / Math.hypot(t.x - A.x, t.y - A.y)));
+    // (Midway between the Ark and the world, both well inside the screen: centred on the Ark, a world far above
+    // it lay under the banner, and the pointer was the banner's.)
+    app.renderer.cam.focus((A.x + t.x) / 2, (A.y + t.y) / 2, Math.min(0.12, (0.4 * 270) / Math.hypot(t.x - A.x, t.y - A.y)));
     return { id: t.id, near: g.neighbours(ark.node)[0] };
   });
   await wait(400);

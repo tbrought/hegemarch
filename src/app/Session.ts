@@ -68,7 +68,7 @@ export class Session {
   lastGroupKey = { key: -1, t: 0 };
   lastClick = { id: 0, t: 0 };
   /** Short messages shown in the banner slot (when the log is not revealed, or for alerts). */
-  toast: { text: string; color: string; t: number } | null = null;
+  toast: { text: string; color: string; t: number; sub?: string } | null = null;
   /** The game-clock time when the player last interacted (for idle hints). */
   idleSince = 0;
   /** Shift is held (Shift-click queues five ships). */
@@ -253,7 +253,8 @@ export class Session {
     this.lastGroupKey = { key: k, t: now };
   }
 
-  showToast(text: string, color: string, t = 4) {
-    this.toast = { text, color, t };
+  /** A line in the banner for `t` seconds; `sub`, a smaller line under it. */
+  showToast(text: string, color: string, t = 4, sub?: string) {
+    this.toast = { text, color, t, sub };
   }
 }

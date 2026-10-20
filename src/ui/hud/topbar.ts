@@ -225,7 +225,7 @@ export function objective(hud: Hud): { text: string; color: string; badge?: stri
   if (g.outcome) return null;
   const tut = hud.tutorial.banner();
   if (tut) return tut;
-  if (s.toast) return { text: s.toast.text, color: s.toast.color };
+  if (s.toast) return { text: s.toast.text, color: s.toast.color, sub: s.toast.sub };
   // (The House Power aimed: what it would do, and how to cast it or put it away.)
   const aim = aimLine(hud);
   if (aim) return aim;

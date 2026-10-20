@@ -226,7 +226,7 @@ function beginSession(app: App, g: Game) {
     s.modal = { kind: 'omens', unbidden: true };
     g.ui.arrived = 1;
   }
-  app.music.play(g.cradle ? 'cradle' : 'night');
+  app.music.play(app.profile.settings.musicPace === 'battles' ? null : g.cradle ? 'cradle' : 'night');
   // (The keyboard to the game from the first moment. Until 1.23.4 the canvas was asked, and a canvas cannot take it.)
   takeKeys();
 }

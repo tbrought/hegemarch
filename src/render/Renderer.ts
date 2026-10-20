@@ -173,11 +173,13 @@ export class Renderer {
     this.drawLanes(ctx, g, explored, vis, view);
     if (!backdrop) this.drawFieldReaches(ctx, g, explored, vis, view);
     if (!backdrop) this.drawRoutes(ctx, g, view, dt);
+    if (!backdrop) this.drawRallies(ctx, g, view);
     for (const n of g.nodes) {
       if (!explored(n.id)) continue;
       this.drawNode(ctx, g, n, vis(n.id), ownerShown(n), view, dt);
     }
     this.drawUnits(ctx, g, alpha, view, vis);
+    if (!backdrop) this.drawRallyFlags(ctx, g);
     if (!backdrop && view.powerAim) this.drawPowerAim(ctx, g, view);
     this.drawProjectiles(ctx, g, alpha, vis);
     this.fx.draw(ctx, this.cam, this.ox, this.oy, !!view.plain);
@@ -383,6 +385,54 @@ export class Renderer {
       const n = g.nodes[id];
       const r = this.nodeR(n) + 5;
       ring(ctx, this.sx(n.x), this.sy(n.y), r, bright ? PAL.teal : PAL.sea, bright ? 1 : 3);
+    }
+  }
+
+  /**
+   * Where the player's worlds send their new ships (their rally points), on the map for as long as they are
+   * set: a dotted line along the way the ships will fly, in sky, its dots closer while the world is selected;
+   * red where the house knows the enemy is (`Game.dangerKnown`). (Not dimmer when it is not: in slate it was a
+   * starlane among the others, and a rally point set by mistake is the one that must be seen.) A player set one by a stray right-click, never
+   * knew, and lost a run's new ships one by one at an enemy world (1.27.1).
+   */
+  private drawRallies(ctx: Ctx, g: Game, view: ViewState) {
+    const pid = g.playerId;
+    const phase = Math.floor(this.time * 8);
+    for (const n of g.nodes) {
+      if (n.owner !== pid || n.rally < 0 || n.rally === n.id) continue;
+      const hot = view.selectedNode === n.id;
+      const enemy = g.dangerKnown(pid, n.rally);
+      const c = enemy ? PAL.red : PAL.sky;
+      let at = n;
+      for (const id of g.pathTo(n.id, n.rally)) {
+        const seg = this.laneSeg(at, g.nodes[id]);
+        if (seg) line(ctx, seg[0], seg[1], seg[2], seg[3], c, hot ? 2 : 4, -phase);
+        at = g.nodes[id];
+      }
+    }
+  }
+
+  /** The flag at a rally point (over the ships there): sky, or red where the enemy is. One for every world that rallies there. */
+  private drawRallyFlags(ctx: Ctx, g: Game) {
+    const pid = g.playerId;
+    const drawn = new Set<number>();
+    for (const n of g.nodes) {
+      if (n.owner !== pid || n.rally < 0 || n.rally === n.id || drawn.has(n.rally)) continue;
+      drawn.add(n.rally);
+      const t = g.nodes[n.rally];
+      const enemy = g.dangerKnown(pid, t.id);
+      // A pole on the world's left (its fleet badges are on its right, its name under it), a pennant flying from it.
+      const x = Math.round(this.sx(t.x) - this.nodeR(t) - 3);
+      const y = Math.round(this.sy(t.y) - 8);
+      if (x < -8 || y < -12 || x > this.cam.w + 8 || y > this.cam.h + 4) continue;
+      const c = enemy ? PAL.red : PAL.sky;
+      rect(ctx, x - 1, y - 1, 3, 11, PAL.void);
+      rect(ctx, x, y, 1, 10, PAL.mist);
+      rect(ctx, x - 4, y - 1, 4, 5, PAL.void);
+      rect(ctx, x - 6, y, 6, 3, PAL.void);
+      rect(ctx, x - 3, y, 3, 1, c);
+      rect(ctx, x - 5, y + 1, 5, 1, c);
+      rect(ctx, x - 3, y + 2, 3, 1, c);
     }
   }
 

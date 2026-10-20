@@ -15,6 +15,7 @@ export const FANFARE = 2.2;
 /**
  * The music of a quiet night (on the cradle of an Ages run, the cradle's own); the music of battle
  * while the player's worlds or fleets are fighting. Each is a mood with several tracks (audio/Music.ts).
+ * With the music set to play only in battle (Settings), a quiet night is quiet.
  */
 export function pickMusic(app: App, g: Game, dt: number) {
   // The run is over: its music has stopped, for the fanfare of the crowning or of the fall, and it
@@ -31,7 +32,8 @@ export function pickMusic(app: App, g: Game, dt: number) {
     app.warHeat = fighting ? Math.min(30, app.warHeat + 3) : app.warHeat;
   }
   app.warHeat = Math.max(0, app.warHeat - dt * 0.6);
-  const want: SongId = app.warHeat > 8 ? 'war' : g.cradle ? 'cradle' : 'night';
+  const calm = app.profile.settings.musicPace === 'battles' ? null : g.cradle ? 'cradle' : 'night';
+  const want: SongId | null = app.warHeat > 8 ? 'war' : calm;
   if (app.music.playing !== want && (want === 'war' || app.warHeat <= 0.5)) app.music.play(want);
 }
 

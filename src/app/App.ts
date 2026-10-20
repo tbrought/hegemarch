@@ -94,6 +94,7 @@ export class App {
     this.attract = new Attract(this.renderer);
     this.sfx = new Sfx(this.profile.settings);
     this.music = new Music(this.sfx);
+    this.music.pace = this.profile.settings.musicPace;
     this.setup.guided = !this.profile.tutorialDone;
     // The setup opens on what was chosen last time (if it can still be chosen).
     const last = this.profile.lastSetup;
@@ -113,7 +114,8 @@ export class App {
     const unlock = (e: Event) => {
       if (e.type === 'pointerdown' || e.type === 'keydown') this.gestureWoke = !this.sfx.live;
       this.sfx.unlock();
-      if (!this.music.playing) this.music.play(this.screen === 'game' ? 'night' : 'title');
+      // (In a run the music of the moment is chosen by app/sound.ts, and a quiet night may have none.)
+      if (!this.music.playing && this.screen !== 'game') this.music.play('title');
     };
     // (A touch counts as the player's say-so when the finger lifts, not when it lands.)
     for (const ev of ['pointerdown', 'keydown', 'pointerup', 'click']) window.addEventListener(ev, unlock, { capture: true });

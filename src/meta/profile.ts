@@ -3,6 +3,7 @@ import type { SaveData } from '../game/Game';
 import type { Difficulty, MapSize } from '../game/types';
 import { heirIdNow } from '../game/data/heirs';
 import { KEY_IDS } from '../game/data/boonKeys';
+import type { MusicPace } from '../audio/Music';
 
 export interface RunRecord {
   date: string;
@@ -23,6 +24,8 @@ export interface Settings {
   master: number;
   sfx: number;
   music: number;
+  /** How often the calm music of a run plays: track after track, now and then, or only in battle (audio/Music.ts). */
+  musicPace: MusicPace;
   edgePan: boolean;
   /** One-line cards that explain things the first time they happen. */
   tips: boolean;
@@ -79,7 +82,7 @@ const KEY = 'hegemarch.profile.v1';
 const RUN_KEY = 'hegemarch.run.v1';
 
 export function defaultSettings(): Settings {
-  return { muted: false, master: 0.7, sfx: 0.8, music: 0.5, edgePan: false, tips: true, autoPause: true, crt: false, pixelSize: 'auto', explainTerms: true };
+  return { muted: false, master: 0.7, sfx: 0.8, music: 0.5, musicPace: 'sometimes', edgePan: false, tips: true, autoPause: true, crt: false, pixelSize: 'auto', explainTerms: true };
 }
 
 export function defaultProfile(): Profile {

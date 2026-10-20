@@ -108,9 +108,14 @@ try {
   await wait(800);
   await shot('08-after-boon');
 
-  // Step 4: wait for the world to light up and the raider to come.
+  // Step 4: wait for the world to light up and the raider to come. (Its seed ship's way is longer in some sectors.)
   await fastForward(70);
   await wait(3500);
+  for (let i = 0; i < 20 && !(await page.evaluate(() => (window.__app.session.game.ui.tutRaider ?? 0) > 0)); i++) {
+    await fastForward(5);
+    await wait(500);
+  }
+  await wait(1500);
   await shot('09-raid');
   const fleetNode = await page.evaluate(() => {
     const s = window.__app.session;
@@ -141,6 +146,24 @@ try {
     await fastForward(10);
     await wait(200);
   }
+  // (A Boon offered or a decision on the way waits; a raider the fleet missed is seen off, so the tour goes on.)
+  const settle = () =>
+    page.evaluate(() => {
+      const app = window.__app;
+      const g = app.session.game;
+      app.session.profile.settings.autoPause = false;
+      for (const p of g.prompts) if (p.result === undefined) g.cmdResolvePrompt(p.id, 0);
+      g.prompts.length = 0;
+      if (app.session.modal && app.session.modal.kind !== 'destinies') app.session.modal = null;
+      while (app.hud.tips.current) app.hud.tips.dismiss();
+    });
+  await settle();
+  await page.evaluate(() => {
+    const g = window.__app.session.game;
+    const r = g.units.get(g.ui.tutRaider ?? 0);
+    if (g.ui.tut === 4 && r && !r.dead) g.killUnit(r, g.playerId);
+  });
+  await wait(500);
   // Step 5: send the Scout exploring (let it land first if it is still flying with the fleet).
   const scoutAt = () =>
     page.evaluate(() => {
@@ -157,6 +180,67 @@ try {
     await wait(400);
     await shot('12b-explore-button');
     await clickUi('explore');
+  }
+  const tutStep = () => page.evaluate(() => window.__app.session.game.ui.tut);
+  // Step 6: a rally point from the Hearth, set and cleared with the mouse.
+  await wait(1500);
+  await settle();
+  await wait(300);
+  await shot('12c-rally-step');
+  const rallyTo = await page.evaluate(() => window.__app.hud.tutorial.rallyTarget());
+  await clickWorld(cap);
+  await wait(1200);
+  await clickWorld(rallyTo, 'right');
+  await wait(700);
+  await shot('12d-rally-set');
+  await wait(2000);
+  await shot('12d2-rally-clear');
+  await clickWorld(cap, 'right');
+  await wait(700);
+  // Step 7: a Breaker, then a guarded world, fought for real.
+  await shot('12e-breaker-step');
+  await page.evaluate(() => (window.__app.session.game.player.embers += 400));
+  await settle();
+  await clickWorld(cap);
+  await wait(400);
+  await clickUi('build-breaker');
+  await wait(600);
+  await shot('12f-breaker-building');
+  for (let i = 0; i < 6 && (await page.evaluate(() => !window.__app.session.game.ui.tutGuarded)); i++) {
+    await fastForward(10);
+    await wait(300);
+  }
+  await wait(1500);
+  await shot('12g-guarded-world');
+  const gw = await page.evaluate(() => (window.__app.session.game.ui.tutGuarded ?? 0) - 1);
+  if (gw >= 0) {
+    const at = await page.evaluate(() => window.__app.hud.tutorial.strikeFleet());
+    await clickUi('fleet-' + at);
+    await wait(1200);
+    await clickWorld(gw);
+    await wait(600);
+    await shot('12h-fleet-to-guards');
+    for (let i = 0; i < 24 && (await tutStep()) === 7; i++) {
+      await fastForward(10);
+      await wait(250);
+    }
+    console.log('guarded world', gw, (await tutStep()) === 8 ? 'taken' : 'not taken', await page.evaluate(() => `at ${Math.round(window.__app.session.game.time)} s`));
+  }
+  // Step 8: the raid on the Hearth: the fleet brought home.
+  await settle();
+  await wait(3500);
+  await shot('12i-hearth-raid');
+  const away = await page.evaluate(() => window.__app.hud.tutorial.awayFleet());
+  if (away >= 0) {
+    // (Still picked since step 7, the fleet needs no click on its badge.)
+    if (!(await page.evaluate(() => window.__app.session.ownSelected().length))) await clickUi('fleet-' + away);
+    await wait(1200);
+    await clickWorld(cap);
+    await wait(500);
+  }
+  for (let i = 0; i < 20 && (await tutStep()) === 8; i++) {
+    await fastForward(10);
+    await wait(250);
   }
   await wait(3200);
   await shot('12c-destinies');

@@ -34,7 +34,7 @@ board** at hegemarch.com under three to five letters, as an arcade takes them: t
 The day's fastest crown makes its player that day's Hegemarch, named on the website's front page.
 A run in progress is the banner at the top: CONTINUE.
 
-The first run is **guided** (the First Night, BEGIN on the title screen). It shows you six things, one
+The first run is **guided** (the First Night, BEGIN on the title screen). It shows you nine things, one
 at a time:
 
 1. **Kindle a dark world.** Click a grey world, then press KINDLE. You pay for a seed ship, which flies
@@ -43,7 +43,13 @@ at a time:
 3. **Choose your first Boon.**
 4. **Repel a pirate raider:** click your fleet's badge, then the world.
 5. **Send your Scout exploring:** click your fleet's badge, then EXPLORE.
-6. **Meet your three Destinies,** the ways this run can be won. You do not choose one: reaching
+6. **Set a rally point, and clear it:** click your Hearth, then right-click another world. New ships
+   built at the Hearth fly there by themselves, one by one, and a dotted line and a flag on the map
+   show it until you clear it (right-click the Hearth itself).
+7. **Build a Breaker and take a guarded world.** Ships beat one another in a ring: Strikers beat
+   Breakers, Breakers beat Guardians and worlds, Guardians beat Strikers.
+8. **Bring your fleet home:** a raider comes for your Hearth. If your Hearth falls, the run is over.
+9. **Meet your three Destinies,** the ways this run can be won. You do not choose one: reaching
    any one of them wins.
 
 Each step says what its words mean. In the First Night the first three Boons on offer and the three
@@ -147,7 +153,7 @@ terms do the same.
 | --- | --- |
 | Left-click | Select a world, a ship or a fleet badge. With ships selected, click a world to send them |
 | Drag · Shift-click · double-click | Box-select ships · add to selection · all ships of a type here |
-| Right-click | Send selected ships (their way shows, red where you know of danger), attack a ship. With a world selected: set its rally point |
+| Right-click | Send selected ships (their way shows, red where you know of danger), attack a ship. With a world selected: set its rally point (a line and a flag on the map; right-click the world itself to clear it) |
 | Shift+right-click | One more stop on the way for the selected ships |
 | Wheel · arrows · right/middle-drag | Zoom · pan · pan |
 | Space · + / − | Pause · game speed |

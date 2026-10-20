@@ -4,6 +4,7 @@
  * be undone.
  */
 
+import { PACES } from '../../audio/Music';
 import { ERAS, LAST_CRADLE_ERA } from '../../game/data/eras';
 import { fit, IC, lineHeight, text, textCenter, textWidth, wrap } from '../../render/font';
 import { PAL } from '../../render/palette';
@@ -19,7 +20,7 @@ export const BOOK_W = 420;
 export const BOOK_H = 250;
 
 /** Tips in the order a run usually meets them. */
-const TIP_ORDER = ['role', 'fleet', 'boonReady', 'raid', 'anomalySeen', 'anomaly', 'blueprint', 'hangar', 'power', 'arkLevel', 'lostWorld', 'converted', 'crisis', 'starfall'];
+const TIP_ORDER = ['role', 'fleet', 'rally', 'boonReady', 'raid', 'anomalySeen', 'anomaly', 'blueprint', 'hangar', 'power', 'arkLevel', 'lostWorld', 'converted', 'crisis', 'starfall'];
 
 /** Tips of the cradle of an Ages run (listed first there, last elsewhere). */
 const AGES_TIPS = ['ageReady', 'ageNew', 'ageSiege', 'ageRival', 'ageGone', 'ageArk'];
@@ -48,7 +49,7 @@ export function settings(modals: Modals, g: Ctx) {
   const st = modals.s.profile.settings;
   const w = 220;
   const full = modals.s.hooks.fullscreen();
-  const h = 178 + (full === null ? 0 : 14);
+  const h = 192 + (full === null ? 0 : 14);
   const { x, y } = modals.frame(g, w, h, 'SETTINGS');
   modals.closeButton(g, x, y, w);
   const save = () => {
@@ -79,6 +80,14 @@ export function settings(modals: Modals, g: Ctx) {
         'night, a battle. This goes on to the next track of the same kind.',
   });
   ly += 16;
+  // How often the calm music plays (as under Settings on the title screen): a click goes on to the next way.
+  const pace = PACES.findIndex(([k]) => k === st.musicPace);
+  const [, paceLabel, paceTip] = PACES[Math.max(0, pace)];
+  modals.ui.button(g, 'tg-pace', x + 10, ly, w - 20, 12, 'Music plays', () => {
+    st.musicPace = PACES[(pace + 1) % PACES.length][0];
+    save();
+  }, { right: paceLabel, rightColor: PAL.gold, align: 'left', tip: `${paceTip} Click for the next way.` });
+  ly += 14;
   const toggle = (label: string, key: 'autoPause' | 'crt' | 'edgePan' | 'tips' | 'explainTerms', tip: string) => {
     modals.ui.button(g, 'tg-' + key, x + 10, ly, w - 20, 12, label, () => {
       st[key] = !st[key];

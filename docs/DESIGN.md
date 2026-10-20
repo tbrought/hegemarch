@@ -781,13 +781,25 @@ Measured with `npm run simulate` and `npm run balance:passive`. Speeds are ½×,
 
 ## 5. Teaching the game
 
-- **The First Night** (first run, or on request): six guided steps with a bobbing gold arrow and a
+- **The First Night** (first run, or on request): nine guided steps with a bobbing gold arrow and a
   one-line objective banner: kindle a world, build a Striker, choose a Boon, repel a weak scripted
   raider by clicking your fleet badge and then the world, send the Scout exploring (fleet badge,
-  then EXPLORE), and meet the three Destinies. The camera frames each target in the clear band
-  between the banner and the card. The Scout step is skipped when a Scout is already exploring,
-  none is left, or the sector is charted. Runs saved before the Scout step existed are renumbered
-  on load (`game.ui.tutV`), so a finished guide stays finished.
+  then EXPLORE), set a rally point from the Hearth with a right-click and clear it again, build a
+  Breaker (the ring of ships is told while it is built) and take a guarded world with it, bring the
+  fleet home to a raider that comes for the Hearth ("If it falls, the run is over"), and meet the
+  three Destinies. The camera frames each target in the clear band between the banner and the card;
+  where two worlds do not fit at a readable zoom, it frames the one to click first and brings the
+  other on screen once that is done. The Scout step is skipped when a Scout is already exploring,
+  none is left, or the sector is charted; the guarded world is the nearest within four jumps with
+  the fewest guards, the way to it charted for the lesson if need be (most First Night sectors have
+  none at home), and the step ends with the Breaker if there is none. Runs saved by an older guide
+  are renumbered on load (`game.ui.tutV`), so a finished guide stays finished and one at its
+  Destinies is still there.
+- **Steps 6 to 8 (1.27.1)** came from a player who lost a round to a rally point they never knew they had
+  set (a stray right-click with a world selected: every new ship flew off alone to an enemy world),
+  found the ring of ships out only by losing to it, and called the First Night too basic. The rally
+  point is taught with the action that sets it and the one that clears it; its tip card ("You set a
+  rally point…") is counted as read, and comes up for anyone else the first time they set one.
 - **The guide explains its own words.** Under each step's line a smaller one says what the words
   in it mean and why the step matters ("Your Hearth is your home world. A Striker is a fast, cheap
   gunship."; "Lore, the violet bar, fills by itself. Each time it is full you choose a Boon").
@@ -887,6 +899,13 @@ Measured with `npm run simulate` and `npm run balance:passive`. Speeds are ½×,
   that sat on a star he could see, because nothing showed him the way they would go.
   **Shift+right-click** (or Shift with the click of a MOVE order) adds a stop after the one the
   ships are bound for, as many as wanted; a drive that is charging goes on charging.
+- **Rally points on the map** (1.27.1). A world's rally point was a line on its card and a toast of
+  two and a half seconds, so one set by a stray right-click went unseen until a run's new ships had
+  flown one by one into an enemy world. It is drawn for as long as it is set: a dotted sky line along
+  the way the ships will fly (brighter while the world is selected) and a small flag on the left of
+  the world it points at (its fleet badges are on the right, its name under it), both red where the
+  house knows the enemy is (`Game.dangerKnown`, as for the way of an order). Setting one says so in the
+  banner for six seconds, in red where the enemy is, with how to clear it; a tip card the first time.
 - **An offering takes a ship that can be offered.** The Whispering Rift asks for "the ship that found
   it", which is the first of a fleet to be counted there; when that was the Ark (never offered), the
   choice was greyed with six other ships standing by, and its tooltip said "You cannot afford this".
@@ -1396,6 +1415,11 @@ Measured with `npm run simulate` and `npm run balance:passive`. Speeds are ½×,
   its key or its chord, no long note a semitone above a chord tone, no leap over an octave) and plays
   half an hour into a list; `npm run test:music` plays every part of every track through the real
   sound engine. **Settings has a Track row**: a selector of every track, grouped by mood, and NEXT.
+  **And a Music plays row** (1.27.1): OFTEN (the calm tracks one after another, a breath between them,
+  as before), NOW AND THEN (the default: a minute or two of quiet after each calm track) and BATTLES
+  ONLY (no calm music in a run). Battle music starts at once whichever is chosen, and a battle in the
+  quiet does not end it: the night has the rest of its quiet after the fighting (`Music.pace`; the
+  website and the films keep OFTEN). A player found the calm music, track after track, tiring.
   Picking one plays it from where its tune comes in (and turns the sound on, if it was off); the
   selector shows what is playing, also when the music moves on by itself. (It was a section of
   eleven buttons, which was most of the page.)
@@ -1556,8 +1580,10 @@ UI snapshot of section 8: nothing in the game changed.)
 - `npm run simulate` / `npm run balance:passive`: pacing and balance numbers.
 - Browser tests through `playwright-core` with the installed Edge or Chrome: `test:e2e` (about 50
   assertions over real input, including the Boon tray, the Boons screen and hover help),
-  `test:tutorial` (the First Night end to end and at its edges: lost seed ship, ignored raider,
-  replaced Destinies card, save and continue, tips that wait and come back), `test:shots` (the
+  `test:tutorial` (the First Night end to end and at its edges: lost seed ship, ignored raider, a
+  rally point set and cleared with the mouse and its flag on the map, no guarded world near, the
+  raider at the Hearth, replaced Destinies card, save and continue, saves of older guides, tips
+  that wait and come back), `test:shots` (the
   whole First Night), `test:gallery` (every panel and hover state, Boon cards in flight),
   `test:perf` (340 ships at about 140 FPS headless), `test:dist` (the built file from disk).
 - `npx tsx scripts/rush.ts [seeds] [size] [difficulty] [minute]`: how often an opening rush lands.
@@ -1577,7 +1603,8 @@ UI snapshot of section 8: nothing in the game changed.)
 - `test:audio`: a battle's music in tune and never clipping; and every sound of a battle played alone,
   recorded as it leaves the effects' bus, starting from silence (1.25.1: see below).
 - `test:sound`: the sound button and the first click, with a browser that waits for one and with one
-  that does not, at desktop and phone widths.
+  that does not, at desktop and phone widths; and the Music plays row (NOW AND THEN by default; with
+  BATTLES ONLY a quiet night is quiet, and a battle has its music at once).
 - `test:uifuzz`, `test:layouts`, `test:menus`: random play through the real UI (fails on any error or
   a dialog that cannot be left), every dialog at the extremes of screen size and content, and every
   menu over the live sector.

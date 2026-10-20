@@ -235,6 +235,34 @@ describe('played through', () => {
     expect(most).toBeLessThanOrEqual(8);
   });
 
+  it('now and then (as a run plays it by default): a minute or two of quiet after each calm track', () => {
+    const r = rig();
+    r.music.pace = 'sometimes';
+    r.music.play('night');
+    r.run(40 * 60);
+    expect(new Set(r.heard).size).toBe(of('night').length);
+    expect(r.heard.length).toBeGreaterThanOrEqual(6);
+    const quiet = r.silences();
+    expect(quiet.filter((q) => q > 55).length).toBeGreaterThanOrEqual(r.heard.length - 2);
+    expect(quiet[0]).toBeLessThan(125);
+  });
+
+  it('now and then: a battle in the quiet has its music at once, and the quiet goes on after it', () => {
+    const r = rig();
+    r.music.pace = 'sometimes';
+    r.music.play('night');
+    const first = TRACKS.find((t) => t.name === r.music.title)!;
+    r.run(trackSeconds(first) + 12);
+    const calm = r.played.length;
+    r.music.play('war');
+    r.run(1);
+    expect(r.played.length).toBeGreaterThan(calm);
+    r.music.play('night');
+    const back = r.ctx.currentTime;
+    r.run(30);
+    expect(r.played.filter((x) => x.t > back + 0.5).length).toBe(0);
+  });
+
   it('a melody is one voice: no note of it starts before the last has ended', () => {
     for (const t of TRACKS) {
       const r = rig();

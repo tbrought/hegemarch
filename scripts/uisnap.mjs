@@ -28,7 +28,7 @@ fs.mkdirSync('.golden', { recursive: true });
 const sha = (v) => createHash('sha1').update(typeof v === 'string' ? v : JSON.stringify(v)).digest('hex').slice(0, 16);
 const PROFILE = {
   tutorialDone: true, runs: 4, wins: 1, legacy: 140, maxDifficulty: 1, agesSeen: true,
-  seenTips: ['role', 'raid', 'anomaly', 'fleet', 'hangar', 'dawn', 'boonReady', 'anomalySeen', 'blueprint', 'arkLevel', 'lostWorld', 'converted', 'crisis', 'ageReady', 'ageNew', 'ageSiege', 'ageRival', 'ageGone', 'ageArk'],
+  seenTips: ['role', 'raid', 'anomaly', 'fleet', 'rally', 'hangar', 'dawn', 'boonReady', 'anomalySeen', 'blueprint', 'arkLevel', 'lostWorld', 'converted', 'crisis', 'ageReady', 'ageNew', 'ageSiege', 'ageRival', 'ageGone', 'ageArk'],
   settings: { autoPause: false },
 };
 const T0 = new Date('2026-03-01T10:00:00Z');

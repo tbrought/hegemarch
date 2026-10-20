@@ -50,7 +50,7 @@ export const GLOSSARY: GlossEntry[] = [
   term('level', 'World level', 'world levels?|world upgrades?|levels? (?:I|II|III)|up to III|rises one level', 'Worlds rise from level I to III. Each level adds output, hull and hangar room.'),
   term('hangar', 'Hangar', 'hangars?', 'Room for your fleet. Every world adds room, more at higher levels. When it is full you cannot build ships.'),
   term('bay', 'Hangar Bay', 'hangar bays?', 'Built at your Hearth: [+5 hangar room] each. Every bay costs more than the last.'),
-  term('rally', 'Rally point', 'rally(?: point)?', 'New ships built at a world fly straight to its rally point. Select your world, then right-click another to set it.'),
+  term('rally', 'Rally point', 'rally(?: point)?', 'New ships built at a world fly straight to its rally point, one at a time. Select your world, then right-click another to set it; right-click the world itself to clear it. A flag on the map marks it, red where the enemy is.'),
   term('fealty', 'Fealty', 'fealty|swear to you', 'When a house’s Hearth falls, its other worlds swear to the house that took it.'),
   term('underFire', 'Under fire', 'under fire', 'A world that was hit in the last few seconds earns half its Embers.'),
   // Ships and combat

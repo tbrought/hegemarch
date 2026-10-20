@@ -3,7 +3,7 @@
  * the First Night again, and starting over.
  */
 
-import { TRACKS, type Mood } from '../../audio/Music';
+import { PACES, TRACKS, type Mood, type MusicPace } from '../../audio/Music';
 import { esc } from '../../ui/format';
 import type { App } from '../App';
 import { clearRun, defaultProfile, saveProfile } from '../../meta/profile';
@@ -32,6 +32,7 @@ export function showSettings(app: App) {
         <b>Volume</b><input type="range" min="0" max="1" step="0.05" value="${s.master}" data-setting="master">
         <b>Effects</b><input type="range" min="0" max="1" step="0.05" value="${s.sfx}" data-setting="sfx">
         <b>Music</b><input type="range" min="0" max="1" step="0.05" value="${s.music}" data-setting="music">
+        <b>Music plays</b><div class="row">${PACES.map(([k, label, tip]) => `<button class="small ${s.musicPace === k ? 'active' : ''}" data-sa="pace:${k}" data-tip="${tip}">${label}</button>`).join('')}</div>
         <b>Track</b><div class="row"><select data-track aria-label="The track that is playing" data-tip="${TRACKS.length} tracks. A run plays the ones that fit the moment, a new one each time; here you can hear any of them.">${MOODS.map(([m, label]) => `<optgroup label="${label}">${TRACKS.filter((t) => t.mood === m).map((t) => `<option value="${esc(t.name)}"${app.music.title === t.name ? ' selected' : ''}>${esc(t.name)}</option>`).join('')}</optgroup>`).join('')}</select><button class="small" data-sa="track-next" data-tip="Play the next track in the list.">NEXT</button></div>
         ${full === null ? '' : `<b>Fullscreen</b><div class="row"><button class="small ${full ? 'active' : ''}" data-sa="fullscreen" aria-pressed="${full}">${full ? 'ON' : 'OFF'}</button></div>`}
         <b>Pixel size</b><div class="row">${(['small', 'auto', 'large'] as const).map((k) => `<button class="small ${s.pixelSize === k ? 'active' : ''}" data-sa="pixels:${k}" data-tip="${PIXEL_TIPS[k]}">${k.toUpperCase()}</button>`).join('')}</div>
@@ -69,6 +70,12 @@ export const settingsActions: ScreenActions = {
   'track-next': (app) => {
     const i = TRACKS.findIndex((t) => t.name === app.music.title);
     pickTrack(app, TRACKS[(i + 1) % TRACKS.length].name);
+  },
+  pace: (app, arg) => {
+    app.profile.settings.musicPace = arg as MusicPace;
+    saveProfile(app.profile);
+    applySettings(app);
+    showSettings(app);
   },
   pixels: (app, arg) => {
     app.profile.settings.pixelSize = arg as 'small' | 'auto' | 'large';

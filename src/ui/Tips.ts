@@ -22,6 +22,7 @@ export const TIPS: Record<string, string> = {
   power: 'Your House Power is ready: your house\u2019s own move, cast by your Ark. Press D to aim it, and the map shows what it will do; press D again (or click its button over the minimap) to cast it. It comes back after a few minutes.',
   hangar: 'Your hangar is nearly full. Hold more worlds, or raise them to higher levels, to make room for ships.',
   boonReady: 'Your Lore is full: press B, or the BOON button at the top, to choose a Boon.',
+  rally: 'You set a rally point: every new ship built at that world flies there by itself, one at a time, until you clear it. A dotted line and a flag on the map show it; the flag is red where the enemy is. To clear it, select the world and right-click the world itself.',
   fleet: `Ships gather in fleets. The badge beside a world (like ${IC.fleet}) counts your ships there: click it to select them, then click a world to send them.`,
   lostWorld: 'You lost a world. Take it back with Breakers, or protect your others: a Bastion guards your worlds one jump from it, and they take less damage while it stands. An enemy that keeps running stands and fights in its field: it cannot jump away quickly there.',
   converted: 'The Choir’s Ark talks ships round: your weakest ships near it change sides, and fight for it. Destroy that Ark, or keep damaged ships out of its reach.',
@@ -100,6 +101,8 @@ export class Tips {
     const p = g.player;
     if (p.hangarCap > 0 && p.hangarUsed >= p.hangarCap - 2 && p.stats.shipsBuilt > 3) this.show('hangar');
     if (p.stats.shipsBuilt === 1 && !this.s.guided) this.show('fleet');
+    // (The First Night teaches the rally point in a step of its own.)
+    if (g.tick % 20 === 0 && !this.hud.tutorial.busy() && g.nodes.some((n) => n.owner === p.id && n.rally >= 0)) this.show('rally');
     // The House Power, the first time it is ready (not while the First Night still guides the player).
     if (g.tick % 20 === 0 && !g.cradle && p.powerCd === 0 && !g.powerReady(p.id) && Object.values(this.s.reveal()).every(Boolean)) this.show('power');
     if (g.cradle && g.tick % 20 === 0 && p.era < SPACE && !p.advance && p.lore >= ERAS[p.era].lore) this.show('ageReady');
@@ -185,7 +188,9 @@ export class Tips {
     const lines = wrap(msg, w - 18, 'main').slice(0, 5);
     const h = 12 + lines.length * 10 + 14;
     const x = Math.round(W / 2 - w / 2);
-    const y = 46;
+    // (Under the banner, however tall it is: one of two lines and a smaller one under them reached into the card.)
+    const b = this.hud.bannerRect;
+    const y = Math.max(46, b.h ? b.y + b.h + 3 : 0);
     const color = PAL.teal;
     this.hud.ui.panel(g, 'tip', x, y, w, h, { border: color, fill: PAL.night });
     this.rect = { x, y, w, h };

@@ -370,13 +370,25 @@ export class Actions {
     return true;
   }
 
+  /**
+   * Set (or, at the world itself, clear) where a world's new ships fly. Said in the banner for a while, with
+   * how to undo it, and drawn on the map until it is cleared: a player set one with a stray right-click, never
+   * knew, and lost a run's new ships one by one at the enemy world it pointed at (1.27.1).
+   */
   rally(fromNode: number, toNode: number) {
     if (!this.ready()) return;
     if (this.g.cmdSetRally(this.pid, fromNode, toNode)) {
+      const from = this.g.nodes[fromNode];
       const n = this.g.nodes[toNode];
       this.s.marker(n.x, n.y, PAL.sky);
       this.s.sfx.play('select', 0.5);
-      this.s.showToast(toNode === fromNode ? 'Rally point cleared.' : `New ships from here will fly to ${n.name}.`, PAL.sky, 2.5);
+      if (toNode === fromNode) {
+        this.s.showToast(`Rally point cleared: new ships from ${from.name} stay there.`, PAL.sky, 4);
+        return;
+      }
+      const undo = `To clear it, select ${from.name} and right-click it.`;
+      if (this.g.dangerKnown(this.pid, toNode)) this.s.showToast(`Rally point set at ${n.name}, where the enemy is: new ships from ${from.name} will fly into it one by one.`, PAL.red, 7, undo);
+      else this.s.showToast(`Rally point set: new ships from ${from.name} will fly to ${n.name}.`, PAL.sky, 6, undo);
     }
   }
 }

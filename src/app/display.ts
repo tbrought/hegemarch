@@ -21,6 +21,7 @@ export function toggleFullscreen() {
 
 export function applySettings(app: App) {
   app.sfx.apply(app.profile.settings);
+  app.music.pace = app.profile.settings.musicPace;
   app.screenObj.setPixelSize(app.profile.settings.pixelSize);
   for (const el of app.ui.querySelectorAll('.screen')) el.classList.toggle('crt', app.profile.settings.crt);
 }
