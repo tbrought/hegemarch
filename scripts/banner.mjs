@@ -11,6 +11,20 @@ import { DEV_URL, openBrowser } from './lib/browser.mjs';
 const W = 2560;
 const H = 1440;
 const SEEDS = (process.argv[2] ?? '11,23,47').split(',').map(Number);
+// The line under the name, in the two tones of the website's words: what it names in bone, what to take away
+// in gold. (C by default; TAG=a|b|c makes one of the three looks offered, promo/banner-<seed>-<tag>.png.)
+const NIGHT = 'text-shadow:3px 3px 0 #0b0a1a,-3px -3px 0 #0b0a1a,3px -3px 0 #0b0a1a,-3px 3px 0 #0b0a1a';
+const GOLD = 'color:#ffd23f;text-shadow:0.08em 0.08em 0 #ff8a1f,0.16em 0.16em 0 #8c2a3c,-3px -3px 0 #0b0a1a';
+const TAGS = {
+  a: `<div style="white-space:nowrap;font-family:var(--body, monospace);font-size:42px;color:#c9c3e6;${NIGHT}">Light the <span style="color:#fff4e0">dark sector</span>, world by world. <span style="color:#ffd23f">Take the crown.</span></div>`,
+  b: `<div style="white-space:nowrap;display:flex;flex-direction:column;gap:18px;font-family:var(--display, monospace);font-size:28px;letter-spacing:0.06em;line-height:1">
+      <div style="color:#fff4e0;${NIGHT}">LIGHT THE DARK SECTOR, WORLD BY WORLD.</div><div style="${GOLD}">TAKE THE CROWN.</div></div>`,
+  c: `<div style="white-space:nowrap;display:flex;flex-direction:column;gap:20px">
+      <div style="font-family:var(--body, monospace);font-size:44px;color:#c9c3e6;${NIGHT}">Light the <span style="color:#fff4e0">dark sector</span>, world by world.</div>
+      <div style="font-family:var(--display, monospace);font-size:38px;letter-spacing:0.06em;line-height:1;${GOLD}">TAKE THE CROWN.</div></div>`,
+};
+const TAG = process.env.TAG;
+const tagline = TAGS[TAG ?? 'c'];
 const flame = fs.readFileSync('site/favicon.svg', 'utf8').replace(/<rect width="16" height="16"[^>]*\/>/, '');
 
 const { browser, page, errors } = await openBrowser({ viewport: { width: W, height: H }, context: { deviceScaleFactor: 1 } });
@@ -19,7 +33,7 @@ await page.waitForTimeout(1500);
 fs.mkdirSync('promo', { recursive: true });
 
 for (const seed of SEEDS) {
-  await page.evaluate(async ({ seed, flame, W, H }) => {
+  await page.evaluate(async ({ seed, flame, W, H, tagline }) => {
     document.querySelector('#banner')?.remove();
     const box = document.createElement('div');
     box.id = 'banner';
@@ -31,7 +45,7 @@ for (const seed of SEEDS) {
         <div style="display:flex;flex-direction:column;gap:24px">
           <div style="font-family:var(--display, 'Press Start 2P', monospace);font-size:104px;line-height:1;letter-spacing:0.06em;color:#ffd23f;
             text-shadow:0.06em 0.06em 0 #ff8a1f,0.12em 0.12em 0 #8c2a3c,-3px -3px 0 #0b0a1a">HEGEMARCH</div>
-          <div style="font-family:var(--body, monospace);font-size:38px;color:#c9c3e6;text-shadow:3px 3px 0 #0b0a1a,-3px -3px 0 #0b0a1a,3px -3px 0 #0b0a1a,-3px 3px 0 #0b0a1a">Light the dark sector, world by world. Take the crown.</div>
+          ${tagline}
         </div>
       </div>`;
     document.body.appendChild(box);
@@ -93,7 +107,8 @@ for (const seed of SEEDS) {
     const view = emptyView(true);
     for (let f = 0; f < 120; f++) {
       g.step();
-      r.fx.ingest(g.fx, () => true, (x, y, pad) => cam.sees(x, y, pad), cam.zoom);
+      // (No words of the game's over the picture: an ability's name as it is cast, a world's news.)
+      r.fx.ingest(g.fx.filter((f) => f.k !== 'text' && f.k !== 'ability'), () => true, (x, y, pad) => cam.sees(x, y, pad), cam.zoom);
       g.fx.length = 0;
       r.fx.update(0.05);
       cam.tzoom = cam.zoom = best.z;
@@ -101,8 +116,8 @@ for (const seed of SEEDS) {
       cam.ty = cam.y = best.y;
       r.render(g, 1, 0.05, view, true);
     }
-  }, { seed, flame, W, H });
-  const out = `promo/banner-${seed}.png`;
+  }, { seed, flame, W, H, tagline });
+  const out = TAG ? `promo/banner-${seed}-${TAG}.png` : `promo/banner-${seed}.png`;
   await page.screenshot({ path: out, clip: { x: 0, y: 0, width: W, height: H } });
   console.log(out);
 }
