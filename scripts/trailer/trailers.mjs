@@ -440,7 +440,9 @@ const sa = [
   pBattle('goldOrange', HG * 2, ['HEGEMARCH']),
   pDark(HG * 2, ['THE SECTOR', 'IS [!DARK]']),
   pKindle(HG * 2, ['{LIGHT} IT', 'AGAIN']),
-  { blank: true, stars: true, dur: HG * 2, vignette: 0.3, draft: { ...DRAFT_RUN, hover: [2, 2.25], pan: 'deal', zoom: 2 },
+  // (The run's own first two cards, then an Epic: the deal builds up to the card the view comes to rest on. The
+  // run dealt a common last, and the shot ended on it while the rare one waited.)
+  { blank: true, stars: true, dur: HG * 2, vignette: 0.3, draft: { ...DRAFT_RUN, hover: [2, 2.25], pan: 'deal', zoom: 2, deal: ['stargazers', 'reverse', 'bpDread'] },
     text: [{ at: 0.25, until: HG * 2 - 0.15, style: 'lore', lines: ['NEW {BOONS}', 'EVERY RUN'], y: 0.12 }] },
   pBanners(HG * 2, ['SIX {HOUSES}']),
   { ...pBattle('goldRedOrange', HG * 2, ['[!WAR]']), hard: true },

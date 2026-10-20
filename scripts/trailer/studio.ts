@@ -300,8 +300,10 @@ export interface Shot {
    * than the picture: the picture pans across it from `pan[0]` to `pan[1]` seconds into the shot, or (`'deal'`)
    * with the deal, from the first card beaming in to the last one shown, each card in view as it comes. `zoom`:
    * its pixels this many times the size of the world's (2: a close-up, a card about the picture's width).
+   * `deal`: the cards dealt (Boon ids, in order), in place of the run's own offer: for a shot that must end on
+   * the card it shows off.
    */
-  draft?: { sector: SectorSpec; tick: number; hover?: [number, number]; pan?: [number, number] | 'deal'; zoom?: number };
+  draft?: { sector: SectorSpec; tick: number; hover?: [number, number]; pan?: [number, number] | 'deal'; zoom?: number; deal?: string[] };
 }
 
 const stage = document.getElementById('stage')!;
@@ -518,6 +520,7 @@ function makeDraftRig(d: NonNullable<Shot['draft']>, heard: Sfx) {
   g.fxEnabled = false;
   while (g.tick < d.tick && !g.outcome) g.step();
   g.player.pendingDrafts = Math.max(1, g.player.pendingDrafts);
+  if (d.deal) g.player.draftOffer = [...d.deal];
   const canvas = document.createElement('canvas');
   canvas.width = 480;
   canvas.height = 270;
