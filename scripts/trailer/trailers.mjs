@@ -467,7 +467,8 @@ const sc = [
   pPicture('daily', ET * 2, ['EVERY {DAY}']),
   pDark(ET * 2, ['ONE {SECTOR}']),
   pKindle(ET * 2, ['THE SAME', 'FOR ALL']),
-  { ...pBattle('tealBlue', ET * 2, ['SAME', 'RIVALS']), dip: true },
+  // (Not "the same rivals": a Daily's rivals are drawn from the houses the player did not choose.)
+  { ...pBattle('tealBlue', ET * 2, ['PICK YOUR', '{HOUSE}']), dip: true },
   { ...pHearth(ET * 2, ['FASTEST', '{CROWN}']), hard: true },
   pNight(ET * 2, ['TAKES THE', '{THRONE}']),
   pEnd(5, ['DAILY RUN · FREE', 'HEGEMARCH.COM']),
