@@ -422,6 +422,17 @@ export interface Faction {
   asleepUntil: number;
   /** Ages, among the stars: until this time rival houses leave it alone, unless it strikes first. */
   graceUntil: number;
+  /**
+   * A game played together: the house's team (`Seat.team`). The fields below are there only in a game
+   * together, so that a game alone saves exactly as it did.
+   */
+  team?: number;
+  /** A game together: the dice its Boon offers are dealt with, one set for each house (no one's draft moves another's luck). */
+  dice?: number[];
+  /** A game together: Legendary Lineage's count, offers dealt and whether one has held a Legendary (alone, `Game.ui` keeps it). */
+  lineage?: { dealt: number; seen: number };
+  /** Versus: the house gave up. */
+  surrendered?: boolean;
 }
 
 export interface Prompt {
@@ -429,6 +440,8 @@ export interface Prompt {
   event: string;
   node: number;
   unit: number;
+  /** A game together: the house it asks (alone, it is always the player's, and not written). */
+  fid?: number;
   /** Resolved outcome text once chosen. */
   result?: string;
 }
@@ -533,6 +546,35 @@ export interface GameConfig {
   boonKeys?: string[];
   /** The run is a challenge taken up from a link (app/share.ts): what the one who sent it made of this sector. */
   challenge?: { heir: string; won: boolean; time: number; victory: string };
+  /**
+   * A game played together (1.28, docs/MULTIPLAYER.md): a seat for every house, in the order of the houses
+   * (seat i is house i). Absent in a game alone, whose rules are then exactly as they were.
+   */
+  seats?: Seat[];
+  /** What kind of game together: allied houses against the AI, or player against player. */
+  together?: 'coop' | 'versus';
+  /** Versus: every player's Boon offers are dealt from the same dice ("the same luck"). */
+  sameLuck?: boolean;
+  /** Versus: minutes of game time, after which the team furthest toward a Destiny is crowned. Absent: none. */
+  timeLimit?: number;
+}
+
+/** A house's seat in a game played together: who leads it, its team, and what its player brings to it. */
+export interface Seat {
+  heir: string;
+  /** A player leads it (true), or the game's AI. */
+  human: boolean;
+  /** Houses of one team are allies: they do not fight each other, they see what each other sees, and they win together. */
+  team: number;
+  /** The player's name: three to five letters, as on the board. */
+  name?: string;
+  /** The Hall of Heirs perks its player brings (co-op; never in versus). */
+  perks?: Record<string, number>;
+  /** Legendary Lineage (a Legendary promised by the fifth choice) and Forbidden Archives (every Pact), if its player has them. */
+  legendary?: boolean;
+  pacts?: boolean;
+  /** An open handicap, agreed in a private room: more Embers (0.1 is +10%). Never in co-op. */
+  handicap?: number;
 }
 
 export interface Raid {
@@ -572,8 +614,11 @@ export interface Outcome {
   winner: number;
   victory: VictoryId | 'defeat';
   time: number;
+  /** The house on this screen won (in a game together: its team did). Each screen's own: not part of the game played. */
   playerWon: boolean;
   reason: string;
+  /** A game together: the team that won (-1: none). */
+  team?: number;
 }
 
 /** A reason a command cannot be carried out, or null when it can. */

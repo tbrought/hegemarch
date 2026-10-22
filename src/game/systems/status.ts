@@ -112,13 +112,13 @@ function claimsTick(g: Game, dt: number) {
       n.relic = null;
       n.claim = null;
       g.recomputeMods(f);
-      g.notify(-1, `${f.name} recovered ${r.name} from ${n.name}!`, f.isPlayer ? 'good' : 'event', n.id);
+      g.notify(-1, `${f.name} recovered ${r.name} from ${n.name}!`, g.ours(f.id) ? 'good' : 'event', n.id);
       if (g.fxEnabled) g.fx.push({ k: 'capture', node: n.id, color: f.color });
     } else {
       n.claim = null;
       const d = g.spawnUnit('dreadnought', f.id, n.id, { hpFrac: 0.4 });
       void d;
-      g.notify(-1, `${f.name} has claimed the drifting derelict dreadnought at ${n.name}.`, f.isPlayer ? 'good' : 'event', n.id);
+      g.notify(-1, `${f.name} has claimed the drifting derelict dreadnought at ${n.name}.`, g.ours(f.id) ? 'good' : 'event', n.id);
     }
   }
 }

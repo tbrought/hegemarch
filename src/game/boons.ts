@@ -35,13 +35,15 @@ export function addCard(g: Game, f: Faction, id: string) {
 }
 
 export function cardPool(g: Game, f: Faction, rarities?: Rarity[], filter?: (c: CardDef) => boolean, allowPacts = false): CardDef[] {
-  const isHumanPlayer = f.id === g.playerId && !g.config.autoplay;
+  // (A player's house by its seat: in a game together, every player's; its pool stays its own while the AI
+  // stands in for a player who has left.)
+  const isHumanPlayer = g.seated(f.id);
   // Legendary Boons can turn up for every player at their odds, which Fortunate Stars raises (not in the
   // First Night, which keeps to plain ones); Legendary Lineage guarantees one a run. Until 1.18.3 none
   // was offered without Lineage, so the ranks of Fortunate Stars did nothing for Legendaries until a
   // second thing was bought, and no way of saying so in the Hall read clearly. A rival house: from Hard.
   const legendaryOk = isHumanPlayer ? !g.config.tutorial : g.config.difficulty >= 2;
-  const pactsOk = isHumanPlayer ? g.config.unlockPacts : true;
+  const pactsOk = isHumanPlayer ? (g.seatOf(f.id)?.pacts ?? g.config.unlockPacts) : true;
   // A player who has not met what a Boon is for yet is not dealt it (data/boonKeys.ts).
   const keys = foundKeys(g, f);
   return CARDS.filter(
@@ -94,8 +96,11 @@ interface DealState {
 }
 
 function dealState(g: Game, f: Faction): DealState {
-  const promised = f.isPlayer && g.config.unlockLegendary && !g.cradle;
-  return { bpPity: f.bpPity, bpSeen: [...(f.bpSeen ?? [])], lineage: promised ? { dealt: g.ui.offersDealt ?? 0, seen: !!g.ui.legendarySeen } : null, fresh: freshOwed(g, f), freshServed: false };
+  const seat = g.seatOf(f.id);
+  const promised = (seat ? seat.human && !!seat.legendary : f.isPlayer && g.config.unlockLegendary) && !g.cradle;
+  // (A game together keeps each house's count on the house; alone, it is where it always was.)
+  const count = seat ? { dealt: f.lineage?.dealt ?? 0, seen: !!f.lineage?.seen } : { dealt: g.ui.offersDealt ?? 0, seen: !!g.ui.legendarySeen };
+  return { bpPity: f.bpPity, bpSeen: [...(f.bpSeen ?? [])], lineage: promised ? count : null, fresh: freshOwed(g, f), freshServed: false };
 }
 
 /** The keys turned in this run whose Boon is still owed to the next offer (`fresh:` in `Game.ui`, set by systems/discovery.ts). */
@@ -204,11 +209,15 @@ export function generateOffer(g: Game, f: Faction): string[] {
     if (first.length >= Math.min(3, n)) return first;
   }
   const st = dealState(g, f);
-  const out = deal(f, pool, n, g.rng, st);
+  // (A game together: each house's own dice, so one player's draft does not move another's luck.)
+  const dice = f.dice ? new RNG(f.dice) : g.rng;
+  const out = deal(f, pool, n, dice, st);
+  if (f.dice) f.dice = dice.state();
   f.bpPity = st.bpPity;
   // (Written only once there is one to remember: see DESIGN.md on fields that are not always there.)
   if (st.bpSeen.length > (f.bpSeen?.length ?? 0)) f.bpSeen = st.bpSeen;
-  if (st.lineage) {
+  if (st.lineage && g.config.seats) f.lineage = { dealt: st.lineage.dealt, seen: st.lineage.seen ? 1 : 0 };
+  else if (st.lineage) {
     g.ui.offersDealt = st.lineage.dealt;
     if (st.lineage.seen) g.ui.legendarySeen = 1;
   }

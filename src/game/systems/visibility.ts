@@ -1,5 +1,6 @@
 import type { Game } from '../Game';
 import { UNITS } from '../data/units';
+import type { Faction } from '../types';
 
 /**
  * Recompute what every house can currently see. Owned worlds light their neighbours; the Hearth and
@@ -42,6 +43,36 @@ export function visibilityTick(g: Game) {
       if (vis[i]) {
         f.explored[i] = 1;
         f.seenOwner[i] = g.nodes[i].owner;
+      }
+    }
+  }
+  if (g.config.seats) shareSight(g);
+}
+
+/**
+ * A game played together: the houses of a team see what each of them sees. A house whose Hearth has fallen
+ * (in co-op, waiting to be rekindled) sees through its allies.
+ */
+function shareSight(g: Game) {
+  const teams = new Map<number, Faction[]>();
+  for (const f of g.factions) {
+    if (f.kind !== 'empire') continue;
+    const t = g.teamOf(f.id);
+    if (!teams.has(t)) teams.set(t, []);
+    teams.get(t)!.push(f);
+  }
+  for (const fs of teams.values()) {
+    if (fs.length < 2) continue;
+    const seeing = fs.filter((f) => f.alive);
+    if (!seeing.length) continue;
+    const all = seeing[0].visible.map((_, i) => (seeing.some((f) => f.visible[i]) ? 1 : 0));
+    for (const f of fs) {
+      for (let i = 0; i < all.length; i++) {
+        f.visible[i] = all[i];
+        if (all[i]) {
+          f.explored[i] = 1;
+          f.seenOwner[i] = g.nodes[i].owner;
+        }
       }
     }
   }

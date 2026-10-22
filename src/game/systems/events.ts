@@ -1,6 +1,6 @@
 import type { Game } from '../Game';
 import { EVENT_BY_ID, type EventCtx } from '../data/events';
-import type { Faction, Unit } from '../types';
+import type { Faction, Prompt, Unit } from '../types';
 
 /** Seconds an anomaly waits for the rest of a fleet of the player's that is on the last starlane to it. */
 export const ANOMALY_WAIT = 30;
@@ -43,7 +43,8 @@ function anomalyCheck(g: Game) {
     n.anomaly = null;
     const f = g.factions[chosen.owner];
     if (f.isPlayer) {
-      g.prompts.push({ id: g.promptId++, event: evId, node: n.id, unit: chosen.id });
+      // (A game together: the decision is the house's whose ship found it.)
+      g.prompts.push(askOf(g, { id: g.promptId++, event: evId, node: n.id, unit: chosen.id }, f.id));
       g.notify(f.id, `Anomaly found at ${n.name}: ${EVENT_BY_ID[evId]?.title ?? ''}`, 'event', n.id, true);
     } else {
       aiResolveEvent(g, f, evId, { node: n.id, unit: chosen.id });
@@ -87,7 +88,7 @@ function galacticEvent(g: Game) {
       for (const f of emp) if (g.score(f) > g.score(leader)) leader = f;
       g.pirates.marked = leader.id;
       g.pirates.nextRaid = Math.min(g.pirates.nextRaid, g.time + 25);
-      g.notify(-1, `The Corsairs have put a bounty on ${leader.name}! A raid is coming.`, leader.isPlayer ? 'alert' : 'event');
+      g.notify(-1, `The Corsairs have put a bounty on ${leader.name}! A raid is coming.`, g.ours(leader.id) ? 'alert' : 'event');
       return;
     }
     case 'derelict': {
@@ -101,13 +102,20 @@ function galacticEvent(g: Game) {
   }
   // Offer (also the fallback)
   const evId = g.drawOffer();
-  const p = g.player;
-  if (p.alive && !g.config.autoplay) {
-    g.prompts.push({ id: g.promptId++, event: evId, node: p.capital, unit: -1 });
+  // (Alone, the player; together, every house a player leads that still stands.)
+  const asked = g.config.seats ? emp.filter((f) => f.isPlayer) : g.player.alive && !g.config.autoplay ? [g.player] : [];
+  for (const p of asked) {
+    g.prompts.push(askOf(g, { id: g.promptId++, event: evId, node: p.capital, unit: -1 }, p.id));
     g.notify(p.id, `${EVENT_BY_ID[evId]?.title ?? 'A visitor'} hails your Hearth.`, 'event', p.capital, true);
   }
   for (const f of emp) {
     if (f.isPlayer) continue;
     if (g.rng.chance(0.6)) aiResolveEvent(g, f, evId, { node: f.capital, unit: -1 });
   }
+}
+
+/** A decision, with the house it asks written on it in a game together (alone, it is the player's and says nothing). */
+function askOf(g: Game, p: Prompt, fid: number): Prompt {
+  if (g.config.seats) p.fid = fid;
+  return p;
 }

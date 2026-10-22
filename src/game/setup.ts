@@ -18,7 +18,7 @@ import { ECON } from './data/worlds';
 import type { Game } from './Game';
 import { EMPIRES_BY_SIZE, generateCradle, generateMap, type MapGenResult } from './mapgen';
 import { baseMods } from './mods';
-import { RNG } from './rng';
+import { hashString, RNG } from './rng';
 import { visibilityTick } from './systems/visibility';
 import type { Faction, FactionKind, GameConfig, UnitType } from './types';
 import { TAU } from './util';
@@ -33,7 +33,8 @@ export function setupGame(g: Game, config: GameConfig): void {
   g.config = config;
   g.rng = new RNG(config.seed);
   chooseDestinies(g);
-  const nEmp = config.houses ?? EMPIRES_BY_SIZE[config.size];
+  // (A game together has a house for every seat.)
+  const nEmp = config.seats?.length ?? config.houses ?? EMPIRES_BY_SIZE[config.size];
   const map = layOutSector(g, nEmp);
   const homes = seatHouses(g, nEmp, map.homes);
   lightHearths(g, nEmp, homes);
@@ -89,21 +90,28 @@ function seatHouses(g: Game, nEmp: number, mapHomes: number[]): number[] {
   const config = g.config;
   const rng = g.rng;
   const cradle = g.cradle;
-  const others = config.aiHeirs ?? rng.shuffle(HEIRS.filter((h) => h.id !== config.heir).map((h) => h.id));
+  const seats = config.seats;
+  const others = seats ? seats.map((s) => s.heir) : config.aiHeirs ?? rng.shuffle(HEIRS.filter((h) => h.id !== config.heir).map((h) => h.id));
   const homes = rng.shuffle([...mapHomes]);
   for (let i = 0; i < nEmp; i++) {
-    const heirId = i === 0 ? config.heir : others[(i - 1) % others.length];
+    const heirId = seats ? seats[i].heir : i === 0 ? config.heir : others[(i - 1) % others.length];
     const heir = HEIR_BY_ID[heirId] ?? HEIRS[0];
     const f = makeFaction(g, i, 'empire', heir.name, heir.color, heir.id);
-    f.isPlayer = i === 0 && !config.autoplay;
+    f.isPlayer = seats ? seats[i].human : i === 0 && !config.autoplay;
     if (cradle) f.era = 0;
     if (!f.isPlayer) {
       f.ai = makeAIState(g, f, heir.personalities);
       f.incomeMul = AI_INCOME[config.difficulty];
     }
+    if (seats) {
+      f.team = seats[i].team;
+      // (Each house deals its Boons with dice of its own; with the same luck, every player's are the same.)
+      f.dice = new RNG(hashString(`dice ${config.seed} ${seats[i].human && config.sameLuck ? 'same' : i}`)).state();
+    }
     g.factions.push(f);
   }
-  g.playerId = 0;
+  // (Alone, the player's house; together, each screen sets its own: see `Game.playerId`.)
+  g.playerId = seats ? Math.max(0, seats.findIndex((s) => s.human)) : 0;
   if (g.victories.includes('treasury')) {
     const merchants = g.factions.filter((f) => f.ai && (f.ai.personality === 'expansionist' || f.ai.personality === 'opportunist'));
     if (merchants.length) rng.pick(merchants).ai!.hoard = true;
@@ -137,10 +145,10 @@ function lightHearths(g: Game, nEmp: number, homes: number[]): void {
 function firstFleets(g: Game, nEmp: number): void {
   const config = g.config;
   const cradle = g.cradle;
-  const perks = config.perks ?? {};
   for (let i = 0; i < nEmp; i++) {
     const f = g.factions[i];
     const heir = HEIR_BY_ID[f.heir];
+    const perks = g.perksOf(i);
     f.embers = ECON.startEmbers;
     f.rerolls = 1 + (heir.id === 'ashen' ? 2 : 0);
     let extraGuardians = 0;

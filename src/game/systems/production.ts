@@ -88,8 +88,8 @@ export function productionTick(g: Game, dt: number) {
           const rad = n.r + 280;
           const u = g.spawnUnit('gate', f.id, n.id, { x: n.x + dcos(a) * rad, y: n.y + dsin(a) * rad });
           f.gate = { node: n.id, charge: 0, unit: u.id };
-          g.notify(-1, `${possessive(f.name)} Starfire Gate at ${n.name} stands complete and is charging!`, f.isPlayer ? 'good' : 'alert', n.id, false,
-            f.isPlayer ? undefined : { title: 'THE GATE IS CHARGING', sub: `${possessive(g.shortName(f))} Starfire Gate at ${n.name} stands complete.`, tone: 'house', fid: f.id });
+          g.notify(-1, `${possessive(f.name)} Starfire Gate at ${n.name} stands complete and is charging!`, g.ours(f.id) ? 'good' : 'alert', n.id, false,
+            g.ours(f.id) ? undefined : { title: 'THE GATE IS CHARGING', sub: `${possessive(g.shortName(f))} Starfire Gate at ${n.name} stands complete.`, tone: 'house', fid: f.id });
         }
       }
     }

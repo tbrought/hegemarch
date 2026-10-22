@@ -5,7 +5,7 @@
 
 import { DMG_TABLE, UNITS } from './data/units';
 import { ECON } from './data/worlds';
-import type { DmgType, GNode, VictoryId } from './types';
+import type { DmgType, Faction, GNode, VictoryId } from './types';
 import type { Game } from './Game';
 import { isHearth, recomputeHangar } from './worldStats';
 import { possessive } from './util';
@@ -45,7 +45,7 @@ export function damagePlanet(g: Game, n: GNode, amount: number, type: DmgType, b
   // Last stand at the Hearth
   if (isHearth(n) && !n.lastStand && n.hp < n.maxHp * 0.3) {
     n.lastStand = true;
-    const k = owner.id === g.playerId && !g.config.autoplay ? 1 + (g.config.perks?.secondBreath ?? 0) : 1;
+    const k = g.seated(owner.id) ? 1 + (g.perksOf(owner.id).secondBreath ?? 0) : 1;
     for (let j = 0; j < k; j++) {
       for (let i = 0; i < 3; i++) g.spawnUnit('striker', owner.id, n.id);
       for (let i = 0; i < 2; i++) g.spawnUnit('guardian', owner.id, n.id);
@@ -61,7 +61,7 @@ export function damagePlanet(g: Game, n: GNode, amount: number, type: DmgType, b
   // A world of the player's near the end of its hull is told, once a siege, with where it is (1.23.6). The
   // player was told only when the siege began, and a playtester lost a Bastion without seeing it go. Not
   // the Hearth, whose Last Stand says it.
-  if (n.owner === g.playerId && !g.config.autoplay && !isHearth(n) && !n.falling && n.hp < n.maxHp * WORLD_FALLING) {
+  if (g.seated(n.owner) && !isHearth(n) && !n.falling && n.hp < n.maxHp * WORLD_FALLING) {
     n.falling = 1;
     const who = byFaction >= 0 ? g.factions[byFaction] : null;
     g.notify(n.owner, `${n.name} is falling: ${Math.max(1, Math.round((n.hp / n.maxHp) * 100))}% hull left${who && who.kind === 'empire' ? `, against ${who.name}` : ''}!`, 'alert', n.id);
@@ -89,6 +89,46 @@ export function kindleWorld(g: Game, n: GNode, fid: number, quiet = false) {
   recomputeHangar(g, f);
   if (g.fxEnabled) g.fx.push({ k: 'capture', node: n.id, color: f.color });
   if (!quiet) g.notify(fid, `${n.name} is kindled! It will glow brighter over the next minute and a half.`, 'good', n.id);
+  // (Co-op: where a fallen ally's Hearth stood, lit again, is their Hearth again.)
+  const back = fallenAllyAt(g, n, fid);
+  if (back) rekindle(g, back, n, fid);
+}
+
+/**
+ * Co-op: a player whose Hearth has fallen is not out of the run. The world where it stood, taken back
+ * (or kindled again, if it went dark) by an ally, is that player's Hearth once more. Null: no such ally.
+ */
+function fallenAllyAt(g: Game, n: GNode, by: number): Faction | null {
+  if (g.config.together !== 'coop' || by < 0) return null;
+  return g.factions.find((f) => f.kind === 'empire' && !f.alive && f.lostHearth === n.id && f.id !== by && g.seated(f.id) && g.allied(f.id, by)) ?? null;
+}
+
+/** A fallen ally's house rekindled at its old Hearth: the world, its Ark, two Guardians and Embers to begin again. */
+function rekindle(g: Game, f: Faction, n: GNode, by: number) {
+  const was = g.factions[by];
+  n.owner = f.id;
+  n.capitalOf = f.id;
+  n.level = 1;
+  n.role = null;
+  n.shipQ = [];
+  n.buildQ = [];
+  n.rally = -1;
+  f.capital = n.id;
+  delete f.lostHearth;
+  f.alive = true;
+  f.eliminatedAt = -1;
+  f.embers = Math.max(f.embers, ECON.startEmbers);
+  f.explored[n.id] = 1;
+  g.refreshWorld(n);
+  n.hp = Math.max(n.hp, n.maxHp * 0.5);
+  g.recomputeMods(f);
+  g.spawnUnit('ark', f.id, n.id);
+  for (let i = 0; i < 2; i++) g.spawnUnit('guardian', f.id, n.id);
+  recomputeHangar(g, f);
+  recomputeHangar(g, was);
+  if (g.fxEnabled) g.fx.push({ k: 'capture', node: n.id, color: f.color });
+  g.notify(-1, g.mine(f.id) ? `${was.name} took back ${n.name}: your Hearth burns again!` : `${f.name} is rekindled at ${n.name}, taken back by ${g.mine(by) ? 'you' : was.name}.`,
+    g.ours(f.id) ? 'good' : 'alert', n.id, false, { title: `${g.shortName(f).toUpperCase()} REKINDLED`, sub: `${n.name} is their Hearth again.`, tone: 'house', fid: f.id });
 }
 
 export function planetDefeated(g: Game, n: GNode, byFaction: number) {
@@ -156,6 +196,9 @@ export function planetDefeated(g: Game, n: GNode, byFaction: number) {
   recomputeHangar(g, att);
   recomputeHangar(g, prevF);
   if (wasHearth) g.eliminate(prev, byFaction);
+  // (Co-op: a fallen ally's old Hearth, taken back, is their Hearth again.)
+  const back = fallenAllyAt(g, n, byFaction);
+  if (back) rekindle(g, back, n, byFaction);
 }
 
 /** Return a world to the dark. */
@@ -216,7 +259,7 @@ export function eliminate(g: Game, fid: number, byFaction: number) {
   }
   if (heir) {
     recomputeHangar(g, heir);
-    if (sworn) g.notify(-1, heir.isPlayer ? `The worlds of ${f.name} swear fealty to you: +${sworn} worlds.` : `The worlds of ${f.name} now answer to ${heir.name}.`, heir.isPlayer ? 'good' : 'alert');
+    if (sworn) g.notify(-1, g.mine(heir.id) ? `The worlds of ${f.name} swear fealty to you: +${sworn} worlds.` : `The worlds of ${f.name} now answer to ${heir.name}.`, g.ours(heir.id) ? 'good' : 'alert');
   }
   for (const u of g.unitList) if (u.owner === fid && !u.dead) g.deferred.push(() => g.killUnit(u, -1));
   if (by && by.kind === 'empire' && f.relics.length) {
@@ -231,10 +274,19 @@ export function eliminate(g: Game, fid: number, byFaction: number) {
     by.pendingDrafts++;
     if (by.isPlayer) g.notify(by.id, `Spoils of ${possessive(f.name)} Hearth: a free Boon! (B)`, 'good');
   }
-  // (Where its Hearth stood is kept: the ending of the run goes there.)
+  // (Where its Hearth stood is kept: the ending of the run goes there, and in co-op an ally may take it back.)
   f.lostHearth = f.capital;
   f.capital = -1;
-  if (f.isPlayer) {
+  if (g.config.seats) {
+    // A game together goes on while any player's house stands (victory.ts names the team that wins).
+    const herald = { title: `${g.shortName(f).toUpperCase()} FALLS`, sub: `Its Hearth has gone dark${by ? `, taken by ${g.mine(by.id) ? 'you' : g.shortName(by)}` : ''}.`, tone: 'house' as const, fid: f.id };
+    const coop = g.config.together === 'coop' && g.seated(f.id);
+    g.notify(-1, g.mine(f.id)
+      ? `Your Hearth went dark${by ? `, taken by ${by.name}` : ''}.${coop ? ` Your allies can rekindle it: take ${g.nodes[f.lostHearth].name} back.` : ''}`
+      : `The Hearth of ${f.name} has gone dark${by ? `, taken by ${by.name}` : ''}!${coop && g.ours(f.id) ? ` Take ${g.nodes[f.lostHearth].name} back to rekindle it.` : ''}`,
+      by && g.ours(by.id) ? 'good' : g.ours(f.id) ? 'bad' : 'event', f.lostHearth, false, herald);
+    if (!g.humans().some((h) => h.alive)) g.declareWinner(-1, 'defeat', 'Every house a player led has fallen.');
+  } else if (f.isPlayer) {
     g.declareWinner(-1, 'defeat', by ? `Your Hearth went dark, taken by ${by.name}.` : 'Your Hearth went dark.');
   } else {
     g.notify(-1, `The Hearth of ${f.name} has gone dark${by ? `, taken by ${by.name}` : ''}!`, by?.isPlayer ? 'good' : 'event', undefined, false, {
@@ -245,7 +297,9 @@ export function eliminate(g: Game, fid: number, byFaction: number) {
 
 export function declareWinner(g: Game, fid: number, victory: VictoryId | 'defeat', reason: string) {
   if (g.outcome) return;
-  const playerWon = fid === g.playerId && !g.config.autoplay;
+  // (Together: this screen's team won, or not. Each screen works out its own; the game played is the same.)
+  const playerWon = g.config.seats ? fid >= 0 && g.ours(fid) : fid === g.playerId && !g.config.autoplay;
   g.outcome = { winner: fid, victory, time: g.time, playerWon, reason };
+  if (g.config.seats) g.outcome.team = fid >= 0 ? g.teamOf(fid) : -1;
   g.sampleHistory();
 }

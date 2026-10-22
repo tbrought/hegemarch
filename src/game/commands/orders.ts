@@ -284,18 +284,23 @@ export function cmdArm(g: Game, fid: number, unitId: number): boolean {
   u.ax = u.x;
   u.ay = u.y;
   for (const r of g.factions) {
-    if (r.id === fid || r.kind !== 'empire' || !r.alive || !r.ai) continue;
+    if (r.id === fid || r.kind !== 'empire' || !r.alive || !r.ai || g.allied(r.id, fid)) continue;
     r.ai.grudge = fid;
     r.ai.grudgeAt = g.time;
     r.ai.firstAttackAt = Math.min(r.ai.firstAttackAt, g.time + 20);
   }
   if (g.fxEnabled) g.fx.push({ k: 'armed', x: u.x, y: u.y, node: n.id, color: f.color });
   const mine = g.nodes.some((x) => x.system === n.system && x.owner === g.playerId) || g.unitList.some((x) => !x.dead && x.owner === g.playerId && x.node >= 0 && g.nodes[x.node].system === n.system);
-  g.notify(-1, f.isPlayer
+  // (Told to this screen as its own, an ally's, or an enemy's: an ally's burns your ships there too.)
+  const own = g.mine(fid);
+  const ally = !own && g.ours(fid);
+  g.notify(-1, own
     ? `Your Starfall is armed at ${n.name}: the star erupts in ${STARFALL_FUSE / 60} minutes. Keep it alive, and have your ships out by then.`
-    : `${g.shortName(f)} armed a Starfall at ${n.name}! The star erupts in ${STARFALL_FUSE / 60} minutes. Destroy the Starfall to stop it.`,
-    f.isPlayer ? 'good' : 'alert', n.id, !f.isPlayer && mine,
-    f.isPlayer ? undefined : { title: 'STARFALL ARMED', sub: `${g.shortName(f)} armed one at ${n.name}: it erupts in ${STARFALL_FUSE / 60} minutes.`, tone: 'red' });
+    : ally
+      ? `${g.shortName(f)}, your ally, armed a Starfall at ${n.name}: the star erupts in ${STARFALL_FUSE / 60} minutes. Have your ships out of that system by then.`
+      : `${g.shortName(f)} armed a Starfall at ${n.name}! The star erupts in ${STARFALL_FUSE / 60} minutes. Destroy the Starfall to stop it.`,
+    own ? 'good' : 'alert', n.id, !own && mine,
+    own ? undefined : { title: 'STARFALL ARMED', sub: `${g.shortName(f)} armed one at ${n.name}: it erupts in ${STARFALL_FUSE / 60} minutes.`, tone: 'red' });
   return true;
 }
 

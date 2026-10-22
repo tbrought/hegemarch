@@ -233,13 +233,14 @@ export function killUnit(g: Game, u: Unit, byFaction: number, _src: Unit | null 
   const spent = u.type === 'starfall' && u.fuse !== undefined && u.fuse <= 0;
   const isShip = def.role !== 'fighter' && !u.temp && !spent;
   if (isShip) owner.stats.shipsLost++;
-  if (u.type === 'seed' && owner.isPlayer) {
+  if (u.type === 'seed' && g.mine(owner.id)) {
     // Never let a kindling fail silently.
     const t = u.order === 'kindle' ? g.nodeAt(u.orderTarget) : null;
     g.notify(owner.id, `Your seed ship was destroyed${t ? ` on its way to ${t.name}` : ''}. Clear the way, then kindle again.`, 'bad', u.node >= 0 ? u.node : undefined);
   }
   // No ship of the player's is ever lost silently. (The seed ship, the Ark and the Gate have words of their own.)
-  if (owner.isPlayer && isShip && u.type !== 'seed' && u.type !== 'ark' && u.type !== 'gate') noteLoss(g, u, byFaction);
+  // (The log of the house on this screen: together, each screen keeps its own.)
+  if (g.mine(owner.id) && isShip && u.type !== 'seed' && u.type !== 'ark' && u.type !== 'gate') noteLoss(g, u, byFaction);
   creditKill(g, u, byFaction, isShip);
   raiseZeal(g, u, isShip);
   martyrBlast(g, u, isShip);
@@ -375,7 +376,7 @@ function lastOfItsKind(g: Game, u: Unit, byFaction: number) {
   }
   if (u.type === 'gate' && owner.gate && owner.gate.unit === u.id) {
     owner.gate = null;
-    g.notify(-1, `${possessive(owner.name)} Starfire Gate has been destroyed!`, owner.isPlayer ? 'bad' : 'good', u.node);
+    g.notify(-1, `${possessive(owner.name)} Starfire Gate has been destroyed!`, g.ours(owner.id) ? 'bad' : 'good', u.node);
   }
   if (u.type === 'stronghold' && g.pirates.alive && u.id === g.pirates.stronghold) {
     g.pirates.alive = false;
@@ -384,7 +385,7 @@ function lastOfItsKind(g: Game, u: Unit, byFaction: number) {
       k.stats.strongholdDestroyed = true;
       g.addEmbers(k, 600);
       g.grantDraft(k, 1);
-      g.notify(-1, `${k.name} destroyed the Corsair Stronghold! The raids are over.`, k.isPlayer ? 'good' : 'info', u.node);
+      g.notify(-1, `${k.name} destroyed the Corsair Stronghold! The raids are over.`, g.ours(k.id) ? 'good' : 'info', u.node);
       if (k.isPlayer) g.notify(k.id, 'Plunder recovered: +600 Embers and a free Boon.', 'good');
     }
     for (const o of g.unitList) if (o.owner === g.pirateId && !o.dead && o !== u) g.deferred.push(() => g.killUnit(o, -1));

@@ -1076,14 +1076,15 @@ function wantsStarfall(g: Game, f: Faction, ctx: Ctx): boolean {
 export function starfallStar(g: Game, f: Faction): GNode | null {
   const ai = f.ai!;
   const from = f.capital;
-  const playerHome = g.player.capital >= 0 ? g.nodes[g.player.capital].system : -1;
+  // (Together, the home system of every player's house: on Easy no player's home is set alight.)
+  const homes = (g.config.seats ? g.humans() : [g.player]).map((p) => (p.capital >= 0 ? g.nodes[p.capital].system : -1));
   // (The system of the world its last attack gave up on: that is the wall a Starfall is for.)
   const wall = ai.stalled && ai.stalled.wall >= 0 ? g.nodes[ai.stalled.wall].system : -1;
   let best: GNode | null = null;
   let bs = 0;
   for (const star of g.nodes) {
     if (star.kind !== 'star' || !f.explored[star.id] || star.hazard || g.armedAt(star)) continue;
-    if (g.config.difficulty === 0 && star.system === playerHome) continue;
+    if (g.config.difficulty === 0 && homes.includes(star.system)) continue;
     let worth = 0;
     let own = false;
     for (const n of g.nodes) {

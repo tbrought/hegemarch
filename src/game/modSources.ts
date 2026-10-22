@@ -38,8 +38,12 @@ export function modSources(g: Game, f: Faction, extraCards: string[] = []): { la
       const tr = TRAIT_BY_ID[t];
       if (tr?.mods) out.push({ label: `Omen: ${tr.name}`, apply: tr.mods });
     }
-    if (f.id === g.playerId && !g.config.autoplay) {
-      const perks = g.config.perks ?? {};
+    // (A player's house by its seat: one whose player has left, and whose orders the AI gives, keeps its perks.)
+    if (g.seated(f.id)) {
+      const perks = g.perksOf(f.id);
+      // An open handicap (versus, a private room): more Embers, as everyone in the room agreed.
+      const handicap = g.seatOf(f.id)?.handicap ?? 0;
+      if (handicap > 0) out.push({ label: 'Handicap', apply: (m) => (m.embers += handicap) });
       out.push({
         label: 'Hall of Heirs',
         // (What the perks give for the whole run: starting Embers and Lore were spent in the first

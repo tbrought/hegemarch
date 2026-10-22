@@ -24,6 +24,7 @@ import * as climb from './commands/climb';
 import * as orders from './commands/orders';
 import * as power from './commands/power';
 import * as production from './commands/production';
+import * as together from './commands/together';
 import * as conquest from './conquest';
 import { TICK } from './constants';
 import type { CardDef } from './data/cards';
@@ -58,7 +59,7 @@ import { discoveryTick } from './systems/discovery';
 import { visibilityTick } from './systems/visibility';
 import type {
   AIState, CrisisState, DmgType, Faction, Fx, GameConfig, GNode, Herald, Lane, Mods, Note, Outcome, PirateState, Projectile, Prompt, QueueCheck,
-  Rarity, Unit, UnitMod, UnitType, VictoryId, WeaponDef, WorldRole,
+  Rarity, Seat, Unit, UnitMod, UnitType, VictoryId, WeaponDef, WorldRole,
 } from './types';
 import * as unitLife from './unitLife';
 import { dist } from './util';
@@ -124,6 +125,11 @@ export class Game {
   stepping = false;
   /** Within an order being kept: one it gives in its turn is part of it. */
   ordering = 0;
+  /**
+   * A game played together: where an order given on this screen goes instead of being carried out (the room,
+   * net/Lockstep.ts). It comes back stamped with a tick, and every screen carries it out then. Not there alone.
+   */
+  outbox?: ((name: string, args: unknown[]) => unknown) | null;
 
   // ---- derived / transient ----
   pathDist!: Float64Array;
@@ -206,8 +212,61 @@ export class Game {
 
   hostile(a: number, b: number): boolean {
     if (a === b || a < 0 || b < 0) return false;
+    // (A game together: the houses of one team are allies.)
+    if (this.config.seats && this.teamOf(a) === this.teamOf(b)) return false;
     // (Ages: a house that has not arrived among the stars yet fights no one, and no one fights it.)
     return this.sleepers === 0 || (!this.asleep(a) && !this.asleep(b));
+  }
+
+  // ---- A game played together (1.28): seats, teams, and the house on this screen ----
+
+  /** A house's team: its seat's in a game together; otherwise its own, shared with no one. */
+  teamOf(fid: number): number {
+    const t = fid >= 0 ? this.factions[fid]?.team : undefined;
+    return t ?? -1000 - fid;
+  }
+
+  /** The same house, or two of one team. */
+  allied(a: number, b: number): boolean {
+    return a === b || (a >= 0 && b >= 0 && this.teamOf(a) === this.teamOf(b));
+  }
+
+  /** A house's seat in a game together (null alone). */
+  seatOf(fid: number): Seat | null {
+    return this.config.seats?.[fid] ?? null;
+  }
+
+  /**
+   * Is this house a player's by its seat (whoever gives its orders this moment: the AI keeps the seat of a
+   * player who has left)? Alone: the player's house.
+   */
+  seated(fid: number): boolean {
+    return this.config.seats ? !!this.config.seats[fid]?.human : fid === this.playerId && !this.config.autoplay;
+  }
+
+  /** The Hall of Heirs perks a player's house plays with: its seat's in a game together, the player's alone. */
+  perksOf(fid: number): Record<string, number> {
+    return (this.config.seats ? this.config.seats[fid]?.perks : this.config.perks) ?? {};
+  }
+
+  /** Is this the house on this screen ("you", "your")? Never in a game the AI plays alone. */
+  mine(fid: number): boolean {
+    return fid >= 0 && fid === this.playerId && !this.config.autoplay;
+  }
+
+  /** Is this the house on this screen, or an ally of it? */
+  ours(fid: number): boolean {
+    return fid >= 0 && !this.config.autoplay && this.allied(fid, this.playerId);
+  }
+
+  /** The houses players lead, by their seats (alone, the player's). */
+  humans(): Faction[] {
+    return this.factions.filter((f) => f.kind === 'empire' && this.seated(f.id));
+  }
+
+  /** The decisions waiting for this house (alone, every decision is the player's). */
+  promptsFor(fid: number): Prompt[] {
+    return this.prompts.filter((p) => (p.fid ?? this.playerId) === fid);
   }
 
   /** Ages, among the stars: has this house not arrived from the cradle yet? */
@@ -494,6 +553,13 @@ export class Game {
   cmdResolvePrompt(promptId: number, choice: number): string | null { return choices.cmdResolvePrompt(this, promptId, choice); }
   dismissPrompt(promptId: number) { return choices.dismissPrompt(this, promptId); }
 
+  // ---- Commands: a game played together (commands/together.ts) ----
+  checkGift(fid: number, to: number, amount: number): QueueCheck { return together.checkGift(this, fid, to, amount); }
+  cmdGift(fid: number, to: number, amount: number): boolean { return together.cmdGift(this, fid, to, amount); }
+  cmdSurrender(fid: number): boolean { return together.cmdSurrender(this, fid); }
+  /** The room's word: a player has left, and the AI leads their house (`toAi`), or they have come back. */
+  handOver(fid: number, toAi: boolean) { return together.handOver(this, fid, toAi); }
+
   // ---- Commands: the House Powers (commands/power.ts) ----
   powerReady(fid: number): QueueCheck { return power.powerReady(this, fid); }
   checkPower(fid: number, target = -1): QueueCheck { return power.checkPower(this, fid, target); }
@@ -659,6 +725,8 @@ export const ORDER_NAMES = [
   'cmdMove', 'cmdAttack', 'cmdKindle', 'cmdSendSeed', 'cmdStop', 'cmdRetreat', 'cmdExplore', 'cmdSetRally', 'cmdArm', 'cmdQueueShip',
   'cmdUpgrade', 'cmdSetRole', 'cmdQueueStarbase', 'cmdQueueGate', 'cmdQueueStarfall', 'cmdBuyBay', 'cmdRebuildArk', 'cmdCancel',
   'cmdAdvance', 'cmdCancelAdvance', 'cmdPower',
+  // (A game played together, 1.28.)
+  'cmdGift', 'cmdSurrender',
 ] as const;
 
 /** An argument as it is kept: nothing and a function as null, a list as a copy. */
@@ -674,6 +742,9 @@ for (const name of ORDER_NAMES) {
   const proto = Game.prototype as unknown as Record<string, (...a: unknown[]) => unknown>;
   const given = proto[name];
   proto[name] = function (this: Game, ...args: unknown[]) {
+    // (Together: an order of this screen's goes to the room, and is carried out when it comes back, by
+    // `ordering` set around it. One given within a tick, or within another order, is part of the game.)
+    if (this.outbox && !this.stepping && !this.ordering) return this.outbox(name, args);
     if (!this.orders || this.stepping || this.ordering) return given.apply(this, args);
     const before = name === 'ensureOffer' ? (args[0] as Faction).draftOffer : null;
     this.ordering++;

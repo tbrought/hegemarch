@@ -17,7 +17,8 @@ import type { Game } from '../Game';
 export function cmdGoal(g: Game, fid: number, id: string): boolean {
   const goal = GOAL_BY_ID[id];
   const f = g.factions[fid];
-  if (g.config.daily || !goal || !f || fid !== g.playerId || g.ui['goal:' + id] || !goal.done(g, f)) return false;
+  // (Nor in a game together: what each player has reached before is their own, and `Game.ui` is each screen's.)
+  if (g.config.daily || g.config.seats || !goal || !f || fid !== g.playerId || g.ui['goal:' + id] || !goal.done(g, f)) return false;
   g.ui['goal:' + id] = 1;
   g.addEmbers(f, GOAL_REWARD);
   g.notify(fid, `Goal reached: ${goal.label}. +${GOAL_REWARD} Embers.`, 'good');
@@ -39,7 +40,8 @@ export function cmdResolvePrompt(g: Game, promptId: number, choice: number): str
   const p = g.prompts.find((x) => x.id === promptId);
   if (!p || p.result !== undefined) return null;
   const ev = EVENT_BY_ID[p.event];
-  const f = g.player;
+  // (A game together: the house the decision asks.)
+  const f = p.fid !== undefined ? g.factions[p.fid] : g.player;
   const c = ev?.choices[choice];
   if (!ev || !c) return null;
   const ctx = { node: p.node, unit: p.unit };

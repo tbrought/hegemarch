@@ -64,9 +64,9 @@ export function erupt(g: Game, star: GNode, by: number) {
   const toll = `${ships} SHIP${ships === 1 ? '' : 'S'} · ${worlds} WORLD${worlds === 1 ? '' : 'S'}`;
   if (g.fxEnabled) g.fx.push({ k: 'nova', x: star.x, y: star.y, node: star.id, color: armer.color, toll });
   // (Whose they were: the most first; the player's own are "yours".)
-  const whose = [...taken].sort((a, b) => b[1] - a[1] || a[0] - b[0]).map(([fid, k]) => `${g.factions[fid].isPlayer ? 'yours' : g.shortName(g.factions[fid])} ${k}`);
-  g.notify(-1, `${star.name} erupts! ${armer.isPlayer ? 'Your Starfall' : `The Starfall of ${g.shortName(armer)}`} took ${ships} ship${ships === 1 ? '' : 's'}` +
+  const whose = [...taken].sort((a, b) => b[1] - a[1] || a[0] - b[0]).map(([fid, k]) => `${g.mine(fid) ? 'yours' : g.shortName(g.factions[fid])} ${k}`);
+  g.notify(-1, `${star.name} erupts! ${g.mine(armer.id) ? 'Your Starfall' : `The Starfall of ${g.shortName(armer)}`} took ${ships} ship${ships === 1 ? '' : 's'}` +
       `${whose.length ? ` (${whose.join(', ')})` : ''} and scorched ${worlds} world${worlds === 1 ? '' : 's'}. The star burns for ${STARFALL_BURN / 60} minutes.`,
-      armer.isPlayer ? 'good' : 'alert', star.id);
+      g.ours(armer.id) ? 'good' : 'alert', star.id);
   if (mine) g.notify(g.playerId, `${mine} of your worlds at ${star.name} ${mine === 1 ? 'is' : 'are'} scorched: no shields, a level lost, the Glow of a new world.`, 'bad', star.id);
 }
