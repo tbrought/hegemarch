@@ -463,37 +463,40 @@ const sb = [
   pEnd(5, FREE),
 ];
 // 3. The Daily throne: one sector a day, the same for everyone; the fastest crown takes the throne.
+// (Short, one idea a shot: 4 bars of The Empty Throne and the end card, 15 s. It was 35 s, and said each thing twice.)
 const sc = [
-  pPicture('daily', ET * 2, ['EVERY {DAY}']),
-  pDark(ET * 2, ['ONE {SECTOR}']),
-  pKindle(ET * 2, ['THE SAME', 'FOR ALL']),
+  pPicture('daily', ET, ['EVERY {DAY}', 'ONE SECTOR']),
   // (Not "the same rivals": a Daily's rivals are drawn from the houses the player did not choose.)
-  { ...pBattle('tealBlue', ET * 2, ['PICK YOUR', '{HOUSE}']), dip: true },
-  { ...pHearth(ET * 2, ['FASTEST', '{CROWN}']), hard: true },
-  pNight(ET * 2, ['TAKES THE', '{THRONE}']),
+  pKindle(ET, ['THE SAME', 'FOR {EVERYONE}']),
+  { ...pHearth(ET, ['FASTEST', '{CROWN}']), hard: true },
+  pNight(ET, ["TODAY'S", '{HEGEMARCH}']),
   pEnd(5, ['DAILY RUN · FREE', 'HEGEMARCH.COM']),
 ];
-// 4. The Starfall: a war going badly; a Starfall armed at a star; its two minutes; the star erupts.
-const ARMED = NOVA.at - 120;
+// 4. The Starfall, shown whole: too many ships to fight, a Starfall armed at their star, its fuse, and the eruption
+// seen at three places at once: the star, the Corsairs' Stronghold and its horde, a world scorched. Nova Ardent in
+// seed 8 led by the Choir, at 69.8 minutes: 161 ships and 7 worlds (scan-8-choir.json; its Starfall the Choir's, armed
+// two minutes before). (It was Xanth in seed 8, whose eruption took no ship: the fleets had left the system.)
+const BLAST = { sector: S(8, { heir: 'choir' }), star: 11, haven: 20, world: 14, at: scan('8-choir').moments.find((m) => m.kind === 'nova' && m.node === 11).tick };
+const ARMED = BLAST.at - sec(120);
+const blast = (from, dur, node, zoom, lines, more = {}) =>
+  up({ sector: BLAST.sector, from, dur, speed: 1, ...more, cam: [{ t: 0, node, zoom, dy: 30 }, { t: 1, node, zoom: zoom * 1.06, dy: 30 }] }, lines);
 const sd = [
-  pBattle('goldOrange', TA * 2, ['LOSING', 'THE WAR?']),
-  { ...up({ sector: S(NOVA.seed), from: sec(ARMED - 0.6), dur: TA * 2, speed: 1, cam: [{ t: 0, node: NOVA.node, zoom: 0.36, dy: 75 }, { t: 1, node: NOVA.node, zoom: 0.4, dy: 75 }] },
-    ['ARM A', '{STARFALL}']), dip: true },
-  { ...up({ sector: S(NOVA.seed), from: sec(ARMED + 2), dur: TA * 4, speed: [4, 40], cam: [{ t: 0, node: NOVA.node, zoom: 0.4, dy: 75 }, { t: 1, node: NOVA.node, zoom: 0.3, dy: 75 }] },
-    ['TWO', 'MINUTES...']), hard: true },
-  { ...pErupt(TA * 2, null, 0.5), hard: true },
-  { ...up({ sector: S(NOVA.seed), from: sec(NOVA.at + 3), dur: TA * 2, speed: 1, cam: [{ t: 0, node: NOVA.node, zoom: 0.17, dy: 30 }, { t: 1, node: NOVA.node, zoom: 0.12, dy: 30 }] },
-    ['NO', 'SURVIVORS']), hard: true },
-  { ...pHearth(TA * 2, ['TURN', 'THE WAR']), dip: true },
-  { ...pBattle('goldRedOrange', TA * 2, null), hard: true },
+  blast(ARMED - sec(12), TA * 1.5, BLAST.haven, 0.26, ['TOO MANY', 'TO [!FIGHT]?']),
+  { ...blast(ARMED - sec(1), TA * 1.5, BLAST.star, 0.36, ['ARM A', '{STARFALL}']), dip: true },
+  { ...up({ sector: BLAST.sector, from: ARMED + sec(1.8), dur: TA * 1.5, speed: [20, 60],
+    cam: [{ t: 0, node: BLAST.star, zoom: 0.34, dy: 30 }, { t: 1, node: BLAST.star, zoom: 0.2, dy: 30 }] }, ['TWO', 'MINUTES...']), hard: true },
+  { ...blast(BLAST.at - sec(0.6), TA, BLAST.star, 0.26, null, { loud: 1.1 }), hard: true },
+  { ...blast(BLAST.at - sec(1.0), TA * 1.5, BLAST.haven, 0.3, ['NO', 'SURVIVORS'], { loud: 1.1 }), hard: true },
+  // (No words of ours: the game's own SCORCHED stands over the world.)
+  { ...blast(BLAST.at - sec(0.2), TA, BLAST.world, 0.42, null, { labels: true }), hard: true },
   pEnd(5, FREE),
 ];
 void PW;
 Object.assign(TRAILERS, {
   'short-pitch': short(sa, [bed('Hegemarch', sa, 0, [{ bars: 2, voices: 'b', vol: 0.5 }, { bars: 2, voices: 'ab', vol: 0.6 }, { bars: 12, voices: 'abd', vol: 0.75 }])]),
   'short-ages': short(sb, [bed('First Fires', sb, 0, [{ bars: 4, voices: 'bh', vol: 0.5 }, { bars: 4, voices: 'abh', vol: 0.6 }, { bars: 8, voices: 'abd', vol: 0.72 }])]),
-  'short-daily': short(sc, [bed('The Empty Throne', sc, 0, [{ bars: 2, voices: 'b', vol: 0.55 }, { bars: 2, voices: 'ab', vol: 0.62 }, { bars: 8, voices: 'abd', vol: 0.72 }])]),
-  'short-starfall': short(sd, [bed('To Arms', sd, 0, [{ bars: 2, voices: 'bd', vol: 0.6 }, { bars: 6, voices: 'abd', vol: 0.68 }, { bars: 8, voices: 'abd', vol: 0.78 }])]),
+  'short-daily': short(sc, [bed('The Empty Throne', sc, 0, [{ bars: 1, voices: 'b', vol: 0.58 }, { bars: 3, voices: 'abd', vol: 0.72 }])]),
+  'short-starfall': short(sd, [bed('To Arms', sd, 0, [{ bars: 2, voices: 'bd', vol: 0.62 }, { bars: 6, voices: 'abd', vol: 0.76 }])]),
 });
 
 // ------------------------------------------------------------------------------------------------
@@ -730,6 +733,11 @@ for (const [name, t] of Object.entries(TRAILERS)) {
       k += x.bars;
     }
   }
-  // (Words are up long enough to read: a shot with words is three and a half seconds at the least.)
-  for (const s of t.shots) if ((s.text ?? []).some((x) => x.style === 'lore') && s.dur < 3.4) throw new Error(`${name}: a shot of ${s.dur.toFixed(2)} s has words`);
+  // (Words are up long enough to read: a shot with words is three and a half seconds at the least; two and a half for
+  // a Short's few words, four or fewer, which are read at a glance.)
+  for (const s of t.shots) {
+    const lore = (s.text ?? []).filter((x) => x.style === 'lore');
+    const words = lore.reduce((n, x) => n + x.lines.join(' ').split(/\s+/).length, 0);
+    if (lore.length && s.dur < (words <= 4 ? 2.4 : 3.4)) throw new Error(`${name}: a shot of ${s.dur.toFixed(2)} s has ${words} words`);
+  }
 }

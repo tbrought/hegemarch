@@ -26,9 +26,11 @@ const COVERS = {
   battle: { ...THUMB, config: sector(90), tick: min(18.2), node: 26, zoom: 0.5, dx: -0.08, dy: 0.2, frames: 40 },
   // A star erupting, its fire on its rings.
   eruption: { ...THUMB, config: sector(8), tick: 38617 + 8, node: 23, zoom: 0.3, dy: 0.18, frames: 40 },
-  // A Short's thumbnail (YouTube's upright 9:16), for the pitch Short: the same star erupting, the name over it and
-  // a line of what it is, clear of the foot of the picture, where YouTube lays a Short's title over it.
-  'short-pitch': { w: 1080, h: 1920, px: 'large', kind: 'thumb', config: sector(8), tick: 38617 + 8, node: 23, zoom: 0.46, dy: 0.08, logo: 0.22, frames: 40,
+  // A Short's thumbnail (YouTube's upright 9:16), for the pitch Short: three houses at war over one world (the Concord,
+  // the Vael and the Ashen at Lyra II, as the 1.27 scan of seed 90 has it: trailer/trailers.mjs, BATTLES.goldRedOrange),
+  // the name over it and a line of what it is, clear of the foot of the picture, where YouTube lays a Short's title
+  // over it. (It was the star erupting, which is now the Starfall Short's to show.)
+  'short-pitch': { w: 1080, h: 1920, px: 'large', kind: 'thumb', config: sector(90), tick: min(30.58) + 50, node: 7, zoom: 0.5, dy: -0.04, logo: 0.2, frames: 40,
     tagline: 'FREE IN YOUR BROWSER' },
   // The cradle in its later ages, every land lit by its tribes: where the story of a run of Ages begins.
   cradle: { ...THUMB, config: sector(12, { mode: 'ages', stage: 'cradle' }), tick: min(14.5), fit: 1.25, frames: 40, logo: 0.3 },
