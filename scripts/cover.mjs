@@ -34,6 +34,10 @@ const COVERS = {
     tagline: 'FREE IN YOUR BROWSER' },
   // The cradle in its later ages, every land lit by its tribes: where the story of a run of Ages begins.
   cradle: { ...THUMB, config: sector(12, { mode: 'ages', stage: 'cradle' }), tick: min(14.5), fit: 1.25, frames: 40, logo: 0.3 },
+  // The Starfall Short's thumbnail, upright: its eruption, Nova Ardent in seed 8 led by the Choir (the Short's own,
+  // trailer/trailers.mjs BLAST: tick 83755), a moment after the blast, and what to do when outnumbered.
+  'short-starfall': { w: 1080, h: 1920, px: 'large', kind: 'thumb', config: sector(8, { heir: 'choir' }), tick: 83755 + 8, node: 11, zoom: 0.46, dy: 0.08,
+    logo: 0.22, frames: 40, tagline: 'BLOW UP THE STAR' },
   // The Ages Short's thumbnail, upright: its war on the cradle (the Lyceum at Aurelia, the Concord's home, in seed 3:
   // the Short's own shot), close enough to read at a phone's size, and the name and what the mode is over it.
   'short-ages': { w: 1080, h: 1920, px: 'large', kind: 'thumb', config: sector(3, { mode: 'ages', stage: 'cradle' }), tick: min(16.33), node: 1, dx: -0.12,
