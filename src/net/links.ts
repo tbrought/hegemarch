@@ -7,9 +7,14 @@ import type { Link } from './Lockstep';
 import type { ClientMsg, RoomMsg } from './protocol';
 import type { Conn, RoomCore } from './RoomCore';
 
-/** Where rooms are: the page's own server (hegemarch.com/api/room, or the dev server's). */
+/** The server with the rooms: the page's own (the dev server's), and hegemarch.com's from www too (the Worker's route is there). */
+function roomHost(): string {
+  return location.hostname === 'www.hegemarch.com' ? 'hegemarch.com' : location.host;
+}
+
+/** Where rooms are: hegemarch.com/api/room, or the dev server's. */
 export function roomBase(): string {
-  return `${location.protocol === 'https:' ? 'wss' : 'ws'}://${location.host}/api/room`;
+  return `${location.protocol === 'https:' ? 'wss' : 'ws'}://${roomHost()}/api/room`;
 }
 
 /** Can this page play together? Only from a server that has rooms (not a file opened from a disk, not itch.io). */
@@ -21,7 +26,7 @@ export function canPlayTogether(): boolean {
 
 /** Ask the server for a new room: its code. */
 export async function newRoom(): Promise<string> {
-  const r = await fetch(`${location.protocol}//${location.host}/api/room/new`, { method: 'POST' });
+  const r = await fetch(`${location.protocol}//${roomHost()}/api/room/new`, { method: 'POST' });
   if (!r.ok) throw new Error(`The server could not make a room (${r.status}).`);
   const { code } = (await r.json()) as { code: string };
   return code;

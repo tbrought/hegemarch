@@ -285,6 +285,8 @@ export class RoomCore {
       case 'options': {
         if (!owner) return;
         const o = { ...this.options, ...sane(msg.options) };
+        // (Never a sector with fewer seats than there are players in the room.)
+        if (SEATS_BY_SIZE[o.size] < this.members.length) o.size = this.options.size;
         const sizeChanged = o.size !== this.options.size || o.together !== this.options.together;
         this.options = o;
         if (sizeChanged) this.reseat();
@@ -325,7 +327,7 @@ export class RoomCore {
   /** The seats of the room's size and kind, keeping its players in theirs (as far as there are seats). */
   private reseat() {
     const fresh = defaultSeats(this.options);
-    const players = this.members.slice(0, fresh.length);
+    const players = this.members.slice(0, fresh.length); // (all of them: the room keeps a size that seats them)
     for (const m of players) {
       const was = this.seats[m.seat];
       const at = players.indexOf(m);
@@ -333,7 +335,6 @@ export class RoomCore {
       if (this.owner === m.seat) this.owner = at;
       m.seat = at;
     }
-    for (const m of this.members.slice(fresh.length)) this.drop(m);
     this.seats = fresh;
     this.teamUp();
   }

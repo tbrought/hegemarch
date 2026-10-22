@@ -1619,6 +1619,10 @@ UI snapshot of section 8: nothing in the game changed.)
 - `test:uifuzz`, `test:layouts`, `test:menus`: random play through the real UI (fails on any error or
   a dialog that cannot be left), every dialog at the extremes of screen size and content, and every
   menu over the live sector.
+- `test:together`, `test:uifuzz-together` (1.28): two players in one room through the dev server, every
+  step of a game together; and random play by both, the games held still and compared every so often (in
+  versus, compared by the room as they run): an interface that changed the game other than by an order
+  would put the screens out of step, and the test fails on the first time the room has to.
 - `test:frame`: the game in a frame, as in the artifact and on itch.io (1.23.4): a click outside it takes
   the keyboard away, and a click on a HUD button, on the map or a right click each take it back.
 - `npm test` plays on two runs saved by 1.18.3, the version the public site had (`tests/oldsaves.test.ts`,

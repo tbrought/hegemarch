@@ -65,6 +65,8 @@ export class Lockstep {
   peers: PeerState[] = [];
   /** The game is being played again from its orders: how far (0 to 1), and why. */
   rebuilding: { why: string } | null = null;
+  /** How many times the room found this screen's game out of step with the others' (the tests hold it to 0). */
+  resyncs = 0;
   chat: ChatLine[] = [];
   pings: Ping[] = [];
   /** Players whose chat this screen does not show (a click on their name in the players' list). */
@@ -151,6 +153,7 @@ export class Lockstep {
       case 'start':
         return this.take(m);
       case 'resync':
+        this.resyncs++;
         this.log = m.log.slice();
         this.to = m.to;
         return this.rebuild(`The screens fell out of step (${m.why}). Playing the game again from its orders…`);

@@ -48,6 +48,8 @@ const steps = [
   ['sound', 'node scripts/sound.mjs', true],
   // (Games played together, 1.28: two players through the dev server's rooms.)
   ['together', 'node scripts/together.mjs', true],
+  ['uifuzz together', 'node scripts/uifuzz-together.mjs 90 1', true],
+  ['uifuzz together --versus', 'node scripts/uifuzz-together.mjs 60 4 versus', true],
   ['layouts', 'node scripts/layouts.mjs', true],
   ['ages', 'node scripts/ages.mjs', true],
   ['fit', 'node scripts/fit.mjs', true],

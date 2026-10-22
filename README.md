@@ -286,6 +286,8 @@ npm run test:calm          # a player who asks for less motion: every new moment
 npm run test:powers        # the House Power: its button, D to aim and cast, put away, a Wayfinder's world clicked
 npm run test:frame         # the game in a frame (artifact, itch.io): a click in it always takes the keyboard back
 npm run test:uifuzz        # minutes of random clicks, drags, keys and resizes through menus and runs
+npm run test:together      # two players in one room: host, join, orders, chat, pause, draft, gift, rejoin, leave
+npm run test:uifuzz-together  # two players clicking at random in one room; their games must stay one game
 npm run test:perf          # big battle frame-rate check
 npm run test:dist          # smoke-tests dist/hegemarch.html from disk (after npm run build)
 npm run test:site          # the website in release/site, at four widths, with motion reduced and

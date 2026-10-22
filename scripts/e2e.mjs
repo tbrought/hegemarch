@@ -136,7 +136,8 @@ try {
   await page.click('.mode-tabs [data-sa="daily"]');
   check('and to the daily run', /^DAILY RUN/.test(await page.textContent('.mode-tabs .active')) && (await page.$('[data-sa="size:small"]')) === null);
   await page.click('[data-sa="menu"]');
-  check('once looked at, the Ages run is no longer marked as new', (await page.$('.mode-flag')) === null);
+  check('once looked at, the Ages run is no longer marked as new', (await page.$('.mode.ages .mode-flag')) === null);
+  check('the way to play together is, until it is looked at', (await page.textContent('.mode.together .mode-flag')) === 'NEW');
   await page.click('[data-sa="setup"]');
   // Each house card carries a banner: its Hearth and starting fleet, drawn by the game, and alive.
   const banner = () =>

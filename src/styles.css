@@ -2672,8 +2672,15 @@ button[data-tip],
   color: var(--mist);
 }
 
-.together .chat-lines b {
+.together .chat-lines b,
+.together .opt .help b,
+.together .together-record b {
+  font-weight: inherit;
   color: var(--bone);
+}
+
+.together .together-record b.gold {
+  color: var(--gold);
 }
 
 .together .room-chat .row {

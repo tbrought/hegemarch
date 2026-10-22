@@ -7,7 +7,7 @@
 import { DIFFICULTY_NAMES } from '../../game/constants';
 import { HEIR_BY_ID, HEIRS } from '../../game/data/heirs';
 import type { Difficulty } from '../../game/types';
-import { cleanName, isCode, MAX_PLAYERS, NET_SPEEDS, startProblem, type LobbySeat, type RoomOptions } from '../../net/protocol';
+import { cleanName, isCode, MAX_PLAYERS, NET_SPEEDS, SEATS_BY_SIZE, startProblem, type LobbySeat, type RoomOptions } from '../../net/protocol';
 import { saveProfile } from '../../meta/profile';
 import { esc } from '../../ui/format';
 import type { App } from '../App';
@@ -56,8 +56,10 @@ export function showTogether(app: App) {
   const o = L.options;
   const versus = o.together === 'versus';
   const hostOnly = 'The host sets the room up.';
-  const btn = (sa: string, label: string, on: boolean, tip: string, enabled = host) =>
-    `<button class="small${on ? ' active' : ''}${enabled ? '' : ' disabled'}" ${enabled ? `data-sa="${sa}"` : 'data-sa="room-host-only"'} data-tip="${esc(enabled ? tip : `${hostOnly} ${tip}`)}">${label}</button>`;
+  // (Greyed with its reason: the host sets the room up, and a sector never has fewer seats than the room has players.)
+  const btn = (sa: string, label: string, on: boolean, tip: string, why = host ? '' : hostOnly) =>
+    `<button class="small${on ? ' active' : ''}${why ? ' disabled' : ''}" data-sa="${why ? 'room-host-only' : sa}" data-tip="${esc(why ? `${why} ${tip}` : tip)}">${label}</button>`;
+  const players = L.seats.filter((s) => s.kind === 'player').length;
   const check = (sa: string, label: string, on: boolean, tip: string) =>
     `<div class="check ${on ? 'on' : ''}${host ? '' : ' disabled'}" ${host ? `data-sa="${sa}"` : 'data-sa="room-host-only"'} role="checkbox" aria-checked="${on}" tabindex="0" data-tip="${esc(host ? tip : `${hostOnly} ${tip}`)}"><span class="box"></span>${label}</div>`;
   const sizes: [RoomOptions['size'], string, string][] = [
@@ -70,7 +72,7 @@ export function showTogether(app: App) {
         <div class="help">${versus
           ? 'Player against player. <b>No Hall of Heirs perks</b>: every house and every Boon for everyone, as in the Daily. Three pauses of a minute each.'
           : 'Allies against the AI. Your own houses and Hall of Heirs perks. You see what your allies see, and win together; a fallen ally comes back when you retake their Hearth.'}</div></div>
-      <div class="opt px-box"><h4>SECTOR</h4><div class="row">${sizes.map(([k, n, d]) => btn(`room-size:${k}`, n, o.size === k, d)).join('')}</div>
+      <div class="opt px-box"><h4>SECTOR</h4><div class="row">${sizes.map(([k, n, d]) => btn(`room-size:${k}`, n, o.size === k, d, !host ? hostOnly : SEATS_BY_SIZE[k] < players ? `There are ${players} players in the room: too many for this sector.` : '')).join('')}</div>
         <div class="help">${sizes.find((x) => x[0] === o.size)![2]} Seats that are not a player's are the AI's, or closed.</div></div>
       <div class="opt px-box"><h4>THE AI HOUSES</h4><div class="row">${DIFFICULTY_NAMES.map((n, i) => btn(`room-diff:${i}`, n.toUpperCase(), o.difficulty === i, `The AI houses play on ${n}.`)).join('')}</div>
         <div class="help">How hard the rival houses the AI leads are.</div></div>
@@ -84,7 +86,6 @@ export function showTogether(app: App) {
           <div class="help">Each AI house fights for itself, or they stand together against you.</div></div>`}
     </div>`;
   const seats = L.seats.map((s, i) => seatRow(app, room, s, i)).join('');
-  const players = L.seats.filter((s) => s.kind === 'player').length;
   const why = startProblem(L.seats, o, L.owner);
   const me = L.seats[you];
   const chat = room.chat.slice(-8).map((c) => `<div class="chat-line"><span class="swatch" style="background:${seatColor(L.seats[c.from])}"></span> <b>${esc(c.name)}</b> ${esc(c.text)}</div>`).join('');

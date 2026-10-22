@@ -63,6 +63,78 @@ describe('a room and its screens agree on what a game together is', () => {
     expect(b.game.player.id).toBe(b.seat);
   });
 
+  it('the lobby: only its owner sets it up; when the owner leaves, the next player owns it', () => {
+    const w = new NetWorld(20, 10, 5);
+    const a = w.join('ALICE');
+    w.run(200);
+    const b = w.join('BRUNO');
+    w.run(200);
+    expect(b.lobby!.owner).toBe(a.lobby!.you);
+    // (Not the owner: nothing changes.)
+    w.send(b, { t: 'options', options: { size: 'large', difficulty: 3 } });
+    w.run(200);
+    expect(b.lobby!.options.size).toBe('medium');
+    expect(b.lobby!.options.difficulty).toBe(1);
+    w.send(a, { t: 'leave' });
+    w.run(300);
+    expect(b.lobby!.owner).toBe(b.lobby!.you);
+    expect(b.lobby!.seats[a.lobby!.you].kind).toBe('open');
+    w.send(b, { t: 'options', options: { size: 'large' } });
+    w.run(200);
+    expect(b.lobby!.options.size).toBe('large');
+    expect(b.lobby!.seats.length).toBe(6);
+  });
+
+  it('a new size keeps every player in a seat, and is never too small for the players there are', () => {
+    const w = new NetWorld(20, 10, 6);
+    const names = ['ALICE', 'BRUNO', 'CIRCE', 'DARIO'];
+    const s0 = w.join(names[0]);
+    w.run(200);
+    w.send(s0, { t: 'options', options: { size: 'large' } });
+    w.run(200);
+    // (Four players: the owner opens two more seats of the six.)
+    w.send(s0, { t: 'seat', seat: 2, kind: 'open' });
+    w.send(s0, { t: 'seat', seat: 3, kind: 'open' });
+    w.run(200);
+    const all = [s0, ...names.slice(1).map((n) => {
+      const s = w.join(n);
+      w.run(200);
+      return s;
+    })];
+    expect(all.every((s) => s.lobby!.you >= 0)).toBe(true);
+    // A small sector seats three: four players stay where they are.
+    w.send(s0, { t: 'options', options: { size: 'small' } });
+    w.run(200);
+    expect(s0.lobby!.options.size).toBe('large');
+    // A medium one seats four: every player keeps a seat of their own, with their house and name.
+    w.send(s0, { t: 'options', options: { size: 'medium' } });
+    w.run(300);
+    const L = s0.lobby!;
+    expect(L.options.size).toBe('medium');
+    expect(L.seats.length).toBe(4);
+    expect(L.seats.filter((x) => x.kind === 'player').map((x) => x.name).sort()).toEqual([...names].sort());
+    expect(new Set(all.map((s) => s.lobby!.you)).size).toBe(4);
+    for (const s of all) expect(L.seats[s.lobby!.you].name).toBe(s.name);
+    expect(L.owner).toBe(s0.lobby!.you);
+  });
+
+  it('the speed during a game: in co-op the host changes it for everyone; in versus no one does', () => {
+    const coop = started(2, 'coop');
+    const [h, o] = coop.screens;
+    expect(h.ls!.speed).toBe(3);
+    coop.w.send(o, { t: 'speed', speed: 1 });
+    coop.w.run(300);
+    expect(h.ls!.speed).toBe(3);
+    coop.w.send(h, { t: 'speed', speed: 2 });
+    coop.w.run(300);
+    expect(h.ls!.speed).toBe(2);
+    expect(o.ls!.speed).toBe(2);
+    const vs = started(2, 'versus');
+    vs.w.send(vs.screens[0], { t: 'speed', speed: 1 });
+    vs.w.run(300);
+    expect(vs.screens.map((s) => s.ls!.speed)).toEqual([3, 3]);
+  });
+
   it('a new room is not joined once its game has begun, nor by another build', () => {
     const { w } = started(2, 'coop');
     const late = w.join('LATER');

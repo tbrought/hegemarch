@@ -16,7 +16,7 @@ below says how the build came out, and where it differs from the draft that foll
 | hegemarch.com's rooms | `worker/src/room.ts` (a Durable Object per room), `worker/wrangler.toml` |
 | The dev server's rooms | `scripts/lib/roomhost.ts` (a Vite plugin) |
 | On screen | `src/app/screens/together.ts` (host, join, lobby), `src/app/together.ts`, `src/ui/hud/together.ts`, `src/ui/modals/together.ts`, `run.ts startNetRun` |
-| Tests | `tests/net.test.ts` (a room and 2 to 4 screens in one process, with a slow and jittery wire), `tests/roomdo.test.ts`, `scripts/together.mjs` (two browsers, in `npm run verify`) |
+| Tests | `tests/net.test.ts` (a room and 2 to 4 screens in one process, with a slow and jittery wire), `tests/roomdo.test.ts`, `scripts/together.mjs` (two browsers, in `npm run verify`), `scripts/uifuzz-together.mjs` (two players clicking at random in one room, co-op and versus: the games must never need putting back in step) |
 
 **A game alone is exactly as it was.** Every rule for several players keys on the seats, which a game
 alone does not have; the golden traces (26 runs, whole state every 30 s) and the AI simulation came out the
