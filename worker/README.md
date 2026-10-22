@@ -116,6 +116,33 @@ npx wrangler d1 execute hegemarch-board --remote --command "UPDATE crowns SET na
 version's code by the version in `package.json` on GitHub. A run from a version that isn't on GitHub yet waits: it is tried again every
 half hour, for up to three days.
 
+## Games played together (1.28)
+
+The same Worker runs the rooms of games played together (`src/room.ts`, docs/MULTIPLAYER.md): a Durable Object for each room, named by
+its five-letter code, at `hegemarch.com/api/room/...`. A room holds its lobby and the clock of its game, passes every player's orders to
+every player, and keeps them (a player whose connection drops comes back and catches up). Every player's browser runs the game itself:
+the room never does, so it stays small and cheap.
+
+**Setting it up** is one deploy, from the `worker` folder, after the release that brings it:
+
+```
+npx wrangler deploy
+```
+
+`wrangler.toml` already has the route (`hegemarch.com/api/room/*`), the binding (`ROOMS`) and the migration that creates the Durable
+Object class (`rooms-1`, SQLite-backed, which the free plan allows). Nothing else to create, no secret.
+
+**What it costs:** a room uses Durable Object time only while its game is played: about 450 GB-seconds an hour of play. The free plan
+allows 13,000 GB-seconds and 100,000 requests a day (WebSocket messages count 20 to one), so about 28 hours of games a day. If games
+together outgrow that, the $5/month Workers plan pays for the rest at a fraction of a cent per game-hour. A room no one has used for
+seven days is deleted.
+
+**What it keeps:** each player's name (three to five letters), house and a random token (to come back with), the game's settings and its
+orders, for seven days. No accounts, no email, no IP addresses.
+
+**Locally**, the dev server (`npx vite`) runs the same rooms itself (`../scripts/lib/roomhost.ts`): two browser tabs on
+`localhost:5173` can play together with no Worker at all.
+
 ## Watching it work
 
 - GitHub → **Actions** → *Check the Daily board*: one entry per call, with a line for each run checked (stands, or why not).
@@ -134,4 +161,5 @@ half hour, for up to three days.
 | `../scripts/verify-daily.ts` | The checker (GitHub Actions). |
 | `../src/game/replay.ts` | How a run is played again, and what a list of orders may hold. |
 | `../src/meta/board.ts` | What the game, the website and the Worker agree on. |
+| `src/room.ts` | A room of a game played together: the Durable Object around `../src/net/RoomCore.ts` (the same room the dev server and the tests run). |
 | `../scripts/board-e2e.ts` | The whole board end to end on this machine: a bot's crowned Daily is sent, checked and shown, and two runs that are not what they claim are turned down. |

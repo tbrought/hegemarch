@@ -3,9 +3,12 @@
 name = "hegemarch-board"
 main = "src/index.ts"
 compatibility_date = "2026-09-01"
-# Only at hegemarch.com/api/daily/..., not at a workers.dev address of its own.
+# Only at hegemarch.com/api/daily/... and /api/room/..., not at a workers.dev address of its own.
 workers_dev = false
-routes = [{ pattern = "hegemarch.com/api/daily/*", zone_name = "hegemarch.com" }]
+routes = [
+  { pattern = "hegemarch.com/api/daily/*", zone_name = "hegemarch.com" },
+  { pattern = "hegemarch.com/api/room/*", zone_name = "hegemarch.com" },
+]
 
 [[d1_databases]]
 binding = "DB"
@@ -25,3 +28,13 @@ GITHUB_WORKFLOW = "verify-daily.yml"
 # Secrets (README.md, step 4), never in this file:
 #   npx wrangler secret put VERIFY_SECRET
 #   npx wrangler secret put GITHUB_TOKEN
+
+# The rooms of games played together (1.28, src/room.ts): a Durable Object for each room, on the free plan
+# (SQLite-backed Durable Objects). README.md, "Games played together".
+[[durable_objects.bindings]]
+name = "ROOMS"
+class_name = "Room"
+
+[[migrations]]
+tag = "rooms-1"
+new_sqlite_classes = ["Room"]

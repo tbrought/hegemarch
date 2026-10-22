@@ -11,10 +11,19 @@
  *   GET  /api/daily/pending       the checker's: runs to check, with their orders (VERIFY_SECRET)
  *   POST /api/daily/verdict       the checker's: what it found (VERIFY_SECRET)
  *
+ * And the rooms of games played together (1.28, room.ts): a Durable Object for each.
+ *
+ *   POST /api/room/new            a new room: { code }
+ *   GET  /api/room/<CODE>/ws      a screen's WebSocket to its room
+ *
  * It keeps three letters, a house, a time and a run's orders, and nothing else: no account, no address,
  * no cookie, no IP. A run's orders are dropped once they are no longer needed (`prune`).
  */
 import { BOARD_LONGEST, BOARD_SHOWN, dayOf, isBoardDay, nameProblem, ordOf, THRONE_DAYS, type BoardEntry } from '../../src/meta/board';
+import { newRoom, Room, roomSocket, type RoomNamespace } from './room';
+
+// (The Durable Object of a room: wrangler.toml binds it as ROOMS.)
+export { Room };
 
 // The little of D1 and of the Workers runtime used here (@cloudflare/workers-types has it all).
 export interface D1Result<T = Record<string, unknown>> {
@@ -44,6 +53,8 @@ export interface Env {
   GITHUB_REPO?: string;
   /** "verify-daily.yml" (wrangler.toml). */
   GITHUB_WORKFLOW?: string;
+  /** The rooms of games played together (wrangler.toml: a Durable Object for each). */
+  ROOMS?: RoomNamespace;
 }
 
 /** The most a request may hold, and a run's orders (a long run's are some tens of kilobytes, gzipped). */
@@ -294,6 +305,14 @@ export default {
       if (path === '/api/daily/throne' && req.method === 'GET') return await throne(env, now);
       if (path === '/api/daily/pending' && req.method === 'GET') return isChecker(req, env) ? await pending(env, now) : fail('Not yours.', 401);
       if (path === '/api/daily/verdict' && req.method === 'POST') return isChecker(req, env) ? await verdict(req, env, now) : fail('Not yours.', 401);
+      // Games played together.
+      if (path === '/api/room/new' && req.method === 'POST') {
+        if (!env.ROOMS) return fail('Rooms are not set up here.', 503);
+        const made = await newRoom(env.ROOMS);
+        return made ? json(made) : fail('No room could be made just now.', 503);
+      }
+      const room = /^\/api\/room\/([A-Z2-9]{5})\/ws$/.exec(path);
+      if (room && env.ROOMS) return await roomSocket(req, env.ROOMS, room[1]);
       return fail('Nothing here.', 404);
     } catch (err) {
       console.error(err);
