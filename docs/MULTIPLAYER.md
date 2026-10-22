@@ -98,8 +98,24 @@ the end (§10).
 
 1v1, 2v2, or a free-for-all of 3–4 players. AI houses can fill the other seats of a large sector.
 
-- **Fair rules, like the Daily:** no Hall of Heirs perks, every Boon (Legendaries and Pacts), all six
-  houses for everyone. Unlocks are a single-player and co-op reward, not an edge over another person.
+- **The Hall of Heirs does not apply, in any versus game, casual or rated.** Everyone plays the
+  Daily's rules:
+  - **No perks.** Old Coin, Lorekeepers, Veteran Escort, Archivist, Fortunate Stars, Ancestral Walls
+    and Second Breath are all off. They're flat advantages earned by hours played (more Embers, Lore,
+    hull, walls and rerolls, rarer Boons), and over a 40-minute game they compound. A friend invited
+    on their first day would face a maxed Hall and lose to the numbers, not the play, and every loss
+    would leave "was that fair?" behind.
+  - **The same Boons for everyone:** Pacts and Legendaries (with the Legendary promise) for every
+    player, whatever they've unlocked.
+  - **All six houses for everyone.** Houses are balanced against one another, but a veteran
+    choosing from six against a newcomer's three could counter-pick.
+- **The Hall still gains from versus.** A versus game pays Legacy, win or lose, which is spent in the
+  Hall for single-player and co-op. Versus feeds your progression, but progression never decides a
+  versus game.
+- **For friends of uneven skill:** an explicit handicap per seat in private rooms (+10%, +20% or
+  +30% Embers), shown in the lobby and on the results screen. Unlike hidden perks, it's out in the
+  open and both players agreed to it. It's never allowed in rated play.
+- **AI seats** in versus play at the lobby's difficulty, the same for every human.
 - **Destinies are a race.** Everyone sees the same Destinies and everyone's progress toward them, as
   the countdown banners already show. This is where Hegemarch differs from AoE2: you can lose to a
   Gate you didn't scout, a hoard you didn't raid, or a Starfall you didn't defuse. Teams win as in
@@ -390,8 +406,9 @@ a head-to-head record against the names you've played.
 3. **Server:** Cloudflare Durable Objects beside the Daily Worker (free to start; the $5/month plan
    once there's steady play). Agreed, or would you rather avoid any server cost (peer-to-peer, with
    the drawbacks in §4.1)?
-4. **Versus rules:** 3 pauses of 60 s per player, speed fixed by the lobby (1× by default), no perks,
-   everything unlocked. Agreed?
+4. **Versus rules:** 3 pauses of 60 s per player, speed fixed by the lobby (1× by default). The Hall
+   of Heirs is off in all versus games (§2.2: no perks, every Boon and house for everyone, Legacy
+   still earned), with an optional open handicap in private rooms. Agreed?
 5. **Co-op progression:** your own Hall perks and unlocks count in co-op, and each player earns full
    Legacy. Agreed?
 6. **The rekindle mechanic** (§2.1): a fallen ally comes back when their Hearth is retaken. Build it,
