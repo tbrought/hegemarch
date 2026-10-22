@@ -35,7 +35,7 @@ same to the byte.
   to begin with; their Boons were never lost. Meanwhile they see through their allies' eyes.
 - **Pings** are Alt and a click; **chat** is Enter (Tab: your team or everyone, in versus).
 - **The stats** kept in a browser: co-op and versus played and won, and the record against each name played
-  in versus (the Together page).
+  in versus (the Multiplayer page). The title screen's card is MULTIPLAYER.
 - **Not built** (later, with the rest of §2.3 and §6): curated fair sectors, open rooms and quick match,
   spectating and replays, Shared Command, Ages together, ranked seasons.
 - **Names** in a room are checked as the Daily board's are (no slurs); the chat is not filtered (rooms are

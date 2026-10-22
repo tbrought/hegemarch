@@ -1922,6 +1922,6 @@ catches up when it is shown. A room never plays the game itself, so it costs nex
 The players at the top left (their house's colour as a square, their name, AWAY/AI/SLOW/FALLEN, versus
 pauses left; a click mutes their chat; the ember button sends an ally Embers), the room's pause at the foot,
 chat into the log (Enter), pings on the map (Alt and a click), and the room's news in the banner before
-anything else (the connection, catching up, a slow player, a house fallen). TOGETHER is the title screen's
-fourth way to play, greyed with why before the First Night or away from hegemarch.com.
+anything else (the connection, catching up, a slow player, a house fallen). MULTIPLAYER is the title
+screen's fourth way to play, greyed with why before the First Night or away from hegemarch.com.
 

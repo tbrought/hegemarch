@@ -15,7 +15,7 @@ export const GIFT_FEE = 0.2;
 
 /** Why these Embers cannot go to that ally, or null. */
 export function checkGift(g: Game, fid: number, to: number, amount: number): QueueCheck {
-  if (!g.config.seats) return 'Only in a game played together.';
+  if (!g.config.seats) return 'Only in a multiplayer game.';
   const f = g.factions[fid];
   const t = g.factions[to];
   if (!f || !t || to === fid || t.kind !== 'empire') return 'No such house.';

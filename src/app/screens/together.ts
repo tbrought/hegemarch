@@ -177,7 +177,7 @@ function showEntry(app: App) {
   const why = cannotPlayTogether(app);
   const name = cleanName(app.profile.boardName ?? '');
   const off = why ? ' disabled' : '';
-  app.put('together', page(app, `<h1>PLAY TOGETHER</h1>
+  app.put('together', page(app, `<h1>MULTIPLAYER</h1>
       <div class="lead">Lead a house <em>with friends against the AI</em> (co-op), or <b>against each other</b> (versus). One of you hosts a room;
         the others join it with its code or its link. Everyone plays in their own browser, and up to ${MAX_PLAYERS} can play.</div>
       ${why ? `<div class="px-box notice wide"><span>${esc(why)}</span></div>` : ''}
@@ -200,7 +200,7 @@ function record(app: App): string {
   const t = app.profile.together;
   if (!t || t.coop.played + t.versus.played === 0) return '';
   const rivals = Object.entries(t.against).sort((a, b) => b[1][0] + b[1][1] - (a[1][0] + a[1][1])).slice(0, 8);
-  return `<div class="px-box together-record"><h4>YOUR GAMES TOGETHER</h4>
+  return `<div class="px-box together-record"><h4>YOUR MULTIPLAYER GAMES</h4>
       <p>Co-op: <b>${t.coop.played}</b> played, <b class="gold">${t.coop.won}</b> crowned · Versus: <b>${t.versus.played}</b> played, <b class="gold">${t.versus.won}</b> won</p>
       ${rivals.length ? `<p class="dim">Against: ${rivals.map(([n, [w, l]]) => `${esc(n)} <b>${w}–${l}</b>`).join(' · ')}</p>` : ''}
       <p class="dim">Kept in this browser.</p></div>`;

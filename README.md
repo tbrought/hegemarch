@@ -190,9 +190,9 @@ AGES RUN on the title screen starts a longer game (about an hour or more) in two
 On Normal the first rival Ark leaves at about 22 to 30 minutes; a run takes 60 to 85 minutes on a
 medium sector.
 
-## Playing together
+## Multiplayer
 
-TOGETHER on the title screen plays with friends, each in their own browser (at hegemarch.com, once the
+MULTIPLAYER on the title screen plays with friends, each in their own browser (at hegemarch.com, once the
 First Night is done): up to four players, the rest of a sector's houses led by the AI.
 
 - **A room.** One player hosts it and sends the others its code or its link. The host sets the way to

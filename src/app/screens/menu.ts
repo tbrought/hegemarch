@@ -84,7 +84,7 @@ export function showMenu(app: App) {
           <button class="mode together${together ? ' disabled' : ''}" data-sa="together" data-tip="${esc(together ?? 'Play with friends: allied houses against the AI (co-op), or against each other (versus). Host a room, and send them its code or link.')}">
             ${p.togetherSeen ? '' : '<span class="mode-flag">NEW</span>'}
             <canvas class="mode-art" data-art="together" aria-hidden="true"></canvas>
-            <span class="mode-name">TOGETHER</span>
+            <span class="mode-name">MULTIPLAYER</span>
             <span class="mode-pitch">With friends: allies against the AI, or each other.</span>
             <span class="mode-meta">2 TO ${MAX_PLAYERS} PLAYERS</span>
           </button>

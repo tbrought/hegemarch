@@ -50,7 +50,7 @@ const card = await A.evaluate(() => {
   const el = document.querySelector('[data-sa="together"]');
   return el ? { disabled: el.classList.contains('disabled'), text: el.textContent } : null;
 });
-check('the title screen has a TOGETHER card', !!card && !card.disabled && /TOGETHER/.test(card.text));
+check('the title screen has a MULTIPLAYER card', !!card && !card.disabled && /MULTIPLAYER/.test(card.text));
 await A.click('[data-sa="together"]');
 await A.waitForTimeout(300);
 await A.click('[data-sa="room-host"]');

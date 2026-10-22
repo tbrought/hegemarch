@@ -152,7 +152,7 @@ export function forgetRoom() {
 
 /** Why this page cannot play together (null: it can). */
 export function cannotPlayTogether(app: App): string | null {
-  if (!canPlayTogether()) return 'Games together are played at hegemarch.com (in a browser), not from a downloaded file or itch.io.';
-  if (!app.profile.tutorialDone) return 'Play the First Night first: everyone in a game together knows the basics.';
+  if (!canPlayTogether()) return 'Multiplayer is played at hegemarch.com (in a browser), not from a downloaded file or itch.io.';
+  if (!app.profile.tutorialDone) return 'Play the First Night first: everyone in a multiplayer game knows the basics.';
   return null;
 }
