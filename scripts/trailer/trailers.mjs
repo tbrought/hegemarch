@@ -500,6 +500,53 @@ Object.assign(TRAILERS, {
 });
 
 // ------------------------------------------------------------------------------------------------
+// 5. Narrated: the Epic, told over by the one who made the game (promo/trailers/narrated.html has the words, line
+//    by line against its shots). The Epic's story, the cradle and then the stars, each shot as long as what is said
+//    over it. A keyword or two in place of the story's lines: the voice tells the story, and no one reads one
+//    sentence while hearing another. Its tunes are beds (no melody: the voice is the melody) and its sound is
+//    quieter (-20 LUFS, as the Shorts': the voice goes on top). Its Starfall is the Starfall Short's: the horde at
+//    Blackstar Haven, the star erupting, the horde gone.
+// ------------------------------------------------------------------------------------------------
+/**
+ * Nova Ardent's system, wide: on `node` from `from`, drawn in a little. (The blast and the horde's end at half the
+ * fighting's loudness: at full they stood 6 dB over the rest of the war, and over the voice.)
+ */
+const wideBlast = (from, dur, node, zoom, loud = 1.1) => ({ sector: BLAST.sector, from, dur, speed: 1, loud, duck: 0.88, ...cinema,
+  cam: [{ t: 0, node, zoom }, { t: 1, node, zoom: zoom * 1.06 }], text: [] });
+const nv = [
+  { ...dawn(FF * 2, null, cinema), fadeIn: 1.2 },
+  { ...firstFire(FF * 3, null, cinema), dip: true },
+  { ...cradleRise(FF * 3, ['{AGES} MODE'], cinema), dip: true },
+  { ...climb(FF * 3, ['SIX {AGES}'], cinema), dip: true },
+  { ...cradleWar(FF * 3, null, cinema), dip: true },
+  { ...launch(FF * 2, null, cinema), dip: true },
+  // (The cradle's last chord rings under the dark, and To Arms begins with the light.)
+  { ...darkSector(BRIDGE, null, cinema), dip: true },
+  { ...kindle(TA * 5, null, cinema), dip: true },
+  sixBanners(TA * 5, ['SIX {HOUSES}'], cinema),
+  boonDraft(TA * 6, cinema),
+  battle('goldOrange', TA * 3, null, cinema, { punch: true }),
+  { ...wideBlast(ARMED - sec(12), TA * 3, BLAST.haven, 0.3), hard: true },
+  // (The star erupts as "explodes" is said, two seconds in; the horde dies a second into the next.)
+  { ...wideBlast(BLAST.at - sec(2.2), TA * 2, BLAST.star, 0.24, 0.55), hard: true },
+  { ...wideBlast(BLAST.at - sec(0.9), TA * 2, BLAST.haven, 0.3, 0.55), hard: true },
+  { ...hearthFalls('goldOnViolet', TA * 5, null, cinema), hard: true },
+  picture('daily', TA * 5, ['THE {DAILY} RUN'], cinema),
+  // (The Wayfarers at the Concord's Hearth: the fullest of the battles, its swarm above the words.)
+  battle('tealGold', TA * 4, ['MADE IN {CODE}'], cinema, { punch: true }),
+  // (Long enough for the last line to be said under the name.)
+  logo(7, ['FROM THE STONE AGE TO THE STARS', PLAY], null, cinema),
+];
+Object.assign(TRAILERS, {
+  narrated: { ...trailer(nv, [
+    tune('First Fires', nv, 0, 6, { fromBar: 0, ring: BRIDGE,
+      arrangement: [{ bars: 4, voices: 'bh', vol: 0.5 }, { bars: 4, voices: 'abh', vol: 0.58 }, { bars: 8, voices: 'abd', vol: 0.68 }] }),
+    tune('To Arms', nv, 7, last(nv), { fromBar: 4, ring: RING,
+      arrangement: [{ bars: 4, voices: 'bd', vol: 0.62 }, { bars: 12, voices: 'abd', vol: 0.7 }, { bars: 24, voices: 'abd', vol: 0.76 }] }),
+  ], at(nv, last(nv))), lufs: -20, sfxVol: 0.8 },
+});
+
+// ------------------------------------------------------------------------------------------------
 // The Six Houses: a lore series of Shorts, a house a week, to be narrated over (promo/houses/scripts.html).
 // Each the same shape: its Ark casting its House Power (1.27), slowed, with no words; its name; where it comes
 // from; how it plays; its power, named; its motto; and next week's house. Every shot is of a sector that house

@@ -1,0 +1,131 @@
+<title>Hegemarch Trailer Narration</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400&family=Pixelify+Sans:wght@500;700&family=IBM+Plex+Mono:wght@500&display=swap">
+<style>
+  /* Layout: one read-along table (when, what is on screen, what to say), with the notes for recording above it. */
+  :root {
+    --void: #0b0a1a;
+    --night: #1b1838;
+    --rule: #2f2a5c;
+    --ink: #fff4e0;
+    --soft: #c8cbe6;
+    --dim: #8e93c8;
+    --gold: #ffd23f;
+    --ember: #ff8a1f;
+    --display: 'Pixelify Sans', 'Trebuchet MS', system-ui, sans-serif;
+    --body: 'Atkinson Hyperlegible', 'Segoe UI', system-ui, sans-serif;
+    --mono: 'IBM Plex Mono', ui-monospace, 'Consolas', monospace;
+    color-scheme: dark;
+  }
+  @media (prefers-color-scheme: light) {
+    :root:not([data-theme="dark"]) {
+      --void: #f7f5fb; --night: #ffffff; --rule: #ddd8ee; --ink: #1b1838; --soft: #3a3566; --dim: #6a6694;
+      --gold: #9a6a00; --ember: #b4520a; color-scheme: light;
+    }
+  }
+  :root[data-theme="light"] {
+    --void: #f7f5fb; --night: #ffffff; --rule: #ddd8ee; --ink: #1b1838; --soft: #3a3566; --dim: #6a6694;
+    --gold: #9a6a00; --ember: #b4520a; color-scheme: light;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--void);
+    color: var(--soft);
+    font: 17px/1.55 var(--body);
+    padding-left: max(16px, env(safe-area-inset-left, 0px));
+    padding-right: max(16px, env(safe-area-inset-right, 0px));
+    padding-block: 40px 64px;
+  }
+  main { max-width: 920px; margin: 0 auto; display: grid; gap: 40px; }
+  header { display: grid; gap: 10px; }
+  h1 { margin: 0; font: 700 clamp(30px, 5vw, 44px)/1.1 var(--display); color: var(--gold); letter-spacing: 0.02em; text-wrap: balance; }
+  .lede { margin: 0; max-width: 65ch; }
+  .meta { font: 500 13.5px/1.4 var(--mono); color: var(--dim); }
+  .notes { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 14px; }
+  .note { background: var(--night); border: 1px solid var(--rule); border-radius: 6px; padding: 14px 16px; min-width: 0; }
+  .note h2 { margin: 0 0 6px; font: 700 13px/1.3 var(--body); text-transform: uppercase; letter-spacing: 0.08em; color: var(--ink); }
+  .note p { margin: 0; font-size: 15.5px; }
+  .say-it { font-family: var(--mono); color: var(--gold); }
+  section { display: grid; gap: 14px; }
+  .part { margin: 0; font: 700 clamp(20px, 3vw, 24px)/1.15 var(--display); color: var(--ink); border-bottom: 2px solid var(--rule); padding-bottom: 8px; }
+  .table-wrap { overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; min-width: 560px; }
+  th { text-align: left; font: 700 12px/1.3 var(--body); text-transform: uppercase; letter-spacing: 0.08em; color: var(--dim); padding: 8px 10px; border-bottom: 1px solid var(--rule); }
+  td { padding: 11px 10px; border-bottom: 1px solid var(--rule); vertical-align: top; }
+  td.time { font: 500 14px/1.5 var(--mono); color: var(--ember); white-space: nowrap; font-variant-numeric: tabular-nums; width: 7.5em; }
+  td.screen { color: var(--dim); font-size: 15px; width: 34%; }
+  td.screen b { color: var(--soft); font-weight: 700; letter-spacing: 0.04em; }
+  td.line { color: var(--ink); font-size: 18.5px; line-height: 1.5; }
+  td.line .cue { display: block; margin-top: 4px; color: var(--dim); font-style: italic; font-size: 14.5px; }
+  .count { font: 500 13px/1.4 var(--mono); color: var(--dim); }
+  @media (max-width: 560px) { body { font-size: 16px; } td.line { font-size: 17px; } }
+</style>
+
+<main>
+  <header>
+    <h1>Hegemarch Trailer Narration</h1>
+    <p class="meta">narrated.mp4 · 1920×1080 · 2:08 · First Fires, then To Arms</p>
+    <p class="lede">
+      The Epic trailer, cut to be narrated by the developer. The story runs as before, from the Stone Age to the stars, but each shot is long enough
+      for its line, the story's on-screen sentences are now a keyword or two, and the music is a quiet bed with no melody so the voice sits on top.
+    </p>
+    <div class="notes">
+      <div class="note">
+        <h2>Pace</h2>
+        <p>About two and a half words a second, an easy read. A line can run a beat into the next shot; only the Starfall lines need to land on cue.</p>
+      </div>
+      <div class="note">
+        <h2>Saying the name</h2>
+        <p><span class="say-it">HEJ-uh-march</span>, as in "hegemony", the same as in the Shorts. Say the website as "hegemarch dot com".</p>
+      </div>
+      <div class="note">
+        <h2>Mixing</h2>
+        <p>The video comes out at −20 LUFS. Record the voice dry and mix it about 6 dB above the bed, for −14 LUFS overall: YouTube's level.</p>
+      </div>
+    </div>
+  </header>
+
+  <section>
+    <h2 class="part">The cradle</h2>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Time</th><th>On screen</th><th>Say</th></tr></thead>
+        <tbody>
+          <tr><td class="time">0:00–0:05</td><td class="screen">The cradle world comes out of the dark.</td><td class="line">Hey all, this is Tristan, the solo developer of Hegemarch.</td></tr>
+          <tr><td class="time">0:05–0:14</td><td class="screen">A tribe lights its first fire.</td><td class="line">It's a real-time space strategy roguelite, inspired by Sins of a Solar Empire, and it's free to play right in your browser.</td></tr>
+          <tr><td class="time">0:14–0:22</td><td class="screen">The tribes spread across the world in time-lapse. <b>AGES MODE</b></td><td class="line">In Ages mode, though, you start a long way from space, as one tribe on one world, back in the Stone Age.</td></tr>
+          <tr><td class="time">0:22–0:30</td><td class="screen">The ages, Stone to Space. <b>SIX AGES</b></td><td class="line">You climb the ages, from bronze and iron up to gunpowder and machines, and every new age upgrades your whole army.</td></tr>
+          <tr><td class="time">0:30–0:38</td><td class="screen">Machine-age armies ring a city.</td><td class="line">The other tribes are climbing right alongside you, so you'll be fighting them for the cradle the whole way,</td></tr>
+          <tr><td class="time">0:38–0:44</td><td class="screen">An Ark is built and lifts off.</td><td class="line">until you build an Ark and take everything you've won out to the stars.</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section>
+    <h2 class="part">The stars</h2>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Time</th><th>On screen</th><th>Say</th></tr></thead>
+        <tbody>
+          <tr><td class="time">0:44–0:48</td><td class="screen">A dark sector; the cradle's last chord rings out.</td><td class="line">That's where every run is decided, in a sector that's gone dark.</td></tr>
+          <tr><td class="time">0:48–0:57</td><td class="screen">A world is kindled in gold; the camera pulls back.</td><td class="line">You send seed ships out to kindle its worlds, and every world you light up pays you Embers to build your fleet.</td></tr>
+          <tr><td class="time">0:57–1:06</td><td class="screen">The six house banners. <b>SIX HOUSES</b></td><td class="line">There are six houses to lead, each with its own House Power, from cutting brand-new starlanes to flipping a coin for a whole battle.</td></tr>
+          <tr><td class="time">1:06–1:17</td><td class="screen">The game's own Boon choice: three cards dealt, one picked.</td><td class="line">As you play, your Lore fills up, and each time it does, you pick one Boon out of three, so no two runs ever play out the same.</td></tr>
+          <tr><td class="time">1:17–1:23</td><td class="screen">Gold and ember fleets clash at a world.</td><td class="line">The fighting's all real-time, but you can pause any time you need to think.</td></tr>
+          <tr><td class="time">1:23–1:28</td><td class="screen">A Corsair horde at Blackstar Haven.</td><td class="line">And if you're ever outnumbered, you can send a Starfall into their system,</td></tr>
+          <tr><td class="time">1:28–1:32</td><td class="screen">The Starfall's fuse runs out, and the star erupts at 1:30.</td><td class="line">and two minutes later, the whole star explodes,<span class="cue">Land "explodes" on the blast.</span></td></tr>
+          <tr><td class="time">1:32–1:35</td><td class="screen">The horde turns to dust.</td><td class="line">along with every ship in that system.</td></tr>
+          <tr><td class="time">1:35–1:44</td><td class="screen">A Lyceum Hearth falls to the Concord.</td><td class="line">Every run offers a few Destinies, like conquering all your rivals, and the first house to fulfill one is crowned the next Hegemarch.</td></tr>
+          <tr><td class="time">1:44–1:54</td><td class="screen">The Daily Run's picture. <b>THE DAILY RUN</b></td><td class="line">There's also a Daily run: one sector a day, the same for everybody, and whoever's crowned fastest gets their name on the website.</td></tr>
+          <tr><td class="time">1:54–2:01</td><td class="screen">Teal and gold fleets swarm a world. <b>MADE IN CODE</b></td><td class="line">Every ship, world, sound and song is made in code, and the whole game zips down to about 250 kilobytes.</td></tr>
+          <tr><td class="time">2:01–2:08</td><td class="screen">The logo. FROM THE STONE AGE TO THE STARS · PLAY FREE IN YOUR BROWSER · HEGEMARCH.COM</td><td class="line">Play it free at hegemarch dot com, and let me know what you think.</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="count">312 words · 2:08</p>
+  </section>
+</main>
