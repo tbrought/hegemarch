@@ -14,6 +14,7 @@
  */
 
 import type { GameConfig, Seat } from '../game/types';
+import { nameProblem } from '../meta/board';
 import {
   AWAY_MS, cleanName, COUNT_IN_MS, DEFAULT_OPTIONS, HAND_OVER, HASH_EVERY, HOUSE_IDS, MAX_LAG_TICKS, MAX_PLAYERS, NET_ORDERS, NET_SPEEDS, NET_VERSION,
   orderShape, PAUSE_MS, plainArg, SEATS_BY_SIZE, startProblem, ticksPerTurn, VERSUS_PAUSES,
@@ -130,7 +131,10 @@ export class RoomCore {
     const seat = this.seats.findIndex((s) => s.kind === 'open');
     if (seat < 0 || this.members.length >= MAX_PLAYERS) return refuse(conn, 'This room is full.');
     if (!this.build) this.build = msg.build;
-    const bring = { ...msg.bring, name: cleanName(msg.bring.name) || 'GUEST', heirs: msg.bring.heirs.filter((h) => HOUSE_IDS.includes(h)) };
+    // (A name is three to five letters, and one the Daily board would take: no slurs. Otherwise a guest's.)
+    const said = cleanName(String(msg.bring?.name ?? ''));
+    const name = said.length >= 3 && !nameProblem(said) ? said : 'GUEST';
+    const bring = { ...msg.bring, name, heirs: (msg.bring?.heirs ?? []).filter((h) => HOUSE_IDS.includes(h)) };
     const m: Member = {
       conn, token: this.newToken(), seat, bring, build: msg.build, tick: 0, hidden: false, heard: this.clock(), awaySince: 0,
       rebuilding: false, over: false, budget: BURST, budgetAt: this.clock(),

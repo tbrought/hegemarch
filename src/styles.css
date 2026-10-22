@@ -2698,3 +2698,12 @@ button[data-tip],
   height: 9px;
   vertical-align: middle;
 }
+
+.together .together-record {
+  margin-top: 14px;
+  padding: 10px 12px;
+}
+
+.together .together-record p {
+  margin: 4px 0 0;
+}

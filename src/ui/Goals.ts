@@ -64,7 +64,8 @@ export class Goals {
   private offered(): boolean {
     const s = this.hud.s;
     const g = s.game;
-    return s.profile.settings.tips && !g.cradle && !g.config.daily && !g.outcome && !this.hud.tutorial.busy() && g.player.capital >= 0;
+    // (Not in a Daily, nor in a game together: their goals pay nothing there, game/commands/choices.ts.)
+    return s.profile.settings.tips && !g.cradle && !g.config.daily && !g.config.seats && !g.outcome && !this.hud.tutorial.busy() && g.player.capital >= 0;
   }
 
   /** Are the goals on offer right now, with one still to reach? */

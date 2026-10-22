@@ -26,6 +26,8 @@ export class RoomClient {
   onStart: ((m: StartMsg) => void) | null = null;
   /** The connection is down (it is coming back by itself). */
   down = false;
+  /** The room has let this player in (until then, a refusal is final). */
+  private welcomed = false;
 
   constructor(
     public code: string,
@@ -48,6 +50,7 @@ export class RoomClient {
   hear(m: RoomMsg) {
     switch (m.t) {
       case 'welcome':
+        this.welcomed = true;
         this.token = m.token;
         keepRoom(this.code, this.token);
         return;
@@ -57,6 +60,12 @@ export class RoomClient {
         break;
       case 'error':
         this.notice = m.text;
+        // (Turned away before being let in, as by a room that is full or gone: trying again would be turned away again.)
+        if (!this.welcomed) {
+          this.link.close();
+          // (A room this tab kept that has gone: forgotten.)
+          forgetRoom();
+        }
         break;
       case 'chat': {
         const s = this.lobby?.seats[m.from];

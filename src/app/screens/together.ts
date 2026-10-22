@@ -131,7 +131,7 @@ function seatRow(app: App, room: RoomClient, s: LobbySeat, i: number): string {
   const taken = (h: string) => L.seats.some((x, j) => j !== i && x.kind !== 'closed' && x.heir === h);
   const who = s.kind === 'player' ? `${esc(s.name ?? '?')}${i === L.owner ? ' <span class="dim">· HOST</span>' : ''}${mine ? ' <span class="gold">· YOU</span>' : ''}`
     : s.kind === 'ai' ? 'AI' : s.kind === 'open' ? '<span class="dim">OPEN SEAT</span>' : '<span class="dim">CLOSED</span>';
-  const state = s.kind === 'player' ? (i === L.owner ? '' : s.ready ? '<span class="good">READY</span>' : '<span class="dim">NOT READY</span>') : '';
+  const state = s.kind === 'player' ? (i === L.owner ? '' : s.ready ? '<span class="dim">·</span> <span class="good">READY</span>' : '<span class="dim">· NOT READY</span>') : '';
   const house = heir ? esc(heir.name) : s.kind === 'ai' ? 'A house at random' : s.kind === 'player' ? '<span class="dim">Choosing a house…</span>' : s.kind === 'open' ? 'Waiting for a player' : 'No house here';
   const team = versus && s.kind !== 'open' && s.kind !== 'closed' ? ` · TEAM ${s.team + 1}` : '';
   const ctl: string[] = [];
@@ -140,7 +140,7 @@ function seatRow(app: App, room: RoomClient, s: LobbySeat, i: number): string {
       .concat(list.map((h) => {
         const d = HEIR_BY_ID[h];
         const off = taken(h);
-        return `<button class="small house-pick${s.heir === h ? ' active' : ''}${off ? ' disabled' : ''}" style="--hc:${d.color}" data-sa="${off ? 'room-taken' : `${sa}:${h}`}" data-tip="${esc(off ? `${d.name} is taken in this room.` : `${d.name}: ${d.title}.`)}">${esc((d.short ?? d.name).replace(/^the /i, '').toUpperCase())}</button>`;
+        return `<button class="small house-pick${s.heir === h ? ' active' : ''}${off ? ' disabled' : ''}" style="--hc:${d.color}" data-sa="${off ? 'room-taken' : `${sa}:${h}`}" data-tip="${esc(off ? `${d.name} is taken in this room.` : `${d.name}: ${d.title}.`)}">${esc(SHORT[h] ?? d.name.toUpperCase())}</button>`;
       })).join('');
   const teamBtns = (sa: string) => [0, 1, 2, 3].map((t) => `<button class="small${s.team === t ? ' active' : ''}" data-sa="${sa}:${t}">T${t + 1}</button>`).join('');
   if (mine && s.kind === 'player' && L.phase === 'lobby') {
@@ -163,6 +163,9 @@ function seatRow(app: App, room: RoomClient, s: LobbySeat, i: number): string {
       <div class="seat-ctl">${ctl.join('')}</div>
     </div>`;
 }
+
+/** A house's name on a button: one word. */
+const SHORT: Record<string, string> = { concord: 'CONCORD', vael: 'VAEL', wayfarer: 'WAYFARERS', lyceum: 'LYCEUM', choir: 'CHOIR', ashen: 'REMNANT' };
 
 function seatColor(s: LobbySeat | undefined): string {
   return (s?.heir && HEIR_BY_ID[s.heir]?.color) || 'var(--mist)';
@@ -187,7 +190,19 @@ function showEntry(app: App) {
           <button class="small${off}" data-sa="${why ? 'room-why-entry' : 'room-join'}" data-tip="${esc(why ?? 'Join the room with this code.')}">JOIN</button></div>
           <div class="help">The five letters and figures your host sent you.</div></div>
       </div>
+      ${record(app)}
       <div class="foot-actions"><button data-sa="menu">BACK</button></div>`));
+}
+
+/** What this browser has kept of games together: played and won, and the record against each name played in versus. */
+function record(app: App): string {
+  const t = app.profile.together;
+  if (!t || t.coop.played + t.versus.played === 0) return '';
+  const rivals = Object.entries(t.against).sort((a, b) => b[1][0] + b[1][1] - (a[1][0] + a[1][1])).slice(0, 8);
+  return `<div class="px-box together-record"><h4>YOUR GAMES TOGETHER</h4>
+      <p>Co-op: <b>${t.coop.played}</b> played, <b class="gold">${t.coop.won}</b> crowned · Versus: <b>${t.versus.played}</b> played, <b class="gold">${t.versus.won}</b> won</p>
+      ${rivals.length ? `<p class="dim">Against: ${rivals.map(([n, [w, l]]) => `${esc(n)} <b>${w}–${l}</b>`).join(' · ')}</p>` : ''}
+      <p class="dim">Kept in this browser.</p></div>`;
 }
 
 /** Enter in the page's inputs: the chat says its word, the code joins its room. */

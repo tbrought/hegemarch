@@ -67,6 +67,8 @@ export class Lockstep {
   rebuilding: { why: string } | null = null;
   chat: ChatLine[] = [];
   pings: Ping[] = [];
+  /** Players whose chat this screen does not show (a click on their name in the players' list). */
+  muted = new Set<number>();
   /** The room ended the game (it could not keep the screens in step), or was lost: why. */
   ended: string | null = null;
   /** The room's last refusal (an order it would not take, a pause there were none left of). */
@@ -163,6 +165,7 @@ export class Lockstep {
         this.peers = m.peers;
         return;
       case 'chat': {
+        if (this.muted.has(m.from)) return;
         const line = { from: m.from, text: m.text, team: m.team, at: this.clock() };
         this.chat.push(line);
         if (this.chat.length > 30) this.chat.shift();

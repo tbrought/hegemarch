@@ -230,6 +230,23 @@ function netNews(app: App, kind: 'chat' | 'ping', what: ChatLine | Ping) {
   }
 }
 
+/** A game together counted in this browser: played, won, and (versus) against whom. */
+function countTogether(app: App, g: Game) {
+  const o = g.outcome!;
+  const t = (app.profile.together ??= { coop: { played: 0, won: 0 }, versus: { played: 0, won: 0 }, against: {} });
+  const way = g.config.together === 'versus' ? t.versus : t.coop;
+  way.played++;
+  if (o.playerWon) way.won++;
+  if (g.config.together !== 'versus') return;
+  for (const [i, seat] of (g.config.seats ?? []).entries()) {
+    if (!seat.human || !seat.name || g.allied(i, g.playerId)) continue;
+    const rec = (t.against[seat.name] ??= [0, 0]);
+    // (A rival's team that was crowned beat this player; this player's team crowned beat it; anything else counts for neither.)
+    if (o.playerWon) rec[0]++;
+    else if (o.winner >= 0 && g.allied(o.winner, i)) rec[1]++;
+  }
+}
+
 /** Leave the room for good: the AI takes this player's house, and the others play on. */
 export function leaveTogether(app: App) {
   app.room?.leave();
@@ -407,6 +424,7 @@ export function endRun(app: App, abandoned = false) {
   const marks = g.config.tutorial || abandoned || together ? {} : applyRecords(app.profile.records, bracketOf(g.config), figures);
   if (g.config.daily) app.profile.lastDaily = todayKey();
   if (g.config.tutorial) app.profile.tutorialDone = true;
+  if (together && !abandoned) countTogether(app, g);
   saveProfile(app.profile);
   if (!together) clearRun();
   const p = g.player;

@@ -1,7 +1,49 @@
-# Multiplayer: a draft design
+# Multiplayer
 
-Status: **proposal, for review.** Nothing here is built. The decisions that need your answer are at
-the end (§10).
+Status: **built in 1.28** (co-op and versus), as decided in §10. This page was the design; the section
+below says how the build came out, and where it differs from the draft that follows it.
+
+## As built (1.28)
+
+**Where the code is.**
+
+| Part | Where |
+| --- | --- |
+| The simulation for several players: seats, teams, team Destinies, shared sight, the rekindle, gifts, surrender, the AI taking a house | `src/game` (`GameConfig.seats`, `Game.teamOf/allied/seated/mine/ours`, `commands/together.ts`, `systems/victory.ts`, `systems/visibility.ts`, `conquest.ts`) |
+| What screens and rooms say | `src/net/protocol.ts` |
+| The room: lobby, clock, orders, pauses, players gone and back, hashes | `src/net/RoomCore.ts` (the same code on hegemarch.com, on the dev server and in the tests) |
+| A screen's game in step with the room | `src/net/Lockstep.ts`, `src/net/hash.ts`, `src/net/links.ts` |
+| hegemarch.com's rooms | `worker/src/room.ts` (a Durable Object per room), `worker/wrangler.toml` |
+| The dev server's rooms | `scripts/lib/roomhost.ts` (a Vite plugin) |
+| On screen | `src/app/screens/together.ts` (host, join, lobby), `src/app/together.ts`, `src/ui/hud/together.ts`, `src/ui/modals/together.ts`, `run.ts startNetRun` |
+| Tests | `tests/net.test.ts` (a room and 2 to 4 screens in one process, with a slow and jittery wire), `tests/roomdo.test.ts`, `scripts/together.mjs` (two browsers, in `npm run verify`) |
+
+**A game alone is exactly as it was.** Every rule for several players keys on the seats, which a game
+alone does not have; the golden traces (26 runs, whole state every 30 s) and the AI simulation came out the
+same to the byte.
+
+**Where the build differs from the draft below.**
+
+- **No input delay to tune.** The room stamps an order with the tick the game may run to when the order
+  arrives; no screen has run past it, so every screen carries it out then. An order takes a turn (a tenth
+  of a second) and a round trip to come back.
+- **Out of step: every screen plays the game again from its orders**, not a snapshot from a majority. The
+  orders make the one true game, so a screen changed by anything but an order is put right, with no
+  question of who was right. If it happens a third time, the room ends the game and says why.
+- **The rekindle.** A fallen ally's ships are lost with their Hearth, as any fallen house's are. Taken back
+  (or kindled again) by an ally, the world is their Hearth again, with their Ark, two Guardians and Embers
+  to begin with; their Boons were never lost. Meanwhile they see through their allies' eyes.
+- **Pings** are Alt and a click; **chat** is Enter (Tab: your team or everyone, in versus).
+- **The stats** kept in a browser: co-op and versus played and won, and the record against each name played
+  in versus (the Together page).
+- **Not built** (later, with the rest of §2.3 and §6): curated fair sectors, open rooms and quick match,
+  spectating and replays, Shared Command, Ages together, ranked seasons.
+- **Names** in a room are checked as the Daily board's are (no slurs); the chat is not filtered (rooms are
+  private, among friends), and a click on a player's name in the game mutes their chat on that screen.
+
+---
+
+The draft design follows, as it was approved.
 
 ## TL;DR
 
@@ -399,7 +441,7 @@ a head-to-head record against the names you've played.
 
 ---
 
-## 10. Decisions for you
+## 10. Decisions (all taken as recommended, 2026-10-22)
 
 1. **Order:** co-op first, then versus (recommended), or both together?
 2. **Ranking:** no ladder at launch, stats only, ranked seasons once there's a crowd. Agreed?

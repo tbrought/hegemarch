@@ -1872,3 +1872,52 @@ all use; the Worker's is the one that counts). Refused: slurs, hate, sexual word
 (`SPELLED_ANYWHERE`: "XFUCK" too), each chosen so that no ordinary word of five letters holds it; the rest
 only as the whole name (`WHOLE`), so that GRAPE, CLASS and CUMIN stand. No list is whole: a name can be taken
 down by hand to "???" (`worker/README.md`), which counts as no one's reign.
+
+## 11. Games played together (1.28)
+
+Co-op (allied houses against the AI) and versus (player against player, or teams), up to four players in
+a room, the rest of its sector's houses the AI's. The design, the choices made and how it was built are in
+[MULTIPLAYER.md](MULTIPLAYER.md); here, the rules as a player meets them, and why.
+
+### Every screen plays the whole game
+
+Lockstep: only orders travel. A room on hegemarch.com (a Durable Object, `worker/src/room.ts`) keeps the
+clock: it lets the game run a turn further every tenth of a second and stamps each order with the tick it is
+carried out after. Everything else is the game as it always was: seeded, fixed-tick, the same to the last bit
+in every browser (`dmath.ts`, the Daily board's foundation). Every screen hashes its game each second of game
+time; two that differ are found within a second, and every screen plays the game again from its orders. A
+screen that falls behind holds the room (everyone slows to the slowest), unless its page is hidden: then it
+catches up when it is shown. A room never plays the game itself, so it costs next to nothing.
+
+### What changes when there are several players
+
+- **No one screen stops the game.** A decision, a Boon choice, a tip card: the game goes on behind it (the
+  draft waits behind B, a decision behind its ! button). Pausing is the room's: in co-op anyone pauses and
+  anyone goes on; in versus three pauses each, of a minute, after which anyone may go on. Going on is counted
+  in (3, 2, 1), so no one is caught looking away.
+- **The speed is the room's**: the host's in co-op, the lobby's for the whole of a versus game.
+- **"You" is the house on this screen.** Every rule keys on seats (a player's house by its seat; whoever
+  gives its orders, its player or the AI standing in), and every word on the screen is said to the screen's
+  own house: "Your Ark is rising" on one screen is "The Vael are raising an Ark" on its ally's.
+- **Allies** (one team) don't fight, see what each other sees, may send each other Embers, and are crowned
+  together: a team's worlds, relics and Embers count together for a Destiny (its hoard must be half as big
+  again for each house beyond the first), and a Gate or the Hollow's killing blow by any of them is the
+  team's. An ally's Starfall burns your ships too: the fuse warns allies as it warns everyone.
+- **Co-op's fallen ally** is rekindled when a teammate takes back (or kindles again) the world where their
+  Hearth stood: the house is back there with its Ark, two Guardians, Embers to begin with, and every Boon it
+  had. A rule drawn on the map: the world to take is named in the banner and on the fallen player's line.
+  The run is lost when every player's Hearth has gone dark.
+- **Versus plays by the Daily's rules**: no Hall of Heirs perks, all six houses and every Boon for everyone,
+  so that a newcomer is not beaten by hours played. Versus still pays Legacy, spent on single-player and
+  co-op. For friends of uneven skill, an open handicap (more Embers) that everyone sees.
+- **A player who leaves**, or is away a minute, has the AI lead their house (it keeps their perks, not the
+  AI's bonuses); back with their token, they play the game again from its orders and take it back.
+
+### On screen
+
+The players at the top left (their house's colour as a square, their name, AWAY/AI/SLOW/FALLEN, versus
+pauses left; a click mutes their chat; the ember button sends an ally Embers), the room's pause at the foot,
+chat into the log (Enter), pings on the map (Alt and a click), and the room's news in the banner before
+anything else (the connection, catching up, a slow player, a house fallen). TOGETHER is the title screen's
+fourth way to play, greyed with why before the First Night or away from hegemarch.com.
+

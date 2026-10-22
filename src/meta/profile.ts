@@ -78,6 +78,11 @@ export interface Profile {
   boardName?: string;
   /** Has opened the page of games played together (1.28): until then the title screen marks it as new. */
   togetherSeen?: boolean;
+  /**
+   * Games played together, kept in this browser: how many of each way were played and won, and, for versus, the
+   * record against each name played (won, lost).
+   */
+  together?: { coop: { played: number; won: number }; versus: { played: number; won: number }; against: Record<string, [won: number, lost: number]> };
 }
 
 const KEY = 'hegemarch.profile.v1';

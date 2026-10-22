@@ -35,11 +35,15 @@ src/app/         the page around the game
   run.ts           a run's life: started, continued, saved, ended
   screens/         the menu pages (HTML): title, setup, Hall of Heirs, Settings, the throne, results
   Session.ts       what the HUD and the input share about the run on screen
+src/net/         games played together (1.28, docs/MULTIPLAYER.md): what screens and rooms say (protocol.ts),
+                 the room (RoomCore.ts: lobby, clock, orders, pauses; the same on hegemarch.com, the dev server
+                 and in the tests), a screen's game in step with it (Lockstep.ts), a game's hash, the links
 src/audio/       sound effects and music, both synthesised
 src/meta/        the player's profile, Legacy and records (localStorage); board.ts, the Daily board's
                  terms (what the game, the website and the board's server agree on)
 src/site/        the website's own script (hegemarch.com): the live sector, the houses, the board, the throne
-worker/          the Daily board's server (a Cloudflare Worker with a D1 database; worker/README.md)
+worker/          the Daily board's server (a Cloudflare Worker with a D1 database; worker/README.md), and the
+                 rooms of games played together (room.ts: a Durable Object for each)
 tests/           unit tests, one file per subject (fields, ships, boons, rivals, ...)
 scripts/         balance simulations, fuzzers and browser suites; verify-daily.ts, the board's checker
                  (GitHub Actions); trailer/, the trailers, made from the game itself
@@ -72,7 +76,7 @@ A right-click on a world goes `Input` → `Actions.orderAt` → `g.cmdMove` → 
 - A few reasons are told apart in code (`WHY` in `commands/checks.ts`); compare against those
   constants, never against the sentence.
 
-## Three rules that must hold
+## Rules that must hold
 
 1. **The simulation is deterministic.** In `src/game/`, use `g.rng`, never `Math.random`, `Date` or
    anything from the DOM. The same seed and commands must give the same game, in every browser: use
@@ -88,6 +92,12 @@ A right-click on a world goes `Input` → `Actions.orderAt` → `g.cmdMove` → 
    plays the run again from them (`replay.ts`). The UI may read the game as it likes, and keep its own
    notes in `g.ui` (which the simulation never reads), but change nothing the game plays by: anything it
    changed directly would be missing when the run is played again, and an honest crown would not stand.
+5. **In a game together, "the player" is the screen's.** `g.playerId` is the house on this screen; a
+   rule asks `g.seated(fid)` (a player's house by its seat) or `f.isPlayer` (a player gives its orders
+   now), never `playerId`, and words for the screen ask `g.mine(fid)` / `g.ours(fid)`. An order given on
+   a screen goes to the room (`Game.outbox`) and is carried out when it comes back stamped, on every
+   screen at once: the HUD answers it at once from the `check*` functions, not from the order's result.
+   `tests/net.test.ts` plays games of 2 to 4 screens and holds every screen's game to one hash.
 
 ## How to add things
 

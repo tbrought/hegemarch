@@ -64,13 +64,22 @@ export function drawPlayers(hud: Hud) {
       text(g, st.word, tx, y, st.color, 'tiny');
       tx += textWidth(st.word, 'tiny') + 3;
     }
+    if (net.muted.has(i)) {
+      text(g, 'MUTED', tx, y, PAL.dusk, 'tiny');
+      tx += textWidth('MUTED', 'tiny') + 3;
+    }
     if (versus && peer && peer.pauses >= 0) {
       for (let k = 0; k < peer.pauses; k++) rect(g, tx + k * 2, y + 1, 1, 4, PAL.dusk);
       tx += peer.pauses * 2 + (peer.pauses ? 2 : 0);
     }
     const tip = `${name} leads ${f.name}${me ? ' (you)' : ally ? ': your ally' : versus ? ': a rival' : ''}.${st ? ` ${st.tip}` : ''}` +
-        `${versus && peer ? ` Pauses left: ${peer.pauses}.` : ''}${peer?.host ? ' The room\'s host.' : ''}`;
-    hud.ui.hit('player-' + i, x - 1, y - 1, tx - x + 1, 9, undefined, tip);
+        `${versus && peer ? ` Pauses left: ${peer.pauses}.` : ''}${peer?.host ? ' The room\'s host.' : ''}` +
+        `${me ? '' : net.muted.has(i) ? ' Muted: click to see their chat again.' : ' Click to mute their chat.'}`;
+    // (A click on another player mutes their chat on this screen, or unmutes it.)
+    hud.ui.hit('player-' + i, x - 1, y - 1, tx - x + 1, 9, me ? undefined : () => {
+      if (net.muted.has(i)) net.muted.delete(i);
+      else net.muted.add(i);
+    }, tip);
     // Allies can be sent Embers.
     if (ally && !me && f.alive && G.player.alive && !G.outcome) {
       hud.ui.iconButton(g, 'gift-' + i, tx, y - 1, 9, 'ember', () => hud.modals.open({ kind: 'gift', to: i }), {
