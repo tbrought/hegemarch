@@ -320,7 +320,7 @@ body {
   background: var(--red);
 }
 
-/* "CHOOSE YOUR RUN", ruled to both sides. */
+/* "CHOOSE HOW TO PLAY", ruled to both sides. */
 .home-label {
   display: flex;
   align-items: center;
@@ -2062,6 +2062,11 @@ kbd {
 
 .how-ages h3 {
   color: var(--ember);
+}
+
+/* (Multiplayer: in the colour of its card on the title screen.) */
+.how-ages.how-mp h3 {
+  color: var(--sky);
 }
 
 @media (max-width: 700px) {

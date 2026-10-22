@@ -196,27 +196,27 @@ MULTIPLAYER on the title screen plays with friends, each in their own browser (a
 First Night is done): up to four players, the rest of a sector's houses led by the AI.
 
 - **A room.** One player hosts it and sends the others its code or its link. The host sets the way to
-  play, the sector, the AI houses' difficulty and the speed, and fills each seat with a player, the AI,
+  play, the sector, the difficulty and the speed, and fills each seat with a player, the AI,
   or nothing. Players choose their houses (each house once) and say they are ready; the host starts.
 - **Co-op: allies against the AI.** Allies don't fight each other, see what each other sees, can send
   each other Embers (the ember button by a name), and win together: a team's worlds, relics and Embers
   count together for a Destiny. Your own houses and Hall of Heirs perks come with you. When your Hearth
   falls you are not out: an ally who takes back the world where it stood (or kindles it again) rekindles
   your house there, with its Ark, two Guardians and Embers to begin again. *The rivals unite* makes the
-  AI houses allies of each other.
-- **Versus: player against player, or teams.** Everyone plays by the Daily's rules: no Hall of Heirs
-  perks, all six houses and every Boon for everyone. Each player has three pauses of up to a minute
-  (after that minute anyone may go on). Options: *the same luck* (every player's Boons dealt from the
+  rival houses allies of each other.
+- **Versus: player against player, or teams.** As in the Daily, no Hall of Heirs perks and every
+  Boon; and all six houses are open to everyone. Each player has three pauses of up to a minute
+  (after that minute anyone may resume). Options: *the same luck* (every player's Boons dealt from the
   same dice), a time limit (then the team furthest toward a Destiny is crowned), and an open handicap the
   host can give a player (more Embers, shown to everyone). SURRENDER is in the menu.
 - **In the game.** Enter to chat (Tab: your team, or everyone, in versus), Alt+click to ping the map for
-  your allies, Space to pause for everyone (and again to go on, after a count of three). A decision or a
+  your allies, Space to pause for everyone (and again to resume, after a count of three). A decision or a
   Boon choice never stops the game. LEAVE THE GAME in the menu: the AI leads your house and the others
   play on. A dropped connection comes back by itself; a player away for a minute has the AI lead their
   house until they return; a page reloaded mid-game goes back to its room and catches up.
 
 Every player's browser runs the whole game; only orders travel, through a small room on hegemarch.com.
-Games together earn Legacy but set no records, and leave your saved run alone. How it works and why:
+Multiplayer games earn Legacy but set no records, and leave your saved run alone. How it works and why:
 [docs/MULTIPLAYER.md](docs/MULTIPLAYER.md).
 
 ## Releasing

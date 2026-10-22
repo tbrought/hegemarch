@@ -64,9 +64,10 @@ export function howtoHtml(): string {
         <li><kbd>Drag</kbd> Select ships in a box</li>
         <li><kbd>Wheel</kbd> Zoom</li>
         <li><kbd>Right-drag</kbd> <kbd>Arrows</kbd> Move the view</li>
+        <li><kbd>Enter</kbd> <kbd>Alt</kbd>+<kbd>Click</kbd> Multiplayer: chat, and a ping on the map for your allies</li>
       </ul>
       <ul class="how-keys">
-        <li><kbd>Space</kbd> Pause. Paused, you can still give orders: think, then go on.</li>
+        <li><kbd>Space</kbd> Pause. Paused, you can still give orders: think, then resume.</li>
         <li><kbd>E</kbd> Send selected Scouts exploring</li>
         <li><kbd>Q</kbd> <kbd>W</kbd> <kbd>E</kbd> <kbd>R</kbd> <kbd>T</kbd> With a Forge selected, build its ships</li>
         <li><kbd>Tab</kbd> Your next Forge, the idle ones first</li>
@@ -78,5 +79,9 @@ export function howtoHtml(): string {
     <div class="how-ages">
       <canvas class="mode-art" data-art="ages" aria-hidden="true"></canvas>
       <div><h3>AGES RUN</h3><p>The long game. Every house starts in the Stone Age on one world, climbs five ages, builds its Ark, and carries what it has won to the stars.</p></div>
+    </div>
+    <div class="how-ages how-mp">
+      <canvas class="mode-art" data-art="together" aria-hidden="true"></canvas>
+      <div><h3>MULTIPLAYER</h3><p>Co-op against the AI, or versus your friends, each in their own browser at hegemarch.com. One of you hosts a room and sends the others its link; up to four players, and the AI leads any other houses.</p></div>
     </div>`;
 }

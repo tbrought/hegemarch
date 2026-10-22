@@ -539,7 +539,7 @@ export class RoomCore {
     } else {
       if (!this.pause || this.pause.resumeAt) return;
       if (versus && this.pause.by !== m.seat && now < (this.pause.openAt ?? 0)) {
-        m.conn?.send({ t: 'error', text: 'Only the player who paused can go on, until a minute has passed.' });
+        m.conn?.send({ t: 'error', text: 'Only the player who paused can resume, until a minute has passed.' });
         return;
       }
       this.pause.resumeAt = now + COUNT_IN_MS;

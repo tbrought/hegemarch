@@ -1877,7 +1877,7 @@ all use; the Worker's is the one that counts). Refused: slurs, hate, sexual word
 only as the whole name (`WHOLE`), so that GRAPE, CLASS and CUMIN stand. No list is whole: a name can be taken
 down by hand to "???" (`worker/README.md`), which counts as no one's reign.
 
-## 11. Games played together (1.28)
+## 11. Multiplayer (1.28)
 
 Co-op (allied houses against the AI) and versus (player against player, or teams), up to four players in
 a room, the rest of its sector's houses the AI's. The design, the choices made and how it was built are in
@@ -1897,7 +1897,7 @@ catches up when it is shown. A room never plays the game itself, so it costs nex
 
 - **No one screen stops the game.** A decision, a Boon choice, a tip card: the game goes on behind it (the
   draft waits behind B, a decision behind its ! button). Pausing is the room's: in co-op anyone pauses and
-  anyone goes on; in versus three pauses each, of a minute, after which anyone may go on. Going on is counted
+  anyone resumes; in versus three pauses each, of a minute, after which anyone may resume. Resuming is counted
   in (3, 2, 1), so no one is caught looking away.
 - **The speed is the room's**: the host's in co-op, the lobby's for the whole of a versus game.
 - **"You" is the house on this screen.** Every rule keys on seats (a player's house by its seat; whoever
@@ -1910,10 +1910,14 @@ catches up when it is shown. A room never plays the game itself, so it costs nex
 - **Co-op's fallen ally** is rekindled when a teammate takes back (or kindles again) the world where their
   Hearth stood: the house is back there with its Ark, two Guardians, Embers to begin with, and every Boon it
   had. A rule drawn on the map: the world to take is named in the banner and on the fallen player's line.
-  The run is lost when every player's Hearth has gone dark.
-- **Versus plays by the Daily's rules**: no Hall of Heirs perks, all six houses and every Boon for everyone,
+  The game is lost when every player's Hearth has gone dark.
+- **Versus is played as the Daily is**: no Hall of Heirs perks and every Boon; and all six houses for everyone,
   so that a newcomer is not beaten by hours played. Versus still pays Legacy, spent on single-player and
   co-op. For friends of uneven skill, an open handicap (more Embers) that everyone sees.
+- **The same words as a run.** The lobby's sector and difficulty are the setup's, with the same lines and
+  tips (and the difficulty's Legacy); pausing is "resume" here as alone; a win is "crowned" in co-op and
+  versus alike; the title screen's four cards sit under CHOOSE HOW TO PLAY, since a multiplayer game is not
+  a run.
 - **A player who leaves**, or is away a minute, has the AI lead their house (it keeps their perks, not the
   AI's bonuses); back with their token, they play the game again from its orders and take it back.
 

@@ -124,7 +124,7 @@ export function showResults(app: App) {
       : '<div class="lh-buys"><span>Everything in the Hall of Heirs is yours.</span></div>';
   const legacyHero = `<div class="px-box legacy-hero">
         <div class="lh-earned"><span class="lh-num">◆<span id="legacy-total">0</span></span><span class="lh-label">LEGACY EARNED</span></div>
-        <div class="lh-text"><p><b>Legacy is yours to keep.</b> Every run earns it, win or lose. Spend it in the <b>Hall of Heirs</b> on new houses to play, on perks that every future run starts with, and on rarer Boons. You have <b class="gold">◆${have}</b> to spend.</p>${buys}</div>
+        <div class="lh-text"><p><b>Legacy is yours to keep.</b> ${r.together ? 'Every game earns it, alone or with friends' : 'Every run earns it'}, win or lose. Spend it in the <b>Hall of Heirs</b> on new houses to play, on perks that every future run starts with, and on rarer Boons. You have <b class="gold">◆${have}</b> to spend.</p>${buys}</div>
         <button class="${afford.length ? 'primary' : ''}" data-sa="results-hall">${afford.length ? 'SPEND IT' : 'SEE THE HALL'}</button>
       </div>`;
   // A Daily: its board, where a crown can be posted under three to five letters (and is played again before it goes up).
@@ -173,7 +173,9 @@ export function showResults(app: App) {
       </div>` : ''}
       ${r.charts ? chartsHtml(r.charts, (type, color) => shipPic(type, color, 'rc-pic')) : ''}
       <div class="run-details">
-        <button class="small" data-sa="copy-run" data-tip="Copies this run's version, seed, setup and outcome, to send with a bug report or to play the same sector again.">COPY RUN DETAILS</button>
+        ${r.together
+          ? '<button class="small" data-sa="copy-run" data-tip="Copies this game\'s version, seed, setup and outcome, to send with a bug report.">COPY GAME DETAILS</button>'
+          : '<button class="small" data-sa="copy-run" data-tip="Copies this run\'s version, seed, setup and outcome, to send with a bug report or to play the same sector again.">COPY RUN DETAILS</button>'}
         <textarea id="run-details" readonly hidden rows="6">${esc(r.details)}</textarea>
       </div>
       <div class="foot-actions"><button class="${afford.length ? 'primary' : ''}" data-sa="results-hall">${afford.length ? 'SPEND LEGACY IN THE HALL OF HEIRS' : 'HALL OF HEIRS'}</button>${r.together

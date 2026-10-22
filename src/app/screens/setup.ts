@@ -31,6 +31,27 @@ interface Fixed {
   daily: boolean;
 }
 
+/** The sizes of a sector: its name, and what it holds (the setup of a run, and the multiplayer lobby). */
+export const sizesOf = (ages: boolean): [MapSize, string, string][] => ages
+  ? [
+      ['small', 'SMALL', '3 houses on the cradle · about 50 to 70 minutes in all'],
+      ['medium', 'MEDIUM', '4 houses on the cradle · about 60 to 85 minutes in all'],
+      ['large', 'LARGE', '6 houses on the cradle · about 75 to 110 minutes in all'],
+    ]
+  : [
+      ['small', 'SMALL', '3 houses · about 25 worlds · 25 to 40 minutes'],
+      ['medium', 'MEDIUM', '4 houses · about 40 worlds · 35 to 50 minutes'],
+      ['large', 'LARGE', '6 houses · about 60 worlds · 45 to 70 minutes'],
+    ];
+
+/**
+ * A difficulty in a line, under its buttons (the setup of a run, and the multiplayer lobby): what it gives the rivals, from the
+ * numbers the game plays by (until 1.23.6 Brutal said "Merciless." and nothing more), and Legacy in its gold, as everywhere.
+ */
+export function difficultyHelp(d: number): string {
+  return esc(difficultySummary(d)).replace(/Legacy ×\d+(\.\d+)?/, '<span class="gold">$&</span>');
+}
+
 export function rememberSetup(app: App) {
   const st = app.setup;
   app.profile.lastSetup = { heir: st.heir, size: st.size, difficulty: st.difficulty };
@@ -69,21 +90,8 @@ export function showSetup(app: App) {
       </div>`;
   }).join('');
   const ages = st.ages;
-  const sizesOf = (ages: boolean): [MapSize, string, string][] => ages
-    ? [
-        ['small', 'SMALL', '3 houses on the cradle · about 50 to 70 minutes in all'],
-        ['medium', 'MEDIUM', '4 houses on the cradle · about 60 to 85 minutes in all'],
-        ['large', 'LARGE', '6 houses on the cradle · about 75 to 110 minutes in all'],
-      ]
-    : [
-        ['small', 'SMALL', '3 houses · about 25 worlds · 25 to 40 minutes'],
-        ['medium', 'MEDIUM', '4 houses · about 40 worlds · 35 to 50 minutes'],
-        ['large', 'LARGE', '6 houses · about 60 worlds · 45 to 70 minutes'],
-      ];
   const sizes = sizesOf(ages);
-  // (What each one gives the rivals, from the numbers the game plays by: a line under the buttons, all of it on a button. Until 1.23.6 Brutal said "Merciless." and nothing more.)
-  // (Legacy in its gold, here as everywhere: "Legacy ×1.4" was grey in the line.)
-  const diffHelp = DIFFICULTY_NAMES.map((_, i) => esc(difficultySummary(i)).replace(/Legacy ×\d+(\.\d+)?/, '<span class="gold">$&</span>'));
+  const diffHelp = DIFFICULTY_NAMES.map((_, i) => difficultyHelp(i));
   const diffTip = DIFFICULTY_NAMES.map((_, i) => difficultyText(i));
   const daily = st.daily;
   // A challenge taken up from a link: its sector is fixed (that is the challenge); the house is the player's to choose.

@@ -93,7 +93,7 @@ export function drawPlayers(hud: Hud) {
   hud.playersRect = { x, y: 17, w, h: y - 17 };
 }
 
-/** The room's pause, at the foot of the screen: who paused, the count-in, and when this player may go on. */
+/** The room's pause, at the foot of the screen: who paused, the count-in, and when this player may resume. */
 export function drawNetPause(hud: Hud) {
   const net = hud.s.net!;
   const g = hud.s.screen.g;
@@ -104,11 +104,11 @@ export function drawNetPause(hud: Hud) {
   let t: string;
   let color: string = PAL.gold;
   if (count !== null) {
-    t = `GOING ON IN ${Math.max(1, Math.ceil(count))}`;
+    t = `RESUMING IN ${Math.max(1, Math.ceil(count))}`;
     color = PAL.teal;
   } else if (hud.g.config.together === 'versus' && p.by !== hud.g.playerId && net.openIn > 0) {
-    t = `PAUSED BY ${by} · YOU CAN GO ON IN ${fmtTime(net.openIn)}`;
-  } else t = `PAUSED BY ${by} · SPACE TO GO ON`;
+    t = `PAUSED BY ${by} · YOU CAN RESUME IN ${fmtTime(net.openIn)}`;
+  } else t = `PAUSED BY ${by} · SPACE TO RESUME`;
   const w = textWidth(t, 'tiny') + 10;
   let x = Math.round(hud.W / 2 - w / 2);
   if (hud.cardRect.w > 0 && x < hud.cardRect.x + hud.cardRect.w + 4) x = hud.cardRect.x + hud.cardRect.w + 6;

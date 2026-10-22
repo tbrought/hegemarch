@@ -156,7 +156,7 @@ export class Lockstep {
         this.resyncs++;
         this.log = m.log.slice();
         this.to = m.to;
-        return this.rebuild(`The screens fell out of step (${m.why}). Playing the game again from its orders…`);
+        return this.rebuild('The screens fell out of step. Catching up with the game…');
       case 'pause':
         this.pause = m.state;
         this.pauseHeard = this.clock();

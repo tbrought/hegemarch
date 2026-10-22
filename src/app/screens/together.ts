@@ -9,11 +9,13 @@ import { HEIR_BY_ID, HEIRS } from '../../game/data/heirs';
 import type { Difficulty } from '../../game/types';
 import { cleanName, isCode, MAX_PLAYERS, NET_SPEEDS, SEATS_BY_SIZE, startProblem, type LobbySeat, type RoomOptions } from '../../net/protocol';
 import { saveProfile } from '../../meta/profile';
+import { difficultyText } from '../../ui/difficulty';
 import { esc } from '../../ui/format';
 import type { App } from '../App';
 import { leaveTogether, startNetRun, teardownSession } from '../run';
 import { cannotPlayTogether, forgetRoom, hostRoom, joinRoom, keptRoom, type RoomClient } from '../together';
 import { copy } from './results';
+import { difficultyHelp, sizesOf } from './setup';
 import type { ScreenActions } from './index';
 
 /** The link to a room: whoever opens it comes to the room (app/App.ts, `#join=`). */
@@ -62,28 +64,28 @@ export function showTogether(app: App) {
   const players = L.seats.filter((s) => s.kind === 'player').length;
   const check = (sa: string, label: string, on: boolean, tip: string) =>
     `<div class="check ${on ? 'on' : ''}${host ? '' : ' disabled'}" ${host ? `data-sa="${sa}"` : 'data-sa="room-host-only"'} role="checkbox" aria-checked="${on}" tabindex="0" data-tip="${esc(host ? tip : `${hostOnly} ${tip}`)}"><span class="box"></span>${label}</div>`;
-  const sizes: [RoomOptions['size'], string, string][] = [
-    ['small', 'SMALL', '3 houses, about 25 worlds.'], ['medium', 'MEDIUM', '4 houses, about 40 worlds.'], ['large', 'LARGE', '6 houses, about 60 worlds.'],
-  ];
+  // (The sector and the difficulty in the words of a run's setup.)
+  const sizes = sizesOf(false);
   const opts = `<div class="opts together-opts">
       <div class="opt px-box"><h4>WAY TO PLAY</h4><div class="row">
         ${btn('room-mode:coop', 'CO-OP', !versus, 'Allied houses against the AI: you share what you see, send each other Embers, and win together.')}
         ${btn('room-mode:versus', 'VERSUS', versus, 'Player against player (and teams). No perks from the Hall of Heirs: everyone plays by the same rules.')}</div>
         <div class="help">${versus
-          ? 'Player against player. <b>No Hall of Heirs perks</b>: every house and every Boon for everyone, as in the Daily. Three pauses of a minute each.'
-          : 'Allies against the AI. Your own houses and Hall of Heirs perks. You see what your allies see, and win together; a fallen ally comes back when you retake their Hearth.'}</div></div>
+          ? 'Player against player. As in the Daily: <b>no Hall of Heirs perks</b>, and every Boon. Every house is open to everyone. Three pauses of a minute each.'
+          : 'Allies against the AI, with your own houses and Hall of Heirs perks. You see what your allies see, and win together. When an ally\'s Hearth falls, take it back to rekindle it.'}</div></div>
       <div class="opt px-box"><h4>SECTOR</h4><div class="row">${sizes.map(([k, n, d]) => btn(`room-size:${k}`, n, o.size === k, d, !host ? hostOnly : SEATS_BY_SIZE[k] < players ? `There are ${players} players in the room: too many for this sector.` : '')).join('')}</div>
-        <div class="help">${sizes.find((x) => x[0] === o.size)![2]} Seats that are not a player's are the AI's, or closed.</div></div>
-      <div class="opt px-box"><h4>THE AI HOUSES</h4><div class="row">${DIFFICULTY_NAMES.map((n, i) => btn(`room-diff:${i}`, n.toUpperCase(), o.difficulty === i, `The AI houses play on ${n}.`)).join('')}</div>
-        <div class="help">How hard the rival houses the AI leads are.</div></div>
+        <div class="help">${sizes.find((x) => x[0] === o.size)![2]}</div></div>
+      <div class="opt px-box"><h4>DIFFICULTY</h4><div class="row">${DIFFICULTY_NAMES.map((n, i) => btn(`room-diff:${i}`, n.toUpperCase(), o.difficulty === i, difficultyText(i))).join('')}</div>
+        <div class="help">${difficultyHelp(o.difficulty)}</div></div>
       <div class="opt px-box"><h4>SPEED</h4><div class="row">${NET_SPEEDS.map((sp) => btn(`room-speed:${sp}`, `${sp}×`, o.speed === sp, `The game runs at ${sp}× for everyone.`)).join('')}</div>
         <div class="help">${versus ? 'The same for the whole game.' : 'The host can change it during the game.'}</div></div>
       ${versus
         ? `<div class="opt px-box"><h4>FAIRNESS</h4>${check('room-luck', 'The same luck', o.sameLuck, 'Every player\'s Boons are dealt from the same dice: your third offer is the same as theirs, and only the choices differ.')}
-          <div class="row" style="margin-top:8px">${[0, 30, 45, 60, 90].map((m) => btn(`room-limit:${m}`, m ? `${m}M` : 'NO LIMIT', o.timeLimit === m, m ? `After ${m} minutes the team furthest toward a Destiny is crowned.` : 'Play until a team is crowned.')).join('')}</div>
-          <div class="help">A time limit is optional: then the team furthest toward a Destiny is crowned.</div></div>`
-        : `<div class="opt px-box"><h4>THE RIVALS</h4>${check('room-unite', 'The rivals unite', o.unite, 'The AI houses are allies of one another: a harder run.')}
-          <div class="help">Each AI house fights for itself, or they stand together against you.</div></div>`}
+          <div class="help">A handicap, if you want one, is set on a player's seat below.</div></div>
+        <div class="opt px-box"><h4>TIME LIMIT</h4><div class="row">${[0, 30, 45, 60, 90].map((m) => btn(`room-limit:${m}`, m ? `${m}M` : 'NONE', o.timeLimit === m, m ? `After ${m} minutes the team furthest toward a Destiny is crowned.` : 'Play until a team is crowned.')).join('')}</div>
+          <div class="help">${o.timeLimit ? `After ${o.timeLimit} minutes the team furthest toward a Destiny is crowned.` : 'Play until a team is crowned.'}</div></div>`
+        : `<div class="opt px-box"><h4>THE RIVALS</h4>${check('room-unite', 'The rivals unite', o.unite, 'The rival houses are allies of one another: a harder game.')}
+          <div class="help">Each rival house fights for itself, or they all stand together against you.</div></div>`}
     </div>`;
   const seats = L.seats.map((s, i) => seatRow(app, room, s, i)).join('');
   const why = startProblem(L.seats, o, L.owner);
@@ -93,7 +95,7 @@ export function showTogether(app: App) {
   app.put('together', page(app, `<h1>ROOM ${esc(room.code)}</h1>
       <div class="lead">${over
         ? (L.phase === 'playing' ? 'This room\'s game is under way.' : `The game is over. ${host ? 'Start another in this room: the same players, a new sector.' : 'Waiting for the host to start another game in this room.'}`)
-        : `Send your friends the code <b class="gold">${esc(room.code)}</b> or the link: up to ${MAX_PLAYERS} players. Everyone plays in their own browser.`}</div>
+        : `Send your friends the code <em>${esc(room.code)}</em> or the link: up to ${MAX_PLAYERS} players. Everyone plays in their own browser.`}</div>
       ${room.notice ? `<div class="px-box notice wide"><span>${esc(room.notice)}</span></div>` : ''}
       ${room.down ? '<div class="px-box notice wide"><span>The connection to the room was lost. Coming back…</span></div>' : ''}
       <div class="px-box room-link"><input type="text" readonly value="${esc(roomLink(room.code))}" aria-label="The room's link">
@@ -201,7 +203,7 @@ function record(app: App): string {
   if (!t || t.coop.played + t.versus.played === 0) return '';
   const rivals = Object.entries(t.against).sort((a, b) => b[1][0] + b[1][1] - (a[1][0] + a[1][1])).slice(0, 8);
   return `<div class="px-box together-record"><h4>YOUR MULTIPLAYER GAMES</h4>
-      <p>Co-op: <b>${t.coop.played}</b> played, <b class="gold">${t.coop.won}</b> crowned · Versus: <b>${t.versus.played}</b> played, <b class="gold">${t.versus.won}</b> won</p>
+      <p>Co-op: <b>${t.coop.played}</b> played, <b class="gold">${t.coop.won}</b> crowned · Versus: <b>${t.versus.played}</b> played, <b class="gold">${t.versus.won}</b> crowned</p>
       ${rivals.length ? `<p class="dim">Against: ${rivals.map(([n, [w, l]]) => `${esc(n)} <b>${w}–${l}</b>`).join(' · ')}</p>` : ''}
       <p class="dim">Kept in this browser.</p></div>`;
 }

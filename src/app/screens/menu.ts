@@ -60,7 +60,7 @@ export function showMenu(app: App) {
       ${app.menuNotice ? `<div class="px-box notice">${esc(app.menuNotice)}</div>` : ''}
       <div class="home${hero ? '' : ' solo'}">
         ${hero}
-        <div class="home-label"><span>${saved ? 'OR START A NEW RUN' : first ? 'OR CHOOSE YOUR OWN RUN' : 'CHOOSE YOUR RUN'}</span></div>
+        <div class="home-label"><span>${saved ? 'OR START A NEW GAME' : first ? 'OR CHOOSE HOW TO PLAY' : 'CHOOSE HOW TO PLAY'}</span></div>
         <div class="modes">
           <button class="mode sector" data-sa="setup" data-tip="Choose a house, a sector and a difficulty. 3 to 6 houses, 25 to 70 minutes. The sector, your rivals, your Destinies and your Boons are new every run.">
             <canvas class="mode-art" data-art="sector" aria-hidden="true"></canvas>
@@ -81,11 +81,11 @@ export function showMenu(app: App) {
             <span class="mode-pitch">Today's sector, the same for every player. <span class="gold">Legacy ×1.25</span>.</span>
             <span class="mode-meta" data-daily>${dailyLine(app)}</span>
           </button>
-          <button class="mode together${together ? ' disabled' : ''}" data-sa="together" data-tip="${esc(together ?? 'Play with friends: allied houses against the AI (co-op), or against each other (versus). Host a room, and send them its code or link.')}">
+          <button class="mode together${together ? ' disabled' : ''}" data-sa="together" data-tip="${esc(together ?? `Play with friends, each in their own browser: co-op against the AI, or versus each other. Up to ${MAX_PLAYERS} players; the AI leads any other houses. One of you hosts a room and sends the others its code or link.`)}">
             ${p.togetherSeen ? '' : '<span class="mode-flag">NEW</span>'}
             <canvas class="mode-art" data-art="together" aria-hidden="true"></canvas>
             <span class="mode-name">MULTIPLAYER</span>
-            <span class="mode-pitch">With friends: allies against the AI, or each other.</span>
+            <span class="mode-pitch">Co-op against the AI, or versus your friends.</span>
             <span class="mode-meta">2 TO ${MAX_PLAYERS} PLAYERS</span>
           </button>
         </div>

@@ -268,6 +268,11 @@ function helpText(modals: Modals): { text: string; color: string; star?: boolean
             'E: send the selected Scouts exploring. With no Scout selected, E picks your idle Scouts first: press it again to send them.',
             'Shift-click a ship button: queue five. Shift-click ships: add to the selection. Double-click a ship: select all of its kind nearby.',
             'Ctrl+1 to 9: save the selected ships as a group. 1 to 9: select that group again. Esc: cancel, or open the menu.',
+            // (Multiplayer's own keys, in a multiplayer game.)
+            ...(modals.s.net
+              ? ['Multiplayer: Enter to chat (Tab: to your team or to everyone, in versus). Alt+click: a ping on the map for your allies. ' +
+                  'A click on a player\'s name at the top left mutes their chat.']
+              : []),
           ].map((t) => ({ text: t, color: PAL.mist }))
         : [
             { text: 'Each of these pops up once, the first time it matters. They are all here to read again.', color: PAL.dusk },

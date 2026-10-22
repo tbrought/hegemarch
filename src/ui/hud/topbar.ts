@@ -218,7 +218,7 @@ function barControls(hud: Hud) {
   rx -= 12;
   hud.ui.iconButton(g, 'pause', rx, 1, 11, hud.s.paused ? 'play' : 'pause', () => {
     hud.s.paused = !hud.s.paused;
-  }, { tip: hud.s.paused ? (net ? 'Go on, for everyone (Space)' : 'Resume (Space)') : net ? 'Pause, for everyone (Space)' : 'Pause (Space)', selected: hud.s.paused, pulse: hud.s.paused });
+  }, { tip: hud.s.paused ? (net ? 'Resume, for everyone (Space)' : 'Resume (Space)') : net ? 'Pause, for everyone (Space)' : 'Pause (Space)', selected: hud.s.paused, pulse: hud.s.paused });
   // (The clock in tabular figures too: right-aligned, it shook as each second changed its width.)
   const clock = fmtTime(hud.g.time);
   rx -= tabularWidth(clock) + 5;

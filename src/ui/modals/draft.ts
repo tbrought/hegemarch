@@ -133,7 +133,7 @@ export function draft(modals: Modals, g: Ctx) {
   if (!offer || !offer.length) {
     // (Together: the room is dealing the cards; they come in a moment.)
     if (modals.s.net && p.pendingDrafts > 0) {
-      const { x, y } = modals.frame(g, 170, 38, 'A BOON');
+      const { x, y } = modals.frame(g, 170, 38, 'CHOOSE A BOON');
       modals.closeButton(g, x, y, 170);
       text(g, 'The cards are being dealt…', x + 10, y + 21, PAL.mist);
       return;

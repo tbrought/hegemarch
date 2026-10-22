@@ -177,7 +177,7 @@ export async function continueRun(app: App) {
   beginSession(app, g);
   const s = app.session!;
   s.paused = true;
-  s.showToast('Run restored. Paused: press Space to go on.', '#c8cbe6', 6);
+  s.showToast('Run restored. Paused: press Space to resume.', '#c8cbe6', 6);
 }
 
 /**
