@@ -167,10 +167,15 @@ function rig(seed = 3) {
     currentTime: 0, state: 'running',
     createGain: () => ({ gain: { value: 0, setTargetAtTime: (v: number, t: number) => void levels.push([v, t]), cancelScheduledValues() {} }, connect() {}, disconnect() {} }),
   };
+  /** Notes asked for after their moment had passed (each would begin in the middle of its sound: a click). */
+  let late = 0;
   const sfx = {
     ctx,
     musicGain: {},
-    tone: (_d: unknown, w: string, f: number, _f1: number, t: number, dur: number, vol: number) => void played.push({ w, f, t, dur, vol }),
+    tone: (_d: unknown, w: string, f: number, _f1: number, t: number, dur: number, vol: number) => {
+      if (t < ctx.currentTime - 1e-9) late++;
+      played.push({ w, f, t, dur, vol });
+    },
     noiseBurst: () => void drums++,
   };
   let s = seed;
@@ -196,8 +201,12 @@ function rig(seed = 3) {
     }
     return out.sort((a, b) => b - a);
   };
-  return { music, inner, played, heard, run, silences, ctx, levels, drums: () => drums };
+  return { music, inner, played, heard, run, silences, ctx, levels, drums: () => drums, late: () => late };
 }
+
+/** The steps of a track's part, and how long one lasts. */
+const stepOf = (t: Track) => 60 / t.bpm / 2;
+const byName = (name: string | null) => TRACKS.find((t) => t.name === name)!;
 
 describe('played through', () => {
   beforeEach(() => void vi.useFakeTimers());
@@ -247,20 +256,189 @@ describe('played through', () => {
     expect(quiet[0]).toBeLessThan(125);
   });
 
-  it('now and then: a battle in the quiet has its music at once, and the quiet goes on after it', () => {
+  it('now and then: a battle in the quiet has its music at once, and the quiet goes on after it, to the end it had', () => {
     const r = rig();
     r.music.pace = 'sometimes';
     r.music.play('night');
-    const first = TRACKS.find((t) => t.name === r.music.title)!;
-    r.run(trackSeconds(first) + 12);
+    r.run(trackSeconds(byName(r.music.title)) + 12);
+    const quietEnds = (r.inner as unknown as { quietUntil: number }).quietUntil;
+    expect(quietEnds - r.ctx.currentTime).toBeGreaterThan(45);
     const calm = r.played.length;
     r.music.play('war');
     r.run(1);
     expect(r.played.length).toBeGreaterThan(calm);
+    // The fighting is over: the battle's music comes home, and nothing of the night comes until its quiet is over...
+    r.music.settle('night');
+    r.run(20);
+    expect(r.music.playing).toBe('night');
+    expect(r.played.filter((x) => x.t > r.ctx.currentTime - 10).length).toBe(0);
+    // ...and then it does, when that quiet was to end.
+    r.run(quietEnds - r.ctx.currentTime + 2);
+    const after = r.played.filter((x) => x.t >= quietEnds - 0.01);
+    expect(after.length).toBeGreaterThan(5);
+    expect(Math.min(...after.map((x) => x.t))).toBeLessThan(quietEnds + 0.5);
+  });
+
+  it('a battle that is over plays to the end of its phrase and comes home: it never stops in the middle of a bar', () => {
+    for (const seed of [1, 2, 3, 4, 5, 6]) {
+      const r = rig(seed);
+      r.music.play('night');
+      r.run(30);
+      r.music.play('war');
+      const war = byName(r.music.title);
+      // (Some way into the battle, at no bar in particular.)
+      r.run(9 + seed * 1.37);
+      const asked = r.ctx.currentTime;
+      r.music.settle('night');
+      expect(r.music.playing, 'the battle music plays on while it comes home').toBe('war');
+      r.run(12);
+      expect(r.music.playing).toBe('night');
+      // Its last bar is the end of a phrase: four bars of its tune, counted from the start of its part.
+      const step = stepOf(war);
+      const phrase = 4 * war.steps * step;
+      const home = r.played.filter((x) => x.w === 'tri' && x.dur >= 1.6 - 1e-9 && x.t > asked - 0.01);
+      expect(home.length, `seed ${seed}: the battle's tune rings its home chord`).toBeGreaterThan(0);
+      const at = home[0].t;
+      expect(at - asked, `seed ${seed}: it comes home within a phrase`).toBeLessThanOrEqual(phrase + 0.31);
+      // (The home chord falls on a bar line that ends a phrase: a whole number of four-bar phrases since the battle began.)
+      const battleBegan = Math.min(...r.played.filter((x) => x.t > 30.2 && x.t < 31).map((x) => x.t));
+      const phrases = (at - battleBegan) / phrase;
+      expect(Math.abs(phrases - Math.round(phrases)), `seed ${seed}: ${phrases.toFixed(3)} phrases`).toBeLessThan(0.01);
+      // Nothing of the battle's tune after its home chord but the chord itself; the night comes in after it rings.
+      const after = r.played.filter((x) => x.t > at + 0.01);
+      const ring = Math.max(1.6, step * 6);
+      expect(after.filter((x) => x.t < at + ring).every((x) => x.t <= at + 2 * step + 1e-9), `seed ${seed}: the battle stops at its chord`).toBe(true);
+      expect(Math.min(...after.filter((x) => x.t > at + 2 * step + 1e-9).map((x) => x.t)), `seed ${seed}: the night after the ring`).toBeGreaterThanOrEqual(at + ring);
+      expect(r.late(), `seed ${seed}: late notes`).toBe(0);
+    }
+  });
+
+  it('a battle that flares up again as its music is coming home goes on with it: nothing is cut', () => {
+    const r = rig();
+    r.music.play('war');
+    const war = r.music.title;
+    r.run(10);
+    r.music.settle('night');
+    r.run(0.5);
+    r.music.play('war');
+    r.run(20);
+    expect(r.music.playing).toBe('war');
+    expect(r.music.title).toBe(war);
+    // (No silence in it longer than a battle's own breath.)
+    expect(r.silences()[0] ?? 0).toBeLessThan(1.5);
+    // And asked again and again as the fighting dies down (every frame), it ends once.
+    for (let i = 0; i < 40; i++) {
+      r.music.settle('night');
+      r.run(0.05);
+    }
+    r.run(10);
+    expect(r.music.playing).toBe('night');
+  });
+
+  it('a battle that is over gives the night back where it was, after a breath', () => {
+    const r = rig();
     r.music.play('night');
-    const back = r.ctx.currentTime;
-    r.run(30);
-    expect(r.played.filter((x) => x.t > back + 0.5).length).toBe(0);
+    const track = r.music.title;
+    r.run(40);
+    const seg = r.inner.seg;
+    r.music.play('war');
+    r.run(15);
+    r.music.settle('night');
+    r.run(12);
+    expect(r.music.playing).toBe('night');
+    expect(r.music.title).toBe(track);
+    // (Within a phrase of the battle's tune, its ring and a breath: no long silence.)
+    const sorted = [...r.played].sort((a, b) => a.t - b.t);
+    expect(r.silences()[0]).toBeLessThan(4);
+    expect(sorted.length).toBeGreaterThan(0);
+    expect(r.inner.seg).toBeGreaterThanOrEqual(seg);
+  });
+
+  it('with the music only for battles, a battle that is over ends on its home chord and leaves the quiet', () => {
+    const r = rig();
+    r.music.play('war');
+    r.run(10);
+    r.music.settle(null);
+    r.run(10);
+    expect(r.music.playing).toBeNull();
+    const n = r.played.length;
+    r.run(60);
+    expect(r.played.length).toBe(n);
+    expect(r.played.some((x) => x.w === 'tri' && x.dur >= 1.6 - 1e-9)).toBe(true);
+  });
+
+  it('a new run does not open in the quiet the last one ended in', () => {
+    const r = rig();
+    r.music.pace = 'sometimes';
+    r.music.play('night');
+    r.run(trackSeconds(byName(r.music.title)) + 10);
+    // The run ends in the quiet; the results and the title screen; then a new run.
+    r.music.play(null);
+    r.music.play('title');
+    r.run(5);
+    r.music.forget();
+    r.music.play('night');
+    const began = r.ctx.currentTime;
+    r.run(3);
+    expect(r.played.filter((x) => x.t > began).length).toBeGreaterThan(3);
+  });
+
+  it('set to play often in the middle of a long quiet, the music comes back within seconds', () => {
+    const r = rig();
+    r.music.pace = 'sometimes';
+    r.music.play('night');
+    r.run(trackSeconds(byName(r.music.title)) + 10);
+    const set = r.ctx.currentTime;
+    r.music.pace = 'often';
+    r.run(5);
+    expect(r.played.filter((x) => x.t > set).length).toBeGreaterThan(3);
+  });
+
+  it('an hour of everything a run asks of it, in any order: it never stalls, never plays a note late, and every note is in tune', () => {
+    let seed = 11;
+    const rnd = () => ((seed = (seed * 1664525 + 1013904223) >>> 0) / 4294967296);
+    for (const pace of ['often', 'sometimes'] as const) {
+      const r = rig(5);
+      r.music.pace = pace;
+      r.music.play('night');
+      let calm: Mood = 'night';
+      const inner = r.inner as unknown as { pump(): void };
+      for (let k = 0; k < 600; k++) {
+        const roll = rnd();
+        if (roll < 0.25) r.music.play('war');
+        else if (roll < 0.5) r.music.settle(calm);
+        else if (roll < 0.55) r.music.skip();
+        else if (roll < 0.58) r.music.duck(2.2);
+        else if (roll < 0.6) r.music.playTrack(TRACKS[Math.floor(rnd() * TRACKS.length)].name);
+        else if (roll < 0.62) calm = calm === 'night' ? 'cradle' : 'night';
+        else if (roll < 0.64) {
+          // A frame that takes long: the clock runs on with no one there to schedule.
+          r.ctx.currentTime += 0.2 + rnd() * 1.5;
+        } else if (roll < 0.66) {
+          // The page hidden: the sound sleeps, and its clock with it.
+          r.ctx.state = 'suspended';
+          for (let i = 0; i < 20; i++) inner.pump();
+          r.ctx.state = 'running';
+        }
+        r.run(rnd() * 12);
+        // (Whatever was asked, a mood that wants music has it, or is in a quiet it was told of.)
+        if (r.music.playing && r.music.playing !== 'crown') expect(r.music.title, `step ${k}`).not.toBeNull();
+      }
+      // Then the calm music, left alone for a while: it plays (no quiet lasts longer than the setting's).
+      r.music.settle(calm);
+      r.run(20);
+      r.music.play(calm);
+      const from = r.ctx.currentTime;
+      r.run(10 * 60);
+      const quiet = r.silences();
+      expect(quiet[0], pace).toBeLessThan(pace === 'often' ? 10 : 125);
+      expect(r.played.filter((x) => x.t > from).length).toBeGreaterThan(500);
+      expect(r.late(), pace).toBe(0);
+      for (const x of r.played) {
+        const n = 69 + 12 * Math.log2(x.f / 440);
+        expect(Math.abs(n - Math.round(n))).toBeLessThan(1e-6);
+      }
+    }
   });
 
   it('a melody is one voice: no note of it starts before the last has ended', () => {
@@ -390,5 +568,56 @@ describe('played through', () => {
     const n = r.played.length;
     r.run(30);
     expect(r.played.length).toBe(n);
+  });
+});
+
+describe('in a run (app/sound.ts)', () => {
+  beforeEach(() => void vi.useFakeTimers());
+  afterEach(() => void vi.useRealTimers());
+
+  it('the Hearth under fire brings the battle music; when the fighting stops it comes home, and the night follows it', async () => {
+    const { pickMusic } = await import('../src/app/sound');
+    const r = rig();
+    const app = { music: r.music, warHeat: 0, profile: { settings: { musicPace: 'often' } } };
+    const hearth = { owner: 0, lastHit: 99 };
+    const g = { outcome: null, player: { id: 0 }, tick: 0, cradle: false, nodes: [hearth], unitList: [] };
+    /** Frames of the game, twenty a second (a tick each), with the music's clock. */
+    const frames = (seconds: number) => {
+      for (let t = 0; t < seconds - 1e-9; t += 0.05) {
+        g.tick++;
+        pickMusic(app as never, g as never, 0.05);
+        r.run(0.05);
+      }
+    };
+    r.music.play('night');
+    frames(10);
+    const night = r.music.title;
+    hearth.lastHit = 0;
+    frames(15);
+    expect(r.music.playing).toBe('war');
+    // The fighting stops. The battle music lasts while the heat dies down (a minute at most), then to the end of its phrase.
+    hearth.lastHit = 99;
+    let ending = -1;
+    for (let s = 0; s < 70 && r.music.playing === 'war'; s += 0.5) {
+      frames(0.5);
+      if (ending < 0 && app.warHeat <= 0.5) ending = r.ctx.currentTime;
+    }
+    expect(r.music.playing).toBe('night');
+    expect(r.music.title).toBe(night);
+    expect(r.ctx.currentTime - ending).toBeLessThan(8);
+    expect(r.played.some((x) => x.w === 'tri' && x.dur >= 1.6 - 1e-9 && x.t > ending - 0.5)).toBe(true);
+    // A battle that flares up again as its music is ending goes on with it.
+    hearth.lastHit = 0;
+    frames(15);
+    hearth.lastHit = 99;
+    while (app.warHeat > 0.5) frames(0.5);
+    frames(1);
+    expect(r.music.playing).toBe('war');
+    hearth.lastHit = 0;
+    frames(3);
+    hearth.lastHit = 99;
+    frames(10);
+    expect(r.music.playing).toBe('war');
+    expect(r.late()).toBe(0);
   });
 });

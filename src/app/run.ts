@@ -226,6 +226,8 @@ function beginSession(app: App, g: Game) {
     s.modal = { kind: 'omens', unbidden: true };
     g.ui.arrived = 1;
   }
+  // (A run's music begins afresh: not where the last run's night was, nor in the rest of its quiet.)
+  app.music.forget();
   app.music.play(app.profile.settings.musicPace === 'battles' ? null : g.cradle ? 'cradle' : 'night');
   // (The keyboard to the game from the first moment. Until 1.23.4 the canvas was asked, and a canvas cannot take it.)
   takeKeys();

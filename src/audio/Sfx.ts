@@ -67,7 +67,8 @@ export class Sfx {
    */
   unlock() {
     if (this.ctx) {
-      if (this.ctx.state === 'suspended') void this.ctx.resume();
+      // (Asleep, or stopped by the system, as Safari does when something else takes the sound: a click wakes it.)
+      if (this.ctx.state !== 'running' && this.ctx.state !== 'closed') this.ctx.resume().catch(() => {});
       return;
     }
     const AC = window.AudioContext ?? (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;

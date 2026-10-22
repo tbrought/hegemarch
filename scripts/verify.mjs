@@ -31,7 +31,7 @@ const AT_ONCE = 3;
  * Suites that time what they hear or see, or compare a picture to the pixel: run with nothing else beside
  * them (a busy machine is heard as clicks, and a picture made over several frames comes a frame late).
  */
-const ALONE = new Set(['uisnap', 'audio', 'reveals', 'frame']);
+const ALONE = new Set(['uisnap', 'audio', 'music', 'reveals', 'frame']);
 
 /** [name, command, needs a browser?]. The browser suites stand longest first: they are started in this order. */
 const steps = [
@@ -64,6 +64,8 @@ const steps = [
   ['frame', 'node scripts/frame.mjs', true],
   // (A battle's music in tune and never clipping, and every sound starting from silence: 1.25.1.)
   ['audio', 'node scripts/audio.mjs', true],
+  // (Every track through the real sound engine: it was not run here, and a check of it went stale unseen in 1.27.1.)
+  ['music', 'node scripts/music.mjs', true],
 ].filter(([name, , browser]) => (only ? only.includes(name) : !(quick && browser)));
 const after = release
   ? [

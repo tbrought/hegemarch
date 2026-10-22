@@ -58,7 +58,12 @@ const heard = await page.evaluate(async () => {
     m.play(t.mood);
     m.track = t;
     m.pump();
+    // (The breath of OFTEN: NOW AND THEN, the default since 1.27.1, follows a calm track with a minute or two
+    // of quiet, which tests/music.test.ts measures.)
+    const pace = m.pace;
+    m.pace = 'often';
     const rest = m.close(t, sfx.ctx.currentTime + 0.05, 60 / t.bpm / 2);
+    m.pace = pace;
     m.track = null;
     const ring = await listen(900);
     m.play(null);

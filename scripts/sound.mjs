@@ -313,7 +313,39 @@ const state = (page) =>
   check((await page.evaluate(() => window.__app.music.playing)) === 'war', 'and a battle has its music at once');
   await page.evaluate(() => (window.__app.warHeat = 0));
   await page.waitForTimeout(300);
-  check((await page.evaluate(() => window.__app.music.playing)) === null, 'which stops when the fighting does');
+  // (Not cut where it stands: it plays to the end of its phrase and comes home first, 1.27.2.)
+  check((await page.evaluate(() => window.__app.music.playing)) === 'war', 'when the fighting stops, the battle music plays on to the end of its phrase');
+  const ended = await page.waitForFunction(() => window.__app.music.playing === null, null, { timeout: 9000 }).then(() => true, () => false);
+  check(ended, 'and then stops, within four bars');
+  await browser.close();
+}
+
+// ---- A battle that is over gives the night back (the default, NOW AND THEN), in the real sound engine ----
+{
+  const { browser, page } = await open('no-user-gesture-required');
+  await page.click('[data-sa="setup"]');
+  await page.waitForTimeout(300);
+  await page.click('[data-sa="launch"]');
+  await page.waitForFunction(() => window.__app.screen === 'game', null, { timeout: 60000 });
+  await page.waitForTimeout(600);
+  const night = await page.evaluate(() => window.__app.music.title);
+  await page.evaluate(() => (window.__app.warHeat = 20));
+  await page.waitForTimeout(3000);
+  check((await page.evaluate(() => window.__app.music.playing)) === 'war', 'a battle in the night has its music at once');
+  await page.evaluate(() => (window.__app.warHeat = 0));
+  await page.waitForTimeout(300);
+  check((await page.evaluate(() => window.__app.music.playing)) === 'war', 'when it is over its music plays on to the end of its phrase, not cut in the middle of a bar');
+  const back = await page.waitForFunction(() => window.__app.music.playing === 'night', null, { timeout: 9000 }).then(() => true, () => false);
+  const s = await page.evaluate(() => ({ title: window.__app.music.title, ctx: window.__app.sfx.ctx?.state }));
+  check(back && s.title === night && s.ctx === 'running', `then the night comes back, with the track it was playing (${s.title}, was ${night}; audio ${s.ctx})`);
+  // (Its notes are on the clock again within a breath: the sequencer has a bus and is scheduling ahead, by
+  // its look-ahead and a step at most.)
+  await page.waitForTimeout(3500);
+  const sched = await page.evaluate(() => {
+    const m = window.__app.music;
+    return { bus: !!m.bus, ahead: m.nextTime - window.__app.sfx.ctx.currentTime };
+  });
+  check(sched.bus && sched.ahead > -0.1 && sched.ahead < 1, `and plays: its notes are being scheduled (${sched.ahead.toFixed(2)} s ahead)`);
   await browser.close();
 }
 

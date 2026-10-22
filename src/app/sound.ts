@@ -34,7 +34,14 @@ export function pickMusic(app: App, g: Game, dt: number) {
   app.warHeat = Math.max(0, app.warHeat - dt * 0.6);
   const calm = app.profile.settings.musicPace === 'battles' ? null : g.cradle ? 'cradle' : 'night';
   const want: SongId | null = app.warHeat > 8 ? 'war' : calm;
-  if (app.music.playing !== want && (want === 'war' || app.warHeat <= 0.5)) app.music.play(want);
+  // A battle's music comes at once (and goes on, if the fighting flares up again as it is ending). When the
+  // fighting is over it plays to the end of its phrase and comes home before the calm music follows it: cut
+  // where it stood, it died in the middle of a bar (1.27.2).
+  if (want === 'war') app.music.play('war');
+  else if (app.music.playing !== want && app.warHeat <= 0.5) {
+    if (app.music.playing === 'war') app.music.settle(want);
+    else app.music.play(want);
+  }
 }
 
 export function processFx(app: App, g: Game, visible: (n: number) => boolean, sound: boolean) {

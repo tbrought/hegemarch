@@ -1418,8 +1418,19 @@ Measured with `npm run simulate` and `npm run balance:passive`. Speeds are ½×,
   **And a Music plays row** (1.27.1): OFTEN (the calm tracks one after another, a breath between them,
   as before), NOW AND THEN (the default: a minute or two of quiet after each calm track) and BATTLES
   ONLY (no calm music in a run). Battle music starts at once whichever is chosen, and a battle in the
-  quiet does not end it: the night has the rest of its quiet after the fighting (`Music.pace`; the
-  website and the films keep OFTEN). A player found the calm music, track after track, tiring.
+  quiet does not end it: the night comes back when its quiet was to end, or after a breath if that time
+  has passed (`Music.pace`; the website and the films keep OFTEN). A player found the calm music,
+  track after track, tiring. Set to OFTEN in the middle of a long quiet, the music is back within
+  seconds. **When the fighting is over** (1.27.2) the battle's tune plays to the end of its phrase (four
+  bars at most), comes home to its first chord and rings, and the calm music follows a breath after it;
+  if the fighting flares up again before then, it plays on (`Music.settle`). It used to be cut where it
+  stood, in the middle of a bar, and if the night was in its quiet nothing came after it: the developer
+  heard the music die mid-track and come back only when a track was picked in Settings. A new run's
+  music begins afresh (`Music.forget`): a run that ended in its night's quiet opened the next with the
+  rest of it. A click wakes the sound from any sleep, not only the browser's first (Safari's interrupted
+  state too). `tests/music.test.ts` plays an hour of all of it in random order (battles, their ends,
+  skips, picks, long frames, a hidden page) and checks that nothing stalls, no note is late and every
+  note is in tune.
   Picking one plays it from where its tune comes in (and turns the sound on, if it was off); the
   selector shows what is playing, also when the music moves on by itself. (It was a section of
   eleven buttons, which was most of the page.)

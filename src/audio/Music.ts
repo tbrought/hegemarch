@@ -8,7 +8,8 @@
  * the fifteen seconds of one part. When a track is over it comes home to its first chord, there is a
  * breath, and another track of the mood begins: every track once, in a new order each time round.
  * A mood that is interrupted (a battle in a quiet night) picks its track up again afterwards, at the
- * part it had reached.
+ * part it had reached. A battle that is over is not cut where it stands: its tune plays to the end of its
+ * phrase and comes home, and the calm music follows it (`settle`).
  */
 import type { Sfx } from './Sfx';
 
@@ -364,15 +365,19 @@ export class Music {
   /** What is left of each mood's round of tracks, and the track each mood played last. */
   private bags: Partial<Record<Mood, Track[]>> = {};
   private last: Partial<Record<Mood, string>> = {};
-  /** The track a mood was in the middle of when another mood took over, and the part it had reached. */
-  private held: Partial<Record<Mood, { track: Track; seg: number; quiet: number }>> = {};
+  /**
+   * The track a mood was in the middle of when another mood took over: the part it had reached (and the step,
+   * where it stopped at the end of a phrase), and the audio time until which the quiet it was in lasts.
+   */
+  private held: Partial<Record<Mood, { track: Track; seg: number; step: number; until: number }>> = {};
   /** Audio time until which the quiet after the last track lasts. */
   private quietUntil = 0;
   /**
-   * The quiet after a calm track of a run (night, cradle): a breath ('often', as on the website and in the
-   * films) or a minute or two ('sometimes'). (With 'battles' the run plays no calm music at all: app/sound.ts.)
+   * The mood that takes over when the tune that is playing reaches the end of its phrase: a battle that is
+   * over (`settle`). Its tune comes home first, as a track does at its end; it is not cut in the middle of a bar.
    */
-  pace: MusicPace = 'often';
+  private then: { mood: Mood | null } | null = null;
+  private paceNow: MusicPace = 'often';
 
   constructor(
     private sfx: Sfx,
@@ -386,6 +391,28 @@ export class Music {
     return this.mood;
   }
 
+  /**
+   * The quiet after a calm track of a run (night, cradle): a breath ('often', as on the website and in the
+   * films) or a minute or two ('sometimes'). (With 'battles' the run plays no calm music at all: app/sound.ts.)
+   */
+  get pace(): MusicPace {
+    return this.paceNow;
+  }
+
+  /** (Set to play often in the middle of a long quiet, the music comes back within seconds, not a minute or two later.) */
+  set pace(p: MusicPace) {
+    this.paceNow = p;
+    const c = this.sfx.ctx;
+    if (p !== 'often' || !c) return;
+    const soon = c.currentTime + 3;
+    if (this.quietUntil > soon) {
+      this.quietUntil = soon;
+      this.nextTime = Math.min(this.nextTime, soon);
+      this.startAt = Math.min(this.startAt, soon);
+    }
+    for (const h of Object.values(this.held)) if (h && h.until > soon) h.until = soon;
+  }
+
   /** The name of the track that is playing, or about to. */
   get title(): string | null {
     return this.track?.name ?? null;
@@ -396,19 +423,60 @@ export class Music {
    * music of the results does not come in under it.)
    */
   play(mood: Mood | null, wait = 0) {
-    if (mood === this.mood) return;
+    // (Asked for the mood it is in, it plays on; a battle that flares up again as its music is coming home
+    // goes on with it.)
+    if (mood === this.mood) {
+      this.then = null;
+      return;
+    }
     this.hold();
-    this.mood = mood;
     this.cut();
-    const c = this.sfx.ctx;
+    this.enter(mood, (this.sfx.ctx?.currentTime ?? 0) + wait);
+  }
+
+  /**
+   * The battle is over: its tune plays on to the end of its phrase (four bars at most), comes home to its first
+   * chord, and `mood` follows it, after a breath. (Cut where it stood, it stopped in the middle of a bar, and
+   * if the night was in its quiet nothing came after it: a player heard the music die. 1.27.2.)
+   */
+  settle(mood: Mood | null) {
+    if (mood === this.mood) {
+      this.then = null;
+      return;
+    }
+    if (!this.bus || !this.track || !this.sfx.ctx) {
+      this.play(mood);
+      return;
+    }
+    this.then = { mood };
+  }
+
+  /**
+   * A new run: what the moods of the last run had reached, and the quiet one of them was in, are forgotten. (A
+   * run that ended in the quiet of its night opened the next one with the rest of that quiet.)
+   */
+  forget() {
+    for (const m of ['night', 'cradle', 'war'] as Mood[]) delete this.held[m];
+  }
+
+  /**
+   * `mood` takes over from audio time `at`: where it was if it was interrupted, and not before the quiet it was
+   * in is over. (A mood that was in the quiet after one of its tracks has the rest of that quiet: a battle in the
+   * middle of it does not bring the night's music straight back, and a battle longer than it does not add to it.)
+   */
+  private enter(mood: Mood | null, at: number) {
+    this.then = null;
+    this.mood = mood;
     const was = mood ? this.held[mood] : undefined;
-    // (A mood that was in the quiet after one of its tracks has the rest of that quiet first: a battle
-    // in the middle of it does not bring the night's music straight back after it.)
-    wait = Math.max(wait, was?.quiet ?? 0);
-    if (c && wait > 0) this.startAt = Math.max(this.startAt, c.currentTime + wait);
+    const c = this.sfx.ctx;
+    const from = Math.max(at, was?.until ?? 0);
+    if (c && from > c.currentTime) {
+      this.startAt = Math.max(this.startAt, from);
+      this.quietUntil = from;
+    }
     this.track = was ? was.track : mood ? this.draw(mood) : null;
     this.seg = was ? was.seg : 0;
-    this.step = 0;
+    this.step = was?.step ?? 0;
     if (mood) this.ensureTimer();
   }
 
@@ -421,6 +489,7 @@ export class Music {
     const t = TRACKS.find((x) => x.name === name);
     if (!t) return;
     if (this.mood !== t.mood) this.hold();
+    this.then = null;
     this.mood = t.mood;
     this.cut();
     this.track = t;
@@ -450,10 +519,9 @@ export class Music {
    * Keep the place of the mood that is playing, for when it comes back. (A crowning is not picked up where
    * it was left: it is played from its first bar every time.)
    */
-  private hold() {
+  private hold(step = 0) {
     if (!this.mood || !this.track || this.mood === 'crown') return;
-    const now = this.sfx.ctx?.currentTime ?? 0;
-    this.held[this.mood] = { track: this.track, seg: this.seg, quiet: Math.max(0, this.quietUntil - now) };
+    this.held[this.mood] = { track: this.track, seg: this.seg, step, until: this.quietUntil };
   }
 
   /** On to the next track of the mood, now. */
@@ -502,8 +570,10 @@ export class Music {
     if (this.nextTime < c.currentTime - 0.5) this.nextTime = c.currentTime + 0.05;
     // A tune that has fallen behind (a frame that took long) skips the notes it is late for. Played late,
     // a note began at once and at full strength, in the middle of its sound: a click (until 1.25.1).
-    for (let n = 0; this.nextTime < c.currentTime + 0.03 && n < 64; n++) this.advance(false);
-    while (this.nextTime < c.currentTime + 0.3) this.advance(true);
+    // (A tune that has come home and given way to the next mood stops here: what follows has a bus of its own.)
+    const bus = this.bus;
+    for (let n = 0; this.bus === bus && this.nextTime < c.currentTime + 0.03 && n < 64; n++) this.advance(false);
+    while (this.bus === bus && this.nextTime < c.currentTime + 0.3) this.advance(true);
   }
 
   /** One step of the tune: its notes scheduled (`play`) or passed over, and on to the next step, part or track. */
@@ -514,7 +584,13 @@ export class Music {
     const stepDur = 60 / tr.bpm / 2;
     if (play) this.schedule(tr, p, voices, this.step, this.nextTime, stepDur);
     this.nextTime += stepDur;
-    if (++this.step < p.chords.length * tr.steps) return;
+    ++this.step;
+    // (A battle that is over ends at the end of a phrase: the fourth bar of a part, or its last.)
+    if (this.then && (this.step % (4 * tr.steps) === 0 || this.step >= p.chords.length * tr.steps)) {
+      this.homeTo(play, tr, stepDur);
+      return;
+    }
+    if (this.step < p.chords.length * tr.steps) return;
     this.step = 0;
     if (++this.seg < tr.form.length) return;
     // The track is over: it comes home, there is a breath, and another track of the mood begins.
@@ -525,12 +601,46 @@ export class Music {
   }
 
   /**
+   * The battle that is over has reached the end of a phrase: its tune comes home and rings out on its own bus,
+   * and the mood waiting for it begins after a breath, on a bus of its own. The battle's place is kept for the
+   * next one (the phrase after this, or the next track if this was its last).
+   */
+  private homeTo(play: boolean, tr: Track, stepDur: number) {
+    const next = this.then!.mood;
+    const p = tr.parts[tr.form[this.seg][0]];
+    if (this.step >= p.chords.length * tr.steps) {
+      this.step = 0;
+      if (++this.seg >= tr.form.length) {
+        this.seg = 0;
+        this.track = this.draw(tr.mood);
+      }
+    }
+    const home = this.nextTime;
+    const old = this.bus;
+    const ring = play && old ? this.ringHome(old, tr, home, stepDur) : 0;
+    this.hold(this.step);
+    this.bus = null;
+    const c = this.sfx.ctx;
+    if (old && c) setTimeout(() => old.disconnect(), (home + ring - c.currentTime + 1) * 1000);
+    this.startAt = 0;
+    this.quietUntil = 0;
+    this.enter(next, home + ring + 1.5);
+  }
+
+  /**
    * The last bar of a track has been played. Its parts end on the way home, so it comes home: the first
    * chord of the tune, left to ring. Returns how long to wait for the next track (a battle does not wait).
    */
   private close(tr: Track, t: number, dur: number): number {
     if (tr.mood === 'war') return dur * 2;
-    const bus = this.bus!;
+    const ring = this.ringHome(this.bus!, tr, t, dur);
+    if (tr.mood === 'title') return ring + 1;
+    const calm = tr.mood === 'night' || tr.mood === 'cradle';
+    return ring + (calm && this.pace !== 'often' ? 60 + this.rnd() * 60 : 3 + this.rnd() * 4);
+  }
+
+  /** The tune's first chord at audio time `t`, left to ring: how long it rings. */
+  private ringHome(bus: GainNode, tr: Track, t: number, dur: number): number {
     const chord = tr.parts[tr.form[0][0]].chords[0];
     const root = chord[0];
     const ring = Math.max(1.6, dur * 6);
@@ -540,9 +650,7 @@ export class Music {
       this.sfx.tone(bus, 'p12', n, n, t + (i - 1) * dur * 0.5, ring - (i - 1) * dur * 0.5, tr.arpVol);
     }
     this.sfx.tone(bus, tr.leadWave, midi(root + 24), midi(root + 24), t, ring, tr.leadVol * 0.8, 0.01);
-    if (tr.mood === 'title') return ring + 1;
-    const calm = tr.mood === 'night' || tr.mood === 'cradle';
-    return ring + (calm && this.pace !== 'often' ? 60 + this.rnd() * 60 : 3 + this.rnd() * 4);
+    return ring;
   }
 
   private schedule(tr: Track, p: Part, voices: string, step: number, t: number, dur: number) {
