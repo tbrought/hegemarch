@@ -742,6 +742,44 @@ Object.assign(TRAILERS, {
 });
 
 // ------------------------------------------------------------------------------------------------
+// Multiplayer (1.28), a Short: two friends, one alliance, and then rivals. Seed 47 played as a co-op game
+// (scan-47-coop.json: the Concord and the Wayfarers allied against the Vael and the Lyceum; the allies' houses played
+// by the AI as a player's is who has left): the three houses' fight at Achernar II; their siege of the Vael's Hearth,
+// Vaelor; the Wayfarers' ping at the Lyceum's Hearth, Lycea, and their fleet coming in to it; Lycea
+// falling, and the game won together. Then the same two houses as rivals, in versus (scan-3-versus.json): the
+// Wayfarers at the Concord's Hearth. Gold and teal, as the title screen's card has its allies.
+// ------------------------------------------------------------------------------------------------
+const COOP = scan('47-coop').sector;
+const VERSUS = scan('3-versus').sector;
+const coopAt = (kind, node) => scan('47-coop').moments.find((m) => m.kind === kind && m.node === node).tick;
+const VAELOR = 24;
+const LYCEA = 31;
+const ACHERNAR = 27;
+/** A shot of a multiplayer game: `sector` from `from`, on `node` (`dx` pixels right of the middle), the camera drawn in a little. */
+const mp = (sector, from, dur, node, zoom, lines, more = {}, dx = 0) =>
+  up({ sector, from, dur, speed: 1, loud: 1, duck: 0.9, ...more, cam: [{ t: 0, node, zoom, dx, dy: 30 }, { t: 1, node, zoom: zoom * 1.1, dx, dy: 30 }] }, lines);
+const LYCEA_FALLS = coopAt('hearth', LYCEA);
+const sm = [
+  // (The Lyceum's fleet of 38 comes at Achernar II, and the allies meet it together: the biggest fight of the scans.)
+  mp(COOP, min(23.9), TA * 2, ACHERNAR, 0.3, ['{MULTIPLAYER}', 'IS HERE']),
+  // (Vaelor ringed by both allies' ships, a few seconds before it falls.)
+  { ...mp(COOP, coopAt('hearth', VAELOR) - sec(8), TA * 1.5, VAELOR, 0.36, ['BRING A', '{FRIEND}']), hard: true },
+  // (The Concord at Lycea, alone; the Wayfarers' player pings it, just above the world (teal among the Concord's
+  // gold, where it reads), and their fleet of 12 comes in to it.)
+  { ...mp(COOP, min(28.27), TA * 1.5, LYCEA, 0.3, ['PING THE', '{TARGET}'], { speed: 2, pings: [{ at: 0.25, node: LYCEA, who: 1, from: 'ALEX', off: [0, -200] }] }), hard: true },
+  // (Lycea falls, and with it the last rival Hearth: the game is won, by both.)
+  { ...mp(COOP, LYCEA_FALLS - sec(1.9), TA * 1.5, LYCEA, 0.32, ['WIN', '{TOGETHER}']), hard: true },
+  // (Versus: the Wayfarers' swarm at the Concord's Hearth, the world to the left and the swarm in the picture.)
+  { ...mp(VERSUS, min(19.3), TA * 1.5, 13, 0.3, ['OR [!FIGHT]', 'EACH OTHER'], {}, -55), hard: true },
+  { blank: true, stars: true, dur: 5, vignette: 0.4,
+    panels: [{ at: 1.5, until: 6, kind: 'art', art: 'together', x: 15, y: 290, w: 240, h: 84, scale: 3, bare: true }],
+    text: [{ at: 0.1, until: 5, style: 'logo', lines: ['{MULTIPLAYER} · FREE', 'HEGEMARCH.COM'], y: 0.42 }] },
+];
+Object.assign(TRAILERS, {
+  'short-multiplayer': short(sm, [bed('To Arms', sm, 0, [{ bars: 2, voices: 'bd', vol: 0.62 }, { bars: 6, voices: 'abd', vol: 0.76 }])]),
+});
+
+// ------------------------------------------------------------------------------------------------
 // Clips for a post (made into GIFs): no words, no music. The sector from above, its houses' colours spreading
 // from the first kindlings to the middle of its war: about 24 minutes of seed 90 in eight seconds.
 // ------------------------------------------------------------------------------------------------

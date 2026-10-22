@@ -52,9 +52,17 @@ if (mode === 'audit') {
     // (AGES=1: an Ages run, on its cradle world.)
     // (HEIR=vael: a sector led by that house, its own Ark among the others.)
     const heir = process.env.HEIR ?? 'concord';
-    const sector = { seed, size: 'medium', heir, difficulty: 2, ...(process.env.AGES ? { ages: true } : {}) };
+    // (TOGETHER=coop|versus SEATS=concord+wayfarer,vael,lyceum: a multiplayer game, its teams split by commas and
+    // the houses of a team joined by +; the players' houses (co-op: the first team's; versus: all) played by the AI
+    // as a player's is who has left. SIZE: the sector's, medium by default. DIFF: the difficulty, Hard by default.)
+    const together = process.env.TOGETHER;
+    const seats = together
+      ? (process.env.SEATS ?? 'concord+wayfarer,vael,lyceum').split(',').flatMap((team, k) => team.split('+').map((h) => ({ heir: h, human: together === 'versus' || k === 0, team: k })))
+      : null;
+    const sector = { seed, size: process.env.SIZE ?? 'medium', heir, difficulty: Number(process.env.DIFF ?? 2), ...(process.env.AGES ? { ages: true } : {}), ...(seats ? { seats, together } : {}) };
     const r = await page.evaluate(({ sector }) => window.studio.scan(sector, 75), { sector });
-    fs.writeFileSync(path.join(OUT, `scan-${process.env.AGES ? 'ages-' : ''}${seed}${process.env.HEIR ? `-${heir}` : ''}.json`), JSON.stringify({ sector, ...r }));
+    const name = together ? `${seed}-${together}` : `${process.env.AGES ? 'ages-' : ''}${seed}${process.env.HEIR ? `-${heir}` : ''}`;
+    fs.writeFileSync(path.join(OUT, `scan-${name}.json`), JSON.stringify({ sector, ...r }));
     const best = (kind, n = 4) => r.moments.filter((m) => m.kind === kind).sort((a, b) => b.score - a.score).slice(0, n)
       .map((m) => `${(m.tick / 1200).toFixed(1)}m@${m.node}${m.kind === 'battle' ? `(${m.score})` : ''}`).join(' ');
     console.log(`seed ${seed}: ${r.ms}ms, ${r.end ? `ends at ${(r.end.tick / 1200).toFixed(1)} min (${r.end.victory})` : 'undecided'}; ` +

@@ -14,7 +14,7 @@ import { Sfx, type SoundId } from '../../src/audio/Sfx';
 import { TICK } from '../../src/game/constants';
 import { PAL } from '../../src/game/data/heirs';
 import { Game } from '../../src/game/Game';
-import type { Difficulty, MapSize } from '../../src/game/types';
+import type { Difficulty, MapSize, Seat } from '../../src/game/types';
 import { isHearth } from '../../src/game/worldStats';
 import { defaultSettings } from '../../src/meta/profile';
 import { emptyView, Renderer } from '../../src/render/Renderer';
@@ -44,13 +44,24 @@ export interface SectorSpec {
   difficulty: Difficulty;
   /** An Ages run, on its cradle world. */
   ages?: boolean;
+  /**
+   * A multiplayer game (1.28): its houses by seat, each with its team (allies share one). Co-op or versus: the
+   * rules of a game together, as the room starts it. Its players' houses are handed to the game's AI at once, as a
+   * player's is who leaves: they play on as players' houses (a co-op game is lost when all of them have fallen,
+   * not when the first house of the sector does), with none of the rivals' bonuses.
+   */
+  seats?: Seat[];
+  together?: 'coop' | 'versus';
 }
 
 function makeGame(s: SectorSpec): Game {
-  return Game.create({
-    seed: s.seed, size: s.size, difficulty: s.difficulty, heir: s.heir, perks: {}, unlockLegendary: true, unlockPacts: true, autoplay: true,
+  const g = Game.create({
+    seed: s.seed, size: s.size, difficulty: s.difficulty, heir: s.seats?.[0]?.heir ?? s.heir, perks: {}, unlockLegendary: true, unlockPacts: true, autoplay: true,
     ...(s.ages ? { mode: 'ages' as const, stage: 'cradle' as const } : {}),
+    ...(s.seats ? { seats: s.seats, together: s.together ?? 'coop', sameLuck: false } : {}),
   });
+  s.seats?.forEach((seat, i) => seat.human && g.handOver(i, true));
+  return g;
 }
 
 // ---------------------------------------------------------------------------------------------------
@@ -231,7 +242,7 @@ export interface Panel {
   until: number;
   /** art: a picture of the title screen or How to Play (app/modeArt.ts); banners: the houses' (app/houseArt.ts); icons: the Destinies'. */
   kind: 'art' | 'banners' | 'icons';
-  art?: 'sector' | 'ages' | 'daily' | 'kindle' | 'fleet' | 'boons';
+  art?: 'sector' | 'ages' | 'daily' | 'together' | 'kindle' | 'fleet' | 'boons';
   heirs?: string[];
   icons?: string[];
   /** Its box at the game's size, and how many of the game's pixels one of the picture's is. */
@@ -304,6 +315,12 @@ export interface Shot {
    * the card it shows off.
    */
   draft?: { sector: SectorSpec; tick: number; hover?: [number, number]; pan?: [number, number] | 'deal'; zoom?: number; deal?: string[] };
+  /**
+   * Pings, as an ally puts them on the map in a multiplayer game (Alt and a click): `at` seconds into the shot, by a
+   * world (`off`: this far from its middle, in the map's units), in the colour of house `who`, with a player's name
+   * over it. Drawn by the game's own renderer.
+   */
+  pings?: { at: number; node: number; who: number; from: string; off?: [number, number] }[];
 }
 
 const stage = document.getElementById('stage')!;
@@ -894,9 +911,18 @@ export async function shoot(shots: Shot[], everyNth = 1, pick?: number[]): Promi
       play: (id: SoundId, vol = 0.5, pan = 0) => sounds.push([clock, id, Math.min(1, vol * (shot.loud ?? 1)), pan]),
     } as unknown as Sfx;
     if (shot.draft) makeDraftRig(shot.draft, heard);
+    view.pings = [];
     for (let f = 0; f < frames; f++) {
       const t = f / FPS;
       const k = frames > 1 ? f / (frames - 1) : 0;
+      // (A ping put down this frame: where its world is, in its house's colour, for the four seconds the game shows one.)
+      if (g) {
+        for (const p of shot.pings ?? []) {
+          if (p.at >= t && p.at < t + 1 / FPS) {
+            view.pings.push({ x: g.nodes[p.node].x + (p.off?.[0] ?? 0), y: g.nodes[p.node].y + (p.off?.[1] ?? 0), t: 4, color: g.factions[p.who].color, from: p.from });
+          }
+        }
+      }
       ctx.fillStyle = PAL.void;
       ctx.fillRect(0, 0, W, H);
       if (!g && shot.stars) starWindow(ctx, 0, 0, W, H, 7, clock, false, clock * 3);
