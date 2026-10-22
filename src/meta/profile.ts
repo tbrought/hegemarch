@@ -74,8 +74,10 @@ export interface Profile {
   lastSetup?: { heir: string; size: MapSize; difficulty: Difficulty };
   /** The player's records, by kind of run (meta/records.ts: "classic:medium:1"). */
   records: Record<string, Records>;
-  /** The letters the player last posted a run to the Daily board under (meta/board.ts): three to five. */
+  /** The letters the player last posted a run to the Daily board under (meta/board.ts): three to five. Their name in a room too. */
   boardName?: string;
+  /** Has opened the page of games played together (1.28): until then the title screen marks it as new. */
+  togetherSeen?: boolean;
 }
 
 const KEY = 'hegemarch.profile.v1';

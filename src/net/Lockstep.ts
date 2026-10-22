@@ -60,6 +60,8 @@ export class Lockstep {
   to = 0;
   speed = 1;
   pause: PauseState | null = null;
+  /** When (on this screen's clock) the room last said what its pause is. */
+  private pauseHeard = 0;
   peers: PeerState[] = [];
   /** The game is being played again from its orders: how far (0 to 1), and why. */
   rebuilding: { why: string } | null = null;
@@ -77,6 +79,8 @@ export class Lockstep {
   onNews: ((kind: 'chat' | 'ping', what: ChatLine | Ping) => void) | null = null;
 
   private acc = 0;
+  /** Since when (this screen's clock) the game has waited at the room's tick, not paused (null: it is running). */
+  private waitSince: number | null = null;
   private lastReport = -Infinity;
   private offerAsked = -Infinity;
   private reportedOver = false;
@@ -113,6 +117,7 @@ export class Lockstep {
     this.to = m.to;
     this.speed = m.speed;
     this.pause = m.paused;
+    this.pauseHeard = this.clock();
     if (m.rebuild && !(same && ours > 0)) this.rebuild('Catching up with the game…');
     else if (m.rebuild) this.send({ t: 'report', tick: this.game.tick, hidden: this.hidden(), rebuilt: true });
   }
@@ -149,6 +154,7 @@ export class Lockstep {
         return this.rebuild(`The screens fell out of step (${m.why}). Playing the game again from its orders…`);
       case 'pause':
         this.pause = m.state;
+        this.pauseHeard = this.clock();
         return;
       case 'speed':
         this.speed = m.speed;
@@ -207,6 +213,8 @@ export class Lockstep {
     }
     // (Waiting for the room: no time is banked, or the game would leap when the next turn comes.)
     if (g.tick >= this.to) this.acc = Math.min(this.acc, TICK);
+    if (g.tick >= this.to && !this.pause) this.waitSince ??= this.clock();
+    else this.waitSince = null;
     if (this.clock() - this.lastReport >= REPORT_MS) this.report(false);
   }
 
@@ -339,6 +347,32 @@ export class Lockstep {
   /** The room is paused (or counting in). */
   get paused(): boolean {
     return !!this.pause;
+  }
+
+  /** Seconds until the count-in ends (null: none under way), and until anyone may resume (versus; 0: now). */
+  get resumeIn(): number | null {
+    const p = this.pause;
+    return p?.resumeIn === undefined ? null : Math.max(0, (p.resumeIn - (this.clock() - this.pauseHeard)) / 1000);
+  }
+
+  get openIn(): number {
+    const p = this.pause;
+    return p?.openIn === undefined ? 0 : Math.max(0, (p.openIn - (this.clock() - this.pauseHeard)) / 1000);
+  }
+
+  /** Seconds the game has waited for the room (not paused): a turn late now and then is nothing; a second is someone slow. */
+  get waitingFor(): number {
+    return this.waitSince === null ? 0 : (this.clock() - this.waitSince) / 1000;
+  }
+
+  /** Is this screen's player the room's host? */
+  get host(): boolean {
+    return !!this.peers.find((p) => p.seat === this.seat)?.host;
+  }
+
+  /** A player's name (their seat's), for the HUD. */
+  nameOf(seat: number): string {
+    return this.config.seats?.[seat]?.name ?? this.game.factions[seat]?.name ?? '?';
   }
 }
 

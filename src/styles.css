@@ -344,7 +344,7 @@ body {
    color (--mc), one line on what it is, and how long it takes. */
 .modes {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 14px;
 }
 
@@ -363,6 +363,15 @@ body {
 
 .mode.daily {
   --mc: var(--teal);
+}
+
+/* Games played together (1.28). */
+.mode.together {
+  --mc: var(--sky);
+}
+
+.mode.disabled {
+  opacity: 0.55;
 }
 
 .mode:hover {
@@ -2558,4 +2567,134 @@ button[data-tip],
   .throne-entry button.slot.stamped {
     animation: none;
   }
+}
+
+/* ------------------------------------------------------------ games played together (1.28): the room */
+
+.together .room-link {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  padding: 10px 12px;
+  margin-bottom: 14px;
+}
+
+.together .room-link input {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.together .seats-head {
+  margin: 18px 0 8px;
+}
+
+.together .seats {
+  display: grid;
+  gap: 10px;
+}
+
+.together .seat {
+  display: grid;
+  grid-template-columns: 120px minmax(0, 1fr) minmax(0, 1.6fr);
+  gap: 14px;
+  align-items: center;
+  padding: 10px 12px;
+}
+
+.together .seat .heir-art,
+.together .seat .heir-blank {
+  height: 40px;
+  margin: 0;
+}
+
+.together .seat .heir-blank {
+  background: var(--void);
+  box-shadow: 0 0 0 var(--px) var(--indigo);
+}
+
+.together .seat.mine {
+  box-shadow:
+    0 calc(var(--px) * -1) 0 0 var(--gold),
+    0 var(--px) 0 0 var(--gold),
+    calc(var(--px) * -1) 0 0 0 var(--gold),
+    var(--px) 0 0 0 var(--gold);
+}
+
+.together .seat-closed,
+.together .seat-open {
+  opacity: 0.8;
+}
+
+.together .seat-name {
+  font-family: var(--display);
+  font-size: 11px;
+  color: var(--bone);
+  line-height: 1.6;
+}
+
+.together .seat-house {
+  color: var(--mist);
+  font-size: 15px;
+}
+
+.together .seat-ctl {
+  display: grid;
+  gap: 6px;
+}
+
+.together .seat-ctl .row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  align-items: center;
+}
+
+.together .seat-ctl .dim {
+  margin-right: 4px;
+}
+
+/* (A house's own colour as a bar at the foot of its button: a picture of it, never its words.) */
+.together .house-pick {
+  box-shadow: inset 0 calc(var(--px) * -1) 0 0 var(--hc);
+}
+
+.together .room-chat {
+  margin-top: 16px;
+  padding: 10px 12px;
+}
+
+.together .chat-lines {
+  display: grid;
+  gap: 2px;
+  min-height: 40px;
+  margin: 6px 0 8px;
+  font-size: 15px;
+  color: var(--mist);
+}
+
+.together .chat-lines b {
+  color: var(--bone);
+}
+
+.together .room-chat .row {
+  display: flex;
+  gap: 8px;
+}
+
+.together .room-chat input {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+@media (max-width: 760px) {
+  .together .seat {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.together .chat-line .swatch {
+  display: inline-block;
+  width: 9px;
+  height: 9px;
+  vertical-align: middle;
 }

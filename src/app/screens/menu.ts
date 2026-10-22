@@ -15,6 +15,8 @@ import { showSetup } from './setup';
 import { howtoHtml } from '../howto';
 import { showSettings } from './settings';
 import type { ScreenActions } from './index';
+import { cannotPlayTogether } from '../together';
+import { MAX_PLAYERS } from '../../net/protocol';
 
 /**
  * The title screen. What the player most likely wants is the largest thing on it: the run in progress,
@@ -50,6 +52,7 @@ export function showMenu(app: App) {
         </button>`
       : '';
   const offers = hallOffers(app);
+  const together = cannotPlayTogether(app);
   app.ui.innerHTML = `<div class="screen menu${app.crt()}">
       <div class="logo">HEGEMARCH</div>
       <div class="tagline">The last Hegemarch fell, and the sector went dark. <em>Light it again</em>, world by world, and <b>take the crown</b>.</div>
@@ -77,6 +80,13 @@ export function showMenu(app: App) {
             <span class="mode-name">DAILY RUN${dailyDone ? ' ✓' : ''}</span>
             <span class="mode-pitch">Today's sector, the same for every player. <span class="gold">Legacy ×1.25</span>.</span>
             <span class="mode-meta" data-daily>${dailyLine(app)}</span>
+          </button>
+          <button class="mode together${together ? ' disabled' : ''}" data-sa="together" data-tip="${esc(together ?? 'Play with friends: allied houses against the AI (co-op), or against each other (versus). Host a room, and send them its code or link.')}">
+            ${p.togetherSeen ? '' : '<span class="mode-flag">NEW</span>'}
+            <canvas class="mode-art" data-art="together" aria-hidden="true"></canvas>
+            <span class="mode-name">TOGETHER</span>
+            <span class="mode-pitch">With friends: allies against the AI, or each other.</span>
+            <span class="mode-meta">2 TO ${MAX_PLAYERS} PLAYERS</span>
           </button>
         </div>
         <div class="home-links">

@@ -24,6 +24,7 @@ import { drawAttackArrows, drawBadges, drawIndicators, drawLog, drawMinimap } fr
 import { newsColor } from './news';
 import { drawCard } from './hud/card';
 import { drawPower, keepAim } from './hud/power';
+import { drawChatLine, drawNetPause, drawPlayers, type ChatDraft } from './hud/together';
 
 /**
  * The HUD: everything drawn over the map while a run is played, on the game's own canvas. It is drawn
@@ -150,6 +151,13 @@ export class Hud {
       s.toast.t -= dt;
       if (s.toast.t <= 0) s.toast = null;
     }
+    // (A game together: what the room would not do, as a toast, once.)
+    const err = s.net?.error;
+    if (err && err.at !== this.netErrorSeen) {
+      this.netErrorSeen = err.at;
+      s.showToast(err.text, PAL.ember, 4);
+      s.sfx.play('error', 0.4);
+    }
     // Notes: sounds, the log, toasts and auto-pause. (News that comes together, as a Hearth taken does
     // with its Boon and its goal, plays each of its sounds once.)
     const played = new Set<string>();
@@ -195,7 +203,8 @@ export class Hud {
         if (hearthFell) s.showToast(n.text, newsColor(g, n), 6);
         else if (!revealedLog || n.kind === 'alert' || n.kind === 'bad') s.showToast(n.text, newsColor(g, n), n.kind === 'alert' ? 5 : 4);
       }
-      if (n.pause && s.profile.settings.autoPause && !s.paused && !g.outcome && !this.tutorial.busy()) {
+      // (Not in a game together: no one screen stops the game for everyone.)
+      if (n.pause && s.profile.settings.autoPause && !s.paused && !g.outcome && !this.tutorial.busy() && !s.net) {
         s.paused = true;
         s.showToast('PAUSED · ' + n.text, PAL.ember, 6);
         if (n.node !== undefined && n.node >= 0) s.focusNode(n.node);
@@ -222,7 +231,7 @@ export class Hud {
     if (!g.ui.scouted && g.tick % 10 === 0 && g.unitList.some((u) => !u.dead && u.owner === g.playerId && u.order === 'explore')) g.ui.scouted = 1;
     // Pending decisions open themselves when auto-pause is on (but not mid-tutorial).
     if (!s.modal && !g.outcome && s.profile.settings.autoPause && !this.tutorial.busy()) {
-      const pr = g.prompts.find((x) => x.result === undefined && !this.snoozed.has(x.id));
+      const pr = g.promptsFor(g.playerId).find((x) => x.result === undefined && !this.snoozed.has(x.id));
       if (pr) this.modals.open({ kind: 'event', promptId: pr.id, unbidden: true });
       else if (!s.view.box) {
         // An Ark or a Dreadnought that may learn an ability is a decision too: its choice opens by itself,
@@ -290,6 +299,11 @@ export class Hud {
     return this.g.cradle ? cradleVocabulary(this.g.player.era)(s) : s;
   }
 
+  /** A game together: where the players' list is, the chat being typed (null: none), and the room's last refusal shown. */
+  playersRect = { x: 0, y: 0, w: 0, h: 0 };
+  chat: ChatDraft | null = null;
+  private netErrorSeen = 0;
+
   private drawAll(dt: number) {
     const g = this.s.screen.g;
     this.ui.begin(dt);
@@ -312,6 +326,7 @@ export class Hud {
     if (R.fleet) drawPower(this);
     else this.powerRect = { x: 0, y: 0, w: 0, h: 0 };
     drawTopBar(this, R);
+    drawPlayers(this);
     drawBanner(this);
     if (R.destinies) this.g.cradle ? drawAges(this) : drawDestinies(this);
     if (R.lore) drawTray(this);
@@ -328,8 +343,10 @@ export class Hud {
       // Lore and Embers. (Under the dialog's backdrop its tooltips used to go dark.)
       for (const t of this.barTips) this.ui.hint(t.id + '-read', t.x, t.y, t.w, t.h, { tip: t.tip });
     } else if (this.s.paused && !this.g.outcome) {
-      drawPaused(this);
+      if (this.s.net) drawNetPause(this);
+      else drawPaused(this);
     }
+    drawChatLine(this);
     drawFlyers(this, dt);
     if (this.s.profile.settings.crt) this.scanlines();
     this.ui.drawTooltip(g, this.W, this.H);

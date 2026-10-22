@@ -463,6 +463,8 @@ export interface Note {
   t: number;
   text: string;
   kind: 'info' | 'good' | 'bad' | 'alert' | 'event';
+  /** A game together: a word in the chat, said by this house's player (each screen's own log). */
+  chat?: { from: number };
   node?: number;
   /** Ask the client to pause (when auto-pause is on). */
   pause?: boolean;

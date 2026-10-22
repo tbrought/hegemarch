@@ -26,6 +26,8 @@ export interface ViewState {
   box: { x0: number; y0: number; x1: number; y1: number } | null;
   /** Click markers in world coordinates. */
   markers: { x: number; y: number; t: number; color: string }[];
+  /** A game together (1.28): an ally's pings, where they put them on the map, in their colour, with their name; `t` seconds left. */
+  pings: { x: number; y: number; t: number; color: string; from: string }[];
   /** Show the whole map (attract mode, debugging). */
   reveal: boolean;
   /** Ships are selected and the next click on a world gives them an order. */
@@ -46,7 +48,7 @@ export interface ViewState {
 }
 
 export function emptyView(reveal = false): ViewState {
-  return { selected: new Set(), selectedNode: -1, hoverUnit: 0, hoverNode: -1, box: null, markers: [], reveal, orderMode: false, highlightNode: -1, route: 0 };
+  return { selected: new Set(), selectedNode: -1, hoverUnit: 0, hoverNode: -1, box: null, markers: [], pings: [], reveal, orderMode: false, highlightNode: -1, route: 0 };
 }
 
 interface BgStar {
@@ -189,6 +191,7 @@ export class Renderer {
     if (box) dither(ctx, box.x, box.y, box.w, box.h, PAL.gold, 2);
     if (!backdrop && !view.plain) this.drawLabels(ctx, g, explored, vis, ownerShown, view);
     this.drawMarkers(ctx, view, dt);
+    this.drawPings(ctx, view, dt);
     if (box) frame(ctx, box.x, box.y, box.w + 1, box.h + 1, PAL.gold);
   }
 
@@ -1006,6 +1009,23 @@ export class Renderer {
       ring(ctx, x, y, r, m.color, 2);
       ctx.fillStyle = m.color;
       ctx.fillRect(x, y, 1, 1);
+    }
+  }
+
+  /** A game together: pings, a few seconds each, their rings beating outward, the ally's name over them. */
+  private drawPings(ctx: Ctx, view: ViewState, dt: number) {
+    if (!view.pings.length) return;
+    for (const p of view.pings) p.t -= dt;
+    view.pings = view.pings.filter((p) => p.t > 0);
+    for (const p of view.pings) {
+      const x = this.sx(p.x);
+      const y = this.sy(p.y);
+      const beat = ((4 - p.t) % 0.8) / 0.8;
+      ring(ctx, x, y, Math.round(4 + beat * 14), p.color, 1);
+      ring(ctx, x, y, 3, p.color, 1);
+      ctx.fillStyle = p.color;
+      ctx.fillRect(x, y, 1, 1);
+      textOutline(ctx, p.from, Math.round(x - textWidth(p.from, 'tiny') / 2), y - 15, p.color, PAL.void, 'tiny');
     }
   }
 

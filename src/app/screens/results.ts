@@ -30,8 +30,10 @@ export interface ResultsData {
   reason: string;
   /** Each with what stands beside it, if anything: the record it beat, or the record that stands. */
   stats: [label: string, value: string, note?: { fresh: boolean; text: string }][];
-  /** The run to tell someone else: a few lines, a link to the same sector, and how it went against a challenge. */
-  share: { text: string; line: string; link: string; daily: boolean; versus: string | null };
+  /** The run to tell someone else: a few lines, a link to the same sector, and how it went against a challenge. Null: a game together. */
+  share: { text: string; line: string; link: string; daily: boolean; versus: string | null } | null;
+  /** A game together (1.28): its room, to go back to (the same seats, a new sector) or to leave. */
+  together?: { code: string } | null;
   cards: string[];
   relics: string[];
   heir: string;
@@ -157,7 +159,7 @@ export function showResults(app: App) {
       </div>
       <div class="px-box" style="margin-top:16px"><h3>BOONS</h3><div class="chips">${cards || '<span class="dim">None</span>'}</div>
         ${relics ? `<h3 style="margin-top:12px">RELICS</h3><div class="chips">${relics}</div>` : ''}</div>
-      <div class="px-box share">
+      ${r.share ? `<div class="px-box share">
         <h3>SHARE THIS RUN</h3>
         ${r.share.versus ? `<p class="share-vs">${esc(r.share.versus)}</p>` : ''}
         <pre class="share-text">${esc(r.share.text)}</pre>
@@ -168,13 +170,15 @@ export function showResults(app: App) {
         </div>
         <textarea id="share-box" readonly hidden rows="4"></textarea>
         <p class="dim">The link opens this same sector for whoever follows it: same seed, same size, same difficulty. Your result goes with it, as the one to beat.</p>
-      </div>
+      </div>` : ''}
       ${r.charts ? chartsHtml(r.charts, (type, color) => shipPic(type, color, 'rc-pic')) : ''}
       <div class="run-details">
         <button class="small" data-sa="copy-run" data-tip="Copies this run's version, seed, setup and outcome, to send with a bug report or to play the same sector again.">COPY RUN DETAILS</button>
         <textarea id="run-details" readonly hidden rows="6">${esc(r.details)}</textarea>
       </div>
-      <div class="foot-actions"><button class="${afford.length ? 'primary' : ''}" data-sa="results-hall">${afford.length ? 'SPEND LEGACY IN THE HALL OF HEIRS' : 'HALL OF HEIRS'}</button><button class="${afford.length ? '' : 'primary'}" data-sa="results-again">NEW RUN</button></div>
+      <div class="foot-actions"><button class="${afford.length ? 'primary' : ''}" data-sa="results-hall">${afford.length ? 'SPEND LEGACY IN THE HALL OF HEIRS' : 'HALL OF HEIRS'}</button>${r.together
+        ? `<button data-sa="room-leave" data-tip="Leave the room. The others can play on without you.">LEAVE THE ROOM</button><button class="${afford.length ? '' : 'primary'}" data-sa="room-back" data-tip="Back to room ${esc(r.together.code)}: the same players, and a new sector when its host starts one.">BACK TO THE ROOM</button>`
+        : `<button class="${afford.length ? '' : 'primary'}" data-sa="results-again">NEW RUN</button>`}</div>
     </div></div>`;
   if (r.charts) mountCharts(app.ui, r.charts);
   // The Legacy total counts up like a score.
@@ -303,13 +307,13 @@ export const resultsActions: ScreenActions = {
     copy(app, el, app.results?.details ?? '', '#run-details');
   },
   'copy-share': (app, _arg, el) => {
-    copy(app, el, app.results?.share.text ?? '', '#share-box');
+    copy(app, el, app.results?.share?.text ?? '', '#share-box');
   },
   'copy-link': (app, _arg, el) => {
-    copy(app, el, app.results?.share.link ?? '', '#share-box');
+    copy(app, el, app.results?.share?.link ?? '', '#share-box');
   },
   'copy-line': (app, _arg, el) => {
-    copy(app, el, app.results?.share.line ?? '', '#share-box');
+    copy(app, el, app.results?.share?.line ?? '', '#share-box');
   },
   'results-hall': (app) => {
     teardownSession(app);

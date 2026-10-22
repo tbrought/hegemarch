@@ -22,6 +22,8 @@ import { showSettings } from './screens/settings';
 import { type ResultsData, showResults } from './screens/results';
 import { showThrone, throneKey, wantsThrone } from './screens/throne';
 import { SCREEN_ACTIONS } from './screens/index';
+import { openTogether, togetherEnter } from './screens/together';
+import { keptRoom, type RoomClient } from './together';
 
 /**
  * The app: the one object behind the page. It owns the canvas and the menu pages over it, the sound,
@@ -37,7 +39,7 @@ import { SCREEN_ACTIONS } from './screens/index';
  *   Session.ts      what the HUD and the input share about the run on the screen (selection, pause, speed)
  *   Attract.ts      the sector that plays itself behind the menus
  */
-type ScreenId = 'menu' | 'setup' | 'hall' | 'howto' | 'settings' | 'loading' | 'game' | 'throne' | 'results';
+type ScreenId = 'menu' | 'setup' | 'hall' | 'howto' | 'settings' | 'loading' | 'game' | 'throne' | 'results' | 'together';
 
 export class App {
   canvas: HTMLCanvasElement;
@@ -50,6 +52,10 @@ export class App {
   screen: ScreenId = 'menu';
   session: Session | null = null;
   hud: Hud | null = null;
+  /** A game played together (1.28): the room this page is in, its lobby or its game (app/together.ts). */
+  room: RoomClient | null = null;
+  /** The together page: what is typed in it (a name, a room's code, a word for the chat), and its last notice. */
+  togetherForm = { code: '', chat: '', notice: '' };
   input: Input | null = null;
   attract: Attract;
   prepToken = 0;
@@ -135,6 +141,8 @@ export class App {
         // Escape is BACK on every page behind the title screen.
         this.sfx.play('ui', 0.5);
         showMenu(this);
+      } else if (e.code === 'Enter' && this.screen === 'together' && togetherEnter(this, e)) {
+        e.preventDefault();
       } else if ((e.code === 'Enter' || e.code === 'Space') && this.screen !== 'game') {
         // A house card and a tick box are not buttons, but the keyboard works them like buttons.
         const el = document.activeElement as HTMLElement | null;
@@ -152,6 +160,8 @@ export class App {
     document.addEventListener('visibilitychange', () => {
       if (document.hidden) autosave(this);
       this.sfx.hush(document.hidden);
+      // (Together: the room is told at once, so that it does not wait for a page no one is looking at.)
+      this.session?.net?.visibility();
     });
     window.addEventListener('beforeunload', () => autosave(this));
     // Opened by a challenge link: the setup, on that sector. (The link's tail is dropped from the address,
@@ -168,6 +178,16 @@ export class App {
       if (this.profile.heirs.includes(this.challenge.heir)) this.setup.heir = this.challenge.heir;
       this.savedRun = describeSavedRun();
       showSetup(this);
+    } else if (/^#join=[A-Za-z2-9]{5}$/.test(location.hash) || keptRoom()) {
+      // A game together (1.28): opened by a room's link (hegemarch.com/play/#join=CODE), or a page reloaded
+      // while in a room (the room and this player's token are kept for the tab): to the room.
+      const linked = /^#join=([A-Za-z2-9]{5})$/.exec(location.hash)?.[1]?.toUpperCase();
+      try {
+        history.replaceState(null, '', location.pathname + location.search);
+      } catch {
+        /* (As above.) */
+      }
+      openTogether(this, linked ?? null);
     } else if (location.hash === '#daily') {
       // Opened from the website's throne (1.25.2): today's Daily, ready to play. (A first visit is shown the
       // title screen instead, where the First Night is offered.)
@@ -204,7 +224,7 @@ export class App {
         g.fillStyle = '#0b0a1a';
         g.fillRect(0, 0, this.screenObj.W, this.screenObj.H);
       }
-      if (this.screen === 'menu' || this.screen === 'setup') {
+      if (this.screen === 'menu' || this.screen === 'setup' || this.screen === 'together') {
         drawHouseBanners(this.ui, now / 1000);
         drawModeArt(this.ui, now / 1000);
       } else if (this.screen === 'howto') drawModeArt(this.ui, now / 1000);
@@ -223,7 +243,7 @@ export class App {
     const g = s.game;
     const playing = this.screen === 'game';
     if (playing) this.input?.update(dt);
-    if (playing && !s.halted) {
+    if (playing && !s.halted && !s.net) {
       this.acc += dt * s.speed;
       let steps = 0;
       while (this.acc >= TICK && steps < 14) {
@@ -233,7 +253,10 @@ export class App {
       }
       if (steps >= 14) this.acc = 0;
     }
-    const alpha = s.halted ? 1 : Math.min(1, this.acc / TICK);
+    // (A game together: the room's clock, through the screen's lockstep; it may have made the game again.)
+    if (playing && s.net) s.net.frame(dt);
+    if (s.game !== g) return;
+    const alpha = s.net ? s.net.alpha : s.halted ? 1 : Math.min(1, this.acc / TICK);
     processFx(this, g, s.visible, playing);
     this.renderer.fx.update(s.halted && !g.outcome ? 0 : dt * (g.outcome ? 1 : s.speed));
     this.renderer.render(g, alpha, dt, s.view, !playing);
@@ -272,6 +295,17 @@ export class App {
   private onScreenInput(e: Event) {
     const t = e.target as HTMLInputElement;
     if (t.id === 'seed-input') this.setup.seed = t.value;
+    // (Together: a name of letters, a room's code of the letters and figures it can hold, a word for the chat.)
+    if (t.id === 'mp-name') {
+      t.value = t.value.toUpperCase().replace(/[^A-Z]/g, '').slice(0, 5);
+      this.profile.boardName = t.value;
+      saveProfile(this.profile);
+    }
+    if (t.id === 'mp-code') {
+      t.value = t.value.toUpperCase().replace(/[^A-HJ-NP-Z2-9]/g, '').slice(0, 5);
+      this.togetherForm.code = t.value;
+    }
+    if (t.id === 'mp-chat') this.togetherForm.chat = t.value;
     // (Three to five letters for the Daily board: A to Z, as they are typed.)
     if (t.id === 'board-name') t.value = t.value.toUpperCase().replace(/[^A-Z]/g, '').slice(0, 5);
     if (t.dataset.track !== undefined) pickTrack(this, t.value);

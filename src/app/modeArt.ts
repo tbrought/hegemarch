@@ -8,6 +8,8 @@
  *   stars. With `data-era` (a saved run), the picture shows how far that run has climbed, in the
  *   color of its house (`data-color`).
  * - `daily`: the chart of today's sector. It is the real one: the map every player is dealt today.
+ * - `together`: two allied houses close on a rival from either side, their shots cross on it, it bursts,
+ *   and they fly on side by side (games played together, 1.28).
  *
  * And three for How to Play (app/howto.ts), each one move of the game in a few seconds:
  * - `kindle`: a seed ship lights a dark world, and the world starts to earn.
@@ -58,6 +60,7 @@ export function drawModeArt(root: HTMLElement, t: number) {
     else if (art === 'kindle') kindle(g, w, h, calm ? -1 : k.c);
     else if (art === 'fleet') fleet(g, w, h, calm ? -1 : k.c);
     else if (art === 'boons') boons(g, w, h, calm ? -1 : k.c);
+    else if (art === 'together') together(g, w, h, calm ? -1 : k.c);
     else ages(g, w, h, calm ? 0 : k.c, el.dataset.era ? parseInt(el.dataset.era, 10) : -1, el.dataset.color ?? PAL.gold);
   });
 }
@@ -353,6 +356,43 @@ function fleet(g: Ctx, w: number, h: number, c: number) {
     }
   }
   if (struck) sparks(g, X(prey), y, 3, Math.floor(u * 22), 4);
+}
+
+/** Together: two allies (gold and teal) close on a rival (red) from either side, fire, it bursts, and they fly on together. */
+function together(g: Ctx, w: number, h: number, c: number) {
+  const T = 5.4;
+  const u = c < 0 ? 2.6 : c % T;
+  const y = Math.round(h / 2) + 1;
+  const mid = Math.round(w / 2);
+  sky(g, w, h, 610, Math.max(0, c), Math.round((w * h) / 110));
+  const ally = [HEIRS[0].color, HEIRS[2].color];
+  const rival = HEIRS[1].color;
+  // (They come in from the edges; they stop a little short of the rival and fire; then close the gap and go on together.)
+  const closing = Math.min(1, u / 1.8);
+  const after = Math.max(0, u - 3.4);
+  const gap = Math.round(w * 0.22);
+  const ax = Math.round(-6 + (mid - gap + 6) * closing + after * 10);
+  const bx = Math.round(w + 6 - (w + 6 - (mid + gap)) * closing - (after > 0 ? Math.min(gap * 2 - 14, after * 22) : 0) + after * 10);
+  const fire = u > 1.8 && u < 3.0;
+  const burst = u >= 3.0 && u < 3.6;
+  const gone = u >= 3.0;
+  if (!gone) {
+    const hit = fire && Math.floor(u * 18) % 2 === 0;
+    const spr = hit ? silhouette('breaker', PAL.bone, 0, SPACE) : shipSprite('breaker', rival, Math.floor(u * 2) % 2 ? 0 : 8, false, SPACE);
+    g.drawImage(spr, mid - (spr.width >> 1), y - (spr.height >> 1));
+  }
+  if (burst) sparks(g, mid, y, 3, Math.floor(u * 22), 5);
+  const a = shipSprite('striker', ally[0], 0, Math.floor(u * 16) % 2 === 0, SPACE);
+  const b = shipSprite('striker', ally[1], after > 0 ? 0 : 8, Math.floor(u * 16) % 2 === 1, SPACE);
+  g.drawImage(a, ax - (a.width >> 1), y - 4 - (a.height >> 1));
+  g.drawImage(b, bx - (b.width >> 1), y + 4 - (b.height >> 1));
+  if (fire) {
+    for (let j = 0; j < 3; j++) {
+      const p = (u * 2.6 + j / 3) % 1;
+      px(g, Math.round(ax + 6 + (mid - 4 - ax - 6) * p), y - 4 + Math.round(4 * p), j === 1 ? PAL.bone : ally[0]);
+      px(g, Math.round(bx - 6 - (bx - 6 - mid - 4) * p), y + 4 - Math.round(4 * p), j === 1 ? PAL.bone : ally[1]);
+    }
+  }
 }
 
 /** Boons: Lore fills, three Boons are dealt, the pointer goes over them and one is taken. */

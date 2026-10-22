@@ -36,6 +36,8 @@ import { applySettings, fullscreen, toggleFullscreen } from './display';
 import { Session } from './Session';
 import { challengeLink, shareLine, shareText, versus, type Challenge } from './share';
 import type { Outcome } from '../game/types';
+import { Lockstep, type ChatLine, type Ping, type StartMsg } from '../net/Lockstep';
+import type { RoomClient } from './together';
 
 export function buildConfig(app: App): GameConfig {
   const st = app.setup;
@@ -178,17 +180,78 @@ export async function continueRun(app: App) {
   s.showToast('Run restored. Paused: press Space to go on.', '#c8cbe6', 6);
 }
 
-function beginSession(app: App, g: Game) {
+/**
+ * A game played together begins, or is come back to (1.28): every screen makes the same game from the room's
+ * config and runs it in step with the others (net/Lockstep.ts). No save of it is kept on this screen (the room
+ * keeps its orders), and a run saved alone is left as it is.
+ */
+export function startNetRun(app: App, room: RoomClient, start: StartMsg) {
+  teardownSession(app);
+  app.attract.stop();
+  ++app.prepToken;
+  const net = new Lockstep(room.link, start);
+  // (The lobby's words still go to the room's client: after the game the room is a lobby again.)
+  const play = room.link.onMessage!;
+  // (A new game of the room's, as against this one come back to after a lost connection, begins a new run.)
+  room.link.onMessage = (m) => {
+    if (m.t === 'lobby' || m.t === 'welcome' || (m.t === 'start' && (!m.rebuild || m.config.seed !== net.config.seed))) room.hear(m);
+    else play(m);
+  };
+  room.link.onStatus = (up) => {
+    net.online = up;
+    room.down = !up;
+  };
+  app.room = room;
+  beginSession(app, net.game, net);
+  const s = app.session!;
+  net.onGame = (g) => {
+    s.game = g;
+    app.renderer.prepare(g);
+  };
+  net.onNews = (kind, what) => netNews(app, kind, what);
+}
+
+/** A word in the chat goes into the log (in the colour of who said it); a ping is a mark on the map, and a sound. */
+function netNews(app: App, kind: 'chat' | 'ping', what: ChatLine | Ping) {
+  const s = app.session;
+  if (!s?.net) return;
+  const g = s.game;
+  const f = g.factions[what.from];
+  const name = g.config.seats?.[what.from]?.name ?? f?.name ?? '?';
+  if (kind === 'chat') {
+    const c = what as ChatLine;
+    g.notes.push({ id: g.noteId++, t: g.time, text: `${name}${c.team && g.config.together === 'versus' ? ' (team)' : ''}: ${c.text}`, kind: 'info', chat: { from: c.from } });
+    if (g.notes.length > 60) g.notes.splice(0, g.notes.length - 60);
+    app.sfx.play('ui', 0.4);
+  } else {
+    const p = what as Ping;
+    s.view.pings.push({ x: p.x, y: p.y, t: 4, color: f?.color ?? '#fff4e0', from: name });
+    app.sfx.play('alert', 0.35);
+  }
+}
+
+/** Leave the room for good: the AI takes this player's house, and the others play on. */
+export function leaveTogether(app: App) {
+  app.room?.leave();
+  app.room = null;
+  teardownSession(app);
+  app.showMenu();
+  void app.attract.start();
+}
+
+function beginSession(app: App, g: Game, net: Lockstep | null = null) {
   app.ui.innerHTML = '';
   app.renderer.prepare(g);
   const s = new Session(g, app.renderer, app.screenObj, app.sfx, app.music, app.profile, {
     quit: (save) => {
+      if (net) return leaveTogether(app);
       if (save) autosave(app);
       teardownSession(app);
       app.showMenu();
       void app.attract.start();
     },
     abandon: () => {
+      if (net) return leaveTogether(app);
       g.ascended = false;
       g.declareWinner(-1, 'defeat', 'You abandoned the run.');
       // (A run that was walked away from is not told as a fall, and sets no records: straight to its results.)
@@ -204,6 +267,7 @@ function beginSession(app: App, g: Game) {
       if (app.screen === 'game' && app.results) app.showResults();
     },
   });
+  s.net = net;
   app.session = s;
   app.hud = new Hud(s);
   app.input = new Input(s, app.hud, app.canvas);
@@ -281,7 +345,8 @@ export function teardownSession(app: App) {
 
 export function autosave(app: App) {
   const s = app.session;
-  if (!s || app.screen !== 'game' || s.game.outcome) return;
+  // (A game together is kept by its room, not here: a run saved alone stays as it is.)
+  if (!s || app.screen !== 'game' || s.game.outcome || s.net) return;
   saveRun(s.game.serialize());
 }
 
@@ -312,6 +377,16 @@ function shareOf(g: Game): ResultsData['share'] {
   return { text: shareText(run), line: shareLine(run), link, daily: !!g.config.daily, versus: vs };
 }
 
+/** A team, as the results name it: its houses, with their players' names ("Solar Concord (ALICE) and the Vael (BRUNO)"). */
+function teamName(g: Game, fid: number): string {
+  const fs = g.factions.filter((f) => f.kind === 'empire' && g.allied(f.id, fid));
+  const one = (id: number) => {
+    const who = g.config.seats?.[id]?.name;
+    return `${fs.length > 1 ? g.shortName(g.factions[id]) : g.factions[id].name}${who && g.config.seats?.[id]?.human ? ` (${who})` : ''}`;
+  };
+  return fs.map((f) => one(f.id)).join(' and ');
+}
+
 /** A Destiny's name, as the results say it. */
 const vname = (v: string) => VICTORIES[v as keyof typeof VICTORIES]?.name ?? v;
 
@@ -327,11 +402,13 @@ export function endRun(app: App, abandoned = false) {
   const unlocked = applyRunToProfile(app.profile, g, report.total);
   // The run against the player's records of its kind (the First Night sets none: it is a lesson).
   const figures = runFigures(g, report.total);
-  const marks = g.config.tutorial || abandoned ? {} : applyRecords(app.profile.records, bracketOf(g.config), figures);
+  // (A game together sets no records of a run alone, and leaves a run saved alone where it is.)
+  const together = !!g.config.seats;
+  const marks = g.config.tutorial || abandoned || together ? {} : applyRecords(app.profile.records, bracketOf(g.config), figures);
   if (g.config.daily) app.profile.lastDaily = todayKey();
   if (g.config.tutorial) app.profile.tutorialDone = true;
   saveProfile(app.profile);
-  clearRun();
+  if (!together) clearRun();
   const p = g.player;
   app.sfx.play(o.playerWon ? 'victory' : 'defeat', 0.9);
   // A crowning has its own music, which comes in when the fanfare is over; a fall is left in silence.
@@ -357,12 +434,13 @@ export function endRun(app: App, abandoned = false) {
     won: o.playerWon,
     title: o.playerWon ? 'VICTORY' : 'DEFEAT',
     reason: o.playerWon
-      ? `You are crowned Hegemarch by ${vname(o.victory)}. ${o.reason}`
+      ? `${together && g.humans().filter((f) => g.allied(f.id, g.playerId)).length > 1 ? 'You and your allies are' : 'You are'} crowned Hegemarch by ${vname(o.victory)}. ${o.reason}`
       : winner && o.victory !== 'defeat'
-        ? `${winner.name} is crowned Hegemarch by ${vname(o.victory)}. ${o.reason}`
+        ? `${together ? teamName(g, winner.id) : winner.name} ${together && g.factions.filter((f) => f.kind === 'empire' && g.allied(f.id, winner.id)).length > 1 ? 'are' : 'is'} crowned Hegemarch by ${vname(o.victory)}. ${o.reason}`
         : o.reason,
     stats: resultStats(g, o, note),
-    share: shareOf(g),
+    share: together ? null : shareOf(g),
+    together: together && app.room ? { code: app.room.code } : null,
     cards: [...p.cards],
     relics: [...p.relics],
     heir: p.heir,

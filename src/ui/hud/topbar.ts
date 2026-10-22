@@ -22,6 +22,8 @@ import { fleetLabel } from './overlays';
 import type { Hud } from '../Hud';
 import { boonReady, watchBoons } from './touches';
 import { aimLine } from './power';
+import { netBanner } from './together';
+import { NET_SPEEDS } from '../../net/protocol';
 
 /** The widest of the ten digits (the game's font is not monospaced: a 1 is narrower than an 8). */
 export let widest = '';
@@ -192,24 +194,31 @@ function barIdleForges(hud: Hud, R: ReturnType<Session['reveal']>, x: number) {
 function barControls(hud: Hud) {
   const g = hud.s.screen.g;
   const W = hud.W;
+  const net = hud.s.net;
   // Right side: menu, speeds, pause, clock.
   let rx = W - 2;
   rx -= 11;
   hud.ui.iconButton(g, 'menu', rx, 1, 11, 'menu', () => hud.modals.open({ kind: 'menu' }), { tip: 'Menu (Esc)' });
-  for (let i = SPEEDS.length - 1; i >= 0; i--) {
-    const sp = SPEEDS[i];
+  // (Together: the room's speeds; the host sets them in co-op, the lobby for the whole of a versus game.)
+  const speeds = net ? NET_SPEEDS : SPEEDS;
+  const why = !net ? null : hud.g.config.together === 'versus' ? 'The speed of a versus game is set in its lobby, for the whole game.' : net.host ? null : 'The room\'s host sets the speed.';
+  for (let i = speeds.length - 1; i >= 0; i--) {
+    const sp = speeds[i];
     const label = sp === 0.5 ? '½' : String(sp);
     rx -= 10;
     const sel = hud.s.speed === sp;
     hud.ui.button(g, 'speed' + i, rx, 1, 10, 11, label, () => {
       hud.s.speed = sp;
-      hud.s.paused = false;
-    }, { selected: sel, font: 'main', tip: sp === 0.5 ? 'Slow speed (½×)' : `Speed ${sp}× (${['', 'normal', 'fast', 'fastest'][sp] ?? ''})`, color: sel ? PAL.gold : PAL.mist });
+      if (!net) hud.s.paused = false;
+    }, {
+      selected: sel, font: 'main', disabled: !!why && !sel, color: sel ? PAL.gold : PAL.mist,
+      tip: why ? `${why} Now ${hud.s.speed}×.` : sp === 0.5 ? 'Slow speed (½×)' : `Speed ${sp}× (${['', 'normal', 'fast', 'fastest'][sp] ?? ''})${net ? ' for everyone' : ''}`,
+    });
   }
   rx -= 12;
   hud.ui.iconButton(g, 'pause', rx, 1, 11, hud.s.paused ? 'play' : 'pause', () => {
     hud.s.paused = !hud.s.paused;
-  }, { tip: hud.s.paused ? 'Resume (Space)' : 'Pause (Space)', selected: hud.s.paused, pulse: hud.s.paused });
+  }, { tip: hud.s.paused ? (net ? 'Go on, for everyone (Space)' : 'Resume (Space)') : net ? 'Pause, for everyone (Space)' : 'Pause (Space)', selected: hud.s.paused, pulse: hud.s.paused });
   // (The clock in tabular figures too: right-aligned, it shook as each second changed its width.)
   const clock = fmtTime(hud.g.time);
   rx -= tabularWidth(clock) + 5;
@@ -225,12 +234,15 @@ export function objective(hud: Hud): { text: string; color: string; badge?: stri
   if (g.outcome) return null;
   const tut = hud.tutorial.banner();
   if (tut) return tut;
+  // (A game together: what the room has to say comes first.)
+  const net = netBanner(hud);
+  if (net) return net;
   if (s.toast) return { text: s.toast.text, color: s.toast.color, sub: s.toast.sub };
   // (The House Power aimed: what it would do, and how to cast it or put it away.)
   const aim = aimLine(hud);
   if (aim) return aim;
   const p = g.player;
-  if (g.prompts.some((x) => x.result === undefined)) return { text: 'Something needs your decision. Click the ! on the right.', color: PAL.violet };
+  if (g.promptsFor(g.playerId).some((x) => x.result === undefined)) return { text: 'Something needs your decision. Click the ! on the right.', color: PAL.violet };
   if (p.pendingDrafts > 0) return { text: 'A Boon is ready: press B to choose it.', color: PAL.gold };
   const seed = seedHint(hud);
   if (seed) return { text: seed, color: PAL.gold };

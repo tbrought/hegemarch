@@ -162,6 +162,12 @@ export class Input {
       return;
     }
     if (d.moved) return;
+    // (Together: Alt and a click puts a ping on the map, for this player's allies.)
+    if (d.button === 0 && e.altKey && this.s.net) {
+      const [wx, wy] = this.s.renderer.cam.screenToWorld(x, y);
+      this.s.net.ping(wx, wy);
+      return;
+    }
     if (d.button === 0) this.leftClick(x, y, e.shiftKey);
     else if (d.button === 2) this.rightClick(x, y, e.shiftKey);
   }
@@ -281,6 +287,11 @@ export class Input {
   private keydown(e: KeyboardEvent) {
     const t = e.target as HTMLElement | null;
     if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA')) return;
+    // A game together: the chat line, while it is open, takes every key (not one of them pans the map).
+    if (this.hud.chat) {
+      this.chatKey(e);
+      return;
+    }
     this.keys.add(e.code);
     const s = this.s;
     const g = this.g;
@@ -328,6 +339,20 @@ export class Input {
     this.hotkey(e, code);
   }
 
+  /** The chat line: letters to it, Enter says it, Esc puts it away, Tab: to your team or to all (versus). */
+  private chatKey(e: KeyboardEvent) {
+    const c = this.hud.chat!;
+    e.preventDefault();
+    if (e.code === 'Escape') this.hud.chat = null;
+    else if (e.code === 'Enter' || e.code === 'NumpadEnter') {
+      const say = c.text.trim();
+      if (say) this.s.net?.say(say, c.team);
+      this.hud.chat = null;
+    } else if (e.code === 'Tab') c.team = !c.team;
+    else if (e.code === 'Backspace') c.text = c.text.slice(0, -1);
+    else if (e.key.length === 1 && !e.ctrlKey && !e.metaKey && c.text.length < 120) c.text += e.key;
+  }
+
   /**
    * A key while a dialog is open: the dialog's own keys first (a digit chooses), then the letter that
    * opened it, or Space and Enter, to close it. A key the dialog took is not also a key to close it:
@@ -357,6 +382,15 @@ export class Input {
     const s = this.s;
     const g = this.g;
     switch (code) {
+      case 'Enter':
+      case 'NumpadEnter':
+        // (Together: a word to the others.)
+        if (s.net) {
+          e.preventDefault();
+          this.keys.clear();
+          this.hud.chat = { text: '', team: true };
+        }
+        break;
       case 'Tab':
         e.preventDefault();
         this.hud.actions.nextForge(e.shiftKey ? -1 : 1);

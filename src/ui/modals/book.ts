@@ -27,21 +27,40 @@ const AGES_TIPS = ['ageReady', 'ageNew', 'ageSiege', 'ageRival', 'ageGone', 'age
 
 export function menu(modals: Modals, g: Ctx) {
   const w = 150;
+  const net = modals.s.net;
+  const G = modals.g;
+  // (A game together: no one screen pauses it, nothing is saved here, and leaving hands the house to the AI.)
+  const surrender = () => {
+    G.cmdSurrender(G.playerId);
+    modals.close();
+  };
+  const leaveText = G.player.alive && !G.outcome ? 'Leave this game? The AI leads your house from now, and the others play on.' : 'Leave this game? The others play on.';
+  const together: [string, () => void, boolean?][] = [];
+  if (G.config.together === 'versus' && G.player.alive && !G.outcome) {
+    together.push(['SURRENDER', () => (modals.s.modal = { kind: 'confirm', text: 'Surrender? Your house falls, and the others play on.', yes: 'SURRENDER', onYes: surrender })]);
+  }
+  together.push(['LEAVE THE GAME', () => (modals.s.modal = { kind: 'confirm', text: leaveText, yes: 'LEAVE', onYes: () => modals.s.hooks.quit(false) })]);
   const items: [string, () => void, boolean?][] = [
     ['RESUME', () => modals.close()],
     ['SETTINGS', () => (modals.s.modal = { kind: 'settings' })],
     ['HOW TO PLAY', () => (modals.s.modal = { kind: 'help' })],
     ['STATUS', () => (modals.s.modal = { kind: 'status' }), !modals.s.reveal().destinies && modals.s.guided],
-    ['SAVE AND QUIT', () => modals.s.hooks.quit(true)],
-    [
-      'ABANDON RUN',
-      () => (modals.s.modal = { kind: 'confirm', text: 'Abandon this run? It will count as a defeat.', yes: 'ABANDON', onYes: () => modals.s.hooks.abandon() }),
-    ],
+    ...(net
+      ? together
+      : ([
+          ['SAVE AND QUIT', () => modals.s.hooks.quit(true)],
+          [
+            'ABANDON RUN',
+            () => (modals.s.modal = { kind: 'confirm', text: 'Abandon this run? It will count as a defeat.', yes: 'ABANDON', onYes: () => modals.s.hooks.abandon() }),
+          ],
+        ] as [string, () => void][])),
   ];
   const h = 22 + items.length * 15 + 4;
-  const { x, y } = modals.frame(g, w, h, 'PAUSED');
+  const { x, y } = modals.frame(g, w, h, net ? 'MENU' : 'PAUSED');
   items.forEach(([label, act, dis], i) => {
-    modals.ui.button(g, 'm-' + i, x + 10, y + 20 + i * 15, w - 20, 13, label, act, { disabled: !!dis, danger: label === 'ABANDON RUN', primary: i === 0 });
+    modals.ui.button(g, 'm-' + i, x + 10, y + 20 + i * 15, w - 20, 13, label, act, {
+      disabled: !!dis, danger: label === 'ABANDON RUN' || label === 'SURRENDER' || label === 'LEAVE THE GAME', primary: i === 0,
+    });
   });
 }
 

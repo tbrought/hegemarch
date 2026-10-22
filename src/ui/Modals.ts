@@ -10,6 +10,7 @@
  *   modals/book.ts     the run's menu, settings, How to Play, the comms log, "are you sure?"
  *   modals/cards.ts    the cards a run shows once (omens, the Destinies, the end of the First Night, the cradle, the Ark's leaving)
  */
+import { gift } from './modals/together';
 import type { Modal } from '../app/Session';
 import type { OfferOdds } from '../game/boons';
 import { textCenter } from '../render/font';
@@ -270,6 +271,8 @@ export class Modals {
         return logView(this, g);
       case 'confirm':
         return confirm(this, g, m.text, m.yes, m.onYes);
+      case 'gift':
+        return gift(this, g, m.to);
     }
   }
 

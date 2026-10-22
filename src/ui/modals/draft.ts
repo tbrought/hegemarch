@@ -36,7 +36,8 @@ export function choose(modals: Modals, id: string, slot: number) {
     modals.s.showToast(`${card.name}: ${card.desc}`, boonColor(card), 5);
     flyBoon(modals.hud, id, r ? r.x + r.w / 2 : modals.hud.W / 2, r ? r.y + 18 : modals.hud.H / 2);
     modals.hud.tips.onBoon(card.cat === 'blueprint');
-    if (p.pendingDrafts <= 0) modals.s.modal = null;
+    // (Together: the choice is carried out when it comes back from the room; B deals the next one.)
+    if (p.pendingDrafts <= 0 || modals.s.net) modals.s.modal = null;
     else modals.afterChoice();
   }
 }
@@ -130,6 +131,13 @@ export function draft(modals: Modals, g: Ctx) {
   const p = modals.g.player;
   const offer = modals.g.ensureOffer(p);
   if (!offer || !offer.length) {
+    // (Together: the room is dealing the cards; they come in a moment.)
+    if (modals.s.net && p.pendingDrafts > 0) {
+      const { x, y } = modals.frame(g, 170, 38, 'A BOON');
+      modals.closeButton(g, x, y, 170);
+      text(g, 'The cards are being dealt…', x + 10, y + 21, PAL.mist);
+      return;
+    }
     modals.s.modal = null;
     return;
   }
@@ -196,7 +204,7 @@ export function draft(modals: Modals, g: Ctx) {
   modals.ui.button(g, 'skip', x + w - 8 - sw, by, sw, 12, skip, () => {
     modals.g.cmdSkipDraft(p.id);
     modals.s.sfx.play('ui', 0.5);
-    if (p.pendingDrafts <= 0) modals.s.modal = null;
+    if (p.pendingDrafts <= 0 || modals.s.net) modals.s.modal = null;
   }, { font: 'tiny', tip: `Take ${modals.g.skipValue(p)} Embers instead of a Boon. Your next Boon still costs the same Lore.` });
   const lw = 'LATER';
   modals.ui.button(g, 'later', x + w / 2 - 20, by, 40, 12, lw, () => modals.close(), { font: 'tiny', tip: 'Decide later. The Boon will wait. (Esc)' });

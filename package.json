@@ -29,6 +29,7 @@
     "test:site": "node scripts/site.mjs",
     "test:board": "tsx scripts/board-e2e.ts",
     "test:board-ui": "node scripts/board-ui.mjs",
+    "test:together": "node scripts/together.mjs",
     "verify:daily": "tsx scripts/verify-daily.ts",
     "test:ages": "node scripts/ages.mjs",
     "test:layouts": "node scripts/layouts.mjs",

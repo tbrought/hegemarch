@@ -87,7 +87,7 @@ export function drawIndicators(hud: Hud) {
   }
   y = hud.goals.draw(g, hud.W - 3, y, hud.bannerRect);
   if (hud.goals.rect.w) reach(hud.goals.rect.w);
-  const pending = hud.g.prompts.filter((x) => x.result === undefined);
+  const pending = hud.g.promptsFor(hud.g.playerId).filter((x) => x.result === undefined);
   if (pending.length) {
     const label = pending.length > 1 ? `! ${pending.length} DECISIONS` : '! DECISION';
     const w = textWidth(label, 'tiny') + 10;

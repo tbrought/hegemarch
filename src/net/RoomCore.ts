@@ -16,7 +16,7 @@
 import type { GameConfig, Seat } from '../game/types';
 import {
   AWAY_MS, cleanName, COUNT_IN_MS, DEFAULT_OPTIONS, HAND_OVER, HASH_EVERY, HOUSE_IDS, MAX_LAG_TICKS, MAX_PLAYERS, NET_ORDERS, NET_SPEEDS, NET_VERSION,
-  orderShape, PAUSE_MS, plainArg, SEATS_BY_SIZE, ticksPerTurn, VERSUS_PAUSES,
+  orderShape, PAUSE_MS, plainArg, SEATS_BY_SIZE, startProblem, ticksPerTurn, VERSUS_PAUSES,
   type Bringing, type ClientMsg, type LobbySeat, type LobbyState, type PauseState, type PeerState, type RoomMsg, type RoomOptions, type Stamped,
 } from './protocol';
 
@@ -199,7 +199,7 @@ export class RoomCore {
     if (!this.config || !m.conn) return;
     m.rebuilding = true;
     m.tick = 0;
-    m.conn.send({ t: 'start', config: this.config, you: m.seat, log: this.log, to: this.to, speed: this.speed, paused: this.pause, rebuild: true });
+    m.conn.send({ t: 'start', config: this.config, you: m.seat, log: this.log, to: this.to, speed: this.speed, paused: this.pauseNow(), rebuild: true });
     if (this.phase === 'playing' && this.seats[m.seat].ai) this.handOver(m.seat, false);
     this.sendPeers();
   }
@@ -342,18 +342,7 @@ export class RoomCore {
 
   /** Why the game cannot start yet, or null. */
   whyNot(): string | null {
-    const live = this.seats.filter((s) => s.kind !== 'closed' && s.kind !== 'open');
-    const players = live.filter((s) => s.kind === 'player');
-    if (live.length < 2) return 'A sector needs at least two houses.';
-    if (players.some((s) => !s.heir)) return 'Every player must choose a house.';
-    if (players.some((s) => !s.ready && this.seats.indexOf(s) !== this.owner)) return 'Waiting for every player to be ready.';
-    if (new Set(live.map((s) => s.heir).filter(Boolean)).size < live.filter((s) => s.heir).length) return 'Two seats have the same house.';
-    if (this.options.together === 'versus') {
-      if (players.length < 2) return 'Versus needs at least two players.';
-      if (new Set(live.map((s) => s.team)).size < 2) return 'Versus needs at least two teams.';
-    }
-    if (this.seats.some((s) => s.kind === 'open')) return 'Close the open seats, or fill them (with a player or the AI).';
-    return null;
+    return startProblem(this.seats, this.options, this.owner);
   }
 
   /** The game begins: the config every screen makes the same game from, and the clock starts. */
@@ -418,6 +407,13 @@ export class RoomCore {
     this.sendPeers();
   }
 
+  /** The game is over: its clock stops, and the room's lobby says so (its host may start another). */
+  private over() {
+    this.phase = 'over';
+    this.dirty = true;
+    this.broadcastLobby();
+  }
+
   /** After a game: the same room, the same seats, a new sector. */
   private again(m: Member) {
     if (this.phase !== 'over' || m.seat !== this.owner) return;
@@ -480,10 +476,7 @@ export class RoomCore {
     if (msg.over && this.phase === 'playing') {
       m.over = true;
       // (The game is over when every screen that is here says so.)
-      if (this.members.every((x) => !x.conn || x.over)) {
-        this.phase = 'over';
-        this.dirty = true;
-      }
+      if (this.members.every((x) => !x.conn || x.over)) this.over();
     }
     if (msg.hash !== undefined && !m.rebuilding && !this.resyncing && msg.tick % HASH_EVERY === 0) this.compare(m.seat, msg.tick, msg.hash >>> 0);
   }
@@ -509,8 +502,8 @@ export class RoomCore {
    */
   private resync(why: string) {
     if (this.resyncs >= MAX_RESYNCS) {
-      this.phase = 'over';
       this.broadcast({ t: 'ended', why: `This game could not be kept in step on every screen (${why}).` });
+      this.over();
       return;
     }
     this.resyncs++;
@@ -547,8 +540,18 @@ export class RoomCore {
       this.pause.resumeAt = now + COUNT_IN_MS;
     }
     this.dirty = true;
-    this.broadcast({ t: 'pause', state: this.pause });
+    this.broadcast({ t: 'pause', state: this.pauseNow() });
     this.sendPeers();
+  }
+
+  /** The pause as it is sent: with how long until the count-in ends and until anyone may resume, from now. */
+  private pauseNow(): PauseState | null {
+    if (!this.pause) return null;
+    const now = this.clock();
+    const p: PauseState = { ...this.pause };
+    if (p.resumeAt !== undefined) p.resumeIn = Math.max(0, p.resumeAt - now);
+    if (p.openAt !== undefined) p.openIn = Math.max(0, p.openAt - now);
+    return p;
   }
 
   private setSpeed(m: Member, speed: number) {
@@ -617,7 +620,7 @@ export class RoomCore {
     if (this.phase === 'lobby') return;
     const peers: PeerState[] = this.members.map((m) => ({
       seat: m.seat, name: m.bring.name, online: !!m.conn, ai: !!this.seats[m.seat]?.ai, lag: Math.max(0, this.to - m.tick), hidden: m.hidden,
-      pauses: this.options.together === 'versus' ? (this.pausesLeft[m.seat] ?? 0) : -1,
+      pauses: this.options.together === 'versus' ? (this.pausesLeft[m.seat] ?? 0) : -1, host: m.seat === this.owner,
     }));
     this.broadcast({ t: 'peers', peers });
   }

@@ -22,7 +22,8 @@ export function resolve(modals: Modals, promptId: number, choice: number) {
     modals.s.sfx.play('error', 0.5);
     return;
   }
-  modals.result = { promptId, text: r };
+  // (Together: the choice goes to the room, and what came of it is read when it comes back: '…' until then.)
+  modals.result = { promptId, text: r === '' ? '…' : r };
   modals.s.sfx.play('good', 0.5);
   modals.afterChoice();
 }
@@ -53,6 +54,7 @@ export function event(modals: Modals, g: Ctx, promptId: number) {
     modals.s.modal = null;
     return;
   }
+  if (modals.result?.promptId === promptId && modals.result.text === '…' && p.result !== undefined) modals.result.text = p.result;
   const w = Math.min(modals.hud.W - 16, 300);
   const inner = w - 16;
   const f = modals.g.player;

@@ -7,6 +7,7 @@ import type { Screen } from '../render/Screen';
 import type { Sfx } from '../audio/Sfx';
 import type { Music } from '../audio/Music';
 import type { Profile } from '../meta/profile';
+import type { Lockstep } from '../net/Lockstep';
 import { TUTORIAL_STEPS } from '../ui/Tutorial';
 
 export type Modal = (
@@ -24,6 +25,8 @@ export type Modal = (
   | { kind: 'ascend' }
   | { kind: 'log' }
   | { kind: 'confirm'; text: string; yes: string; onYes: () => void }
+  /** A game together: Embers for an ally (its house). */
+  | { kind: 'gift'; to: number }
 ) & {
   /**
    * It opened by itself, not at the player's click or key: it takes no click and no key for a moment
@@ -59,11 +62,34 @@ export interface Reveal {
 /** Everything about one in-progress run that the HUD, input and tutorial share. */
 export class Session {
   view: ViewState = emptyView();
-  paused = false;
-  /** A tip card is up and holds the game while it is read (see Tips). */
+  /** A tip card is up and holds the game while it is read (see Tips). Not in a game together: no one screen holds it. */
   tipHold = false;
-  speed = 1;
   modal: Modal | null = null;
+  /**
+   * A game played together (1.28): this screen's link to its room (net/Lockstep.ts). The pause and the speed are
+   * the room's then: asking for them asks the room, and nothing on this screen alone holds the game.
+   */
+  net: Lockstep | null = null;
+  private pausedAlone = false;
+  private speedAlone = 1;
+
+  get paused(): boolean {
+    return this.net ? this.net.paused : this.pausedAlone;
+  }
+
+  set paused(on: boolean) {
+    if (!this.net) this.pausedAlone = on;
+    else if (!this.game.outcome && on !== this.net.paused) this.net.setPause(on);
+  }
+
+  get speed(): number {
+    return this.net ? this.net.speed : this.speedAlone;
+  }
+
+  set speed(v: number) {
+    if (!this.net) this.speedAlone = v;
+    else if (v !== this.net.speed) this.net.setSpeed(v);
+  }
   groups = new Map<number, number[]>();
   lastGroupKey = { key: -1, t: 0 };
   lastClick = { id: 0, t: 0 };
@@ -101,6 +127,8 @@ export class Session {
 
   get halted(): boolean {
     if (this.game.outcome) return true;
+    // (Together: the room's pause, or this screen playing the game again; a dialog or a tip holds nothing.)
+    if (this.net) return this.net.paused || !!this.net.rebuilding;
     if (this.paused || this.tipHold) return true;
     return !!this.modal && this.modal.kind !== 'log';
   }

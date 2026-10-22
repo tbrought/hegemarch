@@ -180,6 +180,8 @@ export interface PeerState {
   hidden: boolean;
   /** Versus: pauses left. */
   pauses: number;
+  /** The room's host (in co-op, who sets the speed). */
+  host: boolean;
 }
 
 /** What a room says to a screen. */
@@ -205,6 +207,12 @@ export interface PauseState {
   resumeAt?: number;
   /** Versus: from this moment anyone may resume. */
   openAt?: number;
+  /**
+   * As sent: milliseconds from the moment the room said it until the count-in ends, and until anyone may resume
+   * (each screen counts them on its own clock: the room's clock is not theirs).
+   */
+  resumeIn?: number;
+  openIn?: number;
 }
 
 /** An argument an order may have: a number, a string, a yes or no, nothing, or a list of whole numbers. */
@@ -230,6 +238,26 @@ export function makeCode(random: () => number): string {
   let s = '';
   for (let i = 0; i < CODE_LEN; i++) s += CODE_CHARS[Math.floor(random() * CODE_CHARS.length)];
   return s;
+}
+
+/**
+ * Why a room's game cannot start yet, or null: the room asks it when its owner starts, and the lobby page shows
+ * it on START, greyed, before anyone clicks.
+ */
+export function startProblem(seats: LobbySeat[], options: RoomOptions, owner: number): string | null {
+  const live = seats.filter((s) => s.kind === 'player' || s.kind === 'ai');
+  const players = live.filter((s) => s.kind === 'player');
+  if (seats.some((s) => s.kind === 'open')) return 'Close the open seats, or fill them with a player or the AI.';
+  if (live.length < 2) return 'A sector needs at least two houses.';
+  if (players.some((s) => !s.heir)) return 'Every player must choose a house.';
+  if (players.some((s) => !s.ready && seats.indexOf(s) !== owner)) return 'Waiting for every player to be ready.';
+  const heirs = live.map((s) => s.heir).filter(Boolean);
+  if (new Set(heirs).size < heirs.length) return 'Two seats have the same house.';
+  if (options.together === 'versus') {
+    if (players.length < 2) return 'Versus needs at least two players.';
+    if (new Set(live.map((s) => s.team)).size < 2) return 'Versus needs at least two teams.';
+  }
+  return null;
 }
 
 /** A player's name for a room: three to five letters, A to Z (as the board takes them). */
