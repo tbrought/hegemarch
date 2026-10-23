@@ -336,20 +336,9 @@ try {
   check('the line of Hegemarchs: the days before, newest first, each with its reign', line.length === 3 && line[0] === `${dated(1)} ZED II Vael Imperium 28:10` &&
     line[1] === `${dated(2)} ABC Solar Concord 33:22` && line[2] === `${dated(3)} ZED Vael Imperium 41:40`, line.join(' | '));
   check("the board's PLAY opens today's Daily", (await page.getAttribute('#board .throne-call a', 'href')) === 'play/#daily');
-  // The all-time board (1.28): the fastest crowns ever, a row each, with its house, Destiny, day and time.
-  const ever = await parts('#board .all-time-list li');
-  check('the all-time board: the fastest 25, first to last, with house, Destiny, day and time', ever.length === 25 &&
-    ever[0] === '1st ABC Solar Concord by Conquest 14 Sep 2026 26:10' && ever[1] === '2nd ZED Vael Imperium by Dominion 2 Oct 2026 26:41' &&
-    ever[24].startsWith('25th QWX'), `${ever.slice(0, 2).join(' | ')} … ${ever[24]}`);
-  check('it says how many players there are beyond it', (await page.textContent('#board .all-time-state')) === 'The fastest 25 of 30 players.', await page.textContent('#board .all-time-state'));
-  const rowsLaid = await page.$$eval('#board .all-time-list li', (els) => ({
-    lines: els.map((e) => Math.round(e.getBoundingClientRect().height)),
-    dates: [...new Set(els.map((e) => Math.round(e.querySelector('.date').getBoundingClientRect().left)))],
-  }));
-  check('a row a crown on a wide screen, the days lined up', Math.max(...rowsLaid.lines) < 50 && rowsLaid.dates.length === 1, JSON.stringify({ tallest: Math.max(...rowsLaid.lines), dates: rowsLaid.dates }));
-  await page.$eval('#board .all-time', (e) => e.scrollIntoView({ block: 'center' }));
-  await page.waitForTimeout(300);
-  await page.screenshot({ path: '.shots/site-alltime.png' });
+  // The leaderboard (1.28) is a page of its own: the board links to it, and holds no table of it.
+  check('the board links to the leaderboard, beside the call to play', (await page.getAttribute('#board .throne-call a[href="leaderboard/"]', 'href')) === 'leaderboard/' &&
+    (await page.$('#board .all-time')) === null);
   await page.click('#board [data-day="yesterday"]');
   await page.waitForTimeout(500);
   check("and yesterday's, as it closed", /No crowns were posted for yesterday/.test(await page.textContent('#board .board-day .board-state')) &&
@@ -407,14 +396,37 @@ try {
     check(`${name}: the title, the throne, the live panel and PLAY all fit the opening screen`, fits.play && fits.logo && fits.clear && fits.throne, JSON.stringify(fits));
     for (const sel of ['#run', '#board', '#houses', '#ships', '#boons', '#destinies', '#ages', '#play']) await scrollTo(o.page, sel);
     check(`${name}: nothing runs off the side`, await noSideScroll(o.page));
-    if (name === 'phone') {
-      const lefts = await o.page.$$eval('#board .all-time-list li', (els) => [...new Set(els.map((e) => Math.round(e.getBoundingClientRect().left)))]);
-      check('phone: the all-time board in one column', lefts.length === 1, lefts.join(', '));
-      await o.page.locator('#board .all-time').screenshot({ path: '.shots/site-phone-alltime.png' });
-    }
     check(`${name}: every section lit`, await o.page.$$eval('.band', (els) => els.every((e) => e.classList.contains('lit'))));
     await o.page.screenshot({ path: `.shots/site-${name}-full.png`, fullPage: true });
     check(`${name}: no errors`, o.errors.length === 0, o.errors.slice(0, 3).join(' | '));
+    await o.context.close();
+  }
+
+  // ------------------------------------------------------------------ the leaderboard (1.28)
+  for (const [name, width, height] of [['desktop', 1440, 900], ['phone', 390, 844]]) {
+    const phone = name === 'phone';
+    const o = await open({ viewport: { width, height }, deviceScaleFactor: phone ? 3 : 1, hasTouch: phone, isMobile: phone }, 'leaderboard/');
+    await o.page.waitForFunction(() => document.querySelectorAll('.all-time-list li').length > 0, null, { timeout: 20000 });
+    const parts = (sel) => o.page.$$eval(sel, (els) => els.map((e) => [...e.children].map((c) => c.textContent.replace(/\s+/g, ' ').trim()).filter((t) => t).join(' ')));
+    const ever = await parts('.all-time-list li');
+    check(`leaderboard, ${name}: the fastest 25, first to last, with house, Destiny, day and time`, ever.length === 25 &&
+      ever[0] === '1st ABC Solar Concord by Conquest 14 Sep 2026 26:10' && ever[1] === '2nd ZED Vael Imperium by Dominion 2 Oct 2026 26:41' &&
+      ever[24].startsWith('25th QWX'), `${ever.slice(0, 2).join(' | ')} … ${ever[24]}`);
+    check(`leaderboard, ${name}: how many players there are beyond it`, (await o.page.textContent('.all-time-state')) === 'The fastest 25 of 30 players.', await o.page.textContent('.all-time-state'));
+    const laid = await o.page.$$eval('.all-time-list li', (els) => ({
+      tallest: Math.max(...els.map((e) => Math.round(e.getBoundingClientRect().height))),
+      dates: [...new Set(els.map((e) => Math.round(e.querySelector('.date').getBoundingClientRect().left)))],
+      lefts: [...new Set(els.map((e) => Math.round(e.getBoundingClientRect().left)))],
+    }));
+    if (!phone) check('leaderboard, desktop: a row a crown, the days lined up', laid.tallest < 50 && laid.dates.length === 1, JSON.stringify(laid));
+    else check('leaderboard, phone: one column, the letters and time first', laid.lefts.length === 1 && laid.dates.length === 1, JSON.stringify(laid));
+    check(`leaderboard, ${name}: the way back and the call to play`, (await o.page.getAttribute('.top .logo', 'href')) === '/' &&
+      (await o.page.getAttribute('.actions .btn.primary', 'href')) === '/play/#daily' && (await o.page.getAttribute('.actions .btn:not(.primary)', 'href')) === '/#board');
+    check(`leaderboard, ${name}: the version in the footer, the page's own name`, /Hegemarch v\d+\.\d+\.\d+/.test(await o.page.textContent('footer')) &&
+      (await o.page.title()) === 'Leaderboard · Hegemarch');
+    check(`leaderboard, ${name}: nothing runs off the side`, await noSideScroll(o.page));
+    check(`leaderboard, ${name}: no errors`, o.errors.length === 0, o.errors.slice(0, 3).join(' | '));
+    await o.page.screenshot({ path: `.shots/site-leaderboard-${name}.png`, fullPage: true });
     await o.context.close();
   }
 

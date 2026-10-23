@@ -98,12 +98,19 @@ fs.rmSync(out, { recursive: true, force: true });
 fs.mkdirSync(path.join(out, 'site', 'play'), { recursive: true });
 fs.mkdirSync(path.join(out, 'itch'), { recursive: true });
 
-// The website: the landing page (and anything beside it in site/), the game, the download.
-for (const f of fs.readdirSync('site')) {
-  const from = path.join('site', f);
-  if (f.endsWith('.html')) fs.writeFileSync(path.join(out, 'site', f), fs.readFileSync(from, 'utf8').replaceAll('{{VERSION}}', version));
-  else fs.copyFileSync(from, path.join(out, 'site', f));
-}
+// The website: the landing page (and anything beside it in site/, its folders too: the leaderboard, at /leaderboard/),
+// the game, the download.
+const copySite = (dir) => {
+  fs.mkdirSync(path.join(out, 'site', dir), { recursive: true });
+  for (const f of fs.readdirSync(path.join('site', dir))) {
+    const rel = path.join(dir, f);
+    const from = path.join('site', rel);
+    if (fs.statSync(from).isDirectory()) copySite(rel);
+    else if (f.endsWith('.html')) fs.writeFileSync(path.join(out, 'site', rel), fs.readFileSync(from, 'utf8').replaceAll('{{VERSION}}', version));
+    else fs.copyFileSync(from, path.join(out, 'site', rel));
+  }
+};
+copySite('');
 // The typefaces, and their licences (the game carries its own copies inside its one file).
 fs.mkdirSync(path.join(out, 'site', 'fonts'), { recursive: true });
 for (const f of fs.readdirSync(path.join('src', 'fonts'))) fs.copyFileSync(path.join('src', 'fonts', f), path.join(out, 'site', 'fonts', f));

@@ -32,7 +32,6 @@ const row = (place: number, r: { name: string; heir: string; time: number; victo
 };
 
 export function startBoard(root: HTMLElement) {
-  // (The day's own list: the all-time board's has the same look, and comes first on the page.)
   const list = root.querySelector<HTMLElement>('.board-day .board-list')!;
   const state = root.querySelector<HTMLElement>('.board-day .board-state')!;
   const tabs = [...root.querySelectorAll<HTMLButtonElement>('[data-day]')];
@@ -74,15 +73,14 @@ export function startBoard(root: HTMLElement) {
     if (which === 'today' && document.visibilityState === 'visible') void load();
   }, 60_000);
   showBest(root.querySelector<HTMLElement>('.your-best')!);
-  const all = root.querySelector<HTMLElement>('.all-time');
-  if (all) startAllTime(all);
 }
 
 /**
- * The all-time board: the fastest crowns ever, each player's best, with the day each was won. It changes only when a
- * crown comes to stand: asked for once, and again every five minutes while the page is seen.
+ * The all-time board, on the leaderboard page (site/leaderboard/): the fastest crowns ever, each player's best, with the
+ * day each was won. It changes only when a crown comes to stand: asked for once, and again every five minutes while the
+ * page is seen.
  */
-function startAllTime(box: HTMLElement) {
+export function startAllTime(box: HTMLElement) {
   const list = box.querySelector<HTMLElement>('.all-time-list')!;
   const state = box.querySelector<HTMLElement>('.all-time-state')!;
   const show = (a: AllTime) => {

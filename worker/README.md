@@ -119,7 +119,7 @@ npx wrangler d1 execute hegemarch-board --remote --command "DELETE FROM meta WHE
 
 ## The all-time board
 
-The 25 fastest Daily crowns ever, each player's best by their letters (a run that stands is kept for good: `prune` drops old
+The leaderboard page (`hegemarch.com/leaderboard/`, `../site/leaderboard/`): the 25 fastest Daily crowns ever, each player's best by their letters (a run that stands is kept for good: `prune` drops old
 orders, never a crown). It is worked out when a run comes to stand and once a day, and kept in the `meta` table as one row, so
 a look at the page reads one row, not every crown there has ever been. Nothing to set up: the first look after the Worker is
 deployed works it out from the runs already there.

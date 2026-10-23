@@ -1,10 +1,11 @@
 /**
  * The website (hegemarch.com): the landing page's moving parts, built from the game's own code so
  * that what the page shows is the game and not a picture of it. `npm run package` builds this file
- * into release/site/site.js; the page itself is site/index.html.
+ * into release/site/site.js; the page itself is site/index.html. The leaderboard page (site/leaderboard/)
+ * loads it too, for its table: each part starts only where its page has a place for it.
  */
 import { startAges } from './ages';
-import { startBoard } from './board';
+import { startAllTime, startBoard } from './board';
 import { Draft } from './draft';
 import { startFleet } from './fleet';
 import { Hero } from './hero';
@@ -44,7 +45,10 @@ function boot() {
   part('daily', startDailyClock);
   const board = byId('board');
   if (board) part('board', () => startBoard(board));
-  part('throne', () => startThrone(document.querySelector<HTMLElement>('#hero .throne'), board));
+  if (heroEl || board) part('throne', () => startThrone(document.querySelector<HTMLElement>('#hero .throne'), board));
+  // The leaderboard page (site/leaderboard/): the all-time top 25.
+  const allTime = byId('all-time');
+  if (allTime) part('alltime', () => startAllTime(allTime));
   // For the site's own tests (scripts/site.mjs): ?debug hands them the moving parts.
   if (new URLSearchParams(location.search).has('debug')) Object.assign(window, { __site: { hero, houses, draft } });
 

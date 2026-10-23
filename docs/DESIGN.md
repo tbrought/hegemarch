@@ -1849,10 +1849,12 @@ today's Daily, ready to play (a first visit is shown the title screen, with the 
 On the website it is one small line over PLAY ("TODAY'S HEGEMARCH ACE II 31:05", or THE THRONE IS EMPTY)
 since 1.25.3: as a box under the title it covered the sector playing behind it, and outshouted the name.
 
-**The all-time board (1.28).** Under the line of Hegemarchs, THE ALL-TIME TOP 25: the fastest Daily crowns
-ever, of any day, each player's best by their letters (one regular cannot fill it; a name taken down, ???,
-keeps its place as itself), ties to the one posted first, each with its house, Destiny and day. A row a
-crown, the days lined up; on a phone, the letters and the time first. Every run that stands is kept for good
+**The leaderboard (1.28).** A page of its own, `hegemarch.com/leaderboard/` (site/leaderboard/), so that the
+front page stays as it was: the board links to it beside PLAY TODAY'S DAILY (ALL-TIME LEADERBOARD). THE
+ALL-TIME TOP 25: the fastest Daily crowns ever, of any day, each player's best by their letters (one regular
+cannot fill it; a name taken down, ???, keeps its place as itself), ties to the one posted first, each with
+its house, Destiny and day. A row a crown, the days lined up; on a phone, the letters and the time first.
+The page loads the site's own script (site.js), which starts only the parts its page has a place for. Every run that stands is kept for good
 (`prune` drops old orders, never a crown), so the board never forgets one. The Worker works it out when a run
 comes to stand and once a day, and keeps it in `meta` as one row: a look at the page reads that row, not
 every crown there has ever been (`/api/daily/alltime`). Every Daily is medium and Normal, so the times stand

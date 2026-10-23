@@ -1,0 +1,325 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Leaderboard · Hegemarch</title>
+    <meta name="description" content="The all-time leaderboard of Hegemarch's Daily Run: the fastest crowns ever, each player's best, kept for good." />
+    <link rel="canonical" href="https://hegemarch.com/leaderboard/" />
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Hegemarch Leaderboard" />
+    <meta property="og:description" content="The fastest Daily crowns ever, each player's best, kept for good." />
+    <meta property="og:url" content="https://hegemarch.com/leaderboard/" />
+    <meta property="og:image" content="https://hegemarch.com/screenshot.png" />
+    <meta property="og:site_name" content="Hegemarch" />
+    <meta name="theme-color" content="#0b0a1a" />
+    <link rel="icon" href="/favicon.ico" sizes="32x32" />
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <link rel="preload" href="/fonts/press-start-2p.woff2" as="font" type="font/woff2" crossorigin />
+    <link rel="preload" href="/fonts/pixelify-sans.woff2" as="font" type="font/woff2" crossorigin />
+    <script>
+      document.documentElement.classList.add('js');
+    </script>
+    <!-- (The site's own script, built from the game: here it fills the leaderboard, and nothing else. Paths from the root.) -->
+    <script src="/site.js?v={{VERSION}}" defer></script>
+    <style>
+      /* The leaderboard (1.28): the Daily's all-time top 25, a page of its own so that the front page stays as it was.
+         The front page's palette, type and board rows (site/index.html), and the 404's way of standing alone. */
+      @font-face {
+        font-family: 'Pixelify Sans';
+        font-style: normal;
+        font-weight: 400 700;
+        font-display: swap;
+        src: url('/fonts/pixelify-sans.woff2') format('woff2');
+      }
+      @font-face {
+        font-family: 'Press Start 2P';
+        font-style: normal;
+        font-weight: 400;
+        font-display: swap;
+        src: url('/fonts/press-start-2p.woff2') format('woff2');
+      }
+      :root {
+        --void: #0b0a1a;
+        --night: #1b1838;
+        --indigo: #2f2a5c;
+        --slate: #4b4f8a;
+        --dusk: #7f86c4;
+        --mist: #c8cbe6;
+        --bone: #fff4e0;
+        --gold: #ffd23f;
+        --red: #e0402f;
+        --wine: #8c1d40;
+        --display: 'Press Start 2P', 'Courier New', monospace;
+        --body: 'Pixelify Sans', 'Trebuchet MS', system-ui, sans-serif;
+        --px: 3px;
+        color-scheme: dark;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        background: var(--void);
+        color: var(--mist);
+        font-family: var(--body);
+        font-size: 19px;
+        line-height: 1.45;
+        -webkit-font-smoothing: none;
+        font-variant-ligatures: none;
+        overflow-x: hidden;
+      }
+      h1,
+      h2,
+      p,
+      ol {
+        margin: 0;
+      }
+      ol {
+        padding: 0;
+        list-style: none;
+      }
+      b {
+        font-weight: 600;
+      }
+      .page {
+        max-width: 980px;
+        margin: 0 auto;
+        padding: 28px 16px 40px;
+        display: grid;
+        gap: 26px;
+      }
+      /* The way back: the name, to the front page, and to the day's board. */
+      .top {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: baseline;
+        justify-content: space-between;
+        gap: 10px 20px;
+      }
+      .logo {
+        font-family: var(--display);
+        font-size: clamp(18px, 4vw, 26px);
+        letter-spacing: 0.06em;
+        color: var(--gold);
+        text-decoration: none;
+        text-shadow: 3px 3px 0 var(--wine);
+      }
+      .back {
+        font-family: var(--display);
+        font-size: 11px;
+        letter-spacing: 0.04em;
+        color: var(--dusk);
+        text-decoration: none;
+      }
+      .back:hover,
+      .back:focus-visible {
+        color: var(--bone);
+      }
+      header.head {
+        display: grid;
+        gap: 14px;
+      }
+      h1 {
+        font-family: var(--display);
+        font-weight: normal;
+        font-size: clamp(22px, 4.6vw, 34px);
+        letter-spacing: 0.04em;
+        color: var(--bone);
+      }
+      .lead {
+        max-width: 62ch;
+      }
+      .lead b {
+        font-weight: inherit;
+        color: var(--bone);
+      }
+      .lead em {
+        font-style: normal;
+        color: var(--gold);
+      }
+      /* The table: a row a crown, the day each was won lined up beside its time; the first three in gold. */
+      .all-time {
+        min-width: 0;
+        background: var(--night);
+        box-shadow: 0 0 0 var(--px) var(--indigo);
+        padding: 16px 18px;
+      }
+      .all-time h2 {
+        margin: 0 0 14px;
+        font-family: var(--display);
+        font-weight: normal;
+        font-size: 13px;
+        letter-spacing: 0.04em;
+        color: var(--bone);
+      }
+      .board-list {
+        display: grid;
+        gap: 6px;
+      }
+      .board-list li {
+        display: grid;
+        grid-template-columns: 4ch 6.2rem minmax(0, 1fr) 7.5rem auto;
+        gap: 12px;
+        align-items: baseline;
+        padding: 7px 10px;
+        background: var(--void);
+      }
+      .board-list .place {
+        font-family: var(--display);
+        font-size: 11px;
+        color: var(--dusk);
+      }
+      .board-list li:nth-child(-n + 3) .place {
+        color: var(--gold);
+      }
+      .board-list .who {
+        font-family: var(--display);
+        font-size: 14px;
+        font-weight: normal;
+        letter-spacing: 0.08em;
+        color: var(--bone);
+      }
+      .board-list .house {
+        min-width: 0;
+        color: var(--hc);
+        overflow-wrap: anywhere;
+      }
+      .board-list .house small {
+        font-size: 16px;
+        color: var(--dusk);
+      }
+      .board-list .date {
+        font-size: 16px;
+        color: var(--dusk);
+        white-space: nowrap;
+      }
+      .board-list .time {
+        font-family: var(--display);
+        font-size: 13px;
+        color: var(--gold);
+        font-variant-numeric: tabular-nums;
+      }
+      .board-state {
+        margin: 10px 0 0;
+        font-size: 16px;
+        color: var(--dusk);
+      }
+      .board-state:empty {
+        display: none;
+      }
+      /* The calls: today's Daily, and the day's board on the front page. */
+      .actions {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: center;
+        gap: 12px 18px;
+      }
+      .btn {
+        display: inline-block;
+        font-family: var(--display);
+        font-size: 14px;
+        letter-spacing: 0.04em;
+        line-height: 1.3;
+        text-align: center;
+        color: var(--bone);
+        background: var(--night);
+        text-decoration: none;
+        padding: 16px 20px 15px;
+        margin: var(--px);
+        box-shadow:
+          0 calc(var(--px) * -1) 0 0 var(--slate),
+          0 var(--px) 0 0 var(--slate),
+          calc(var(--px) * -1) 0 0 0 var(--slate),
+          var(--px) 0 0 0 var(--slate),
+          inset 0 calc(var(--px) * -1) 0 0 var(--indigo);
+      }
+      .btn:hover {
+        background: var(--indigo);
+      }
+      .btn:focus-visible,
+      .back:focus-visible,
+      .logo:focus-visible {
+        outline: 2px dashed var(--gold);
+        outline-offset: 5px;
+      }
+      .btn.primary {
+        color: var(--gold);
+        background: var(--wine);
+        box-shadow:
+          0 calc(var(--px) * -1) 0 0 var(--gold),
+          0 var(--px) 0 0 var(--gold),
+          calc(var(--px) * -1) 0 0 0 var(--gold),
+          var(--px) 0 0 0 var(--gold),
+          inset 0 calc(var(--px) * -1) 0 0 var(--night);
+      }
+      .btn.primary:hover {
+        background: var(--red);
+        color: var(--bone);
+      }
+      .note {
+        font-size: 16px;
+        color: var(--dusk);
+        max-width: 62ch;
+      }
+      footer {
+        text-align: center;
+        font-size: 15px;
+        color: var(--slate);
+      }
+      html:not(.js) .all-time {
+        display: none;
+      }
+      @media (max-width: 480px) {
+        /* (Narrow: the letters and the time on the first line, the house and its Destiny under them, then the day.) */
+        .board-list li {
+          grid-template-columns: 4ch minmax(0, 1fr) auto;
+          row-gap: 4px;
+        }
+        .board-list .who {
+          grid-area: 1 / 2;
+        }
+        .board-list .time {
+          grid-area: 1 / 3;
+        }
+        .board-list .house {
+          grid-area: 2 / 2 / 3 / -1;
+        }
+        .board-list .date {
+          grid-area: 3 / 2 / 4 / -1;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="page">
+      <nav class="top" aria-label="Hegemarch">
+        <a class="logo" href="/">HEGEMARCH</a>
+        <a class="back" href="/#board">‹ TODAY'S DAILY THRONE</a>
+      </nav>
+      <header class="head">
+        <h1>LEADERBOARD</h1>
+        <p class="lead">
+          The fastest Daily crowns ever posted, <b>each player's best</b>. Every Daily is one sector for every player, played by the same
+          rules, and every run is played again before it goes up. A crown that stands <em>stays here for good</em>.
+        </p>
+      </header>
+      <section class="all-time" id="all-time" aria-labelledby="all-time-head">
+        <h2 id="all-time-head">THE ALL-TIME TOP 25</h2>
+        <ol class="board-list all-time-list" aria-live="polite"></ol>
+        <p class="board-state all-time-state"></p>
+      </section>
+      <noscript><p class="note">The leaderboard is filled by the page's script: turn scripts on to see it.</p></noscript>
+      <div class="actions">
+        <a class="btn primary" href="/play/#daily">▶ PLAY TODAY'S DAILY</a>
+        <a class="btn" href="/#board">TODAY'S BOARD</a>
+      </div>
+      <p class="note">
+        The board keeps the letters a run is posted under, its house, its time and the orders it was played with, and nothing else: no
+        account, no email address, no cookies.
+      </p>
+      <footer>Hegemarch v{{VERSION}}</footer>
+    </div>
+  </body>
+</html>
