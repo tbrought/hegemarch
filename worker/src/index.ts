@@ -8,6 +8,7 @@
  *   GET  /api/daily/status?id=    what became of it: { status, time, rank, of, reason }
  *   GET  /api/daily/board?day=    a day's fastest crowns: { day, runs, count }
  *   GET  /api/daily/throne        today's three fastest and the Hegemarchs of the days before (meta/board.ts: Throne)
+ *   GET  /api/daily/alltime       the fastest crowns ever, each player's best (meta/board.ts: AllTime)
  *   GET  /api/daily/pending       the checker's: runs to check, with their orders (VERIFY_SECRET)
  *   POST /api/daily/verdict       the checker's: what it found (VERIFY_SECRET)
  *
@@ -19,7 +20,7 @@
  * It keeps three letters, a house, a time and a run's orders, and nothing else: no account, no address,
  * no cookie, no IP. A run's orders are dropped once they are no longer needed (`prune`).
  */
-import { BOARD_LONGEST, BOARD_SHOWN, dayOf, isBoardDay, nameProblem, ordOf, THRONE_DAYS, type BoardEntry } from '../../src/meta/board';
+import { ALLTIME_SHOWN, BOARD_LONGEST, BOARD_SHOWN, dayOf, isBoardDay, nameProblem, ordOf, THRONE_DAYS, type AllTime, type BoardEntry } from '../../src/meta/board';
 import { newRoom, Room, roomSocket, type RoomNamespace } from './room';
 
 // (The Durable Object of a room: wrangler.toml binds it as ROOMS.)
@@ -241,6 +242,40 @@ export async function crownDays(env: Env, now: number) {
   }
 }
 
+/**
+ * The all-time board (1.28): the fastest crowns of every day there has been, each player's best by their letters
+ * (a name taken down, "???", keeps its place as itself, as on its day's board), ties to the one that came first. Every
+ * run that stands is kept for good (`prune` drops old orders, never a crown), so this board never forgets one.
+ */
+export async function allTimeOf(env: Env): Promise<AllTime> {
+  const who = `CASE WHEN name = '${BLANKED}' THEN id ELSE name END`;
+  const runs = await env.DB.prepare(
+    `SELECT name, heir, time, victory, day FROM (
+       SELECT name, heir, time, victory, day, created, ROW_NUMBER() OVER (PARTITION BY ${who} ORDER BY time, created) AS best
+         FROM runs WHERE status = 'verified')
+     WHERE best = 1 ORDER BY time, created LIMIT ${ALLTIME_SHOWN}`,
+  ).all<AllTime['runs'][number]>();
+  const players = await env.DB.prepare(`SELECT COUNT(DISTINCT ${who}) AS n FROM runs WHERE status = 'verified'`).first<{ n: number }>();
+  return { runs: runs.results, players: players?.n ?? 0 };
+}
+
+/**
+ * Work the all-time board out again, and keep it (in `meta`): when a run comes to stand, and once a day. Asked for, it
+ * is read as it was kept (one row), not worked out from every crown there has ever been at each look at the page.
+ */
+export async function keepAllTime(env: Env): Promise<AllTime> {
+  const a = await allTimeOf(env);
+  await env.DB.prepare("INSERT INTO meta (key, value) VALUES ('alltime', ?) ON CONFLICT (key) DO UPDATE SET value = excluded.value").bind(JSON.stringify(a)).run();
+  return a;
+}
+
+async function allTime(env: Env): Promise<Response> {
+  const kept = await env.DB.prepare("SELECT value FROM meta WHERE key = 'alltime'").first<{ value: string }>();
+  // (Not kept yet: the first look after the Worker that keeps it was deployed, or after it was cleared by hand.)
+  const a = kept ? (JSON.parse(kept.value) as AllTime) : await keepAllTime(env);
+  return json(a, 200, { 'cache-control': 'public, max-age=60' });
+}
+
 /** The checker's: the runs to check, oldest first (not one it looked at in the last half hour and could not check yet). */
 async function pending(env: Env, now: number): Promise<Response> {
   const runs = await env.DB.prepare(
@@ -261,9 +296,11 @@ async function verdict(req: Request, env: Env, now: number): Promise<Response> {
   }
   const reason = typeof v.reason === 'string' ? v.reason.slice(0, 200) : '';
   if (v.ok === true && typeof v.time === 'number' && Number.isFinite(v.time) && typeof v.victory === 'string') {
-    await env.DB.prepare("UPDATE runs SET status = 'verified', time = ?, victory = ?, reason = NULL, checked = ? WHERE id = ? AND status = 'pending'")
+    const took = await env.DB.prepare("UPDATE runs SET status = 'verified', time = ?, victory = ?, reason = NULL, checked = ? WHERE id = ? AND status = 'pending'")
       .bind(v.time, v.victory.slice(0, 24), now, v.id)
       .run();
+    // (A crown that stands may be one of the fastest ever.)
+    if (took.meta.changes) await keepAllTime(env);
   } else {
     await env.DB.prepare("UPDATE runs SET status = 'rejected', reason = ?, orders = NULL, checked = ? WHERE id = ? AND status = 'pending'")
       .bind(reason || 'It did not stand.', now, v.id)
@@ -303,6 +340,7 @@ export default {
       if (path === '/api/daily/status' && req.method === 'GET') return await status(url, env);
       if (path === '/api/daily/board' && req.method === 'GET') return await board(url, env);
       if (path === '/api/daily/throne' && req.method === 'GET') return await throne(env, now);
+      if (path === '/api/daily/alltime' && req.method === 'GET') return await allTime(env);
       if (path === '/api/daily/pending' && req.method === 'GET') return isChecker(req, env) ? await pending(env, now) : fail('Not yours.', 401);
       if (path === '/api/daily/verdict' && req.method === 'POST') return isChecker(req, env) ? await verdict(req, env, now) : fail('Not yours.', 401);
       // Games played together.
@@ -320,7 +358,10 @@ export default {
     }
   },
 
-  /** Every ten minutes (wrangler.toml): call the checker again for a run left waiting, crown the days gone by, and once a day, prune. */
+  /**
+   * Every ten minutes (wrangler.toml): call the checker again for a run left waiting, crown the days gone by, and once a
+   * day, prune and work the all-time board out again (a name taken down by hand is blanked there by then).
+   */
   async scheduled(_event: unknown, env: Env, ctx: Ctx) {
     const now = Date.now();
     const late = await env.DB.prepare("SELECT COUNT(*) AS n FROM runs WHERE status = 'pending' AND created < ? AND (checked IS NULL OR checked < ?)")
@@ -329,6 +370,9 @@ export default {
     if (late?.n) ctx.waitUntil(callChecker(env, now, 5 * 60_000).catch((err) => console.error('the checker could not be called', err)));
     await crownDays(env, now);
     const d = new Date(now);
-    if (d.getUTCHours() === 4 && d.getUTCMinutes() < 10) await prune(env, now);
+    if (d.getUTCHours() === 4 && d.getUTCMinutes() < 10) {
+      await prune(env, now);
+      await keepAllTime(env);
+    }
   },
 };

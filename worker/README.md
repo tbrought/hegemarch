@@ -10,7 +10,7 @@ the game ──POST /api/daily/submit──▶ Worker (this folder) ──▶ D1
                                          └─ workflow_dispatch ──▶ GitHub Actions: scripts/verify-daily.ts
                                                                    plays each pending run again, in the version
                                                                    it was played in, and posts a verdict
-the website ◀──GET /api/daily/board, /throne── Worker ◀── verdict (runs: verified / rejected)
+the website ◀──GET /api/daily/board, /throne, /alltime── Worker ◀── verdict (runs: verified / rejected)
                                          └─ every ten minutes: each day gone by gets its Hegemarch (crowns)
 ```
 
@@ -88,6 +88,7 @@ Run the commands from the `worker` folder.
 
 8. **Check that it answers.** Open `https://hegemarch.com/api/daily/board?day=2026-10-17` (any day). It should show
    `{"day":"2026-10-17","runs":[],"count":0}`. And `https://hegemarch.com/api/daily/throne` should show `"today":[]` and `"past":[]`.
+   `https://hegemarch.com/api/daily/alltime` shows the all-time board (1.28): the 25 fastest crowns ever, each player's best.
 
 9. **Deploy the game and the website (`release/`) as usual.** From 1.25 on, a crowned Daily offers POST TO THE BOARD on its results.
 
@@ -107,6 +108,21 @@ npx wrangler d1 execute hegemarch-board --remote --command "UPDATE crowns SET na
 ```
 
 (The second matters for a day more than four days gone: the last four are crowned again from their runs every ten minutes.)
+
+The all-time board (1.28) is worked out again at 04:00 UTC each day, and shows the blanked name from then. To have it show at once:
+
+```
+npx wrangler d1 execute hegemarch-board --remote --command "DELETE FROM meta WHERE key = 'alltime'"
+```
+
+(The next look at the board works it out again from the runs.)
+
+## The all-time board
+
+The 25 fastest Daily crowns ever, each player's best by their letters (a run that stands is kept for good: `prune` drops old
+orders, never a crown). It is worked out when a run comes to stand and once a day, and kept in the `meta` table as one row, so
+a look at the page reads one row, not every crown there has ever been. Nothing to set up: the first look after the Worker is
+deployed works it out from the runs already there.
 
 ## With every release
 
@@ -155,7 +171,7 @@ orders, for seven days. No accounts, no email, no IP addresses.
 
 | File | What it is |
 | --- | --- |
-| `src/index.ts` | The Worker: submit, status, board, throne, and the checker's pending and verdict. |
+| `src/index.ts` | The Worker: submit, status, board, throne, the all-time board, and the checker's pending and verdict. |
 | `schema.sql` | The database: `runs`, `crowns` (each day's Hegemarch, kept for good) and `meta` (when the checker was last called). Safe to run again: it only adds what is missing. |
 | `wrangler.toml` | Its name, route, database, the cron trigger (every ten minutes: a waiting run is called for again, and once a day the board is pruned). |
 | `../scripts/verify-daily.ts` | The checker (GitHub Actions). |

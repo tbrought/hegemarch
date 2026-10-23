@@ -1226,7 +1226,8 @@
       .board .note,
       .podium,
       .throne-call,
-      .line {
+      .line,
+      .all-time {
         grid-column: 1 / -1;
       }
       /* Today's three fastest: the first in the middle, highest, with the crown. */
@@ -1348,7 +1349,8 @@
         display: none;
       }
       .board-day,
-      .your-best {
+      .your-best,
+      .all-time {
         min-width: 0;
         background: var(--night);
         box-shadow: 0 0 0 var(--px) var(--indigo);
@@ -1423,13 +1425,34 @@
       }
       .your-best h3,
       .board-day h3,
-      .line h3 {
+      .line h3,
+      .all-time h3 {
         margin: 0 0 14px;
         font-family: var(--display);
         font-weight: normal;
         font-size: 13px;
         letter-spacing: 0.04em;
         color: var(--bone);
+      }
+      /* The all-time board: the fastest crowns ever, a row each, the day each was won lined up beside its time. */
+      .all-time h3 {
+        margin-bottom: 6px;
+      }
+      .all-time-sub {
+        margin: 0 0 14px;
+        font-size: 16px;
+        color: var(--dusk);
+      }
+      .all-time-list li {
+        grid-template-columns: 4ch 6.2rem minmax(0, 1fr) 7.5rem auto;
+      }
+      .all-time-list .date {
+        font-size: 16px;
+        color: var(--dusk);
+        white-space: nowrap;
+      }
+      .all-time-list li:nth-child(-n + 3) .place {
+        color: var(--gold);
       }
       .best-list li {
         display: flex;
@@ -1444,6 +1467,7 @@
         .podium {
           grid-template-columns: minmax(0, 1fr);
         }
+
         .step.first {
           order: -1;
           padding-bottom: 20px;
@@ -1455,6 +1479,23 @@
         }
         .board-list .time {
           grid-column: 2 / -1;
+        }
+        /* (Narrow: the letters and the time on the first line, the house and its Destiny under them, then the day.) */
+        .all-time-list li {
+          grid-template-columns: 4ch minmax(0, 1fr) auto;
+          row-gap: 4px;
+        }
+        .all-time-list .who {
+          grid-area: 1 / 2;
+        }
+        .all-time-list .time {
+          grid-area: 1 / 3;
+        }
+        .all-time-list .house {
+          grid-area: 2 / 2 / 3 / -1;
+        }
+        .all-time-list .date {
+          grid-area: 3 / 2 / 4 / -1;
         }
       }
 
@@ -1702,8 +1743,8 @@
           <h2>THE DAILY THRONE</h2>
           <p class="sub">
             Every day there is <em>one sector for every player</em>, played by the same rules. The fastest crown of the day makes its player
-            <b>that day's Hegemarch</b>, and their letters stay on this page. Each run is played again before it goes up: a time here is one the
-            game itself found.
+            <b>that day's Hegemarch</b>, and their letters stay on this page. The fastest crowns of every day stand on the all-time board for
+            good. Each run is played again before it goes up: a time here is one the game itself found.
           </p>
         </header>
         <div class="band-body board">
@@ -1715,6 +1756,12 @@
             <h3>THE LINE OF HEGEMARCHS</h3>
             <ol class="line-list"></ol>
             <p class="line-state"></p>
+          </div>
+          <div class="all-time">
+            <h3>THE ALL-TIME TOP 25</h3>
+            <p class="all-time-sub">The fastest Daily crowns ever posted, each player's best. They stay here for good.</p>
+            <ol class="board-list all-time-list" aria-live="polite"></ol>
+            <p class="board-state all-time-state"></p>
           </div>
           <div class="board-day">
             <h3>THE FULL BOARD</h3>

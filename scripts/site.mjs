@@ -53,6 +53,15 @@ const THRONE = {
     { day: ago(3), name: 'ZED', heir: 'vael', time: 2500, victory: 'conquest', reign: 1 },
   ],
 };
+// The all-time board (1.28), as the board's server answers it: the fastest 25 of 30 players' bests, of days long gone.
+const ALLTIME = {
+  players: 30,
+  runs: [
+    { name: 'ABC', heir: 'concord', time: 1570, victory: 'conquest', day: '2026-9-14' },
+    { name: 'ZED', heir: 'vael', time: 1601.5, victory: 'domination', day: '2026-10-2' },
+    ...Array.from({ length: 23 }, (_, i) => ({ name: `Q${String.fromCharCode(65 + i)}X`, heir: 'choir', time: 1700 + i * 20, victory: 'treasury', day: '2026-10-9' })),
+  ],
+};
 /** The board asked from the page: at its own address on hegemarch.com, at hegemarch.com's from here. */
 const boardAsked = (u) => /^https:\/\/hegemarch\.com\/api\/daily\//.test(u);
 
@@ -66,6 +75,9 @@ async function open({ throne = THRONE, ...opts } = {}, query = '?debug', init = 
     const url = new URL(route.request().url());
     if (url.pathname.endsWith('/throne')) {
       return route.fulfill({ status: 200, contentType: 'application/json', headers: { 'access-control-allow-origin': '*' }, body: JSON.stringify({ day: utcDay(Date.now()), ...throne }) });
+    }
+    if (url.pathname.endsWith('/alltime')) {
+      return route.fulfill({ status: 200, contentType: 'application/json', headers: { 'access-control-allow-origin': '*' }, body: JSON.stringify(ALLTIME) });
     }
     const day = url.searchParams.get('day');
     const runs = day === utcDay(Date.now()) ? BOARD : [];
@@ -311,7 +323,7 @@ try {
   await page.waitForTimeout(700);
   // (A row's parts, as they are read: place, letters, house and Destiny, time.)
   const parts = (sel) => page.$$eval(sel, (els) => els.map((e) => [...e.children].map((c) => c.textContent.replace(/\s+/g, ' ').trim()).filter((t) => t).join(' ')));
-  const rows = await parts('#board .board-list li');
+  const rows = await parts('#board .board-day .board-list li');
   check("the board shows today's fastest crowns, first to last, with house, Destiny and time", rows.length === 3 && rows[0] === '1st ABC Solar Concord by Conquest 31:05' &&
     rows[2].startsWith('3rd MOMMA'), rows.join(' | '));
   await page.screenshot({ path: '.shots/site-board.png' });
@@ -324,10 +336,24 @@ try {
   check('the line of Hegemarchs: the days before, newest first, each with its reign', line.length === 3 && line[0] === `${dated(1)} ZED II Vael Imperium 28:10` &&
     line[1] === `${dated(2)} ABC Solar Concord 33:22` && line[2] === `${dated(3)} ZED Vael Imperium 41:40`, line.join(' | '));
   check("the board's PLAY opens today's Daily", (await page.getAttribute('#board .throne-call a', 'href')) === 'play/#daily');
+  // The all-time board (1.28): the fastest crowns ever, a row each, with its house, Destiny, day and time.
+  const ever = await parts('#board .all-time-list li');
+  check('the all-time board: the fastest 25, first to last, with house, Destiny, day and time', ever.length === 25 &&
+    ever[0] === '1st ABC Solar Concord by Conquest 14 Sep 2026 26:10' && ever[1] === '2nd ZED Vael Imperium by Dominion 2 Oct 2026 26:41' &&
+    ever[24].startsWith('25th QWX'), `${ever.slice(0, 2).join(' | ')} … ${ever[24]}`);
+  check('it says how many players there are beyond it', (await page.textContent('#board .all-time-state')) === 'The fastest 25 of 30 players.', await page.textContent('#board .all-time-state'));
+  const rowsLaid = await page.$$eval('#board .all-time-list li', (els) => ({
+    lines: els.map((e) => Math.round(e.getBoundingClientRect().height)),
+    dates: [...new Set(els.map((e) => Math.round(e.querySelector('.date').getBoundingClientRect().left)))],
+  }));
+  check('a row a crown on a wide screen, the days lined up', Math.max(...rowsLaid.lines) < 50 && rowsLaid.dates.length === 1, JSON.stringify({ tallest: Math.max(...rowsLaid.lines), dates: rowsLaid.dates }));
+  await page.$eval('#board .all-time', (e) => e.scrollIntoView({ block: 'center' }));
+  await page.waitForTimeout(300);
+  await page.screenshot({ path: '.shots/site-alltime.png' });
   await page.click('#board [data-day="yesterday"]');
   await page.waitForTimeout(500);
-  check("and yesterday's, as it closed", /No crowns were posted for yesterday/.test(await page.textContent('#board .board-state')) &&
-    (await page.getAttribute('#board [data-day="yesterday"]', 'aria-pressed')) === 'true', await page.textContent('#board .board-state'));
+  check("and yesterday's, as it closed", /No crowns were posted for yesterday/.test(await page.textContent('#board .board-day .board-state')) &&
+    (await page.getAttribute('#board [data-day="yesterday"]', 'aria-pressed')) === 'true', await page.textContent('#board .board-day .board-state'));
   await page.click('#board [data-day="today"]');
   const best = await parts('#board .best-list li');
   check('your best: the fastest crowns this browser has, by kind of run', best.length === 2 && best[0] === 'Classic · Small · Normal 22:40' && best[1] === 'Classic · Medium · Hard 41:00' &&
@@ -381,6 +407,11 @@ try {
     check(`${name}: the title, the throne, the live panel and PLAY all fit the opening screen`, fits.play && fits.logo && fits.clear && fits.throne, JSON.stringify(fits));
     for (const sel of ['#run', '#board', '#houses', '#ships', '#boons', '#destinies', '#ages', '#play']) await scrollTo(o.page, sel);
     check(`${name}: nothing runs off the side`, await noSideScroll(o.page));
+    if (name === 'phone') {
+      const lefts = await o.page.$$eval('#board .all-time-list li', (els) => [...new Set(els.map((e) => Math.round(e.getBoundingClientRect().left)))]);
+      check('phone: the all-time board in one column', lefts.length === 1, lefts.join(', '));
+      await o.page.locator('#board .all-time').screenshot({ path: '.shots/site-phone-alltime.png' });
+    }
     check(`${name}: every section lit`, await o.page.$$eval('.band', (els) => els.every((e) => e.classList.contains('lit'))));
     await o.page.screenshot({ path: `.shots/site-${name}-full.png`, fullPage: true });
     check(`${name}: no errors`, o.errors.length === 0, o.errors.slice(0, 3).join(' | '));

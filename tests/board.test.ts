@@ -7,9 +7,9 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { TICK } from '../src/game/constants';
 import { REPLAY_TICKS } from '../src/game/replay';
-import { BOARD_LONGEST, dayOf, isBoardDay, nameProblem, ordinal, ordOf, packOrders, regnal, type BoardEntry } from '../src/meta/board';
+import { BOARD_LONGEST, dayOf, isBoardDay, nameProblem, ordinal, ordOf, packOrders, regnal, type AllTime, type BoardEntry } from '../src/meta/board';
 import { todayKey } from '../src/meta/profile';
-import worker, { callChecker, crownDays, prune, type Env } from '../worker/src/index';
+import worker, { allTimeOf, callChecker, crownDays, keepAllTime, prune, type Env } from '../worker/src/index';
 import { testDb } from '../scripts/lib/d1';
 import { unpack } from '../scripts/verify-daily';
 
@@ -265,6 +265,57 @@ describe('the board\'s server', () => {
     await add(ago(2), 'ABC', 2200);
     await crownDays(b.env, now);
     expect((await b.call('/throne')).body.past).toMatchObject([{ name: 'ABC', reign: 3 }, { name: 'ABC', reign: 2 }, { name: 'ABC', reign: 1 }]);
+  });
+
+  it('keeps an all-time board: the fastest crowns ever, each player\'s best, for good', async () => {
+    const b = board();
+    const now = Date.now();
+    let n = 0;
+    const add = (day: string, name: string, time: number, status = 'verified', heir = 'vael', created = now) =>
+      b.env.DB.prepare("INSERT INTO runs (id, day, name, heir, version, claimed, time, victory, orders, enc, status, created) VALUES (?, ?, ?, ?, '1.25.0', 60, ?, 'conquest', 'o', 'gzip', ?, ?)")
+        .bind(`e${String(++n).padStart(15, '0')}`, day, name, heir, time, status, created)
+        .run();
+    // Thirty players, a run each, on days long gone: P00 the fastest (1000 s), P29 the slowest.
+    for (let i = 0; i < 30; i++) await add(dayOf(now - (400 + i) * DAY), `P${String(i).padStart(2, '0')}`, 1000 + i * 10);
+    // P05's best is a later run, on another house; a slower one of P01's is not shown a second time.
+    await add(dayOf(now - 30 * DAY), 'P05', 1005, 'verified', 'choir');
+    await add(dayOf(now - 30 * DAY), 'P01', 1300);
+    // Faster runs that do not stand: turned down, or not checked yet.
+    await add(dayOf(now), 'CHT', 500, 'rejected');
+    await add(dayOf(now), 'WIP', 600, 'pending');
+    // A tie with P01's 1010 s: the one posted first (TIE, a second before P01's) goes first.
+    await add(dayOf(now - 2 * DAY), 'TIE', 1010, 'verified', 'vael', now - 1000);
+    const a = (await b.call('/alltime')).body as unknown as AllTime;
+    expect(a.runs).toHaveLength(25);
+    expect(a.players).toBe(31);
+    expect(a.runs.slice(0, 5)).toEqual([
+      { name: 'P00', heir: 'vael', time: 1000, victory: 'conquest', day: dayOf(now - 400 * DAY) },
+      { name: 'P05', heir: 'choir', time: 1005, victory: 'conquest', day: dayOf(now - 30 * DAY) },
+      { name: 'TIE', heir: 'vael', time: 1010, victory: 'conquest', day: dayOf(now - 2 * DAY) },
+      { name: 'P01', heir: 'vael', time: 1010, victory: 'conquest', day: dayOf(now - 401 * DAY) },
+      { name: 'P02', heir: 'vael', time: 1020, victory: 'conquest', day: dayOf(now - 402 * DAY) },
+    ]);
+    expect(new Set(a.runs.map((r) => r.name)).size).toBe(25);
+    expect(a.runs.map((r) => r.name)).not.toContain('CHT');
+    expect(a.runs.map((r) => r.name)).not.toContain('WIP');
+    // It is kept, and read as kept: a run added behind the board's back is not on it until it is worked out again.
+    expect((await b.call('/alltime')).headers.get('cache-control')).toMatch(/max-age/);
+    await add(dayOf(now), 'NEW', 900);
+    expect(((await b.call('/alltime')).body as unknown as AllTime).runs[0].name).toBe('P00');
+    // A run that comes to stand through the checker is on it at once.
+    const { id } = (await b.submit(b.entry({ name: 'FST', time: 800 }))).body as { id: string };
+    await b.verdict({ id, ok: true, time: 800, victory: 'domination' });
+    const after = (await b.call('/alltime')).body as unknown as AllTime;
+    expect(after.runs.slice(0, 2).map((r) => [r.name, r.time])).toEqual([['FST', 800], ['NEW', 900]]);
+    // A name taken down keeps its place as itself, each run of it its own; and it is so once the board is worked out again.
+    await b.env.DB.prepare("UPDATE runs SET name = '???' WHERE name IN ('P00', 'P01')").run();
+    await keepAllTime(b.env);
+    const blanked = (await b.call('/alltime')).body as unknown as AllTime;
+    // (P00's one run; P01's best, 1010 s, after TIE's, which came first; P01's slower run, 1300 s, is too slow for the 25.)
+    expect(blanked.runs.slice(0, 6).map((r) => [r.name, r.time])).toEqual([['FST', 800], ['NEW', 900], ['???', 1000], ['P05', 1005], ['TIE', 1010], ['???', 1010]]);
+    // Pruned, the runs that stand are all still there.
+    await prune(b.env, now + 30 * DAY);
+    expect((await allTimeOf(b.env)).runs).toEqual(blanked.runs);
   });
 
   it('keeps itself small: a run never checked is given up, one turned down forgotten, and old orders dropped but for the fastest', async () => {

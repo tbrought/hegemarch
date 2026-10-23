@@ -68,6 +68,19 @@ export interface Throne {
 /** How many days gone by the throne shows. */
 export const THRONE_DAYS = 14;
 
+/**
+ * The all-time board (1.28): the fastest crowns of every Daily there has been, each player's best (by their
+ * letters; a name taken down, "???", keeps its place as itself), first to last. Kept for good: a run that
+ * stands is never forgotten (the server drops old orders, never a crown).
+ */
+export interface AllTime {
+  runs: (BoardRun & { day: string })[];
+  /** How many players (letters) have a crown that stands. */
+  players: number;
+}
+/** How many crowns the all-time board shows. */
+export const ALLTIME_SHOWN = 25;
+
 /** What became of a run sent to the board. */
 export interface BoardStatus {
   status: 'pending' | 'verified' | 'rejected';
@@ -192,4 +205,9 @@ export function fetchBoard(day: string): Promise<Board> {
 /** The throne: today's fastest three and the Hegemarchs of the days before. */
 export function fetchThrone(): Promise<Throne> {
   return ask('/throne');
+}
+
+/** The all-time board: the fastest crowns ever, each player's best. */
+export function fetchAllTime(): Promise<AllTime> {
+  return ask('/alltime');
 }
